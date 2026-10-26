@@ -38,11 +38,11 @@ We keep the image's look: green SAM outlines rising from the ink, brass and Bake
 ## 3. The physics engine (summary; full model in doc 07 §4)
 
 - **Circuit:** a 3-node solve (wire end A, the R–X junction B, the jockey J; the far end C is ground) by Kirchhoff's current law, run whenever something changes. It includes the cell's emf and internal resistance, the wire split at the jockey (ρ·l and ρ·(100 − l)) plus small end resistances, the R and X arms, and the galvanometer with an optional protective resistor.
-- **Balance:** R/X = (l + α₁)/(100 − l + α₂), with end corrections α₁ and α₂. "Interchange R and X and average" cancels them. A balance near the middle of the wire gives the smallest error.
+- **Balance:** R/X = (l + α₁)/(100 − l + α₂), with end corrections α₁ and α₂. "Interchange R and X and average" cancels their difference, and what remains is zero at R = X and small near the middle (docs/07 §4.2), which is why a balance near the middle of the wire gives the smallest error.
 - **Galvanometer:** current through it = Thevenin voltage ÷ (Thevenin resistance + galvanometer + protective resistance). The needle is a damped oscillator stepped at a fixed 120 Hz and clamped at full scale, which gives the slam.
 - **Leclanché cell:** with the key closed, the emf sags and the internal resistance rises (polarisation). This lowers sensitivity but not the balance point. Opening the key lets it recover, which is why WAEC wants "the key was opened between readings".
 - **Wire:** constantan (α ≈ 8×10⁻⁶ /K). It warms by a few degrees and **never glows**. Scrapes raise local resistance by a few percent, so later balance points shift.
-- **Golden values** (X = 3.0 Ω, R = 1 to 5 Ω): ideal balance lengths 25.0, 40.0, 50.0, 57.1 and 62.5 cm. With a small end correction they come out near 24.5, 39.8, 50.0, 57.3 and 62.8 cm.
+- **Golden values** (X = 3.0 Ω, R = 1 to 5 Ω): ideal balance lengths 25.0, 40.0, 50.0, 57.1 and 62.5 cm. With the engine's default end errors (0.6 cm at A, 0.8 cm at C) they come out at about 24.8, 40.0, 50.1, 57.3 and 62.8 cm.
 
 ## 4. The golden question (written WAEC-style, our own wording)
 

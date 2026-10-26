@@ -88,7 +88,7 @@ Connect a Leclanché cell and key across the ends A and C of the 100 cm wire; pu
 
 ### 4.2 Model
 - **Circuit solve:** 3 unknown node voltages (A, B and the jockey J, with C grounded), Kirchhoff's current law at each, solved by Gaussian elimination whenever an input changes (jockey position or contact, plugs, key). Elements: cell emf E and internal resistance r (through the key); the wire as two resistors ρ·l + e₁ and ρ·(100 − l) + e₂ split at the jockey (e₁, e₂ = small end resistances); arms R and X; the galvanometer r_g plus an optional protective resistor, present only while the jockey touches the wire.
-- **Balance with end corrections:** R/X = (l + α₁)/(100 − l + α₂). "Interchange R and X and average" cancels α. Balance near the middle minimises the percentage error.
+- **Balance with end corrections:** R/X = (l + α₁)/(100 − l + α₂). "Interchange R and X and average" (the mean of l₁ and 100 − l₂) cancels the unequal part α₂ − α₁ exactly and leaves (k − 1)(α₁ + α₂)/(2(1 + k)) with k = R/X, which is zero at R = X and small near the middle. So a balance near the middle minimises both the end error and the percentage error.
 - **Galvanometer:** centre-zero. I_g = V_Th / (R_Th + r_g + r_protect). The needle is a damped oscillator, θ'' + 2ζω₀θ' + ω₀²θ = k·I_g, stepped at the fixed 120 Hz and clamped at full scale, so a far-from-balance tap **slams** it against the stop.
 - **Leclanché polarisation:** while the key is closed, E sags slowly and r rises; with the key open both recover. Sensitivity drops; the balance point does not move. This is the reason for "the key was opened between readings".
 - **Scraping:** dragging the jockey raises ρ by a few percent over the dragged segment, so later balance points shift by a few millimetres. Shown as a visible scratch.
@@ -157,7 +157,7 @@ Each rule: code, subject, question type, description, how it is checked (which e
 ---
 
 ## 7. Test plan for the engine (written Day 2 onwards)
-- Metre bridge: balance at 50.0 cm when R = X; l = 100R/(R + X) with zero end resistance; interchange-and-average removes α; R = 0 gives no balance on the wire; I_g = 0 at balance; needle clamps at full scale; polarisation changes sensitivity but not l; scraping shifts l by the expected few mm; the golden points give s = 0.0294 Ω cm⁻¹, c = 0.0102 cm⁻¹ (least squares).
+- Metre bridge: balance at 50.0 cm when R = X; l = 100R/(R + X) with zero end resistance; interchange-and-average cancels α₂ − α₁ and, at R = X, the whole end error; R = 0 gives no balance on the wire; I_g = 0 at balance; needle clamps at full scale; polarisation changes sensitivity but not l; scraping shifts l by the expected few mm; the golden points give s = 0.0294 Ω cm⁻¹, c = 0.0102 cm⁻¹ (least squares).
 - Titration: V_eq for each WAEC reaction against hand-worked answers (including 2HCl + Na₂CO₃, Ca(OH)₂ + 2HCl, H₂SO₄ + 2NaOH); pH at both carbonate end points; ethanoic acid equivalence ≈ 8.7; indicator colours at key pH values; parallax magnitude and sign at 10° and 25°.
 - Glass block: r from i and n; d from t, i, r; TIR threshold; parallel emergent ray.
 - Rule Engine: the golden pages produce exactly the expected item-by-item marks (metre bridge G1 15½/21, G2 21/21, doc 15 §5); "57" fails PHYS-1DP; "0.02" fails PHYS-3SF; "Avoid parallax error" fails the tense check; "I slid the jockey…" is not accepted; "24.5" fails 2 d.p.; a rough titre in the average fails concordance.
