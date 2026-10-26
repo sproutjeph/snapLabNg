@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Git pre-commit hook: the AGENTS.md git rules, enforced for every agent and
+# every worktree (the .claude hooks only see the agents' own tool calls).
+# Enabled once per clone with: git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+fail() { echo "pre-commit: $1" >&2; exit 1; }
+
+# Secrets and private data never enter git.
+printf '%s\n' "$staged" | grep -Ev '(^|/)\.env\.example$' | grep -Eq '(^|/)\.env' \
+  && fail "a .env file is staged. Unstage it with: git restore --staged <file>"
+printf '%s\n' "$staged" | grep -Eq '^dataset/' \
+  && fail "dataset/ (student photos and audio) is staged. Unstage it."
+git diff --cached -U0 | grep -E '^\+' | grep -Eq 'MODEL_API_KEY *[=:] *["'"'"']?[A-Za-z0-9_-]{12,}' \
+  && fail "a MODEL_API_KEY value is in the staged diff. The key lives only in server env."
+
+# bun only.
+printf '%s\n' "$staged" | grep -Eq '(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$' \
+  && fail "an npm, yarn or pnpm lockfile is staged. This repo uses bun only."
+
+exit 0

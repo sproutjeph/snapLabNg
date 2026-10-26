@@ -1,0 +1,8 @@
+.env*
+!.env.example
+dataset/
+.shots/
+node_modules/
+dist/
+.claude/settings.local.json
+_claude_update/

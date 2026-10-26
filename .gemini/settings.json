@@ -1,0 +1,29 @@
+{
+  "context": { "fileName": ["GEMINI.md"] },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "^run_shell_command$",
+        "hooks": [
+          {
+            "name": "guard-bash",
+            "type": "command",
+            "command": "\"$GEMINI_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "description": "Same shell guard Claude uses: git before kickoff, destructive commands, .env, git add -A, npm/yarn/pnpm, AI attribution"
+          }
+        ]
+      },
+      {
+        "matcher": "^(write_file|replace)$",
+        "hooks": [
+          {
+            "name": "protect-files",
+            "type": "command",
+            "command": "\"$GEMINI_PROJECT_DIR\"/.claude/hooks/protect-files.sh",
+            "description": "Same file guard Claude uses: .env, lockfile, dataset, fixtures, golden, old spec, .git"
+          }
+        ]
+      }
+    ]
+  }
+}
