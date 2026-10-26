@@ -187,7 +187,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
       {/* Header */}
       <header
         style={{
-          padding: isPhone ? "8px 16px 10px" : "14px 16px 12px",
+          padding: isPhone ? "8px 16px 10px" : "12px 152px 12px 16px",
           borderBottom: "1px solid #1e293b",
           display: "flex",
           alignItems: "center",
@@ -336,8 +336,13 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                     {laneCalls.map((span) => {
                       const { call, leftPct, widthPct, durationMs } = span;
                       const isSelected = selectedCallId === call.id;
-                      const clampedLeft = Math.max(0, Math.min(96, leftPct));
-                      const visibleWidth = Math.max(4, Math.min(100 - clampedLeft, widthPct));
+                      const minPct = 36;
+                      const effectiveWidth = Math.max(minPct, widthPct);
+                      const clampedLeft = Math.max(0, Math.min(100 - effectiveWidth, leftPct));
+                      const visibleWidth = Math.max(
+                        minPct,
+                        Math.min(100 - clampedLeft, effectiveWidth),
+                      );
                       return (
                         <div
                           key={call.id}
@@ -361,7 +366,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               bottom: "2px",
                               left: `${clampedLeft}%`,
                               width: `${visibleWidth}%`,
-                              minWidth: "54px",
+                              minWidth: "120px",
                               padding: "0 7px",
                               borderRadius: "4px",
                               border: isSelected
