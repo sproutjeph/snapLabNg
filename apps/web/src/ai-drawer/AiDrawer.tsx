@@ -41,16 +41,16 @@ const LANE_META: Record<
   },
 };
 
-function barBackground(status: CallStatus, laneAccent: string): string {
+function barStyleForStatus(status: CallStatus, laneAccent: string): { bg: string; border: string } {
   switch (status) {
     case "ok":
-      return laneAccent;
+      return { bg: `${laneAccent}52`, border: laneAccent };
     case "running":
-      return "#2563eb";
+      return { bg: "rgba(37, 99, 235, 0.58)", border: "#60a5fa" };
     case "fallback":
-      return "#d97706";
+      return { bg: "rgba(217, 119, 6, 0.58)", border: "#fbbf24" };
     case "error":
-      return "#dc2626";
+      return { bg: "rgba(220, 38, 38, 0.58)", border: "#f87171" };
   }
 }
 
@@ -336,83 +336,81 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                     {laneCalls.map((span) => {
                       const { call, leftPct, widthPct, durationMs } = span;
                       const isSelected = selectedCallId === call.id;
-                      const minPct = 36;
-                      const effectiveWidth = Math.max(minPct, widthPct);
-                      const clampedLeft = Math.max(0, Math.min(100 - effectiveWidth, leftPct));
-                      const visibleWidth = Math.max(
-                        minPct,
-                        Math.min(100 - clampedLeft, effectiveWidth),
-                      );
+                      const clampedLeft = Math.max(0, Math.min(98.5, leftPct));
+                      const visibleWidth = Math.max(1.5, Math.min(100 - clampedLeft, widthPct));
+                      const barColors = barStyleForStatus(call.status, meta.accent);
                       return (
-                        <div
+                        <button
                           key={call.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedCallId((prev) => (prev === call.id ? null : call.id))
+                          }
+                          aria-label={`${call.label} (${call.model}, ${formatMs(durationMs)}, status ${call.status})`}
                           style={{
                             position: "relative",
-                            height: "24px",
+                            width: "100%",
+                            height: "26px",
+                            padding: "0 8px",
                             borderRadius: "6px",
+                            border: isSelected ? "1.5px solid #f8fafc" : "1px solid #1e293b",
                             backgroundColor: "#0b111e",
+                            color: "#f8fafc",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                            cursor: "pointer",
                             overflow: "hidden",
+                            whiteSpace: "nowrap",
+                            boxSizing: "border-box",
+                            textAlign: "left",
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedCallId((prev) => (prev === call.id ? null : call.id))
-                            }
-                            aria-label={`${call.label} (${call.model}, ${formatMs(durationMs)}, status ${call.status})`}
+                          <span
+                            aria-hidden="true"
                             style={{
                               position: "absolute",
                               top: "2px",
                               bottom: "2px",
                               left: `${clampedLeft}%`,
                               width: `${visibleWidth}%`,
-                              minWidth: "120px",
-                              padding: "0 7px",
+                              minWidth: "6px",
                               borderRadius: "4px",
-                              border: isSelected
-                                ? "2px solid #ffffff"
-                                : "1px solid rgba(255,255,255,0.28)",
-                              backgroundColor: barBackground(call.status, meta.accent),
-                              color: "#090d16",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "6px",
-                              cursor: "pointer",
-                              overflow: "hidden",
-                              whiteSpace: "nowrap",
+                              backgroundColor: barColors.bg,
+                              border: `1.5px solid ${barColors.border}`,
                               boxSizing: "border-box",
+                              pointerEvents: "none",
+                            }}
+                          />
+                          <span
+                            style={{
+                              position: "relative",
+                              zIndex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              color: "#f8fafc",
+                              textShadow: "0 1px 2px rgba(0, 0, 0, 0.9)",
                             }}
                           >
-                            <span
-                              style={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                color:
-                                  call.status === "running" || call.status === "error"
-                                    ? "#ffffff"
-                                    : "#090d16",
-                              }}
-                            >
-                              {call.label}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                fontWeight: 700,
-                                flexShrink: 0,
-                                color:
-                                  call.status === "running" || call.status === "error"
-                                    ? "#e2e8f0"
-                                    : "#0f172a",
-                              }}
-                            >
-                              {formatMs(durationMs)}
-                            </span>
-                          </button>
-                        </div>
+                            {call.label}
+                          </span>
+                          <span
+                            style={{
+                              position: "relative",
+                              zIndex: 1,
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              flexShrink: 0,
+                              color: call.status === "fallback" ? "#fde68a" : "#e2e8f0",
+                              textShadow: "0 1px 2px rgba(0, 0, 0, 0.9)",
+                            }}
+                          >
+                            {formatMs(durationMs)}
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
