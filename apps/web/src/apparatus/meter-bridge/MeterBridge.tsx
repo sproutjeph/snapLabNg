@@ -463,10 +463,20 @@ export function MeterBridge({
     const ps = pointerStateRef.current;
     if (!ps.active || e.pointerId !== ps.pointerId) return;
     e.stopPropagation();
+    const cm = rayToLocalCm(e);
+    if (Math.abs(_localPoint.z) > BRIDGE_WIRE.hitBoxDepth / 2) {
+      ps.active = false;
+      ps.pointerId = -1;
+      setControlsEnabled(true);
+      const target = e.target as Element;
+      if (target.hasPointerCapture?.(e.pointerId)) {
+        target.releasePointerCapture(e.pointerId);
+      }
+      return;
+    }
     const dx = e.nativeEvent.clientX - ps.downClientX;
     const dy = e.nativeEvent.clientY - ps.downClientY;
     const dist = Math.hypot(dx, dy);
-    const cm = rayToLocalCm(e);
     if (dist >= 4) {
       ps.dragged = true;
       if (Math.abs(cm - ps.lastCm) > 0.05) {
