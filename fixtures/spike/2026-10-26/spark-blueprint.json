@@ -1,0 +1,1039 @@
+{
+  "name": "spark-blueprint",
+  "status": 200,
+  "latencyMs": 7827,
+  "request": {
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "This is a photo of a Nigerian student's WAEC physics practical notebook page. Identify the experiment, the apparatus drawn, and the values written. Copy every value exactly as written."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 365 KB: synthetic-meter-bridge-page.jpg]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "lab_blueprint",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "experiment": {
+              "type": "string",
+              "enum": [
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "bridge_wire",
+                      "resistance_box",
+                      "unknown_resistor",
+                      "galvanometer",
+                      "jockey",
+                      "cell",
+                      "key",
+                      "protective_resistor",
+                      "connecting_wire",
+                      "burette",
+                      "pipette",
+                      "conical_flask",
+                      "retort_stand",
+                      "white_tile",
+                      "funnel",
+                      "beaker",
+                      "glass_block_outline",
+                      "normal",
+                      "incident_ray",
+                      "refracted_ray",
+                      "emergent_ray",
+                      "pin",
+                      "other"
+                    ]
+                  },
+                  "label_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "approx_box": {
+                    "type": "object",
+                    "properties": {
+                      "x0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "x1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label_as_written",
+                  "approx_box"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "values": {
+              "type": "object",
+              "properties": {
+                "meter_bridge": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "resistances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "text_as_written": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unknown_label_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cell_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "galvanometer_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "resistances",
+                        "unknown_label_as_written",
+                        "cell_type_as_written",
+                        "galvanometer_type_as_written"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "titration": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "acid_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "base_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acid_concentration": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "base_concentration": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "pipette_volume": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "indicator_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "equation_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "acid_as_written",
+                        "base_as_written",
+                        "acid_concentration",
+                        "base_concentration",
+                        "pipette_volume",
+                        "indicator_as_written",
+                        "equation_as_written"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "glass_block": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "width": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "angles_of_incidence": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "text_as_written": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "angles_of_incidence"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "meter_bridge",
+                "titration",
+                "glass_block"
+              ],
+              "additionalProperties": false
+            },
+            "setup_issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "rule_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "rule_code"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "experiment",
+            "confidence",
+            "components",
+            "values",
+            "setup_issues",
+            "notes"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "lab_blueprint",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "components": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "approx_box": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "x0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "type": "object"
+                  },
+                  "kind": {
+                    "enum": [
+                      "bridge_wire",
+                      "resistance_box",
+                      "unknown_resistor",
+                      "galvanometer",
+                      "jockey",
+                      "cell",
+                      "key",
+                      "protective_resistor",
+                      "connecting_wire",
+                      "burette",
+                      "pipette",
+                      "conical_flask",
+                      "retort_stand",
+                      "white_tile",
+                      "funnel",
+                      "beaker",
+                      "glass_block_outline",
+                      "normal",
+                      "incident_ray",
+                      "refracted_ray",
+                      "emergent_ray",
+                      "pin",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "label_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label_as_written",
+                  "approx_box"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "confidence": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            },
+            "experiment": {
+              "enum": [
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "setup_issues": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "rule_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "rule_code"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "values": {
+              "additionalProperties": false,
+              "properties": {
+                "glass_block": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "angles_of_incidence": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "text_as_written": {
+                                "type": "string"
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "length": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "width": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "angles_of_incidence"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "meter_bridge": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cell_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "galvanometer_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resistances": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "text_as_written": {
+                                "type": "string"
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "unknown_label_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "resistances",
+                        "unknown_label_as_written",
+                        "cell_type_as_written",
+                        "galvanometer_type_as_written"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "titration": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "acid_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acid_concentration": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "base_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "base_concentration": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "equation_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "indicator_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pipette_volume": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "acid_as_written",
+                        "base_as_written",
+                        "acid_concentration",
+                        "base_concentration",
+                        "pipette_volume",
+                        "indicator_as_written",
+                        "equation_as_written"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "meter_bridge",
+                "titration",
+                "glass_block"
+              ],
+              "type": "object"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "experiment",
+            "confidence",
+            "components",
+            "values",
+            "setup_issues",
+            "notes"
+          ]
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6adf412ef0ff132680c34648",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793016110,
+    "completed_at": 1793016110,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6adf412ef0ff132680c34648:rs_b4cb8295-a95c-4594-b2ca-78b94610d956",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_ed0fe870-9267-4fff-91df-821f821b1352",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"components\": [], \"confidence\": \"high\", \"experiment\": \"meter_bridge\", \"notes\": \"NAME: Amina Bello SCHOOL: GSS Kubwa. Table headers: R (\\u03a9) l (cm) R\\u207b\\u00b9 l\\u207b\\u00b9. Rows: 1.0 25.3 1.00 0.0395; 2.0 39.8 0.500 0.0251; 3.0 50.2 0.333 0.02; 4.0 57 0.250 0.0175. Precautions: Avoid parallax error. Empty rectangle outline at bottom right.\", \"setup_issues\": [], \"values\": {\"glass_block\": null, \"meter_bridge\": {\"cell_type_as_written\": null, \"galvanometer_type_as_written\": null, \"resistances\": [{\"text_as_written\": \"1.0\", \"unit_as_written\": null, \"value\": 1.0}, {\"text_as_written\": \"2.0\", \"unit_as_written\": null, \"value\": 2.0}, {\"text_as_written\": \"3.0\", \"unit_as_written\": null, \"value\": 3.0}, {\"text_as_written\": \"4.0\", \"unit_as_written\": null, \"value\": 4.0}], \"unknown_label_as_written\": null}, \"titration\": null}}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 4060,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 991,
+      "output_tokens_details": {
+        "reasoning_tokens": 664
+      },
+      "total_tokens": 5051
+    },
+    "parallel_tool_calls": true,
+    "store": true
+  }
+}
