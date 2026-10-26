@@ -1,11 +1,11 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { ReadySignal } from "../../scene/ReadySignal";
 import { BRIDGE_BASE } from "./dimensions";
 import MeterBridgeKit from "./MeterBridgeKit";
-import type { MeterBridgeVisualState } from "./types";
+import { useMeterBridgeEngine } from "./useMeterBridgeEngine";
 
 const DEMO_PLUG_LABELS = ["1", "2", "2", "5", "10"];
 
@@ -65,42 +65,12 @@ function PreviewBench() {
   );
 }
 
+// The plug box of the golden question: coils 1, 2, 2, 5 and 10 Ω, starting with only the
+// 1 Ω plug out (R = 1 Ω). X is the unknown and is never shown.
+const BENCH = { boxValuesOhm: [1, 2, 2, 5, 10], plugsIn: [false, true, true, true, true], xOhm: 3 };
+
 function DemoScene() {
-  const stateRef = useRef<MeterBridgeVisualState>({
-    jockeyCm: 42,
-    jockeyDown: false,
-    needleDeg: 0,
-    plugsIn: [false, true, true, true, true],
-    keyClosed: true,
-    scrapesCm: [],
-  });
-
-  useFrame((clockState) => {
-    // Slow sine sweep over time; ignores jockey position so no fake physics is implied
-    stateRef.current.needleDeg = Math.sin(clockState.clock.elapsedTime * 1.2) * 28;
-  });
-
-  const handleWireTap = (cm: number) => {
-    stateRef.current.jockeyCm = cm;
-    stateRef.current.jockeyDown = true;
-  };
-
-  const handleWireDrag = (fromCm: number, toCm: number) => {
-    stateRef.current.jockeyCm = toCm;
-    stateRef.current.jockeyDown = true;
-    stateRef.current.scrapesCm.push([fromCm, toCm]);
-  };
-
-  const handlePlugToggle = (index: number) => {
-    const plugs = stateRef.current.plugsIn;
-    if (index >= 0 && index < plugs.length) {
-      plugs[index] = !plugs[index];
-    }
-  };
-
-  const handleKeyToggle = () => {
-    stateRef.current.keyClosed = !stateRef.current.keyClosed;
-  };
+  const { visual, handlers } = useMeterBridgeEngine(BENCH);
 
   return (
     <>
@@ -121,14 +91,14 @@ function DemoScene() {
       <OrbitControls target={[0, 0, TARGET_Z]} makeDefault />
       <PreviewBench />
       <MeterBridgeKit
-        state={stateRef}
+        state={visual}
         plugLabels={DEMO_PLUG_LABELS}
         unknownLabel="X"
         quality="high"
-        onWireTap={handleWireTap}
-        onWireDrag={handleWireDrag}
-        onPlugToggle={handlePlugToggle}
-        onKeyToggle={handleKeyToggle}
+        onWireTap={handlers.onWireTap}
+        onWireDrag={handlers.onWireDrag}
+        onPlugToggle={handlers.onPlugToggle}
+        onKeyToggle={handlers.onKeyToggle}
       />
       <ReadySignal />
     </>
