@@ -57,8 +57,8 @@ function renderSyntheticScene(options: {
       let g = inQuad ? fgRgb[1] : bgRgb[1];
       let b = inQuad ? fgRgb[2] : bgRgb[2];
 
-      // Draw blue horizontal ruled lines across the interior of the page (avoiding extreme corners)
-      if (inQuad && addRuledLines && y % 24 === 0 && y > 95 && y < 385) {
+      // Draw blue horizontal ruled lines edge to edge across the white quad
+      if (inQuad && addRuledLines && y % 24 === 0) {
         r = 70;
         g = 110;
         b = 205;

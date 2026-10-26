@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyHomography, solveHomography } from "./homography";
+import { applyHomography, isConvexQuad, solveHomography } from "./homography";
 import type { Point, Quad } from "./types";
 
 const UNIT_SQUARE: Quad = [
@@ -69,6 +69,27 @@ describe("solveHomography and applyHomography", () => {
       { x: 500, y: 300 }, // collinear with (100,100) and (300,200)
       { x: 120, y: 600 },
     ];
-    expect(() => solveHomography(UNIT_SQUARE, degenerateDst)).toThrow(/collinear|Degenerate/i);
+    expect(isConvexQuad(degenerateDst)).toBe(false);
+    expect(() => solveHomography(UNIT_SQUARE, degenerateDst)).toThrow(/convex|Degenerate/i);
+  });
+
+  it("rejects concave and self-crossing (bowtie) quads", () => {
+    const concaveQuad: Quad = [
+      { x: 100, y: 100 },
+      { x: 500, y: 100 },
+      { x: 250, y: 220 }, // pushed inward past diagonal (100,500)-(500,100)
+      { x: 100, y: 500 },
+    ];
+    const selfCrossingQuad: Quad = [
+      { x: 100, y: 100 },
+      { x: 500, y: 500 }, // swapped TR and BR to cross edges
+      { x: 500, y: 100 },
+      { x: 100, y: 500 },
+    ];
+    expect(isConvexQuad(UNIT_SQUARE)).toBe(true);
+    expect(isConvexQuad(concaveQuad)).toBe(false);
+    expect(isConvexQuad(selfCrossingQuad)).toBe(false);
+    expect(() => solveHomography(UNIT_SQUARE, concaveQuad)).toThrow(/convex|Degenerate/i);
+    expect(() => solveHomography(UNIT_SQUARE, selfCrossingQuad)).toThrow(/convex|Degenerate/i);
   });
 });

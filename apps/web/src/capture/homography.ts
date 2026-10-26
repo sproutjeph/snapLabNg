@@ -2,24 +2,50 @@ import type { Mat3, Point, Quad } from "./types";
 
 const EPSILON = 1e-9;
 
-function triangleArea2(a: Point, b: Point, c: Point): number {
-  return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+/**
+ * Returns true iff `q` is a strictly convex, non-self-crossing quadrilateral
+ * with finite coordinates (all four consecutive edge cross products share the same non-zero sign).
+ */
+export function isConvexQuad(q: Quad): boolean {
+  for (const pt of q) {
+    if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) {
+      return false;
+    }
+  }
+  let sign = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = q[i];
+    const b = q[(i + 1) % 4];
+    const c = q[(i + 2) % 4];
+    if (!a || !b || !c) return false;
+    const e1x = b.x - a.x;
+    const e1y = b.y - a.y;
+    const e2x = c.x - b.x;
+    const e2y = c.y - b.y;
+    const cross = e1x * e2y - e1y * e2x;
+    if (Math.abs(cross) <= EPSILON) {
+      return false;
+    }
+    const currentSign = cross > 0 ? 1 : -1;
+    if (sign === 0) {
+      sign = currentSign;
+    } else if (sign !== currentSign) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function assertNonDegenerateQuad(q: Quad, label: string): void {
-  const [p0, p1, p2, p3] = q;
   for (const pt of q) {
     if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) {
       throw new Error(`Invalid ${label} quad: coordinates must be finite numbers`);
     }
   }
-  if (
-    triangleArea2(p0, p1, p2) < EPSILON ||
-    triangleArea2(p0, p1, p3) < EPSILON ||
-    triangleArea2(p0, p2, p3) < EPSILON ||
-    triangleArea2(p1, p2, p3) < EPSILON
-  ) {
-    throw new Error(`Degenerate ${label} quad: three or more points are collinear`);
+  if (!isConvexQuad(q)) {
+    throw new Error(
+      `Degenerate ${label} quad: corners must form a strictly convex, non-self-crossing quadrilateral`,
+    );
   }
 }
 

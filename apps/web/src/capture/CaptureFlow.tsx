@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CameraView } from "./CameraView";
 import { CornerEditor } from "./CornerEditor";
 import { compressPhoto } from "./compress";
@@ -25,9 +25,13 @@ interface CapturedStill {
 
 export default function CaptureFlow({ onDone }: CaptureFlowProps) {
   const [still, setStill] = useState<CapturedStill | null>(null);
+  const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const busyRef = useRef(false);
 
   const handleCapture = (canvas: HTMLCanvasElement, source: "camera" | "file") => {
+    busyRef.current = false;
+    setBusy(false);
     setErrorMsg(null);
     const ctx = canvas.getContext("2d");
     let detected: Quad | null = null;
@@ -43,12 +47,15 @@ export default function CaptureFlow({ onDone }: CaptureFlowProps) {
   };
 
   const handleRetake = () => {
+    if (busyRef.current) return;
     setErrorMsg(null);
     setStill(null);
   };
 
   const handleConfirm = async (corners: Quad) => {
-    if (!still) return;
+    if (!still || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     setErrorMsg(null);
     try {
       const { canvas, source } = still;
@@ -79,6 +86,9 @@ export default function CaptureFlow({ onDone }: CaptureFlowProps) {
           ? err.message
           : "Could not confirm corners. Please ensure the four corners form a valid quadrilateral.",
       );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   };
 
@@ -91,6 +101,7 @@ export default function CaptureFlow({ onDone }: CaptureFlowProps) {
       <CornerEditor
         canvas={still.canvas}
         initialCorners={still.initialCorners}
+        busy={busy}
         onConfirm={handleConfirm}
         onRetake={handleRetake}
       />

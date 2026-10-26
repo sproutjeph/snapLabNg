@@ -1,4 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { isConvexQuad } from "./homography";
 import type { Point, Quad } from "./types";
 
 const CORNER_LABELS = ["TL", "TR", "BR", "BL"] as const;
@@ -8,6 +9,7 @@ const LOUPE_ZOOM = 2.6;
 export interface CornerEditorProps {
   canvas: HTMLCanvasElement;
   initialCorners: Quad | null;
+  busy?: boolean;
   onConfirm: (corners: Quad) => void;
   onRetake: () => void;
 }
@@ -23,7 +25,13 @@ function makeDefaultInsetQuad(width: number, height: number): Quad {
   ];
 }
 
-export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: CornerEditorProps) {
+export function CornerEditor({
+  canvas,
+  initialCorners,
+  busy = false,
+  onConfirm,
+  onRetake,
+}: CornerEditorProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const loupeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -151,6 +159,8 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
   const screenCorners = corners.map(toScreenPoint);
   const polygonPoints = screenCorners.map((p) => `${p.x},${p.y}`).join(" ");
   const activeScreenPt = activeIdx !== null ? screenCorners[activeIdx] : undefined;
+  const quadValid = isConvexQuad(corners);
+  const canConfirm = quadValid && !busy;
 
   return (
     <div
@@ -182,10 +192,18 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
           <div style={{ fontSize: "16px", fontWeight: 700 }}>
             Confirm Exercise-Book Page Corners
           </div>
-          <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "2px" }}>
-            {initialCorners
-              ? "Page detected automatically — drag any corner handle to fine-tune"
-              : "Adjust the four corner handles to match your notebook page"}
+          <div
+            style={{
+              fontSize: "13px",
+              color: quadValid ? "#94a3b8" : "#f87171",
+              marginTop: "2px",
+            }}
+          >
+            {!quadValid
+              ? "Corners cannot cross or fold inward — adjust TL, TR, BR, BL into a convex page shape"
+              : initialCorners
+                ? "Page detected automatically — drag any corner handle to fine-tune"
+                : "Adjust the four corner handles to match your notebook page"}
           </div>
         </div>
       </header>
@@ -227,8 +245,8 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
         >
           <polygon
             points={polygonPoints}
-            fill="rgba(34, 197, 94, 0.16)"
-            stroke="#22c55e"
+            fill={quadValid ? "rgba(34, 197, 94, 0.16)" : "rgba(239, 68, 68, 0.2)"}
+            stroke={quadValid ? "#22c55e" : "#ef4444"}
             strokeWidth={2.5}
           />
         </svg>
@@ -307,6 +325,7 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
       >
         <button
           type="button"
+          disabled={busy}
           onClick={onRetake}
           style={{
             minHeight: "44px",
@@ -314,10 +333,10 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
             borderRadius: "10px",
             border: "1px solid #475569",
             backgroundColor: "transparent",
-            color: "#e2e8f0",
+            color: busy ? "#64748b" : "#e2e8f0",
             fontSize: "14px",
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: busy ? "not-allowed" : "pointer",
           }}
         >
           Retake
@@ -325,20 +344,23 @@ export function CornerEditor({ canvas, initialCorners, onConfirm, onRetake }: Co
 
         <button
           type="button"
-          onClick={() => onConfirm(corners)}
+          disabled={!canConfirm}
+          onClick={() => {
+            if (canConfirm) onConfirm(corners);
+          }}
           style={{
             minHeight: "46px",
             padding: "10px 26px",
             borderRadius: "10px",
             border: "none",
-            backgroundColor: "#16a34a",
-            color: "#ffffff",
+            backgroundColor: canConfirm ? "#16a34a" : "#334155",
+            color: canConfirm ? "#ffffff" : "#94a3b8",
             fontSize: "15px",
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: canConfirm ? "pointer" : "not-allowed",
           }}
         >
-          Use this page
+          {busy ? "Processing…" : "Use this page"}
         </button>
       </footer>
     </div>

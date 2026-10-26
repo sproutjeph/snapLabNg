@@ -34,7 +34,7 @@ function drawSourceToWorkingCanvas(
 
 async function decodeFileToCanvas(file: File): Promise<HTMLCanvasElement> {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     try {
       return drawSourceToWorkingCanvas(bitmap, bitmap.width, bitmap.height);
     } finally {
