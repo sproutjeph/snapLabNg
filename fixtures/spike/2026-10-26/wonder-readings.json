@@ -1,0 +1,881 @@
+{
+  "name": "wonder-readings",
+  "status": 200,
+  "latencyMs": 13049,
+  "request": {
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Read the results table, graph and precautions on this WAEC practical page. Copy every number exactly as written (keep '57' as '57'). Boxes are 0–1 page coordinates."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 365 KB: synthetic-meter-bridge-page.jpg]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "table_found": {
+              "type": "boolean"
+            },
+            "cells": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "string"
+                  },
+                  "column": {
+                    "type": "string",
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ]
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "type": "object",
+                    "properties": {
+                      "x0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "x1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "legibility": {
+                    "type": "string",
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rows_averaged": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "p1": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p2": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p3": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "box": {
+                      "type": "object",
+                      "properties": {
+                        "x0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "x1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "precautions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "other_marks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "x0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "x1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows_averaged": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cells": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "x0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "type": "object"
+                  },
+                  "column": {
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "legibility": {
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ],
+                    "type": "string"
+                  },
+                  "row": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "box": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "x0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "x1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "type": "object"
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "points": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "p1": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p2": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p3": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "other_marks": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "x1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "precautions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "table_found": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ]
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6adf4134fc6e4eb1ca9d4230",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793016116,
+    "completed_at": 1793016116,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6adf4134fc6e4eb1ca9d4230:rs_08df5900-3978-4928-b82f-3efc1bab2e7a",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_2fd26897-d2cf-4c1b-a5c9-3014b34a1d6f",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"average_as_written\": null, \"cells\": [{\"box\": {\"x0\": 0.302, \"x1\": 0.355, \"y0\": 0.311, \"y1\": 0.337}, \"column\": \"R\", \"column_header_as_written\": \"R (\\u03a9)\", \"legibility\": \"clear\", \"row\":  \"header\", \"text_as_written\": \"R (\\u03a9)\", \"unit_as_written\": \"\\u03a9\", \"value\": null}, {\"box\": {\"x0\": 0.37, \"x1\": 0.433, \"y0\": 0.316, \"y1\": 0.343}, \"column\": \"l\", \"column_header_as_written\": \"l (cm)\", \"legibility\": \"clear\", \"row\": \"header\", \"text_as_written\": \"l (cm)\", \"unit_as_written\": \"cm\", \"value\": null}, {\"box\": {\"x0\": 0.445, \"x1\": 0.48, \"y0\": 0.32, \"y1\": 0.343}, \"column\": \"R_inv\", \"column_header_as_written\": \"R\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"header\", \"text_as_written\": \"R\\u207b\\u00b9\", \"unit_as_written\": null, \"value\": null}, {\"box\": {\"x0\": 0.498, \"x1\": 0.527, \"y0\": 0.324, \"y1\": 0.348}, \"column\": \"l_inv\", \"column_header_as_written\": \"l\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"header\", \"text_as_written\": \"l\\u207b\\u00b9\", \"unit_as_written\": null, \"value\": null}, {\"box\": {\"x0\": 0.301, \"x1\": 0.334, \"y0\": 0.347, \"y1\": 0.369}, \"column\": \"R\", \"column_header_as_written\": \"R (\\u03a9)\", \"legibility\": \"clear\", \"row\":  \"1\", \"text_as_written\": \"1.0\", \"unit_as_written\": null, \"value\": 1.0}, {\"box\": {\"x0\": 0.361, \"x1\": 0.4, \"y0\": 0.353, \"y1\": 0.376}, \"column\": \"l\", \"column_header_as_written\": \"l (cm)\", \"legibility\": \"clear\", \"row\": \"1\", \"text_as_written\": \"25.3\", \"unit_as_written\": null, \"value\": 25.3}, {\"box\": {\"x0\": 0.436, \"x1\": 0.478, \"y0\": 0.356, \"y1\": 0.38}, \"column\": \"R_inv\", \"column_header_as_written\": \"R\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"1\", \"text_as_written\": \"1.00\", \"unit_as_written\": null, \"value\": 1.0}, {\"box\": {\"x0\": 0.514, \"x1\": 0.579, \"y0\": 0.36, \"y1\": 0.388}, \"column\": \"l_inv\", \"column_header_as_written\": \"l\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"1\", \"text_as_written\": \"0.0395\", \"unit_as_written\": null, \"value\": 0.0395}, {\"box\": {\"x0\": 0.298, \"x1\": 0.332, \"y0\": 0.379, \"y1\": 0.403}, \"column\": \"R\", \"column_header_as_written\": \"R (\\u03a9)\", \"legibility\": \"clear\", \"row\": \"2\", \"text_as_written\": \"2.0\", \"unit_as_written\": null, \"value\": 2.0}, {\"box\": {\"x0\": 0.356, \"x1\": 0.4, \"y0\": 0.384, \"y1\": 0.408}, \"column\": \"l\", \"column_header_as_written\": \"l (cm)\", \"legibility\": \"clear\", \"row\": \"2\", \"text_as_written\": \"39.8\", \"unit_as_written\": null, \"value\": 39.8}, {\"box\": {\"x0\": 0.433, \"x1\": 0.489, \"y0\": 0.387, \"y1\": 0.411}, \"column\": \"R_inv\", \"column_header_as_written\": \"R\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"2\", \"text_as_written\": \"0.500\", \"unit_as_written\": null, \"value\": 0.5}, {\"box\": {\"x0\": 0.525, \"x1\": 0.591, \"y0\": 0.392, \"y1\": 0.418}, \"column\": \"l_inv\", \"column_header_as_written\": \"l\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"2\", \"text_as_written\": \"0.0251\", \"unit_as_written\": null, \"value\": 0.0251}, {\"box\": {\"x0\": 0.295, \"x1\": 0.331, \"y0\": 0.41, \"y1\": 0.434}, \"column\": \"R\", \"column_header_as_written\": \"R (\\u03a9)\", \"legibility\": \"clear\", \"row\": \"3\", \"text_as_written\": \"3.0\", \"unit_as_written\": null, \"value\": 3.0}, {\"box\": {\"x0\": 0.353, \"x1\": 0.399, \"y0\": 0.416, \"y1\": 0.441}, \"column\": \"l\", \"column_header_as_written\": \"l (cm)\", \"legibility\": \"clear\", \"row\": \"3\", \"text_as_written\": \"50.2\", \"unit_as_written\": null, \"value\": 50.2}, {\"box\": {\"x0\": 0.431, \"x1\": 0.487, \"y0\": 0.419, \"y1\": 0.445}, \"column\": \"R_inv\", \"column_header_as_written\": \"R\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"3\", \"text_as_written\": \"0.333\", \"unit_as_written\": null, \"value\": 0.333}, {\"box\": {\"x0\": 0.523, \"x1\": 0.565, \"y0\": 0.423, \"y1\": 0.449}, \"column\": \"l_inv\", \"column_header_as_written\": \"l\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"3\", \"text_as_written\": \"0.02\", \"unit_as_written\": null, \"value\": 0.02}, {\"box\": {\"x0\": 0.294, \"x1\": 0.33, \"y0\": 0.443, \"y1\": 0.467}, \"column\": \"R\", \"column_header_as_written\": \"R (\\u03a9)\", \"legibility\": \"clear\", \"row\": \"4\", \"text_as_written\": \"4.0\", \"unit_as_written\": null, \"value\": 4.0}, {\"box\": {\"x0\": 0.352, \"x1\": 0.381, \"y0\": 0.447, \"y1\": 0.471}, \"column\": \"l\", \"column_header_as_written\": \"l (cm)\", \"legibility\": \"clear\", \"row\": \"4\", \"text_as_written\": \"57\", \"unit_as_written\": null, \"value\": 57}, {\"box\": {\"x0\": 0.413, \"x1\": 0.468, \"y0\": 0.451, \"y1\": 0.476}, \"column\": \"R_inv\", \"column_header_as_written\": \"R\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"4\", \"text_as_written\": \"0.250\", \"unit_as_written\": null, \"value\": 0.25}, {\"box\": {\"x0\": 0.5, \"x1\": 0.568, \"y0\": 0.455, \"y1\": 0.482}, \"column\": \"l_inv\", \"column_header_as_written\": \"l\\u207b\\u00b9\", \"legibility\": \"clear\", \"row\": \"4\", \"text_as_written\": \"0.0175\", \"unit_as_written\": null, \"value\": 0.0175}], \"graph\": {\"box\": {\"x0\": 0.454, \"x1\": 0.669, \"y0\": 0.614, \"y1\": 0.823}, \"intercept_as_written\": null, \"line_drawn\": false, \"points\": [], \"result_as_written\": null, \"slope_as_written\": null, \"triangle\": null, \"x_label_as_written\": null, \"y_label_as_written\": null}, \"other_marks\": [{\"box\": {\"x0\": 0.298, \"x1\": 0.746, \"y0\": 0.202, \"y1\": 0.262}, \"description\": \"Identity header\", \"text_as_written\": \"NAME: Amina Bello   SCHOOL: GSS Kubwa\"}], \"precautions\": [\"Avoid parallax error\"], \"table_found\": true}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 4064,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 3332,
+      "output_tokens_details": {
+        "reasoning_tokens": 1098
+      },
+      "total_tokens": 7396
+    },
+    "parallel_tool_calls": true,
+    "store": true
+  }
+}

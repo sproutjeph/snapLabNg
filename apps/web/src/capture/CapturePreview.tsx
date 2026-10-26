@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RectifyPreview } from "../rectify/RectifyPreview";
 import CaptureFlow from "./CaptureFlow";
 import type { CaptureResult } from "./types";
 
@@ -166,6 +167,8 @@ export default function CapturePreview() {
             </pre>
           </div>
         </div>
+
+        <RectifyPreview result={result} />
       </div>
     </div>
   );

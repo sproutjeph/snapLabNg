@@ -155,6 +155,7 @@ Sample data: build G1 sample objects from doc 15 §5 (Amina's flawed metre bridg
 `implementer`. All design decisions are fixed above. If zod's emitted JSON breaks an invariant test, stop and report; do not loosen the test.
 
 ## Risks
+*Oct 26 live check (BUILD_LOG): risks 1 and 2 are resolved. Meta's strict mode accepts the emitted schema once the root `$schema` key is removed.*
 1. **Meta rejects `type: [..,"null"]` or `minimum`/`maximum`.** Fallback: a small `toMetaSchema` normaliser in `json-schema.ts`, decided at kickoff from a live call.
 2. **zod emits `$defs`/`$ref` for the reused `Box`/`Measured`.** Meta allows `$ref` without cycles. The invariant walker must resolve `$ref` into `$defs`.
 3. **One flat `ComponentKind` enum lets Spark label a burette on a metre bridge page.** The engine ignores kinds outside `COMPONENT_KINDS[experiment]`. That check lives in the engine, not here.

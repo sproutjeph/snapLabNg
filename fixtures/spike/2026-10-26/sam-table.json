@@ -1,0 +1,72 @@
+{
+  "name": "sam-table",
+  "status": 200,
+  "latencyMs": 4474,
+  "request": {
+    "model": "sam-3.1",
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "table"
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 365 KB: synthetic-meter-bridge-page.jpg]"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "sam-3.1",
+    "background": false,
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6adf412b1de20195a1de41c3",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793016107,
+    "completed_at": 1793016107,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "message",
+        "id": "msg_7791fcf9-fe94-4d18-adbd-de9d7255fb7b",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 0,
+      "images_processed": 1
+    },
+    "parallel_tool_calls": true,
+    "store": true
+  }
+}
