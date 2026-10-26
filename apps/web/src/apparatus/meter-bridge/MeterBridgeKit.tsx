@@ -19,6 +19,28 @@ import { PlugKey } from "./PlugKey";
 import { TubeWire } from "./TubeWire";
 import type { MeterBridgeKitProps, QualityTier } from "./types";
 
+const VIA_CELL_PLUS_TO_A = [
+  [-0.56, 0.09, -0.14],
+  [-0.56, 0.03, -0.02],
+] as const;
+
+const VIA_CELL_MINUS_TO_KEY = [
+  [-0.48, 0.06, -0.29],
+  [0, 0.006, -0.31],
+  [0.36, 0.015, -0.27],
+] as const;
+
+const VIA_KEY_TO_C = [
+  [0.56, 0.028, -0.11],
+  [0.56, 0.024, -0.01],
+] as const;
+
+const VIA_BOX_LEFT = [[-0.31, 0.05, -0.11]] as const;
+const VIA_BOX_RIGHT = [[-0.17, 0.05, -0.11]] as const;
+const VIA_UNK_LEFT = [[0.2, 0.03, -0.09]] as const;
+const VIA_UNK_RIGHT = [[0.28, 0.03, -0.09]] as const;
+const VIA_GALV_TO_B = [[-0.02, 0.035, -0.1]] as const;
+
 function createUnknownResistorTexture(label: string): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -357,10 +379,7 @@ export default function MeterBridgeKit({
       {/* Cell (+) to End A */}
       <TubeWire
         start={anchors.cellPlus}
-        via={[
-          [-0.56, 0.09, -0.14],
-          [-0.56, 0.03, -0.02],
-        ]}
+        via={VIA_CELL_PLUS_TO_A}
         end={anchors.bridgeA}
         color="#b91c1c"
         quality={quality}
@@ -369,11 +388,7 @@ export default function MeterBridgeKit({
       {/* Cell (-) to Plug Key left terminal (routed behind bench apparatus) */}
       <TubeWire
         start={anchors.cellMinus}
-        via={[
-          [-0.48, 0.06, -0.29],
-          [0, 0.006, -0.31],
-          [0.36, 0.015, -0.27],
-        ]}
+        via={VIA_CELL_MINUS_TO_KEY}
         end={anchors.keyLeft}
         color="#1e293b"
         quality={quality}
@@ -382,10 +397,7 @@ export default function MeterBridgeKit({
       {/* Plug Key right terminal to End C */}
       <TubeWire
         start={anchors.keyRight}
-        via={[
-          [0.56, 0.028, -0.11],
-          [0.56, 0.024, -0.01],
-        ]}
+        via={VIA_KEY_TO_C}
         end={anchors.bridgeC}
         color="#1e293b"
         quality={quality}
@@ -394,14 +406,14 @@ export default function MeterBridgeKit({
       {/* Plug Box R across the left gap */}
       <TubeWire
         start={anchors.boxLeft}
-        via={[[-0.31, 0.05, -0.11]]}
+        via={VIA_BOX_LEFT}
         end={anchors.leftGapL}
         color="#92400e"
         quality={quality}
       />
       <TubeWire
         start={anchors.boxRight}
-        via={[[-0.17, 0.05, -0.11]]}
+        via={VIA_BOX_RIGHT}
         end={anchors.leftGapR}
         color="#92400e"
         quality={quality}
@@ -410,14 +422,14 @@ export default function MeterBridgeKit({
       {/* Unknown resistor X across the right gap */}
       <TubeWire
         start={anchors.unkLeft}
-        via={[[0.2, 0.03, -0.09]]}
+        via={VIA_UNK_LEFT}
         end={anchors.rightGapL}
         color="#92400e"
         quality={quality}
       />
       <TubeWire
         start={anchors.unkRight}
-        via={[[0.28, 0.03, -0.09]]}
+        via={VIA_UNK_RIGHT}
         end={anchors.rightGapR}
         color="#92400e"
         quality={quality}
@@ -426,7 +438,7 @@ export default function MeterBridgeKit({
       {/* Galvanometer from central junction B to the jockey J */}
       <TubeWire
         start={anchors.galvLeft}
-        via={[[-0.02, 0.035, -0.1]]}
+        via={VIA_GALV_TO_B}
         end={anchors.bridgeB}
         color="#1d4ed8"
         quality={quality}
