@@ -79,7 +79,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `apps/web/src/apparatus/meter-bridge/**`, plus only the `?kit=meter-bridge` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/meter-bridge-kit.md`) | Gemini, while `gemini/meter-bridge-kit` is open |
+| `apps/web/src/capture/**`, plus only the `?capture=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/capture-flow.md`) | Gemini, while `gemini/capture-flow` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 The lead updates this table when it hands out a new slice.
