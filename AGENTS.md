@@ -52,7 +52,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 - Don't guess API shapes. Check dev.meta.ai/docs and the installed package versions.
 
 ## Git
-- No git commits or pushes before kickoff: Oct 26, 2026, 17:00 WAT (16:00 UTC).
+- The build started on Oct 26, 2026. Commits, pushes and PRs are allowed from then on; the guard hook only blocks them before Oct 26, 00:00 UTC.
 - Never force-push, `reset --hard`, `clean`, or rewrite pushed history (no rebase of a pushed branch; merge `origin/main` into it instead).
 - Stage files by name. Never `git add -A` or `git add .`. Never commit `.env`, `dataset/` or student photos and audio.
 - No AI attribution anywhere in git or GitHub: no `Co-Authored-By` trailer for any AI, no "Generated with …" line, no session links, in commits, tags or PR text. The user is the only author.
@@ -64,6 +64,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 - Each agent works in its own folder, so two writers never share a working tree:
   - Claude (lead): `~/Desktop/SnapLabNG`, the main checkout.
   - Gemini: `~/Desktop/SnapLabNG-gemini`, a git worktree. The lead creates it with `git worktree add ../SnapLabNG-gemini -b gemini/<feature> origin/main`. Run `bun install` inside it. It has no `.env`, and needs none for client work.
+  - Dev servers must not collide: the lead uses the default port 5173. Gemini runs `bun run dev --port 5174 --strictPort` inside `apps/web` and screenshots with `bun run shot -- --route "<route>" --base http://localhost:5174`.
   - Lead reviews: `~/Desktop/SnapLabNG-review`, a throwaway detached worktree of the PR branch, used only to run checks and screenshots, then removed.
   - Never edit files in another agent's folder and never check out its branch.
 - Stay inside the paths your task owns (see "Who owns what"). If you need a change outside them (a dependency, a contract, a shared config), don't make it. Write it in the PR description under "Needs from lead".
