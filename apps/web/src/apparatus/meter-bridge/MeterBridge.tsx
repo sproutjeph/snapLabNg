@@ -1,4 +1,4 @@
-import { type ThreeEvent, useFrame } from "@react-three/fiber";
+import { type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
@@ -14,6 +14,22 @@ import { Jockey } from "./Jockey";
 import type { MeterBridgeVisualState, QualityTier } from "./types";
 
 const MAX_SCRAPE_POOL = 24;
+
+const _localPoint = new THREE.Vector3();
+const _invMatrix = new THREE.Matrix4();
+const _localRay = new THREE.Ray();
+const _planeNormalY = new THREE.Vector3(0, 1, 0);
+const _wirePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+function rayToLocalCm(e: ThreeEvent<PointerEvent>): number {
+  _invMatrix.copy(e.object.matrixWorld).invert();
+  _localRay.copy(e.ray).applyMatrix4(_invMatrix);
+  if (_localRay.intersectPlane(_wirePlane, _localPoint)) {
+    return xToCm(_localPoint.x);
+  }
+  e.object.worldToLocal(_localPoint.copy(e.point));
+  return xToCm(_localPoint.x);
+}
 
 export interface MeterBridgeProps {
   state: { current: MeterBridgeVisualState };
@@ -143,6 +159,7 @@ export function MeterBridge({
   onWireTap,
   onWireDrag,
 }: MeterBridgeProps) {
+  const getThree = useThree((s) => s.get);
   const terminalsPostRef = useRef<THREE.InstancedMesh>(null);
   const terminalsCapRef = useRef<THREE.InstancedMesh>(null);
   const scrapeMeshesRef = useRef<Array<THREE.Mesh | null>>([]);
@@ -357,11 +374,11 @@ export function MeterBridge({
     };
   }, [res]);
 
-  // Populate instanced binding screws once
+  // Populate instanced binding screws whenever geometry resources are built
   useEffect(() => {
     const postMesh = terminalsPostRef.current;
     const capMesh = terminalsCapRef.current;
-    if (!postMesh || !capMesh) return;
+    if (!postMesh || !capMesh || !res.terminalPostGeo || !res.terminalCapGeo) return;
 
     const terminalCoords: Array<readonly [number, number, number]> = [
       BRIDGE_TERMINAL_POSITIONS.A,
@@ -391,17 +408,19 @@ export function MeterBridge({
     });
     postMesh.instanceMatrix.needsUpdate = true;
     capMesh.instanceMatrix.needsUpdate = true;
-  }, []);
+  }, [res]);
 
-  // Update wire scrape meshes inside useFrame without allocating
+  // Update wire scrape meshes inside useFrame without allocating (show last 24 segments)
   useFrame(() => {
     const scrapes = state.current.scrapesCm;
     const meshes = scrapeMeshesRef.current;
     const count = scrapes.length;
+    const startIdx = Math.max(0, count - MAX_SCRAPE_POOL);
+    const visibleCount = count - startIdx;
     for (let i = 0; i < MAX_SCRAPE_POOL; i++) {
       const mesh = meshes[i];
       if (!mesh) continue;
-      const seg = i < count ? scrapes[i] : undefined;
+      const seg = i < visibleCount ? scrapes[startIdx + i] : undefined;
       if (!seg) {
         mesh.visible = false;
         continue;
@@ -417,9 +436,18 @@ export function MeterBridge({
     }
   });
 
+  const setControlsEnabled = (enabled: boolean) => {
+    const controls = getThree().controls;
+    if (controls && "enabled" in controls) {
+      (controls as { enabled: boolean }).enabled = enabled;
+    }
+  };
+
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
-    const cm = xToCm(e.point.x);
+    e.object.worldToLocal(_localPoint.copy(e.point));
+    _wirePlane.set(_planeNormalY, -_localPoint.y);
+    const cm = xToCm(_localPoint.x);
     pointerStateRef.current.active = true;
     pointerStateRef.current.pointerId = e.pointerId;
     pointerStateRef.current.downClientX = e.nativeEvent.clientX;
@@ -427,8 +455,8 @@ export function MeterBridge({
     pointerStateRef.current.startCm = cm;
     pointerStateRef.current.lastCm = cm;
     pointerStateRef.current.dragged = false;
-    const target = e.nativeEvent.target as Element | null;
-    target?.setPointerCapture?.(e.pointerId);
+    setControlsEnabled(false);
+    (e.target as Element).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
@@ -438,7 +466,7 @@ export function MeterBridge({
     const dx = e.nativeEvent.clientX - ps.downClientX;
     const dy = e.nativeEvent.clientY - ps.downClientY;
     const dist = Math.hypot(dx, dy);
-    const cm = xToCm(e.point.x);
+    const cm = rayToLocalCm(e);
     if (dist >= 4) {
       ps.dragged = true;
       if (Math.abs(cm - ps.lastCm) > 0.05) {
@@ -453,15 +481,39 @@ export function MeterBridge({
     if (!ps.active || e.pointerId !== ps.pointerId) return;
     e.stopPropagation();
     ps.active = false;
-    const target = e.nativeEvent.target as Element | null;
-    target?.releasePointerCapture?.(e.pointerId);
+    ps.pointerId = -1;
+    setControlsEnabled(true);
+    const target = e.target as Element;
+    if (target.hasPointerCapture?.(e.pointerId)) {
+      target.releasePointerCapture(e.pointerId);
+    }
     const dx = e.nativeEvent.clientX - ps.downClientX;
     const dy = e.nativeEvent.clientY - ps.downClientY;
     const dist = Math.hypot(dx, dy);
-    const cm = xToCm(e.point.x);
+    const cm = rayToLocalCm(e);
     if (!ps.dragged && dist < 4) {
       onWireTap?.(cm);
     }
+  };
+
+  const handlePointerCancel = (e: ThreeEvent<PointerEvent>) => {
+    const ps = pointerStateRef.current;
+    if (!ps.active) return;
+    ps.active = false;
+    ps.pointerId = -1;
+    setControlsEnabled(true);
+    const target = e.target as Element;
+    if (target.hasPointerCapture?.(e.pointerId)) {
+      target.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handleLostPointerCapture = () => {
+    const ps = pointerStateRef.current;
+    if (!ps.active) return;
+    ps.active = false;
+    ps.pointerId = -1;
+    setControlsEnabled(true);
   };
 
   const ruleMaterials = useMemo(
@@ -592,7 +644,8 @@ export function MeterBridge({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={handleLostPointerCapture}
       />
 
       {/* Sliding/tapping knife-edge jockey */}
