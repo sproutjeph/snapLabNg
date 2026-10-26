@@ -20,11 +20,11 @@ export function ShowAiToggle({ running, onClick }: ShowAiToggleProps) {
         aria-label={running ? "Show the AI (models running)" : "Show the AI"}
         style={{
           position: "fixed",
-          top: "14px",
+          top: "12px",
           right: "16px",
-          zIndex: 60,
-          minHeight: "40px",
-          padding: "8px 14px",
+          zIndex: 80,
+          minHeight: "38px",
+          padding: "7px 14px",
           borderRadius: "999px",
           border: "1px solid #38bdf8",
           backgroundColor: "#0f172a",
