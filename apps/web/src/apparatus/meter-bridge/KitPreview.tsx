@@ -9,8 +9,8 @@ import type { MeterBridgeVisualState } from "./types";
 
 const DEMO_PLUG_LABELS = ["1", "2", "2", "5", "10"];
 
-const BASE_CAM_Y = 0.62;
-const BASE_CAM_Z = 0.68;
+const BASE_CAM_Y = 0.68;
+const BASE_CAM_Z = 0.78;
 const BASE_DIST = Math.hypot(BASE_CAM_Y, BASE_CAM_Z);
 const DIR_Y = BASE_CAM_Y / BASE_DIST;
 const DIR_Z = BASE_CAM_Z / BASE_DIST;
@@ -18,24 +18,28 @@ const TARGET_Z = -0.08;
 
 function PreviewCameraRig() {
   const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls);
   const size = useThree((s) => s.size);
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
     const aspect = size.width / Math.max(size.height, 1);
-    const scale = aspect < 1 ? 1 / Math.max(aspect * 1.05, 0.35) : 1;
+    const scale = aspect < 1 ? 1.52 / Math.max(aspect, 0.25) : 1.08;
     const dist = BASE_DIST * scale;
     camera.position.set(0, DIR_Y * dist, TARGET_Z + DIR_Z * dist);
     camera.lookAt(0, 0, TARGET_Z);
     camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height]);
+    if (controls && "update" in controls && typeof controls.update === "function") {
+      controls.update();
+    }
+  }, [camera, controls, size.width, size.height]);
 
   return null;
 }
 
 function PreviewBench() {
   const benchRes = useMemo(() => {
-    const geo = new THREE.BoxGeometry(1.6, 0.04, 0.85);
+    const geo = new THREE.BoxGeometry(2.2, 0.04, 1.2);
     const mat = new THREE.MeshStandardMaterial({
       color: "#2b2118",
       roughness: 0.78,
@@ -134,7 +138,7 @@ function DemoScene() {
 export default function KitPreview() {
   return (
     <Canvas
-      shadows
+      shadows="percentage"
       dpr={[1, 2]}
       gl={{ antialias: true }}
       camera={{ fov: 40, position: [0, BASE_CAM_Y, TARGET_Z + BASE_CAM_Z], near: 0.02, far: 20 }}

@@ -124,11 +124,11 @@ function createBridgeLabelsTexture(unknownLabel: string): THREE.CanvasTexture {
 
     const xToPx = (x: number) => ((x + BRIDGE_BASE.length / 2) / BRIDGE_BASE.length) * canvas.width;
 
-    ctx.fillText("A", xToPx(-0.52), 95);
-    ctx.fillText("R", xToPx(COPPER_STRIP.leftGapCenterX), 42);
-    ctx.fillText("B", xToPx(0), 22);
-    ctx.fillText(unknownLabel || "X", xToPx(COPPER_STRIP.rightGapCenterX), 42);
-    ctx.fillText("C", xToPx(0.52), 95);
+    ctx.fillText("A", xToPx(-0.525), 95);
+    ctx.fillText("R", xToPx(COPPER_STRIP.leftGapCenterX), 46);
+    ctx.fillText("B", xToPx(0), 46);
+    ctx.fillText(unknownLabel || "X", xToPx(COPPER_STRIP.rightGapCenterX), 46);
+    ctx.fillText("C", xToPx(0.525), 95);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;

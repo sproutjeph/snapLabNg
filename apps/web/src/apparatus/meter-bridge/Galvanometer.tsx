@@ -97,12 +97,13 @@ export function Galvanometer({ state, quality, position = [0, 0, 0] }: Galvanome
       GALVANOMETER_DIMS.height,
       radialSegments,
     );
-    const bezelGeo = new THREE.CylinderGeometry(
-      GALVANOMETER_DIMS.radius * 0.98,
-      GALVANOMETER_DIMS.radius * 0.98,
-      0.008,
+    const bezelGeo = new THREE.TorusGeometry(
+      GALVANOMETER_DIMS.dialRadius + 0.004,
+      0.0045,
+      12,
       radialSegments,
     );
+    bezelGeo.rotateX(Math.PI / 2);
     const dialGeo = new THREE.CircleGeometry(GALVANOMETER_DIMS.dialRadius, radialSegments);
     const glassGeo = new THREE.CylinderGeometry(
       GALVANOMETER_DIMS.dialRadius,
@@ -238,7 +239,7 @@ export function Galvanometer({ state, quality, position = [0, 0, 0] }: Galvanome
       <mesh
         geometry={res.bezelGeo}
         material={res.brassMat}
-        position={[0, topY - 0.002, 0]}
+        position={[0, topY + 0.001, 0]}
         castShadow
       />
 
@@ -246,7 +247,7 @@ export function Galvanometer({ state, quality, position = [0, 0, 0] }: Galvanome
       <mesh
         geometry={res.dialGeo}
         material={res.dialMat}
-        position={[0, topY + 0.0005, 0]}
+        position={[0, topY + 0.001, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
       />
 

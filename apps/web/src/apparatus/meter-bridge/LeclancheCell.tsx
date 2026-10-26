@@ -15,8 +15,10 @@ export function LeclancheCell({ quality, position = [0, 0, 0] }: LeclancheCellPr
     const jarGeo = new THREE.CylinderGeometry(
       LECLANCHE_DIMS.jarRadius,
       LECLANCHE_DIMS.jarRadius * 0.96,
-      LECLANCHE_DIMS.jarHeight,
+      LECLANCHE_DIMS.jarHeight - 0.014,
       radialSegments,
+      1,
+      true,
     );
     const pitchRimGeo = new THREE.CylinderGeometry(
       LECLANCHE_DIMS.jarRadius * 1.02,
@@ -216,7 +218,7 @@ export function LeclancheCell({ quality, position = [0, 0, 0] }: LeclancheCellPr
       <mesh
         geometry={res.jarGeo}
         material={res.glassMat}
-        position={[0, LECLANCHE_DIMS.jarHeight / 2, 0]}
+        position={[0, (LECLANCHE_DIMS.jarHeight - 0.014) / 2, 0]}
       />
     </group>
   );
