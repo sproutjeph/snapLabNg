@@ -159,12 +159,20 @@ describe("timeline helpers", () => {
       model: "muse-spark-1.3",
       Authorization: "Bearer LLM_secret_token",
       api_key: "LLM_root_key",
+      MODEL_API_KEY: "LLM_env_key",
       headers: {
         authorization: "Bearer nested_secret",
+        "x-api-key": "LLM_header_key",
+        "X-API-Key": "LLM_header_key_upper",
+        "Proxy-Authorization": "Basic secret",
         "X-Request-Id": "req-01",
       },
       auth: {
         apiKey: "LLM_nested_camel_key",
+        accessToken: "LLM_access_token",
+        access_token: "LLM_snake_token",
+        token: "LLM_raw_token",
+        clientSecret: "LLM_client_secret",
         key: "LLM_raw_key",
       },
       input: [
@@ -190,11 +198,19 @@ describe("timeline helpers", () => {
     // Removes secret keys at all depths
     expect("Authorization" in redacted).toBe(false);
     expect("api_key" in redacted).toBe(false);
+    expect("MODEL_API_KEY" in redacted).toBe(false);
     const headers = redacted.headers as Record<string, unknown>;
     expect("authorization" in headers).toBe(false);
+    expect("x-api-key" in headers).toBe(false);
+    expect("X-API-Key" in headers).toBe(false);
+    expect("Proxy-Authorization" in headers).toBe(false);
     expect(headers["X-Request-Id"]).toBe("req-01");
     const auth = redacted.auth as Record<string, unknown>;
     expect("apiKey" in auth).toBe(false);
+    expect("accessToken" in auth).toBe(false);
+    expect("access_token" in auth).toBe(false);
+    expect("token" in auth).toBe(false);
+    expect("clientSecret" in auth).toBe(false);
     expect("key" in auth).toBe(false);
 
     // Replaces data URL and long text while preserving short strings and numbers
@@ -203,5 +219,23 @@ describe("timeline helpers", () => {
     expect(inputArr[1]?.text).toBe("[text 5,321 chars]");
     expect(inputArr[1]?.shortNote).toBe("metre bridge practical");
     expect(inputArr[1]?.readingCount).toBe(5);
+  });
+
+  it("replaces circular references with '[circular]' without throwing", () => {
+    const cyclicObj: Record<string, unknown> = {
+      name: "root",
+      apiKey: "LLM_secret",
+    };
+    cyclicObj.self = cyclicObj;
+
+    const cyclicArr: unknown[] = ["first"];
+    cyclicArr.push(cyclicArr);
+    cyclicObj.list = cyclicArr;
+
+    const redacted = redactForDisplay(cyclicObj) as Record<string, unknown>;
+    expect(redacted.name).toBe("root");
+    expect("apiKey" in redacted).toBe(false);
+    expect(redacted.self).toBe("[circular]");
+    expect(redacted.list).toEqual(["first", "[circular]"]);
   });
 });

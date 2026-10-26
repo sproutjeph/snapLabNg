@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMs, redactForDisplay } from "./timeline";
 import type { AiCall, CallStatus } from "./types";
 
@@ -32,13 +32,13 @@ interface CollapsibleJsonProps {
 function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
   const [expanded, setExpanded] = useState(false);
   const [showFull, setShowFull] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   useEffect(() => {
     void callId;
     setExpanded(false);
     setShowFull(false);
-    setCopied(false);
+    setCopyState("idle");
   }, [callId]);
 
   const formattedJson = useMemo(() => {
@@ -56,12 +56,22 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
     isCapped && !showFull ? `${formattedJson.slice(0, MAX_DISPLAY_CHARS)}\n…` : formattedJson;
 
   const handleCopy = async () => {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.clipboard ||
+      typeof navigator.clipboard.writeText !== "function"
+    ) {
+      setCopyState("failed");
+      window.setTimeout(() => setCopyState("idle"), 1500);
+      return;
+    }
     try {
-      await navigator.clipboard?.writeText(formattedJson);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(formattedJson);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1500);
     } catch {
-      setCopied(false);
+      setCopyState("failed");
+      window.setTimeout(() => setCopyState("idle"), 1500);
     }
   };
 
@@ -117,13 +127,13 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
             borderRadius: "6px",
             border: "1px solid #475569",
             backgroundColor: "#0f172a",
-            color: "#f8fafc",
+            color: copyState === "failed" ? "#fca5a5" : "#f8fafc",
             fontSize: "11px",
             fontWeight: 600,
             cursor: "pointer",
           }}
         >
-          {copied ? "Copied" : "Copy"}
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}
         </button>
       </div>
 
@@ -171,11 +181,18 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
 }
 
 export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
+  const sectionRef = useRef<HTMLElement>(null);
   const durationMs = Math.max(0, (call.endMs ?? nowMs) - call.startMs);
   const badge = statusBadgeStyle(call.status);
 
+  useEffect(() => {
+    void call.id;
+    sectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [call.id]);
+
   return (
     <section
+      ref={sectionRef}
       aria-label={`Call details for ${call.label}`}
       style={{
         marginTop: "12px",

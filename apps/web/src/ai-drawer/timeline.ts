@@ -23,8 +23,13 @@ export interface TraceSummary {
   anyRunning: boolean;
 }
 
-const SENSITIVE_KEY_PATTERN = /^(key|api[_-]?key|authorization)$/i;
+const SENSITIVE_KEY_PATTERN = /(^|[-_])(api[-_]?key|key|authorization|token|secret)$/i;
 const MAX_INLINE_STRING_LENGTH = 2000;
+
+function isSensitiveKey(key: string): boolean {
+  const snakeKey = key.replace(/([a-z0-9])([A-Z])/g, "$1_$2");
+  return SENSITIVE_KEY_PATTERN.test(key) || SENSITIVE_KEY_PATTERN.test(snakeKey);
+}
 
 /**
  * Computes each call's `{ leftPct, widthPct }` bar on a shared time axis
@@ -130,9 +135,10 @@ function estimateDataUrlKb(dataUrl: string): number {
  * Deep-copies a JSON value for display:
  * - Replaces any string starting with `data:` with `"[image N KB]"`
  * - Replaces any string longer than 2,000 characters with `"[text N,NNN chars]"`
- * - Removes any property named like `key`, `authorization`, or `api_key` (case-insensitive) at any depth.
+ * - Removes any property matching key/api_key/authorization/token/secret (case-insensitive, including prefixes and camelCase) at any depth
+ * - Replaces circular object references with `"[circular]"`.
  */
-export function redactForDisplay(value: unknown): unknown {
+export function redactForDisplay(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   if (value === null || value === undefined) {
     return value;
   }
@@ -152,16 +158,21 @@ export function redactForDisplay(value: unknown): unknown {
     return value;
   }
 
+  if (seen.has(value)) {
+    return "[circular]";
+  }
+  seen.add(value);
+
   if (Array.isArray(value)) {
-    return value.map((item) => redactForDisplay(item));
+    return value.map((item) => redactForDisplay(item, seen));
   }
 
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (SENSITIVE_KEY_PATTERN.test(k)) {
+    if (isSensitiveKey(k)) {
       continue;
     }
-    out[k] = redactForDisplay(v);
+    out[k] = redactForDisplay(v, seen);
   }
   return out;
 }

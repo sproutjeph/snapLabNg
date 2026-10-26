@@ -1,9 +1,10 @@
 export interface ShowAiToggleProps {
   running: boolean;
+  open?: boolean;
   onClick(): void;
 }
 
-export function ShowAiToggle({ running, onClick }: ShowAiToggleProps) {
+export function ShowAiToggle({ running, open, onClick }: ShowAiToggleProps) {
   return (
     <>
       <style>
@@ -12,16 +13,27 @@ export function ShowAiToggle({ running, onClick }: ShowAiToggleProps) {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.35); opacity: 0.45; }
           }
+          .snaplab-show-ai-toggle {
+            right: 16px;
+          }
+          @media (min-width: 769px) {
+            .snaplab-show-ai-toggle[data-drawer-open="true"] {
+              right: 436px;
+            }
+          }
         `}
       </style>
       <button
         type="button"
         onClick={onClick}
+        aria-expanded={open}
+        data-ai-drawer-toggle="true"
+        data-drawer-open={open ? "true" : "false"}
         aria-label={running ? "Show the AI (models running)" : "Show the AI"}
+        className="snaplab-show-ai-toggle"
         style={{
           position: "fixed",
           top: "12px",
-          right: "16px",
           zIndex: 80,
           minHeight: "38px",
           padding: "7px 14px",

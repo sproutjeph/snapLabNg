@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CallDetail } from "./CallDetail";
 import { formatMs, LANE_ORDER, laneSpans, summarise } from "./timeline";
 import type { AiTrace, CallStatus, LaneId } from "./types";
@@ -66,6 +66,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
     typeof window !== "undefined" ? window.innerWidth <= PHONE_BREAKPOINT_PX : false,
   );
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+  const wasOpenRef = useRef(open);
 
   useEffect(() => {
     const onResize = () => {
@@ -75,6 +76,13 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !open && typeof document !== "undefined") {
+      document.querySelector<HTMLButtonElement>('[data-ai-drawer-toggle="true"]')?.focus();
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -187,7 +195,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
       {/* Header */}
       <header
         style={{
-          padding: isPhone ? "8px 16px 10px" : "12px 152px 12px 16px",
+          padding: isPhone ? "8px 16px 10px" : "14px 16px 12px",
           borderBottom: "1px solid #1e293b",
           display: "flex",
           alignItems: "center",

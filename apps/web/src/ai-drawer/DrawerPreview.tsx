@@ -82,7 +82,7 @@ export default function DrawerPreview() {
         boxSizing: "border-box",
       }}
     >
-      <ShowAiToggle running={anyRunning} onClick={() => setOpen((prev) => !prev)} />
+      <ShowAiToggle running={anyRunning} open={open} onClick={() => setOpen((prev) => !prev)} />
 
       {/* Preview stage controls on the left so they remain visible alongside the drawer */}
       <div
@@ -123,7 +123,7 @@ export default function DrawerPreview() {
               padding: "8px 16px",
               borderRadius: "8px",
               border: "1px solid #38bdf8",
-              backgroundColor: "#0284c7",
+              backgroundColor: "#0369a1",
               color: "#ffffff",
               fontSize: "13px",
               fontWeight: 700,
@@ -131,24 +131,6 @@ export default function DrawerPreview() {
             }}
           >
             Replay
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setNowMs(MOCK_TRACE_END_MS)}
-            style={{
-              minHeight: "40px",
-              padding: "8px 14px",
-              borderRadius: "8px",
-              border: "1px solid #475569",
-              backgroundColor: "#1e293b",
-              color: "#f8fafc",
-              fontSize: "13px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Jump to Done ({formatMs(MOCK_TRACE_END_MS)})
           </button>
         </div>
       </div>
