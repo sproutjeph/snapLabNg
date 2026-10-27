@@ -158,25 +158,30 @@ export function underlinePath(box: Box, aspect: number, seed: number): string {
 export function tickPath(box: Box, aspect: number, seed: number): string {
   const b = toSvgBox(box, aspect);
   const rand = createPrng(seed ^ 0x7f4a7c15);
+  // Keep horizontal span proportional to height on wide boxes while never exceeding 0.24 * w.
+  const spanX = Math.min(b.w * 0.24, b.h * 0.9);
+  const rightX = b.sx1 + Math.min(0.11 * b.w, 0.35 * spanX);
+  const leftX = rightX - spanX;
+  const midX = leftX + 0.38 * spanX;
 
   const p0: readonly [number, number] = [
-    b.sx1 - 0.16 * b.w + (rand() - 0.5) * 0.02 * b.w,
+    leftX + (rand() - 0.5) * 0.02 * spanX,
     b.sy0 + 0.56 * b.h + (rand() - 0.5) * 0.03 * b.h,
   ];
   const p1: readonly [number, number] = [
-    b.sx1 - 0.09 * b.w + (rand() - 0.5) * 0.02 * b.w,
+    (leftX + midX) / 2 + (rand() - 0.5) * 0.02 * spanX,
     b.sy0 + 0.74 * b.h + (rand() - 0.5) * 0.03 * b.h,
   ];
   const p2: readonly [number, number] = [
-    b.sx1 - 0.03 * b.w + (rand() - 0.5) * 0.02 * b.w,
+    midX + (rand() - 0.5) * 0.02 * spanX,
     b.sy0 + 0.9 * b.h + (rand() - 0.5) * 0.03 * b.h,
   ];
   const p3: readonly [number, number] = [
-    b.sx1 + 0.04 * b.w + (rand() - 0.5) * 0.02 * b.w,
+    (midX + rightX) / 2 + (rand() - 0.5) * 0.02 * spanX,
     b.sy0 + 0.42 * b.h + (rand() - 0.5) * 0.03 * b.h,
   ];
   const p4: readonly [number, number] = [
-    b.sx1 + 0.11 * b.w + (rand() - 0.5) * 0.02 * b.w,
+    rightX + (rand() - 0.5) * 0.02 * spanX,
     b.sy0 - 0.08 * b.h + (rand() - 0.5) * 0.03 * b.h,
   ];
 

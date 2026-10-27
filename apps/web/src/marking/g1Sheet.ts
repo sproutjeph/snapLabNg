@@ -65,7 +65,7 @@ const rawItems: MarkItem[] = [
     marks_available: 2.0,
     evidence: [
       {
-        box: { x0: 0.3, y0: 0.348, x1: 0.41, y1: 0.415 },
+        box: { x0: 0.3, y0: 0.386, x1: 0.4, y1: 0.414 },
         text_as_written: "25.3, 39.8, 50.2, 62.4",
       },
     ],
@@ -157,7 +157,7 @@ const rawItems: MarkItem[] = [
     marks_available: 0.5,
     evidence: [
       {
-        box: { x0: 0.54, y0: 0.57, x1: 0.86, y1: 0.8 },
+        box: { x0: 0.51, y0: 0.57, x1: 0.81, y1: 0.8 },
         text_as_written: "Graph covers ~¼ of the page",
       },
     ],
@@ -175,7 +175,7 @@ const rawItems: MarkItem[] = [
     marks_available: 0.5,
     evidence: [
       {
-        box: { x0: 0.555, y0: 0.58, x1: 0.605, y1: 0.61 },
+        box: { x0: 0.525, y0: 0.58, x1: 0.572, y1: 0.61 },
         text_as_written: "l⁻¹",
       },
     ],
@@ -195,7 +195,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.07, y0: 0.6, x1: 0.45, y1: 0.635 },
+        box: { x0: 0.07, y0: 0.602, x1: 0.46, y1: 0.632 },
         text_as_written: "s = (0.0175 − 0.0160) ÷ (0.250 − 0.200) = 0.030",
       },
     ],
@@ -213,7 +213,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.5,
     evidence: [
       {
-        box: { x0: 0.72, y0: 0.61, x1: 0.83, y1: 0.65 },
+        box: { x0: 0.69, y0: 0.61, x1: 0.785, y1: 0.642 },
         text_as_written: "5 plotted points",
       },
     ],
@@ -231,7 +231,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.07, y0: 0.66, x1: 0.28, y1: 0.695 },
+        box: { x0: 0.07, y0: 0.662, x1: 0.22, y1: 0.692 },
         text_as_written: "c = 0.010",
       },
     ],
@@ -249,7 +249,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.5,
     evidence: [
       {
-        box: { x0: 0.66, y0: 0.66, x1: 0.77, y1: 0.7 },
+        box: { x0: 0.63, y0: 0.66, x1: 0.73, y1: 0.692 },
         text_as_written: "Line of best fit",
       },
     ],
@@ -267,7 +267,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.61, y0: 0.705, x1: 0.67, y1: 0.742 },
+        box: { x0: 0.58, y0: 0.705, x1: 0.635, y1: 0.742 },
         text_as_written: "Small triangle (0.200 to 0.250)",
       },
     ],
@@ -287,7 +287,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.07, y0: 0.72, x1: 0.43, y1: 0.755 },
+        box: { x0: 0.07, y0: 0.722, x1: 0.39, y1: 0.752 },
         text_as_written: "X = s/c = 0.030 ÷ 0.010 = 3.0 Ω",
       },
     ],
@@ -305,7 +305,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.58, y0: 0.76, x1: 0.68, y1: 0.79 },
+        box: { x0: 0.55, y0: 0.76, x1: 0.64, y1: 0.788 },
         text_as_written: "0 to 1.0, 0 to 0.04",
       },
     ],
@@ -323,7 +323,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.71, y0: 0.765, x1: 0.83, y1: 0.795 },
+        box: { x0: 0.67, y0: 0.765, x1: 0.78, y1: 0.793 },
         text_as_written: "R⁻¹ (Ω⁻¹)",
       },
     ],
@@ -341,7 +341,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.07, y0: 0.876, x1: 0.58, y1: 0.906 },
+        box: { x0: 0.07, y0: 0.876, x1: 0.49, y1: 0.906 },
         text_as_written: "1. Avoid parallax error when reading the metre rule.",
       },
     ],
@@ -361,7 +361,7 @@ const rawItems: MarkItem[] = [
     marks_available: 1.0,
     evidence: [
       {
-        box: { x0: 0.07, y0: 0.922, x1: 0.64, y1: 0.952 },
+        box: { x0: 0.07, y0: 0.922, x1: 0.56, y1: 0.952 },
         text_as_written: "2. I slid the jockey gently along the wire to find the balance point.",
       },
     ],

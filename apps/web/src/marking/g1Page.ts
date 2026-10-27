@@ -61,13 +61,13 @@ export function createG1PageDataUrl(): string {
 
   // 2. Top metadata & heading
   ctx.fillStyle = biroMuted;
-  ctx.font = `600 16px ${handFont}`;
+  ctx.font = `600 15px ${handFont}`;
   ctx.textBaseline = "middle";
-  ctx.fillText("SUBJECT: Physics Practical     DATE: 23/10/2026", px(0.07), py(0.04));
+  ctx.fillText("SUBJECT: Physics Practical     DATE: 23/10/2026", px(0.07), py(0.035));
 
   ctx.fillStyle = biro;
-  ctx.font = `700 22px ${handFont}`;
-  ctx.fillText("QUESTION 3 — METRE BRIDGE", px(0.07), py(0.07));
+  ctx.font = `700 21px ${handFont}`;
+  ctx.fillText("QUESTION 3 — METRE BRIDGE", px(0.07), py(0.062));
 
   // 3. Hand-drawn metre bridge circuit diagram (y = 0.09..0.26, deliberately missing key K)
   ctx.strokeStyle = biro;
@@ -93,8 +93,8 @@ export function createG1PageDataUrl(): string {
   ctx.moveTo(px(0.415), py(0.098));
   ctx.lineTo(px(0.415), py(0.118));
   ctx.stroke();
-  ctx.font = `600 15px ${handFont}`;
-  ctx.fillText("E (1.5 V)", px(0.375), py(0.082));
+  ctx.font = `600 14px ${handFont}`;
+  ctx.fillText("E (1.5 V)", px(0.305), py(0.095));
 
   // Left and right bridge arms between A (0.14, 0.23) -> B (0.48, 0.155) -> C (0.82, 0.23)
   ctx.lineWidth = 2.2;
@@ -193,17 +193,18 @@ export function createG1PageDataUrl(): string {
   }
   ctx.textAlign = "left";
 
-  // 5. Lower-left slope, intercept & evaluation (x = 0.07..0.46, y = 0.60..0.76)
+  // 5. Lower-left slope, intercept & evaluation (x = 0.07..0.45, y = 0.60..0.76)
   ctx.fillStyle = biro;
-  ctx.font = `600 16px ${handFont}`;
+  ctx.font = `600 14.5px ${handFont}`;
   ctx.fillText("s = (0.0175 − 0.0160) ÷ (0.250 − 0.200) = 0.030", px(0.07), py(0.618));
+  ctx.font = `600 16px ${handFont}`;
   ctx.fillText("c = 0.010", px(0.07), py(0.678));
   ctx.fillText("X = s/c = 0.030 ÷ 0.010 = 3.0 Ω", px(0.07), py(0.738));
 
-  // 6. Small pencil graph in the lower right (x = 0.54..0.86, y = 0.57..0.80)
-  const gx0 = px(0.54);
+  // 6. Small pencil graph in the lower right (x = 0.51..0.81, y = 0.57..0.80)
+  const gx0 = px(0.51);
   const gy0 = py(0.57);
-  const gw = px(0.32);
+  const gw = px(0.3);
   const gh = py(0.23);
 
   ctx.fillStyle = "#f4f9f5";
@@ -227,10 +228,10 @@ export function createG1PageDataUrl(): string {
     ctx.stroke();
   }
 
-  // Graph axes inside the small graph box: origin at (0.58, 0.76), top at y = 0.60, right at x = 0.84
-  const ox = px(0.58);
+  // Graph axes inside the small graph box: origin at (0.55, 0.76), top at y = 0.60, right at x = 0.79
+  const ox = px(0.55);
   const oy = py(0.76);
-  const axRight = px(0.84);
+  const axRight = px(0.79);
   const axTop = py(0.6);
 
   ctx.strokeStyle = pencil;
@@ -244,13 +245,13 @@ export function createG1PageDataUrl(): string {
 
   // Axis labels (vertical axis missing unit "cm⁻¹")
   ctx.font = `700 15px ${handFont}`;
-  ctx.fillText("l⁻¹", px(0.562), py(0.595));
+  ctx.fillText("l⁻¹", px(0.532), py(0.595));
   ctx.font = `600 14px ${handFont}`;
-  ctx.fillText("R⁻¹ (Ω⁻¹)", px(0.715), py(0.782));
+  ctx.fillText("R⁻¹ (Ω⁻¹)", px(0.675), py(0.782));
   ctx.font = `500 12px ${handFont}`;
-  ctx.fillText("0", px(0.565), py(0.772));
-  ctx.fillText("1.0", px(0.82), py(0.772));
-  ctx.fillText("0.04", px(0.545), py(0.612));
+  ctx.fillText("0", px(0.535), py(0.772));
+  ctx.fillText("1.0", px(0.77), py(0.772));
+  ctx.fillText("0.04", px(0.515), py(0.612));
 
   const mapGraphPt = (rInv: number, lInv: number): [number, number] => [
     ox + (rInv / 1.0) * (axRight - ox),
