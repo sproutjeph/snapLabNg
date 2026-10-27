@@ -10,5 +10,6 @@ export function downloadRecording(rec: GoldenRecording): void {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Revoke on the next tick: Firefox can cancel a download whose URL is revoked at once.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

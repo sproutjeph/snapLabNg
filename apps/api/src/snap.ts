@@ -82,6 +82,7 @@ const READINGS_PROMPT = [
   "box: a tight 0–1 page box around that one number only, never the whole column.",
   "If the table has columns that are not in the column list, use 'other' and keep the heading in column_header_as_written.",
   "graph: null unless a graph is actually drawn on this page; never invent points, labels or a triangle.",
+  "average_as_written: her mean or average line (e.g. 'Mean X = 4·00 ohms') if one is written.",
   "Precautions word for word; an empty list if none are written.",
 ].join(" ");
 
