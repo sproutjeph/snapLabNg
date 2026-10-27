@@ -7,6 +7,7 @@ const DrawerPreview = lazy(() => import("./ai-drawer/DrawerPreview"));
 const AudioPreview = lazy(() => import("./audio/AudioPreview"));
 const NotebookPreview = lazy(() => import("./notebook/NotebookPreview"));
 const FlowPage = lazy(() => import("./pipeline/FlowPage"));
+const GoldenPreview = lazy(() => import("./golden/GoldenPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -16,10 +17,13 @@ export function App() {
   const isAudioPreview = params.get("audio") === "1";
   const isNotebookPreview = params.get("notebook") === "1";
   const isFlow = params.get("flow") === "1";
+  const isGoldenPreview = params.get("golden-preview") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isNotebookPreview ? (
+        {isGoldenPreview ? (
+          <GoldenPreview />
+        ) : isNotebookPreview ? (
           <NotebookPreview />
         ) : isFlow ? (
           <FlowPage />
