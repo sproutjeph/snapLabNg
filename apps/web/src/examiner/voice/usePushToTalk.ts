@@ -184,6 +184,10 @@ export function usePushToTalk(options: PushToTalkOptions): PushToTalk {
         }
       };
       source.connect(node);
+      // Safari only runs a worklet that reaches the destination; a muted gain keeps it silent.
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      node.connect(mute).connect(ctx.destination);
       sourceRef.current = source;
       nodeRef.current = node;
       setState("recording");

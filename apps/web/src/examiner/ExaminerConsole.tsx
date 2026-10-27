@@ -7,6 +7,7 @@ import type {
   ExaminerReply,
   Verdict,
 } from "./types";
+import { useVoiceAnswer } from "./voice/useVoiceAnswer";
 
 interface CompletedTurn {
   id: string;
@@ -25,6 +26,8 @@ export default function ExaminerConsole({
   const [turns, setTurns] = useState<CompletedTurn[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<ExaminerQuestion | null>(first);
   const [answer, setAnswer] = useState("");
+  // Her spoken words fill the answer box as she speaks; she checks them, then sends.
+  const voiceAnswer = useVoiceAnswer((text) => setAnswer(text.slice(0, 600)));
   const [language, setLanguage] = useState<AnswerLanguage>("english");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -608,29 +611,58 @@ export default function ExaminerConsole({
             })}
           </fieldset>
 
-          {/* Hold to speak (disabled placeholder) */}
+          {/* Hold to speak: her voice goes to the server's relay; her words fill the box */}
           <button
             type="button"
-            disabled
-            title="Voice input coming soon"
+            disabled={isCompleted || isSubmitting}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              void voiceAnswer.start();
+            }}
+            onPointerUp={() => voiceAnswer.stop()}
+            onPointerCancel={() => voiceAnswer.stop()}
+            onKeyDown={(e) => {
+              if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+                e.preventDefault();
+                void voiceAnswer.start();
+              }
+            }}
+            onKeyUp={(e) => {
+              if (e.key === " " || e.key === "Enter") voiceAnswer.stop();
+            }}
+            aria-pressed={voiceAnswer.state === "listening"}
             style={{
-              background: "#1e293b",
-              color: "#64748b",
-              border: "1px dashed #334155",
+              background: voiceAnswer.state === "listening" ? "#7f1d1d" : "#1e293b",
+              color: "#e2e8f0",
+              border: "1px solid #334155",
               borderRadius: "6px",
               padding: "4px 10px",
               fontSize: "0.74rem",
               fontWeight: 500,
-              cursor: "not-allowed",
+              cursor: isCompleted || isSubmitting ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
               gap: "4px",
+              touchAction: "none",
+              userSelect: "none",
             }}
           >
             <span>🎙️</span>
-            <span>Hold to speak (coming soon)</span>
+            <span>
+              {voiceAnswer.state === "listening"
+                ? "Listening… let go to stop"
+                : voiceAnswer.state === "thinking"
+                  ? "Writing down your words…"
+                  : "Hold to speak"}
+            </span>
           </button>
         </div>
+
+        {voiceAnswer.error && (
+          <p role="status" style={{ margin: "0 0 6px", color: "#fca5a5", fontSize: "0.78rem" }}>
+            {voiceAnswer.error}
+          </p>
+        )}
 
         {/* Text Input & Send */}
         <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
