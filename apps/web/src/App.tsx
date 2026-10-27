@@ -11,6 +11,7 @@ const GoldenPreview = lazy(() => import("./golden/GoldenPreview"));
 const MarkingPreview = lazy(() => import("./marking/MarkingPreview"));
 const ExaminerPreview = lazy(() => import("./examiner/ExaminerPreview"));
 const TeacherPreview = lazy(() => import("./teacher/TeacherPreview"));
+const QualityPreview = lazy(() => import("./quality/QualityPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -24,10 +25,13 @@ export function App() {
   const isMarkingPreview = params.get("marking") === "1";
   const isExaminerPreview = params.get("examiner") === "1";
   const isTeacherPreview = params.get("teacher") === "1";
+  const isQualityPreview = params.get("quality") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isExaminerPreview ? (
+        {isQualityPreview ? (
+          <QualityPreview />
+        ) : isExaminerPreview ? (
           <ExaminerPreview />
         ) : isTeacherPreview ? (
           <TeacherPreview />
