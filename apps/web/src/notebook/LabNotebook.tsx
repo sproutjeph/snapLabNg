@@ -45,6 +45,7 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
           disabled={!current}
           onClick={() => {
             if (current) {
+              setWorkedOut(false);
               onRecord({ rOhm: current.rOhm, lCm: current.lCm });
             }
           }}
@@ -78,11 +79,13 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
         </button>
       </div>
 
-      {duplicateRs.map((r) => (
-        <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "#92400e" }}>
-          You already have a reading for R = {formatOhm(r)} Ω
-        </p>
-      ))}
+      <div role="status">
+        {duplicateRs.map((r) => (
+          <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "#92400e" }}>
+            You already have a reading for R = {formatOhm(r)} Ω
+          </p>
+        ))}
+      </div>
 
       <div style={{ overflowX: "auto", marginTop: "14px" }}>
         <table
@@ -155,7 +158,7 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
                     <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
                       <button
                         type="button"
-                        aria-label={`Delete reading for R = ${formatOhm(reading.rOhm)} Ω`}
+                        aria-label={`Delete reading R = ${formatOhm(reading.rOhm)} Ω, l = ${formatLength(reading.lCm)} cm`}
                         onClick={() => onDelete(reading.id)}
                         style={{
                           border: "1px solid #9db8d6",
