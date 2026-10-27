@@ -1,0 +1,10 @@
+.env*
+dataset/
+.spend/
+.shots/
+**/node_modules
+**/dist
+.git
+/*.png
+coverage
+.cache
