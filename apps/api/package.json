@@ -4,7 +4,14 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@meta-sam/parser": "0.1.0",
+    "@snaplab/contracts": "workspace:*",
+    "hono": "4.13.14"
   }
 }

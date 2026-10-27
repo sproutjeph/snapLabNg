@@ -55,7 +55,8 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 - The build started on Oct 26, 2026. Commits, pushes and PRs are allowed from then on; the guard hook only blocks them before Oct 26, 00:00 UTC.
 - Never force-push, `reset --hard`, `clean`, or rewrite pushed history (no rebase of a pushed branch; merge `origin/main` into it instead).
 - Stage files by name. Never `git add -A` or `git add .`. Never commit `.env`, `dataset/` or student photos and audio.
-- No AI attribution anywhere in git or GitHub: no `Co-Authored-By` trailer for any AI, no "Generated with …" line, no session links, in commits, tags or PR text. The user is the only author.
+- No AI attribution in git or GitHub for Claude or Gemini: no `Co-Authored-By` trailer, no "Generated with …" line, no session links, in commits, tags or PR text.
+- **Exception, by the user's choice: Muse Code credits itself.** Its commits end with a `Built with Muse Code (Meta)` line, and its PR bodies start with `_Built with Muse Code, Meta's coding agent._` so judges can see where Meta's agent did the work. Only Muse Code does this, and only on its own `muse/*` branches.
 - Turn on the shared git hooks once per clone: `git config core.hooksPath .githooks`. `pre-commit` blocks secrets, `dataset/` and other package managers' lockfiles; `commit-msg` blocks AI attribution. Both apply to every agent and every worktree.
 
 ## Branches, worktrees and pull requests
@@ -70,7 +71,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
   - Never edit files in another agent's folder and never check out its branch.
 - Stay inside the paths your task owns (see "Who owns what"). If you need a change outside them (a dependency, a contract, a shared config), don't make it. Write it in the PR description under "Needs from lead".
 - Before opening a PR, all four must pass in your folder: `bun run typecheck`, `bun run lint`, `bun run test`, `bun run build`. For anything visible, also run the screenshot script and attach or describe the shots.
-- Keep `main` merged in: `git fetch origin && git merge origin/main`. Resolve conflicts only in files you own; otherwise stop and say so in the PR. One shared exception: when two slices each added a preview switch to `apps/web/src/App.tsx`, keep both switches.
+- Keep `main` merged in: `git fetch origin && git merge origin/main`, then **`bun install`** (merges can bring new dependencies; without it, checks fail with errors that look like `main` is broken). Resolve conflicts only in files you own; otherwise stop and say so in the PR. One shared exception: when two slices each added a preview switch to `apps/web/src/App.tsx`, keep both switches.
 - Push with `git push -u origin <branch>`. Open the PR with `gh pr create --base main --head <branch>`, small and about one thing. Body sections: **What**, **Why** (link the plan or doc section), **How I checked it** (commands and results, screenshots), **Needs from lead**, **Not done**.
 - The lead reviews every PR, its own included, against this file and the plan: a fresh-context code review, the checks above, a science check if `packages/engine` or `packages/rules` changed, and screenshots if it's visible. Review comments go on the PR with `gh pr comment`. The author fixes them with new commits on the same branch (no force-push).
 - The lead merges with `gh pr merge <n> --squash --delete-branch` once the review says ship. Then every other open branch merges `origin/main` in.
