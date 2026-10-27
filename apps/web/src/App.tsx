@@ -5,6 +5,7 @@ const KitPreview = lazy(() => import("./apparatus/meter-bridge/KitPreview"));
 const CapturePreview = lazy(() => import("./capture/CapturePreview"));
 const DrawerPreview = lazy(() => import("./ai-drawer/DrawerPreview"));
 const AudioPreview = lazy(() => import("./audio/AudioPreview"));
+const NotebookPreview = lazy(() => import("./notebook/NotebookPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -12,10 +13,13 @@ export function App() {
   const isCapturePreview = params.get("capture") === "1";
   const isDrawerPreview = params.get("drawer") === "1";
   const isAudioPreview = params.get("audio") === "1";
+  const isNotebookPreview = params.get("notebook") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isAudioPreview ? (
+        {isNotebookPreview ? (
+          <NotebookPreview />
+        ) : isAudioPreview ? (
           <AudioPreview />
         ) : isDrawerPreview ? (
           <DrawerPreview />
