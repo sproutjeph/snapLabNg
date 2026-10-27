@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { QualityTier } from "../apparatus/meter-bridge/types";
 import { readDeviceSignals } from "./signals";
-import type { QualitySettings } from "./tier";
+import type { DeviceSignals, QualitySettings } from "./tier";
 import { chooseTier, parseOverride, settingsFor, stepDown as stepDownTier } from "./tier";
 import { measureWarmupFps } from "./warmup";
 
@@ -19,6 +19,8 @@ export interface QualityContextValue {
   settings: QualitySettings;
   stepDown: () => void;
   liteSuggested: boolean;
+  /** The signals and warm-up fps the tier was chosen from; null until measured. */
+  signals: DeviceSignals | null;
 }
 
 interface QualityControl {
@@ -43,6 +45,7 @@ export function useQualityControl(): QualityControl {
 export function QualityProvider({ children }: { children: ReactNode }) {
   const [tier, setTier] = useState<QualityTier>("mid");
   const [liteSuggested, setLiteSuggested] = useState(false);
+  const [signals, setSignals] = useState<DeviceSignals | null>(null);
   const resolvedRef = useRef(false);
 
   useEffect(() => {
@@ -50,15 +53,17 @@ export function QualityProvider({ children }: { children: ReactNode }) {
     if (override !== null) {
       resolvedRef.current = true;
       setTier(override);
-      return;
     }
     let cancelled = false;
     void (async () => {
-      const signals = readDeviceSignals();
+      const detected = readDeviceSignals();
       const warmupFps = await measureWarmupFps(2000);
-      if (cancelled || resolvedRef.current) return;
+      if (cancelled) return;
+      const used: DeviceSignals = { ...detected, warmupFps };
+      setSignals(used);
+      if (resolvedRef.current) return;
       resolvedRef.current = true;
-      setTier(chooseTier({ ...signals, warmupFps }));
+      setTier(chooseTier(used));
     })();
     return () => {
       cancelled = true;
@@ -70,8 +75,8 @@ export function QualityProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<QualityContextValue>(
-    () => ({ tier, settings: settingsFor(tier), stepDown, liteSuggested }),
-    [tier, stepDown, liteSuggested],
+    () => ({ tier, settings: settingsFor(tier), stepDown, liteSuggested, signals }),
+    [tier, stepDown, liteSuggested, signals],
   );
   const control = useMemo<QualityControl>(() => ({ setLiteSuggested }), []);
 

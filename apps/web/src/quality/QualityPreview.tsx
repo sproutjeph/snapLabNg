@@ -5,8 +5,6 @@ import { ReadySignal } from "../scene/ReadySignal";
 import { ContextLossOverlay } from "./ContextLossOverlay";
 import { QualityMonitor } from "./QualityMonitor";
 import { QualityProvider, useQuality } from "./QualityProvider";
-import { readDeviceSignals } from "./signals";
-import { measureWarmupFps } from "./warmup";
 
 const INSTANCE_COUNT = 300;
 
@@ -75,29 +73,27 @@ const btnStyle: React.CSSProperties = {
 };
 
 function QualityPreviewInner() {
-  const { tier, settings, stepDown, liteSuggested } = useQuality();
-  const [signals] = useState(readDeviceSignals);
-  const [warmupFps, setWarmupFps] = useState<number | null>(null);
+  const { tier, settings, stepDown, liteSuggested, signals } = useQuality();
   const [canvasKey, setCanvasKey] = useState(0);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const loseExtRef = useRef<WEBGL_lose_context | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void measureWarmupFps(2000).then((fps) => {
-      if (!cancelled) setWarmupFps(fps);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const rows: Array<[string, string]> = [
-    ["GPU", signals.gpu ?? "unknown"],
-    ["Device memory", signals.deviceMemoryGb === null ? "unknown" : `${signals.deviceMemoryGb} GB`],
-    ["CPU cores", signals.cores === null ? "unknown" : String(signals.cores)],
-    ["Mobile (coarse pointer)", signals.isMobile ? "yes" : "no"],
-    ["Warm-up FPS", warmupFps === null ? "measuring…" : String(warmupFps)],
+    ["GPU", signals?.gpu ?? "measuring…"],
+    [
+      "Device memory",
+      signals === null
+        ? "measuring…"
+        : signals.deviceMemoryGb === null
+          ? "unknown"
+          : `${signals.deviceMemoryGb} GB`,
+    ],
+    [
+      "CPU cores",
+      signals === null ? "measuring…" : signals.cores === null ? "unknown" : String(signals.cores),
+    ],
+    ["Mobile (coarse pointer)", signals === null ? "measuring…" : signals.isMobile ? "yes" : "no"],
+    ["Warm-up FPS", signals?.warmupFps == null ? "measuring…" : String(signals.warmupFps)],
     ["Tier", tier],
     ["DPR", `[${settings.dpr[0]}, ${settings.dpr[1]}]`],
     ["Bloom", settings.bloom ? "on" : "off"],

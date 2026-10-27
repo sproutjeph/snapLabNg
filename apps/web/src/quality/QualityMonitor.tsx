@@ -1,11 +1,10 @@
 import { PerformanceMonitor } from "@react-three/drei";
 import type { ReactNode } from "react";
 import { useRef } from "react";
+import { createLiteState, resetLite, updateLite } from "./liteCheck";
 import { useQuality, useQualityControl } from "./QualityProvider";
 
 const DECLINE_THROTTLE_MS = 3000;
-const LITE_FPS_LIMIT = 20;
-const LITE_HOLD_MS = 5000;
 
 export function QualityMonitor({ children }: { children?: ReactNode }) {
   const { tier, stepDown } = useQuality();
@@ -13,24 +12,24 @@ export function QualityMonitor({ children }: { children?: ReactNode }) {
   const tierRef = useRef(tier);
   tierRef.current = tier;
   const lastDeclineAtRef = useRef(0);
-  const lowSinceRef = useRef<number | null>(null);
+  const liteStateRef = useRef(createLiteState());
 
   return (
     <PerformanceMonitor
-      onDecline={() => {
+      onDecline={(api) => {
+        // The lite check runs before the throttle return: onDecline fires on
+        // every slow window even once drei's factor has bottomed out at 0,
+        // while onChange stops firing then.
         const now = performance.now();
+        if (updateLite(liteStateRef.current, tierRef.current, api.averages, now)) {
+          setLiteSuggested(true);
+        }
         if (now - lastDeclineAtRef.current < DECLINE_THROTTLE_MS) return;
         lastDeclineAtRef.current = now;
         stepDown();
       }}
-      onChange={({ fps }) => {
-        if (tierRef.current === "low" && fps < LITE_FPS_LIMIT) {
-          const now = performance.now();
-          if (lowSinceRef.current === null) lowSinceRef.current = now;
-          if (now - lowSinceRef.current >= LITE_HOLD_MS) setLiteSuggested(true);
-        } else {
-          lowSinceRef.current = null;
-        }
+      onIncline={() => {
+        resetLite(liteStateRef.current);
       }}
     >
       {children}

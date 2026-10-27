@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createLiteState, meanFps, resetLite, updateLite } from "./liteCheck";
 import type { DeviceSignals } from "./tier";
 import { chooseTier, parseOverride, settingsFor, stepDown } from "./tier";
+import { measureWarmupFps } from "./warmup";
 
 function signals(partial: Partial<DeviceSignals>): DeviceSignals {
   return {
@@ -145,5 +147,102 @@ describe("parseOverride", () => {
     expect(parseOverride("?quality=1")).toBeNull();
     expect(parseOverride("")).toBeNull();
     expect(parseOverride("?other=low")).toBeNull();
+  });
+});
+
+describe("lite check (fake PerformanceMonitor api)", () => {
+  function fakeApi(fps: number) {
+    return { averages: [fps, fps, fps] };
+  }
+
+  it("fires after 5 s under 20 fps at low, even when declines keep coming", () => {
+    const state = createLiteState();
+    expect(updateLite(state, "low", fakeApi(15).averages, 0)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 2500)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 4999)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 5000)).toBe(true);
+    expect(updateLite(state, "low", fakeApi(15).averages, 60000)).toBe(true);
+  });
+
+  it("uses the mean of api.averages, not the last sample", () => {
+    const state = createLiteState();
+    expect(updateLite(state, "low", [40, 10, 10], 0)).toBe(false);
+    expect(updateLite(state, "low", [40, 10, 10], 5000)).toBe(false);
+    const state2 = createLiteState();
+    expect(updateLite(state2, "low", [10, 25, 10], 0)).toBe(false);
+    expect(updateLite(state2, "low", [10, 25, 10], 5000)).toBe(true);
+  });
+
+  it("resets the timer when the mean is 20 fps or more", () => {
+    const state = createLiteState();
+    expect(updateLite(state, "low", fakeApi(15).averages, 0)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(20).averages, 4000)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 4500)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 9499)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 9500)).toBe(true);
+  });
+
+  it("never fires above low, and resetLite clears the timer (onIncline)", () => {
+    const state = createLiteState();
+    expect(updateLite(state, "mid", fakeApi(10).averages, 0)).toBe(false);
+    expect(updateLite(state, "mid", fakeApi(10).averages, 60000)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 0)).toBe(false);
+    resetLite(state);
+    expect(updateLite(state, "low", fakeApi(15).averages, 100)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 5099)).toBe(false);
+    expect(updateLite(state, "low", fakeApi(15).averages, 5100)).toBe(true);
+  });
+
+  it("meanFps averages and handles an empty list", () => {
+    expect(meanFps([])).toBe(0);
+    expect(meanFps([10, 20, 30])).toBe(20);
+  });
+});
+
+describe("measureWarmupFps (fake requestAnimationFrame)", () => {
+  function installFakeRaf() {
+    let queue: FrameRequestCallback[] = [];
+    const raf = (cb: FrameRequestCallback): number => {
+      queue.push(cb);
+      return queue.length;
+    };
+    function step(now: number) {
+      const pending = queue;
+      queue = [];
+      for (const cb of pending) cb(now);
+    }
+    return { raf, step };
+  }
+
+  it("starts the clock at the first frame, so a background tab does not give 0", async () => {
+    const { raf, step } = installFakeRaf();
+    vi.stubGlobal("requestAnimationFrame", raf);
+    try {
+      const result = measureWarmupFps(2000);
+      // The tab is backgrounded first: no frame arrives until t=30000.
+      step(30000);
+      for (let t = 30000 + 16.7; t <= 30000 + 2100; t += 16.7) step(t);
+      await expect(result).resolves.toBeGreaterThanOrEqual(50);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("restarts the sample after a frame gap over 250 ms", async () => {
+    const { raf, step } = installFakeRaf();
+    vi.stubGlobal("requestAnimationFrame", raf);
+    try {
+      const result = measureWarmupFps(1000);
+      step(0);
+      for (let t = 16.7; t <= 500; t += 16.7) step(t);
+      // Long stall (hidden / jank): the earlier half-second must not count.
+      step(5000);
+      for (let t = 5000 + 16.7; t <= 5000 + 1100; t += 16.7) step(t);
+      const fps = await result;
+      expect(fps).toBeGreaterThanOrEqual(50);
+      expect(fps).toBeLessThanOrEqual(70);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
