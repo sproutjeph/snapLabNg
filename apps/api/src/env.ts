@@ -27,6 +27,8 @@ export interface Config {
   /** Trust fly-client-ip / x-forwarded-for for rate limiting (only behind a real proxy). */
   trustProxy: boolean;
   port: number;
+  /** The built web app, served from the same origin by mountWebDist. */
+  webDistDir: string;
 }
 
 function num(v: string | undefined, fallback: number): number {
@@ -61,5 +63,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     examinerTurnsPerHourPerIp: num(env.EXAMINER_TURNS_PER_HOUR_PER_IP, 30),
     trustProxy: env.TRUST_PROXY === "1",
     port: num(env.PORT, 8787),
+    webDistDir: fromRoot(env.WEB_DIST_DIR ?? "apps/web/dist"),
   };
 }
