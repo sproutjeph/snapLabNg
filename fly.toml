@@ -23,3 +23,7 @@ primary_region = "iad"
   MODE = "fixtures"
   TRUST_PROXY = "1"
   SPEND_LEDGER_PATH = "/data/ledger.json"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
