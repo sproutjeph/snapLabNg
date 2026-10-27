@@ -1,7 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import MeterBridgeKit from "../apparatus/meter-bridge/MeterBridgeKit";
 import {
@@ -17,6 +17,10 @@ import { BENCH_TOP_Y, pageLayout } from "./layout";
 import { PageSheet } from "./PageSheet";
 import { RevealClip } from "./RevealClip";
 import { ease, REVEAL_S, type RevealPhases, revealAt, revealInto } from "./reveal";
+
+const LiteBench = lazy(() => import("../lite/LiteBench"));
+
+type Bench = ReturnType<typeof benchSetupFrom>;
 
 export interface LabBenchProps {
   /** Her flattened page (name band already pixelated). */
@@ -110,12 +114,14 @@ function RevealDirector({
   return null;
 }
 
-function Bench({
+function BenchScene({
   props,
+  bench,
   startKey,
   skipKey,
 }: {
   props: LabBenchProps;
+  bench: Bench;
   startKey: number;
   skipKey: number;
 }) {
@@ -127,14 +133,6 @@ function Bench({
   // would rebuild them mid-air.
   const [sparkBudget] = useState(() => Math.floor(settings.maxParticles / 2));
   const page = useMemo(() => pageLayout(props.pageAspect), [props.pageAspect]);
-  // The bench is set up once per page; the engine owns it from then on.
-  const [bench] = useState(() =>
-    benchSetupFrom({
-      resistancesOhm: props.resistancesOhm,
-      teacherXOhm: props.teacherXOhm,
-      herMeanXOhm: props.herMeanXOhm,
-    }),
-  );
   const { visual, handlers } = useMeterBridgeEngine(bench.setup as BenchSetup);
 
   useEffect(() => {
@@ -211,7 +209,25 @@ function Bench({
   );
 }
 
-function LabCanvas(props: LabBenchProps) {
+const BUTTON_STYLE = {
+  minHeight: 40,
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid #334155",
+  background: "#1e293b",
+  color: "#f8fafc",
+  fontSize: 13,
+} as const;
+
+function LabCanvas({
+  props,
+  bench,
+  onLite,
+}: {
+  props: LabBenchProps;
+  bench: Bench;
+  onLite: () => void;
+}) {
   const { settings } = useQuality();
   const [canvasKey, setCanvasKey] = useState(0);
   const [startKey, setStartKey] = useState(0);
@@ -229,7 +245,7 @@ function LabCanvas(props: LabBenchProps) {
         camera={{ fov: FOV_DEG, near: 0.02, far: 20, position: [0, 0.6, 0.6] }}
         onCreated={({ gl }) => setCanvasEl(gl.domElement)}
       >
-        <Bench props={props} startKey={startKey} skipKey={skipKey} />
+        <BenchScene props={props} bench={bench} startKey={startKey} skipKey={skipKey} />
       </Canvas>
       <ContextLossOverlay canvas={canvasEl} onReload={() => setCanvasKey((k) => k + 1)} />
       <div
@@ -261,6 +277,9 @@ function LabCanvas(props: LabBenchProps) {
           it.
         </p>
         <div style={{ display: "flex", gap: 8, pointerEvents: "auto" }}>
+          <button type="button" onClick={onLite} style={BUTTON_STYLE}>
+            2D
+          </button>
           <button
             type="button"
             onClick={() => setSkipKey((k) => k + 1)}
@@ -298,11 +317,63 @@ function LabCanvas(props: LabBenchProps) {
   );
 }
 
+/** Whether this browser can make a WebGL2 context at all (the 3D lab needs one). */
+function hasWebGL2(): boolean {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return gl !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** The 3D lab, or the 2D Lite bench when WebGL is missing, the phone is too slow, or she asks. */
+function LabView(props: LabBenchProps) {
+  const { liteSuggested } = useQuality();
+  const [webgl] = useState(hasWebGL2);
+  const [choice, setChoice] = useState<"3d" | "lite" | null>(null);
+  // The bench is set up once per page; each view's engine owns it from then on.
+  const [bench] = useState(() =>
+    benchSetupFrom({
+      resistancesOhm: props.resistancesOhm,
+      teacherXOhm: props.teacherXOhm,
+      herMeanXOhm: props.herMeanXOhm,
+    }),
+  );
+  const lite = !webgl || choice === "lite" || (choice === null && liteSuggested);
+
+  if (!lite) return <LabCanvas props={props} bench={bench} onLite={() => setChoice("lite")} />;
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%", overflowY: "auto" }}>
+      <p style={{ margin: "8px 12px", color: "#94a3b8", fontSize: 13 }}>
+        {!webgl
+          ? "This browser can't show the 3D lab, so here is the same bench in 2D."
+          : choice === "lite"
+            ? "The same bench in 2D."
+            : "This phone was running the 3D lab slowly, so here is the same bench in 2D."}
+        {webgl && (
+          <button
+            type="button"
+            onClick={() => setChoice("3d")}
+            style={{ ...BUTTON_STYLE, marginLeft: 8, minHeight: 32, padding: "4px 10px" }}
+          >
+            Back to 3D
+          </button>
+        )}
+      </p>
+      <Suspense fallback={null}>
+        <LiteBench setup={bench.setup} plugLabels={bench.plugLabels} unknownLabel="X" />
+      </Suspense>
+    </div>
+  );
+}
+
 /** "Your lab": her page on the bench, the reveal, then the live metre bridge. */
 export default function LabBench(props: LabBenchProps) {
   return (
     <QualityProvider>
-      <LabCanvas {...props} />
+      <LabView {...props} />
     </QualityProvider>
   );
 }

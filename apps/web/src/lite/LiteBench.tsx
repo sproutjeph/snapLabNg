@@ -218,7 +218,8 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
     }
   }
 
-  // Generate galvanometer dial ticks (-30 to +30, ticks every 5, numbers every 10)
+  // Galvanometer dial: ticks every 5 from -30 to +30, longer every 10; numbers only at
+  // -30, 0 and +30 (on a ±40° arc, numbers every 10 overlapped).
   const dialTicks: React.ReactNode[] = [];
   for (let val = -30; val <= 30; val += 5) {
     const angle = (val / 30) * 40; // ±40 deg dial arc
@@ -242,7 +243,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
       />,
     );
 
-    if (isNumbered) {
+    if (val % 30 === 0) {
       const lx = 600 + Math.cos(rad) * 52;
       const ly = 150 + Math.sin(rad) * 52;
       dialTicks.push(
