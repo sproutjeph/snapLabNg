@@ -28,7 +28,8 @@ export function costUsd(model: string, usage: Usage | null | undefined): number 
 export const MAX_OUTPUT_TOKENS = { spark: 3000, wonder: 6000 } as const;
 /** Input tokens for one page image plus prompt and schema (≈4,060 measured on Oct 26), with margin. */
 const MAX_INPUT_TOKENS = 6000;
-const SAM_CALLS_PER_SNAP = 7;
+/** Two text prompts (table, graph) and one box-prompt request for the drawn parts. */
+const SAM_CALLS_PER_SNAP = 3;
 
 /**
  * Worst case for one snap, reserved before any call: Spark and Wonder at their output caps
