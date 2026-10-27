@@ -99,15 +99,20 @@ export async function mockAsk(
         raw.includes("report") ||
         raw.includes("carried out") ||
         raw.includes("wetin you do");
+      const isPastPassiveExample = /\b(was|were)\s+\w+(ed|en)\b/i.test(raw);
 
       let verdict: Verdict = "needs_work";
       let reply =
         "Remember that WAEC examiners penalize imperative commands like 'Avoid parallax'. State precautions as actions completed, such as 'Parallax error was avoided'.";
 
-      if (mentionsPast && (mentionsAction || raw.includes("tense"))) {
+      if ((mentionsPast || isPastPassiveExample) && (mentionsAction || raw.includes("tense"))) {
         verdict = "correct";
         reply =
           "Exactly right. WAEC expects the past passive tense because you are reporting specific actions you actually carried out.";
+      } else if (isPastPassiveExample) {
+        verdict = "partly";
+        reply =
+          "Your sentence is in the right tense (past passive). Why is this tense required instead of giving instructions?";
       } else if (mentionsPast || raw.includes("tense")) {
         verdict = "partly";
         reply =

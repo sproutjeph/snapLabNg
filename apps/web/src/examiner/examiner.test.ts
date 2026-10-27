@@ -81,6 +81,19 @@ describe("mockExaminer", () => {
     expect(result.modelAnswer).toMatch(/uniform/i);
   });
 
+  it("evaluates a past passive precaution example as at least partly and asks why", async () => {
+    const result = await mockAsk({
+      question: Q2_PRECAUTION_TENSE,
+      answer: "The key was opened between readings",
+      language: "english",
+    });
+
+    expect(["correct", "partly"]).toContain(result.verdict);
+    expect(result.reply).toMatch(/right tense|correct tense/i);
+    expect(result.reply).toMatch(/why/i);
+    expect(result.next?.id).toBe(Q3_CELL_WEAKENING.id);
+  });
+
   it("handles the 3-question sequence and stops when next is null (max 3 turns)", async () => {
     // Turn 1
     const t1 = await mockAsk({
