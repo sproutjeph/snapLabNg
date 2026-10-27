@@ -7,6 +7,8 @@
 - PR #19 **built with Muse Code**: procedural lab sounds (null click, needle slam, scrape, plug and key), Web Audio only, unlocked by a tap. One review round (click on an evicted scrape, iOS "interrupted" state). Next Muse Code slice: the lab notebook (`docs/plans/lab-notebook.md`).
 - End-to-end read stage (`?flow=1`, lead): snap → corners → GPU flatten → upload the flattened page with the name band pixelated → `/api/snap` stream → live "Show the AI" drawer and her table as written. Runs offline on fixtures with `MODE=fixtures bun run dev`.
 - PR #24 **built with Muse Code**: the lab notebook (her readings table on the virtual bench; never a correct value; "—" when R = 0). Next Muse Code slice: golden replay recorder and player (`docs/plans/golden-replay.md`, contract `GoldenRecording`).
+- PR #26 **built with Muse Code**: golden replay (timed recorder, paced player with abort, validated loader, download).
+- PR #21 Gemini's red-ink overlay, three review rounds (marks moved from a hand-written sheet to `markMeterBridge`, WAEC-style branding removed, unplaced items shown, pacing). Then joined to `?flow=1` (lead): her snapped page now gets red ink and a score from the rules engine, with an engine lane in the drawer.
 - Slices handed out: Gemini → red-ink marking overlay (`docs/plans/red-ink-overlay.md`); **Muse Code** (Meta's coding agent) joins as a third builder in `~/Desktop/SnapLabNG-muse` → procedural lab sounds (`docs/plans/lab-audio.md`). Every Muse Code slice is logged here as built with Muse Code.
 
 ## Oct 26 (Day 1)

@@ -1,10 +1,12 @@
-import type { Readings, SnapEvent } from "@snaplab/contracts";
+import type { MarkSheet, Readings, SnapEvent } from "@snaplab/contracts";
+import { markMeterBridge } from "@snaplab/rules";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import AiDrawer from "../ai-drawer/AiDrawer";
 import { ShowAiToggle } from "../ai-drawer/ShowAiToggle";
 import CaptureFlow from "../capture/CaptureFlow";
 import type { CaptureResult } from "../capture/types";
+import { RedInkOverlay } from "../marking/RedInkOverlay";
 import { rectifyPage } from "../rectify/rectify";
 import { pageToUploadJpeg } from "./pageUpload";
 import { streamSnap } from "./snapClient";
@@ -45,6 +47,7 @@ async function flattenForUpload(result: CaptureResult) {
 export default function FlowPage() {
   const [step, setStep] = useState<Step>("capture");
   const [pageUrl, setPageUrl] = useState<string | null>(null);
+  const [pageAspect, setPageAspect] = useState(1448 / 1024);
   const [events, setEvents] = useState<SnapEvent[]>([]);
   const [t0, setT0] = useState(0);
   const [nowMs, setNowMs] = useState(0);
@@ -93,6 +96,7 @@ export default function FlowPage() {
     }
     if (upload && !controller.signal.aborted) {
       setPageUrl(URL.createObjectURL(upload.blob));
+      setPageAspect(upload.height / upload.width);
       try {
         for await (const e of streamSnap(
           upload.blob,
@@ -114,11 +118,44 @@ export default function FlowPage() {
     }
   }
 
-  const trace = useMemo(() => traceFromEvents(events, t0), [events, t0]);
   const mode = events.find((e) => e.type === "mode");
   const readings = events.find(
     (e): e is Extract<SnapEvent, { type: "readings" }> => e.type === "readings",
   )?.readings;
+  const setupIssues = events.find(
+    (e): e is Extract<SnapEvent, { type: "setup_issues" }> => e.type === "setup_issues",
+  )?.setup_issues;
+
+  // Marks come only from packages/rules (AGENTS.md), on her readings as written. Student
+  // mode: no teacher value, so accuracy is not marked and X is never involved.
+  const marked = useMemo((): { sheet: MarkSheet; startMs: number; endMs: number } | null => {
+    if (!readings || !mode || mode.type !== "mode" || mode.experiment !== "meter_bridge")
+      return null;
+    const startMs = performance.now();
+    const sheet = markMeterBridge(readings, {
+      teacherXOhm: null,
+      setupIssues: (setupIssues ?? []).map((i) => ({ description: i.description, box: null })),
+    });
+    return { sheet, startMs, endMs: performance.now() };
+  }, [readings, mode, setupIssues]);
+
+  const trace = useMemo(() => {
+    const t = traceFromEvents(events, t0);
+    if (!marked) return t;
+    const engineCall = {
+      id: "engine-rules",
+      lane: "engine" as const,
+      model: "engine",
+      label: `rule engine: ${new Set(marked.sheet.items.map((i) => i.rule)).size} rules`,
+      startMs: marked.startMs,
+      endMs: marked.endMs,
+      status: "ok" as const,
+      request: { input: "her readings, exactly as written" },
+      response: { earned: marked.sheet.earned, available: marked.sheet.available },
+      note: "Deterministic: the same page always gets the same marks.",
+    };
+    return { ...t, calls: [...t.calls, engineCall] };
+  }, [events, t0, marked]);
   const errors = events.filter(
     (e): e is Extract<SnapEvent, { type: "error" }> => e.type === "error",
   );
@@ -143,12 +180,23 @@ export default function FlowPage() {
         {mode && mode.type === "mode" ? ` Experiment: ${EXPERIMENT_NAME[mode.experiment]}.` : ""}
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
-        {pageUrl && (
-          <img
-            src={pageUrl}
-            alt="Your flattened page, name hidden"
-            style={{ width: 280, maxWidth: "100%", borderRadius: 8 }}
-          />
+        {pageUrl && marked ? (
+          <div style={{ flex: "2 1 480px", minWidth: 0 }}>
+            <RedInkOverlay
+              pageImageUrl={pageUrl}
+              pageAspect={pageAspect}
+              sheet={marked.sheet}
+              playing={true}
+            />
+          </div>
+        ) : (
+          pageUrl && (
+            <img
+              src={pageUrl}
+              alt="Your flattened page, name hidden"
+              style={{ width: 280, maxWidth: "100%", borderRadius: 8 }}
+            />
+          )
         )}
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           {readings ? <ReadingsTable readings={readings} /> : <p>Waiting for the table…</p>}
@@ -158,9 +206,11 @@ export default function FlowPage() {
               {e.message}
             </p>
           ))}
-          <p style={{ color: "#94a3b8", fontSize: 13 }}>
-            The red-ink marking of this table appears here once it is wired in.
-          </p>
+          {!marked && step === "done" && readings && (
+            <p style={{ color: "#94a3b8", fontSize: 13 }}>
+              Marking is ready for the metre bridge only, so far.
+            </p>
+          )}
         </div>
       </div>
       <AiDrawer
