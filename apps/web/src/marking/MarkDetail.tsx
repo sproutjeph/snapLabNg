@@ -1,5 +1,5 @@
 import type { MarkItem } from "@snaplab/contracts";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { formatHalf } from "./inkPaths";
 
 export interface MarkDetailProps {
@@ -56,8 +56,20 @@ function ensureStyles(): void {
  * Renders as a bottom sheet on narrow viewports so long Pidgin text never overflows.
  */
 export function MarkDetail({ item, onClose }: MarkDetailProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
   useEffect(() => {
     ensureStyles();
+  }, []);
+
+  useEffect(() => {
+    // Move focus into the dialog when it opens.
+    if (closeButtonRef.current) {
+      closeButtonRef.current.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
   }, []);
 
   useEffect(() => {
@@ -77,8 +89,11 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
   const written = item.evidence[0]?.text_as_written ?? null;
 
   return (
-    <section
+    <div
+      ref={dialogRef}
+      role="dialog"
       aria-label={`Mark detail for ${item.rule}`}
+      tabIndex={-1}
       className="snaplab-mark-detail"
       data-testid="mark-detail"
     >
@@ -137,6 +152,7 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
         </div>
 
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           style={{
@@ -228,6 +244,6 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
           </a>
         </div>
       )}
-    </section>
+    </div>
   );
 }

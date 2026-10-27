@@ -49,7 +49,7 @@ export function ScoreCard({
             color: "#991b1b",
           }}
         >
-          WAEC Chief Examiner Rubric
+          Examiner-style marking · based on WAEC reports
         </span>
         <span
           style={{

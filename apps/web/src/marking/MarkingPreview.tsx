@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createG1PageDataUrl, G1_PAGE_ASPECT } from "./g1Page";
-import { g1Sheet } from "./g1Sheet";
+import { g1Sheet } from "./g1Readings";
 import { RedInkOverlay } from "./RedInkOverlay";
 
 /**
@@ -11,8 +11,11 @@ export default function MarkingPreview() {
   const [replayKey, setReplayKey] = useState(0);
 
   useEffect(() => {
-    (window as { __SNAPLAB_READY__?: boolean }).__SNAPLAB_READY__ = true;
+    const timer = setTimeout(() => {
+      (window as { __SNAPLAB_READY__?: boolean }).__SNAPLAB_READY__ = true;
+    }, 4500);
     return () => {
+      clearTimeout(timer);
       delete (window as { __SNAPLAB_READY__?: boolean }).__SNAPLAB_READY__;
     };
   }, []);
