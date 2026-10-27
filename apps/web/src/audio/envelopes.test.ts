@@ -33,6 +33,9 @@ describe("envelopes helpers", () => {
     expect(hard.decayS).toBeGreaterThan(soft.decayS);
     expect(slamParams(-1)).toEqual(slamParams(0));
     expect(slamParams(2)).toEqual(slamParams(1));
+    expect(slamParams(Infinity)).toEqual(slamParams(1));
+    expect(slamParams(-Infinity)).toEqual(slamParams(0));
+    expect(slamParams(NaN)).toEqual(slamParams(0));
   });
 
   it("clamps scrape duration to 0.1-1.5 s", () => {

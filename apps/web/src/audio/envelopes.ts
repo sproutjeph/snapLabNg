@@ -1,5 +1,5 @@
 function clamp(value: number, lo: number, hi: number): number {
-  if (!Number.isFinite(value)) {
+  if (Number.isNaN(value)) {
     return lo;
   }
   return Math.min(hi, Math.max(lo, value));
