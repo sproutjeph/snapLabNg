@@ -56,6 +56,9 @@
     "packages/rules": {
       "name": "@snaplab/rules",
       "version": "0.0.0",
+      "dependencies": {
+        "@snaplab/contracts": "workspace:*",
+      },
     },
   },
   "packages": {
