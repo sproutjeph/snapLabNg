@@ -37,15 +37,15 @@ export function RetortStand({ quality }: RetortStandProps) {
     const armGeo = new THREE.CylinderGeometry(0.0045, 0.0045, armLen, radialSegments);
     armGeo.rotateX(Math.PI / 2);
 
-    const yokeGeo = new THREE.BoxGeometry(0.026, 0.014, 0.012);
+    const yokeGeo = new THREE.BoxGeometry(0.022, 0.014, 0.01);
     const jawGeo = new THREE.TorusGeometry(
-      BURETTE_DIMS.outerRadius + 0.0035,
-      0.0032,
+      BURETTE_DIMS.outerRadius + 0.0032,
+      0.0028,
       8,
       radialSegments,
-      Math.PI * 0.85,
+      Math.PI * 1.08,
     );
-    jawGeo.rotateX(Math.PI / 2);
+    jawGeo.rotateX(-Math.PI / 2);
 
     const castIronMat = new THREE.MeshStandardMaterial({
       color: "#1e293b",
@@ -188,20 +188,20 @@ export function RetortStand({ quality }: RetortStandProps) {
         />
       </group>
 
-      {/* Dual rubber-lined jaws gripping the burette */}
+      {/* Dual rubber-lined jaws gripping the burette from the back/sides so front graduations stay clear */}
       <group position={[0, clampY, 0]}>
         <mesh
           geometry={res.jawGeo}
           material={res.rubberMat}
-          rotation={[0, 0.15, 0]}
-          position={[0, 0.008, 0]}
+          rotation={[0, -0.12, 0]}
+          position={[0, 0.006, 0]}
           castShadow
         />
         <mesh
           geometry={res.jawGeo}
           material={res.rubberMat}
-          rotation={[0, Math.PI + 0.15, 0]}
-          position={[0, -0.008, 0]}
+          rotation={[0, -0.12, 0]}
+          position={[0, -0.006, 0]}
           castShadow
         />
       </group>

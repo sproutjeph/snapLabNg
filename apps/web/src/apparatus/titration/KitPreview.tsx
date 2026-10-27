@@ -3,34 +3,53 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { ReadySignal } from "../../scene/ReadySignal";
+import { volumeToY } from "./dimensions";
 import TitrationKit from "./TitrationKit";
 import type { TitrationVisualState } from "./types";
 
 const TARGET_Y = 0.42;
 const BASE_DIST = 1.62;
+const ZOOM_BURETTE_READING_CM3 = 24.0;
+const ZOOM_BURETTE_TARGET_Y = volumeToY(25.0);
+const ZOOM_BURETTE_DIST = 0.15;
 
 // Demo stand-in for the science engine (docs/plans/titration-kit.md §KitPreview):
 // Fades phenolphthalein indicator in sodium trioxocarbonate(IV) / tetraoxosulphate(VI)
 // titration from pink to colourless as the burette reading passes 24.00 cm³.
-function demoFlaskColorForReading(readingCm3: number): [number, number, number] {
-  const pink: [number, number, number] = [0.92, 0.18, 0.56];
-  const colourless: [number, number, number] = [0.86, 0.94, 0.98];
+// Mutates `out` in place to avoid per-frame allocations inside useFrame.
+function writeDemoFlaskColor(readingCm3: number, out: [number, number, number]): void {
+  const pinkR = 0.92;
+  const pinkG = 0.18;
+  const pinkB = 0.56;
+  const clearR = 0.86;
+  const clearG = 0.94;
+  const clearB = 0.98;
   // Smooth transition between 23.60 cm³ and 24.10 cm³
   const t = Math.min(1, Math.max(0, (readingCm3 - 23.6) / 0.5));
-  return [
-    pink[0] + (colourless[0] - pink[0]) * t,
-    pink[1] + (colourless[1] - pink[1]) * t,
-    pink[2] + (colourless[2] - pink[2]) * t,
-  ];
+  out[0] = pinkR + (clearR - pinkR) * t;
+  out[1] = pinkG + (clearG - pinkG) * t;
+  out[2] = pinkB + (clearB - pinkB) * t;
 }
 
-function PreviewCameraRig() {
+function PreviewCameraRig({ zoomBurette }: { zoomBurette: boolean }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls);
   const size = useThree((s) => s.size);
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    if (zoomBurette) {
+      camera.position.set(0, ZOOM_BURETTE_TARGET_Y, ZOOM_BURETTE_DIST);
+      camera.lookAt(0, ZOOM_BURETTE_TARGET_Y, 0);
+      camera.updateProjectionMatrix();
+      if (controls && "target" in controls && controls.target instanceof THREE.Vector3) {
+        controls.target.set(0, ZOOM_BURETTE_TARGET_Y, 0);
+      }
+      if (controls && "update" in controls && typeof controls.update === "function") {
+        controls.update();
+      }
+      return;
+    }
     const aspect = size.width / Math.max(size.height, 1);
     const scale = aspect < 1 ? Math.max(1.05, 0.58 / Math.max(aspect, 0.3)) : 1.0;
     const dist = BASE_DIST * scale;
@@ -41,7 +60,7 @@ function PreviewCameraRig() {
     if (controls && "update" in controls && typeof controls.update === "function") {
       controls.update();
     }
-  }, [camera, controls, size.width, size.height]);
+  }, [camera, controls, size.width, size.height, zoomBurette]);
 
   return null;
 }
@@ -77,6 +96,7 @@ function PreviewBench() {
 interface DemoSceneProps {
   visualRef: { current: TitrationVisualState };
   swirlTimerRef: { current: number };
+  zoomBurette: boolean;
   onStopcockChange: (open: number) => void;
   onSwirl: () => void;
   onFunnelToggle: () => void;
@@ -86,6 +106,7 @@ interface DemoSceneProps {
 function DemoScene({
   visualRef,
   swirlTimerRef,
+  zoomBurette,
   onStopcockChange,
   onSwirl,
   onFunnelToggle,
@@ -93,6 +114,8 @@ function DemoScene({
 }: DemoSceneProps) {
   const dropAccumRef = useRef(0);
   const hudTimerRef = useRef(0);
+  const lastHudReadingRef = useRef(-1);
+  const lastHudFunnelRef = useRef(true);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
@@ -104,9 +127,12 @@ function DemoScene({
       dropAccumRef.current += dt * 8 * cur.stopcockOpen;
       while (dropAccumRef.current >= 1 && cur.buretteReadingCm3 < 50) {
         dropAccumRef.current -= 1;
-        cur.buretteReadingCm3 = Math.min(50, +(cur.buretteReadingCm3 + 0.05).toFixed(2));
-        cur.flaskVolumeCm3 = Math.min(250, +(25 + cur.buretteReadingCm3).toFixed(2));
-        cur.flaskColor = demoFlaskColorForReading(cur.buretteReadingCm3);
+        cur.buretteReadingCm3 = Math.min(
+          50,
+          Math.round((cur.buretteReadingCm3 + 0.05) * 100) / 100,
+        );
+        cur.flaskVolumeCm3 = Math.min(250, Math.round((25 + cur.buretteReadingCm3) * 100) / 100);
+        writeDemoFlaskColor(cur.buretteReadingCm3, cur.flaskColor);
       }
     } else {
       cur.dropping = false;
@@ -124,7 +150,14 @@ function DemoScene({
     hudTimerRef.current += dt;
     if (hudTimerRef.current >= 0.08) {
       hudTimerRef.current = 0;
-      onHudSync(cur.buretteReadingCm3, cur.funnelOn);
+      if (
+        cur.buretteReadingCm3 !== lastHudReadingRef.current ||
+        cur.funnelOn !== lastHudFunnelRef.current
+      ) {
+        lastHudReadingRef.current = cur.buretteReadingCm3;
+        lastHudFunnelRef.current = cur.funnelOn;
+        onHudSync(cur.buretteReadingCm3, cur.funnelOn);
+      }
     }
   });
 
@@ -143,8 +176,8 @@ function DemoScene({
         shadow-camera-bottom={-0.2}
       />
       <directionalLight position={[-1.0, 1.3, -0.9]} intensity={0.85} />
-      <PreviewCameraRig />
-      <OrbitControls target={[0, TARGET_Y, 0]} makeDefault />
+      <PreviewCameraRig zoomBurette={zoomBurette} />
+      <OrbitControls target={[0, zoomBurette ? ZOOM_BURETTE_TARGET_Y : TARGET_Y, 0]} makeDefault />
       <PreviewBench />
       <TitrationKit
         state={visualRef}
@@ -159,18 +192,27 @@ function DemoScene({
 }
 
 export default function KitPreview() {
+  const zoomBurette = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("zoom") === "burette";
+  }, []);
+
+  const initialReading = zoomBurette ? ZOOM_BURETTE_READING_CM3 : 0.0;
+  const initialColor: [number, number, number] = [0, 0, 0];
+  writeDemoFlaskColor(initialReading, initialColor);
+
   const visualRef = useRef<TitrationVisualState>({
-    buretteReadingCm3: 0.0,
+    buretteReadingCm3: initialReading,
     stopcockOpen: 0,
     dropping: false,
-    flaskVolumeCm3: 25.0,
-    flaskColor: demoFlaskColorForReading(0),
+    flaskVolumeCm3: 25.0 + initialReading,
+    flaskColor: initialColor,
     swirlPhase: 0,
     funnelOn: true,
   });
   const swirlTimerRef = useRef(0);
 
-  const [readingText, setReadingText] = useState("0.00");
+  const [readingText, setReadingText] = useState(() => initialReading.toFixed(2));
   const [funnelOn, setFunnelOn] = useState(true);
 
   const handleStopcockChange = useCallback((open: number) => {
@@ -193,7 +235,7 @@ export default function KitPreview() {
   const handleReset = useCallback(() => {
     visualRef.current.buretteReadingCm3 = 0;
     visualRef.current.flaskVolumeCm3 = 25;
-    visualRef.current.flaskColor = demoFlaskColorForReading(0);
+    writeDemoFlaskColor(0, visualRef.current.flaskColor);
     visualRef.current.stopcockOpen = 0;
     visualRef.current.dropping = false;
     setReadingText("0.00");
@@ -215,6 +257,7 @@ export default function KitPreview() {
         <DemoScene
           visualRef={visualRef}
           swirlTimerRef={swirlTimerRef}
+          zoomBurette={zoomBurette}
           onStopcockChange={handleStopcockChange}
           onSwirl={handleSwirl}
           onFunnelToggle={handleFunnelToggle}

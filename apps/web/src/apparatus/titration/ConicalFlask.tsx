@@ -15,6 +15,7 @@ export interface ConicalFlaskProps {
 interface LiquidMeshData {
   geo: THREE.CylinderGeometry;
   vertexKind: Uint8Array; // 0 = bottom center, 1 = bottom ring, 2 = top ring, 3 = top center
+  surfaceGroup: Uint8Array; // 0 = side wall, 1 = top cap, 2 = bottom cap
   unitX: Float32Array;
   unitZ: Float32Array;
 }
@@ -22,8 +23,10 @@ interface LiquidMeshData {
 function createDynamicLiquidGeometry(radialSegments: number): LiquidMeshData {
   const geo = new THREE.CylinderGeometry(1, 1, 1, radialSegments, 1, false);
   const pos = geo.attributes.position as THREE.BufferAttribute;
+  const norm = geo.attributes.normal as THREE.BufferAttribute;
   const count = pos.count;
   const vertexKind = new Uint8Array(count);
+  const surfaceGroup = new Uint8Array(count);
   const unitX = new Float32Array(count);
   const unitZ = new Float32Array(count);
 
@@ -31,6 +34,15 @@ function createDynamicLiquidGeometry(radialSegments: number): LiquidMeshData {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
+    const ny = norm.getY(i);
+    if (ny > 0.5) {
+      surfaceGroup[i] = 1;
+    } else if (ny < -0.5) {
+      surfaceGroup[i] = 2;
+    } else {
+      surfaceGroup[i] = 0;
+    }
+
     const r = Math.hypot(x, z);
     if (y < 0) {
       if (r < 1e-4) {
@@ -51,7 +63,7 @@ function createDynamicLiquidGeometry(radialSegments: number): LiquidMeshData {
     }
   }
 
-  return { geo, vertexKind, unitX, unitZ };
+  return { geo, vertexKind, surfaceGroup, unitX, unitZ };
 }
 
 function updateLiquidVertices(
@@ -61,6 +73,7 @@ function updateLiquidVertices(
   rBottom: number,
 ): void {
   const pos = data.geo.attributes.position as THREE.BufferAttribute;
+  const norm = data.geo.attributes.normal as THREE.BufferAttribute;
   const count = pos.count;
   const swirlActive = swirlPhase > 1e-4;
   const swirlAngle = swirlPhase * Math.PI * 6;
@@ -68,17 +81,27 @@ function updateLiquidVertices(
   const dirZ = swirlActive ? Math.sin(swirlAngle) : 0;
   const waveAmp = swirlActive ? Math.sin(swirlPhase * Math.PI) * Math.min(0.007, baseH * 0.35) : 0;
 
+  const rTopBase = Math.max(0.004, flaskInnerRadiusAtHeight(baseH) - 0.0008);
+  const dr = rBottom - rTopBase;
+  const sideInvLen = 1 / Math.max(1e-5, Math.hypot(baseH, dr));
+  const sideRadial = baseH * sideInvLen;
+  const sideY = dr * sideInvLen;
+
+  const topSlope = waveAmp / Math.max(1e-4, rTopBase);
+  const topNx = -dirX * topSlope;
+  const topNz = -dirZ * topSlope;
+  const topInvLen = 1 / Math.hypot(topNx, 1, topNz);
+
   for (let i = 0; i < count; i++) {
     const kind = data.vertexKind[i];
+    const ux = data.unitX[i] ?? 0;
+    const uz = data.unitZ[i] ?? 0;
+
     if (kind === 0) {
       pos.setXYZ(i, 0, 0, 0);
     } else if (kind === 1) {
-      const ux = data.unitX[i] ?? 0;
-      const uz = data.unitZ[i] ?? 0;
       pos.setXYZ(i, ux * rBottom, 0, uz * rBottom);
     } else if (kind === 2) {
-      const ux = data.unitX[i] ?? 0;
-      const uz = data.unitZ[i] ?? 0;
       const localH = Math.max(0.001, baseH + (ux * dirX + uz * dirZ) * waveAmp);
       const localR = Math.max(0.004, flaskInnerRadiusAtHeight(localH) - 0.0008);
       pos.setXYZ(i, ux * localR, localH, uz * localR);
@@ -87,10 +110,19 @@ function updateLiquidVertices(
       const dip = swirlActive ? Math.sin(swirlPhase * Math.PI) * 0.0025 : 0.0008;
       pos.setXYZ(i, 0, Math.max(0.0005, baseH - dip), 0);
     }
+
+    const surf = data.surfaceGroup[i];
+    if (surf === 0) {
+      norm.setXYZ(i, ux * sideRadial, sideY, uz * sideRadial);
+    } else if (surf === 1) {
+      norm.setXYZ(i, topNx * topInvLen, topInvLen, topNz * topInvLen);
+    } else {
+      norm.setXYZ(i, 0, -1, 0);
+    }
   }
 
   pos.needsUpdate = true;
-  data.geo.computeVertexNormals();
+  norm.needsUpdate = true;
 }
 
 export function ConicalFlask({ state, quality, position = [0, 0, 0], onSwirl }: ConicalFlaskProps) {

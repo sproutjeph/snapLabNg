@@ -17,6 +17,11 @@ const GRAD_TEX_HEIGHT = 2048;
 const GRAD_PAD_PX = 48;
 const GRAD_USABLE_PX = GRAD_TEX_HEIGHT - GRAD_PAD_PX * 2;
 const GRAD_MESH_HEIGHT = BURETTE_DIMS.gradLength * (GRAD_TEX_HEIGHT / GRAD_USABLE_PX);
+const GRAD_ARC_ANGLE = Math.PI * 0.72;
+const GRAD_ARC_RADIUS = BURETTE_DIMS.outerRadius + 0.00035;
+const GRAD_ARC_WIDTH = GRAD_ARC_RADIUS * GRAD_ARC_ANGLE;
+// Pre-squash vertical glyph scale so 1 px in X and 1 px in Y map to equal physical metres on the cylinder
+const GRAD_TEXT_SCALE_Y = GRAD_ARC_WIDTH / GRAD_TEX_WIDTH / (GRAD_MESH_HEIGHT / GRAD_TEX_HEIGHT);
 
 function createBuretteGraduationsTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
@@ -28,10 +33,10 @@ function createBuretteGraduationsTexture(): THREE.CanvasTexture {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Subtle white backing strip behind the numbers for contrast from any angle
-    ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
-    ctx.fillRect(58, GRAD_PAD_PX - 22, 140, GRAD_USABLE_PX + 44);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.fillRect(52, GRAD_PAD_PX - 22, 152, GRAD_USABLE_PX + 44);
 
-    ctx.font = "bold 21px ui-sans-serif, system-ui, sans-serif";
+    ctx.font = "bold 46px ui-sans-serif, system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
@@ -41,12 +46,12 @@ function createBuretteGraduationsTexture(): THREE.CanvasTexture {
       const isWhole = tenth % 10 === 0;
       const isHalf = tenth % 5 === 0;
 
-      const xStart = 76;
-      const tickLen = isWhole ? 54 : isHalf ? 38 : 22;
+      const xStart = 58;
+      const tickLen = isWhole ? 58 : isHalf ? 40 : 24;
 
       // Dark halo outline for legibility against both bright and dark backgrounds
       ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
-      ctx.lineWidth = isWhole ? 4.2 : isHalf ? 3.2 : 2.2;
+      ctx.lineWidth = isWhole ? 2.8 : isHalf ? 2.0 : 1.35;
       ctx.beginPath();
       ctx.moveTo(xStart, y);
       ctx.lineTo(xStart + tickLen, y);
@@ -54,7 +59,7 @@ function createBuretteGraduationsTexture(): THREE.CanvasTexture {
 
       // High-contrast ceramic white graduation ink
       ctx.strokeStyle = "#f8fafc";
-      ctx.lineWidth = isWhole ? 2.4 : isHalf ? 1.7 : 1.1;
+      ctx.lineWidth = isWhole ? 1.65 : isHalf ? 1.15 : 0.75;
       ctx.beginPath();
       ctx.moveTo(xStart, y);
       ctx.lineTo(xStart + tickLen, y);
@@ -63,11 +68,15 @@ function createBuretteGraduationsTexture(): THREE.CanvasTexture {
       if (isWhole) {
         const cm3 = tenth / 10;
         const label = String(cm3);
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.9)";
-        ctx.strokeText(label, xStart + tickLen + 8, y);
+        ctx.save();
+        ctx.translate(xStart + tickLen + 10, y);
+        ctx.scale(1, GRAD_TEXT_SCALE_Y);
+        ctx.lineWidth = 5.5;
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.92)";
+        ctx.strokeText(label, 0, 0);
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, xStart + tickLen + 8, y);
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
       }
     }
   }
@@ -86,6 +95,8 @@ export function Burette({ state, quality, onStopcockChange, onFunnelToggle }: Bu
   const dropMeshRef = useRef<THREE.Mesh>(null);
   const dropPhaseRef = useRef(0);
   const holdingStopcockRef = useRef(false);
+  const onStopcockChangeRef = useRef(onStopcockChange);
+  onStopcockChangeRef.current = onStopcockChange;
 
   const res = useMemo(() => {
     const radialSegments = quality === "low" ? 16 : 32;
@@ -308,7 +319,7 @@ export function Burette({ state, quality, onStopcockChange, onFunnelToggle }: Bu
     const handleWindowUp = () => {
       if (holdingStopcockRef.current) {
         holdingStopcockRef.current = false;
-        onStopcockChange?.(0);
+        onStopcockChangeRef.current?.(0);
       }
     };
     window.addEventListener("pointerup", handleWindowUp);
@@ -317,7 +328,17 @@ export function Burette({ state, quality, onStopcockChange, onFunnelToggle }: Bu
       window.removeEventListener("pointerup", handleWindowUp);
       window.removeEventListener("pointercancel", handleWindowUp);
     };
-  }, [onStopcockChange]);
+  }, []);
+
+  // Unmount-only guard: close the stopcock if the kit unmounts while held open
+  useEffect(() => {
+    return () => {
+      if (holdingStopcockRef.current) {
+        holdingStopcockRef.current = false;
+        onStopcockChangeRef.current?.(0);
+      }
+    };
+  }, []);
 
   useFrame((_, delta) => {
     const cur = state.current;
