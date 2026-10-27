@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { blueprintJsonSchema, readingsJsonSchema } from "./json-schema";
+import {
+  blueprintJsonSchema,
+  examinerJudgementJsonSchema,
+  readingsJsonSchema,
+} from "./json-schema";
 
 type Node = Record<string, unknown>;
 
@@ -73,5 +77,14 @@ describe("emitted JSON Schema", () => {
   it("emits the experiment enum as meter_bridge, titration, glass_block, unknown", () => {
     const props = (blueprintJsonSchema as Node).properties as Record<string, Node>;
     expect(props.experiment?.enum).toEqual(["meter_bridge", "titration", "glass_block", "unknown"]);
+  });
+
+  it("emits the examiner judgement as a flat strict object, with no length keywords", () => {
+    // The first live examiner call failed while reply carried minLength; it passed once removed (Oct 27).
+    const s = examinerJudgementJsonSchema as Node;
+    expect(s.type).toBe("object");
+    expect(s.additionalProperties).toBe(false);
+    expect([...((s.required ?? []) as string[])].sort()).toEqual(["reply", "verdict"]);
+    expect(JSON.stringify(s)).not.toMatch(/minLength|maxLength/);
   });
 });

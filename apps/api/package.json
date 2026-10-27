@@ -12,6 +12,7 @@
   "dependencies": {
     "@meta-sam/parser": "0.1.0",
     "@snaplab/contracts": "workspace:*",
+    "@snaplab/rules": "workspace:*",
     "hono": "4.13.14"
   }
 }

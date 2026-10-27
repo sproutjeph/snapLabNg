@@ -1,17 +1,21 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { SnapEvent } from "@snaplab/contracts";
+import { ExaminerTurnRequest, type SnapEvent } from "@snaplab/contracts";
+import { examinerQuestionById } from "@snaplab/rules";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import { StreamCache } from "./cache";
 import type { Config } from "./env";
+import { judgeAnswer, UnknownQuestionError } from "./examiner";
 import { RateLimiter } from "./rateLimit";
 import { runSnap } from "./snap";
-import { SNAP_RESERVE_USD, SpendLedger } from "./spend";
+import { EXAMINER_RESERVE_USD, SNAP_RESERVE_USD, SpendLedger } from "./spend";
 
 const MAX_PHOTO_BYTES = 600 * 1024;
 /** A whole snap gets this long before every Meta call is aborted (Wonder took 13 s on Oct 26). */
 const SNAP_TIMEOUT_MS = 45_000;
+/** One examiner turn is a short text-only Spark call. */
+const EXAMINER_TIMEOUT_MS = 20_000;
 
 /** The caller's IP. Proxy headers are trusted only when TRUST_PROXY=1 (e.g. behind Fly). */
 function clientIp(c: Context, cfg: Config): string {
@@ -25,10 +29,14 @@ function clientIp(c: Context, cfg: Config): string {
   return server?.requestIP?.(c.req.raw)?.address ?? "unknown";
 }
 
-export function createApp(cfg: Config, deps?: { ledger?: SpendLedger; limiter?: RateLimiter }) {
+export function createApp(
+  cfg: Config,
+  deps?: { ledger?: SpendLedger; limiter?: RateLimiter; examinerLimiter?: RateLimiter },
+) {
   const ledger =
     deps?.ledger ?? new SpendLedger(cfg.spendLedgerPath, cfg.spendCapUsd, cfg.spendDailyCapUsd);
   const limiter = deps?.limiter ?? new RateLimiter(cfg.snapsPerHourPerIp);
+  const examinerLimiter = deps?.examinerLimiter ?? new RateLimiter(cfg.examinerTurnsPerHourPerIp);
   const cache = new StreamCache();
   const app = new Hono();
 
@@ -138,6 +146,52 @@ export function createApp(cfg: Config, deps?: { ledger?: SpendLedger; limiter?: 
           }
         }
       });
+    },
+  );
+
+  // One typed examiner turn (docs/06 §5.5). The question and its model answer come from the
+  // bank in packages/rules; Spark only judges her answer. Never changes a mark.
+  app.post(
+    "/api/examiner",
+    bodyLimit({ maxSize: 4 * 1024, onError: (c) => c.json({ error: "answer too long" }, 413) }),
+    async (c) => {
+      let req: ExaminerTurnRequest;
+      try {
+        req = ExaminerTurnRequest.parse(await c.req.json());
+      } catch {
+        return c.json(
+          { error: "send question_id, answer (1–600 characters), language and her_mistake" },
+          400,
+        );
+      }
+      if (!examinerQuestionById(req.question_id)) {
+        return c.json({ error: "unknown question" }, 400);
+      }
+      if (cfg.mode === "golden-only") {
+        return c.json({ error: "The examiner is offline in this demo." }, 503);
+      }
+      if (!examinerLimiter.allow(clientIp(c, cfg))) {
+        return c.json({ error: "Too many answers from here this hour. Try again later." }, 429);
+      }
+      const live = cfg.mode === "live";
+      if (live && !ledger.reserve(EXAMINER_RESERVE_USD)) {
+        return c.json({ error: "The live AI budget is used up." }, 402);
+      }
+      const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(EXAMINER_TIMEOUT_MS)]);
+      let spent = EXAMINER_RESERVE_USD; // a failed or cut-off call may still have been billed
+      try {
+        const turn = await judgeAnswer(cfg, req, signal);
+        spent = turn.costUsd;
+        return c.json(turn.response);
+      } catch (e) {
+        if (e instanceof UnknownQuestionError) {
+          spent = 0;
+          return c.json({ error: "unknown question" }, 400);
+        }
+        return c.json({ error: "The examiner could not answer just now. Try again." }, 502);
+      } finally {
+        if (live) ledger.settle(EXAMINER_RESERVE_USD, spent);
+      }
     },
   );
 

@@ -25,7 +25,7 @@ export function costUsd(model: string, usage: Usage | null | undefined): number 
 }
 
 /** Output caps sent with every call, so the reserve below really is the worst case. */
-export const MAX_OUTPUT_TOKENS = { spark: 3000, wonder: 6000 } as const;
+export const MAX_OUTPUT_TOKENS = { spark: 3000, wonder: 6000, examiner: 2000 } as const;
 /** Input tokens for one page image plus prompt and schema (≈4,060 measured on Oct 26), with margin. */
 const MAX_INPUT_TOKENS = 6000;
 /** Two text prompts (table, graph) and one box-prompt request for the drawn parts. */
@@ -45,6 +45,15 @@ export const SNAP_RESERVE_USD =
     output_tokens: MAX_OUTPUT_TOKENS.wonder,
   }) +
   costUsd("sam-3.1", { images_processed: SAM_CALLS_PER_SNAP });
+
+/** Input tokens for one examiner turn: prompt, bank answer, her mistake and answer (text only). */
+const MAX_EXAMINER_INPUT_TOKENS = 2000;
+
+/** Worst case for one examiner turn (one Spark call), about $0.011. */
+export const EXAMINER_RESERVE_USD = costUsd("muse-spark-1.3", {
+  input_tokens: MAX_EXAMINER_INPUT_TOKENS,
+  output_tokens: MAX_OUTPUT_TOKENS.examiner,
+});
 
 interface LedgerFile {
   totalUsd: number;

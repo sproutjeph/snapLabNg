@@ -60,13 +60,28 @@ export interface PrecautionJudgement {
     | "not_past_tense";
 }
 
-/** Judges one precaution, exactly as written. */
-export function judgePrecaution(written: string): PrecautionJudgement {
-  const t = written
+const normalise = (written: string) =>
+  written
     .toLowerCase()
     .replace(/[’`]/g, "'")
     .replace(/^\s*\(?\d+[.)]\s*/, "") // "1. ", "(2) "
     .trim();
+
+/**
+ * Says the jockey was dragged, slid or scraped (not negated), whatever the tense: "I slid the
+ * jockey…" and "Slide the jockey gently…" both describe the penalised action.
+ */
+export function describesDragging(written: string): boolean {
+  const t = normalise(written);
+  return (
+    /\bjockey\b/.test(t) &&
+    new RegExp(String.raw`\b${DRAG}\b`).test(t.replace(negatedDrag("g"), " "))
+  );
+}
+
+/** Judges one precaution, exactly as written. */
+export function judgePrecaution(written: string): PrecautionJudgement {
+  const t = normalise(written);
   const topic = TOPICS.find((x) => x.test(t))?.id ?? null;
 
   if (IMPERATIVE.test(t)) return { accepted: false, matched: topic, reason: "instruction" };

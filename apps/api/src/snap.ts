@@ -86,7 +86,8 @@ const READINGS_PROMPT = [
   "Precautions word for word; an empty list if none are written.",
 ].join(" ");
 
-function strict(schema: Record<string, unknown>): Record<string, unknown> {
+/** Meta's strict mode rejects the root $schema key that zod emits. */
+export function strict(schema: Record<string, unknown>): Record<string, unknown> {
   const { $schema: _drop, ...rest } = schema;
   return rest;
 }

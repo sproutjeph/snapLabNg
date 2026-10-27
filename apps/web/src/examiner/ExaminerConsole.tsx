@@ -47,7 +47,9 @@ export default function ExaminerConsole({
     void currentQuestion?.id;
     void isSubmitting;
     void error;
-    turnsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Not on mount: inside the flow, the page must not jump past her red ink.
+    if (turns.length === 0 && !isSubmitting && !error) return;
+    turnsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [turns.length, currentQuestion?.id, isSubmitting, error]);
 
   const toggleModelAnswer = (turnId: string) => {
@@ -634,6 +636,7 @@ export default function ExaminerConsole({
         <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
           <textarea
             value={answer}
+            maxLength={600}
             onChange={(e) => setAnswer(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
