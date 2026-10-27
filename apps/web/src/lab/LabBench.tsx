@@ -12,6 +12,7 @@ import { ContextLossOverlay } from "../quality/ContextLossOverlay";
 import { QualityMonitor } from "../quality/QualityMonitor";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
 import { benchSetupFrom } from "./benchSetup";
+import { CurrentFlow } from "./CurrentFlow";
 import { type DrawnPart, InkSparks } from "./InkSparks";
 import { BENCH_TOP_Y, pageLayout } from "./layout";
 import { PageSheet } from "./PageSheet";
@@ -181,6 +182,7 @@ function BenchScene({
           onKeyToggle={handlers.onKeyToggle}
         />
       </RevealClip>
+      <CurrentFlow state={visual} maxDots={settings.maxParticles} />
       <RevealDirector
         phases={phases}
         startKey={startKey}

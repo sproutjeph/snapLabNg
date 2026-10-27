@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { benchSetupFrom, PLUG_BOX_COILS, plugsInFor } from "./benchSetup";
+import { flowRate } from "./flow";
 import { REVEAL_S, revealAt } from "./reveal";
 
 const pulled = (plugsIn: boolean[] | null) =>
@@ -64,5 +65,16 @@ describe("reveal timeline", () => {
 
   it("ends at once with reduced motion", () => {
     expect(revealAt(0, true)).toEqual({ glow: 1, sparks: 1, rise: 1, camera: 1 });
+  });
+});
+
+describe("current-flow rate", () => {
+  it("is still at balance and full for the cell's current, either direction", () => {
+    expect(flowRate(0)).toBe(0);
+    expect(flowRate(5e-6)).toBe(0); // micro-amps through the galvanometer near balance
+    expect(flowRate(0.1)).toBe(1);
+    expect(flowRate(-0.3)).toBe(1);
+    expect(flowRate(1e-3)).toBeCloseTo(0.5, 6); // half-way on the log scale
+    expect(flowRate(Number.NaN)).toBe(0);
   });
 });

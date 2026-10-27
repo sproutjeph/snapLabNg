@@ -8,6 +8,17 @@ export interface MeterBridgeVisualState {
   plugsIn: boolean[]; // same order as plugLabels; true = plug in (that coil shorted)
   keyClosed: boolean;
   scrapesCm: Array<[number, number]>; // dragged segments to draw as scratches, [fromCm, toCm]
+  /** The engine's conventional branch currents (A), for current-flow particles. */
+  currentsA: BranchCurrents;
+}
+
+export interface BranchCurrents {
+  cell: number; // out of the + terminal into A
+  rArm: number; // A → B, through the plug box
+  xArm: number; // B → C, through X
+  wireAJ: number; // A → J along the wire
+  wireJC: number; // J → C along the wire
+  galvo: number; // B → J through the galvanometer; 0 when the jockey is up
 }
 
 export interface MeterBridgeKitProps {
