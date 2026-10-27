@@ -24,6 +24,9 @@ COPY --from=build /app/packages/rules/node_modules ./packages/rules/node_modules
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/fixtures ./fixtures
 COPY --from=build /app/package.json ./package.json
-USER bun
+# No USER: the entrypoint starts as root so it can chown the root-owned Fly
+# volume at /data, then drops to bun (uid 1000) via setpriv before exec.
+RUN printf '%s\n' '#!/bin/sh' 'set -e' 'if [ "$(id -u)" = "0" ]; then' '  mkdir -p /data' '  chown bun:bun /data' '  exec setpriv --reuid=bun --regid=bun --clear-groups "$@"' 'fi' 'exec "$@"' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 EXPOSE 8080
 CMD ["bun", "apps/api/src/index.ts"]
