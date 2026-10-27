@@ -37,7 +37,14 @@ function toExponent(raw: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function allWritten(text: string): Written[] {
+/**
+ * Many Nigerian students write the decimal point raised: "33·30" (a middle dot), as
+ * WAEC-era British school texts do. Between two digits it is a decimal point.
+ */
+const RAISED_DOT = /(?<=\d)[\u00B7\u2219\u22C5\u2027](?=\d)/g;
+
+function allWritten(raw: string): Written[] {
+  const text = raw.replace(RAISED_DOT, ".");
   const out: Written[] = [];
   for (const m of text.matchAll(WRITTEN)) {
     const mantissa = (m[1] ?? "").replace("−", "-").replace(/^\+/, "");
@@ -48,7 +55,7 @@ function allWritten(text: string): Written[] {
 
 /** The single number a table cell holds (a trailing unit such as "cm" is ignored), or null. */
 function cellNumber(text: string): Written | null {
-  const t = text.trim();
+  const t = text.trim().replace(RAISED_DOT, ".");
   const all = allWritten(t);
   // A cell is one number, maybe with a unit after it; anything else is not a number.
   if (all.length !== 1) return null;

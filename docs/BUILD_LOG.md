@@ -9,6 +9,7 @@
 - PR #24 **built with Muse Code**: the lab notebook (her readings table on the virtual bench; never a correct value; "—" when R = 0). Next Muse Code slice: golden replay recorder and player (`docs/plans/golden-replay.md`, contract `GoldenRecording`).
 - PR #26 **built with Muse Code**: golden replay (timed recorder, paced player with abort, validated loader, download).
 - PR #21 Gemini's red-ink overlay, three review rounds (marks moved from a hand-written sheet to `markMeterBridge`, WAEC-style branding removed, unplaced items shown, pacing). Then joined to `?flow=1` (lead): her snapped page now gets red ink and a score from the rules engine, with an engine lane in the drawer.
+- First live read of a real notebook page (user ran it; $0.107; name pixelated before upload, never reached Meta). Spark: experiment and all 7 circuit parts with boxes (key included), 18 s. Wonder: all 15 numbers exactly as written, including the flawed "66·7", 32 s; but one box per column, no row numbers, and an invented graph. SAM: only "table" (0.57); no hand-drawn apparatus. Fixed: raised-dot decimals ("33·30") in the rules, and a tighter Wonder prompt. Next: SAM box prompts from Spark's boxes; faster settings.
 - Slices handed out: Gemini → red-ink marking overlay (`docs/plans/red-ink-overlay.md`); **Muse Code** (Meta's coding agent) joins as a third builder in `~/Desktop/SnapLabNG-muse` → procedural lab sounds (`docs/plans/lab-audio.md`). Every Muse Code slice is logged here as built with Muse Code.
 
 ## Oct 26 (Day 1)
