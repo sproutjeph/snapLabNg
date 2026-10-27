@@ -277,6 +277,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         boxSizing: "border-box",
         minHeight: "100vh",
         userSelect: "none",
+        fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
       <header style={{ textAlign: "center", marginBottom: "8px" }}>
@@ -288,7 +289,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             letterSpacing: "0.025em",
           }}
         >
-          WAEC Physics Practical: Metre Bridge
+          Metre bridge (Lite)
         </h1>
         <p
           style={{
@@ -297,7 +298,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             margin: 0,
           }}
         >
-          2D Flat Lab for Low-Spec &amp; Mobile Devices
+          A 2D bench for phones that can't run the 3D lab.
         </p>
       </header>
 
@@ -607,7 +608,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               textAnchor="middle"
               fontFamily="system-ui, sans-serif"
             >
-              Standard Coil
+              Unknown resistance
             </text>
           </g>
 
@@ -697,16 +698,16 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             fill="none"
           />
 
-          {/* 7. Driver Cell & Plug Key Circuit (Connected between A and C via bottom loop) */}
-          {/* Wire from A down to Driver Cell */}
-          <path d={`M 100 435 L 100 560 L 350 560`} stroke="#64748b" strokeWidth="3" fill="none" />
+          {/* 7. Leclanché Cell & Plug Key Circuit (Connected between A and C via bottom loop) */}
+          {/* Wire from A down to Leclanché Cell */}
+          <path d={`M 100 435 L 100 560 L 340 560`} stroke="#64748b" strokeWidth="3" fill="none" />
 
-          {/* Driver Cell (2V Accumulator) */}
-          <g transform="translate(350, 530)">
+          {/* Leclanché Cell */}
+          <g transform="translate(340, 530)">
             <rect
               x="0"
               y="0"
-              width="100"
+              width="120"
               height="60"
               rx="6"
               fill="#1e293b"
@@ -714,12 +715,12 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               strokeWidth="2"
             />
             {/* Battery Plate Symbols */}
-            <line x1="38" y1="15" x2="38" y2="45" stroke="#f8fafc" strokeWidth="3" />
-            <line x1="48" y1="22" x2="48" y2="38" stroke="#f8fafc" strokeWidth="6" />
-            <line x1="58" y1="15" x2="58" y2="45" stroke="#f8fafc" strokeWidth="3" />
-            <line x1="68" y1="22" x2="68" y2="38" stroke="#f8fafc" strokeWidth="6" />
+            <line x1="48" y1="15" x2="48" y2="45" stroke="#f8fafc" strokeWidth="3" />
+            <line x1="58" y1="22" x2="58" y2="38" stroke="#f8fafc" strokeWidth="6" />
+            <line x1="68" y1="15" x2="68" y2="45" stroke="#f8fafc" strokeWidth="3" />
+            <line x1="78" y1="22" x2="78" y2="38" stroke="#f8fafc" strokeWidth="6" />
             <text
-              x="50"
+              x="60"
               y="54"
               fontSize="10"
               fontWeight="bold"
@@ -727,12 +728,12 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               textAnchor="middle"
               fontFamily="system-ui, sans-serif"
             >
-              DRIVER CELL (2V)
+              LECLANCHÉ CELL
             </text>
           </g>
 
-          {/* Wire between Battery and Plug Key */}
-          <path d="M 450 560 L 750 560" stroke="#64748b" strokeWidth="3" fill="none" />
+          {/* Wire between Cell and Plug Key */}
+          <path d="M 460 560 L 750 560" stroke="#64748b" strokeWidth="3" fill="none" />
 
           {/* Plug Key (Switch) */}
           {/* biome-ignore lint/a11y/useSemanticElements: SVG <g> requires role="button" for vector apparatus controls */}
