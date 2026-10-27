@@ -1,5 +1,9 @@
 # Build log
 
+## Oct 27 (Day 2)
+- `MarkSheet` contract in `packages/contracts` (the rules engine's output: half-mark items, evidence boxes, annotations, totals that must add up, accuracy only in teacher mode).
+- Slices handed out: Gemini → red-ink marking overlay (`docs/plans/red-ink-overlay.md`); **Muse Code** (Meta's coding agent) joins as a third builder in `~/Desktop/SnapLabNG-muse` → procedural lab sounds (`docs/plans/lab-audio.md`). Every Muse Code slice is logged here as built with Muse Code.
+
 ## Oct 26 (Day 1)
 - First commit: planning docs, agent harness (`.claude/`, `.gemini/`, `.githooks/`), shared rulebook `AGENTS.md`, generic workspace config. No app code.
 - PR #1 web shell (desk, lined page, ink glow, screenshot script). PR #3 Gemini's procedural metre bridge kit, merged after two review rounds on wire pointer handling (world vs local cm, R3F capture, lifting off the wire must not count as a drag).
