@@ -10,6 +10,8 @@ import { loadGolden } from "../golden/load";
 import { replay } from "../golden/replay";
 import { RedInkOverlay } from "../marking/RedInkOverlay";
 import { rectifyPage } from "../rectify/rectify";
+import TeacherPanel from "../teacher/TeacherPanel";
+import { useTeacher } from "../teacher/useTeacher";
 import { pageToUploadJpeg } from "./pageUpload";
 import { streamSnap } from "./snapClient";
 import { traceFromEvents } from "./trace";
@@ -55,6 +57,8 @@ export default function FlowPage() {
   const [nowMs, setNowMs] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const abort = useRef<AbortController | null>(null);
+  // Teacher mode: the teacher's true X marks accuracy; null (hidden) in student view.
+  const teacher = useTeacher();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: start a golden replay once, on load
   useEffect(() => {
@@ -170,11 +174,11 @@ export default function FlowPage() {
       return null;
     const startMs = performance.now();
     const sheet = markMeterBridgePage(readings, {
-      teacherXOhm: null,
+      teacherXOhm: teacher.xOhm,
       setupIssues: (setupIssues ?? []).map((i) => ({ description: i.description, box: null })),
     });
     return { sheet, startMs, endMs: performance.now() };
-  }, [readings, mode, setupIssues]);
+  }, [readings, mode, setupIssues, teacher.xOhm]);
 
   const trace = useMemo(() => {
     const t = traceFromEvents(events, t0);
@@ -211,6 +215,9 @@ export default function FlowPage() {
       }}
     >
       <ShowAiToggle running={step === "reading"} onClick={() => setDrawerOpen((o) => !o)} />
+      <div style={{ position: "fixed", left: 16, bottom: 16, zIndex: 20 }}>
+        <TeacherPanel teacher={teacher} />
+      </div>
       <h1 style={{ fontSize: 20, margin: "0 0 4px" }}>Reading your page</h1>
       <p style={{ margin: "0 0 16px", color: "#94a3b8" }}>
         {step === "reading" ? "Meta's models are reading it now…" : "Done."}
