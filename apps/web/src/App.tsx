@@ -13,9 +13,11 @@ const MarkingPreview = lazy(() => import("./marking/MarkingPreview"));
 const ExaminerPreview = lazy(() => import("./examiner/ExaminerPreview"));
 const TeacherPreview = lazy(() => import("./teacher/TeacherPreview"));
 const QualityPreview = lazy(() => import("./quality/QualityPreview"));
+const HomePreview = lazy(() => import("./home/HomePreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
+  const isHomePreview = params.get("home") === "1";
   const isMeterBridgeKit = params.get("kit") === "meter-bridge";
   const isTitrationKit = params.get("kit") === "titration";
   const isCapturePreview = params.get("capture") === "1";
@@ -31,7 +33,9 @@ export function App() {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isQualityPreview ? (
+        {isHomePreview ? (
+          <HomePreview />
+        ) : isQualityPreview ? (
           <QualityPreview />
         ) : isExaminerPreview ? (
           <ExaminerPreview />
