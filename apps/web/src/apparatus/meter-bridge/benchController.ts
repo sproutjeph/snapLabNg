@@ -62,6 +62,7 @@ export function createBenchController(setup: BenchSetup): BenchController {
     plugsIn: [...setup.plugsIn],
     keyClosed: false,
     scrapesCm: [],
+    currentsA: { cell: 0, rArm: 0, xArm: 0, wireAJ: 0, wireJC: 0, galvo: 0 },
   };
   const t = { accumulatorS: 0, liftAtS: 0, nowS: 0 };
   // One drag becomes one scrape over the whole span it covered, recorded when the jockey
@@ -84,6 +85,14 @@ export function createBenchController(setup: BenchSetup): BenchController {
     }
 
     visual.needleDeg = engine.needle.thetaDeg;
+    const i = engine.solution.branchCurrentsA;
+    const c = visual.currentsA;
+    c.cell = i.cell;
+    c.rArm = i.rArm;
+    c.xArm = i.xArm;
+    c.wireAJ = i.wireAJ;
+    c.wireJC = i.wireJC;
+    c.galvo = i.galvo;
     visual.keyClosed = inputs.keyClosed;
     visual.jockeyDown = inputs.jockeyCm !== null;
     if (inputs.jockeyCm !== null) visual.jockeyCm = inputs.jockeyCm;
