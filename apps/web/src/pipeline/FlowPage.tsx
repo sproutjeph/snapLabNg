@@ -325,12 +325,12 @@ export default function FlowPage() {
 }
 
 function ReadingsTable({ readings }: { readings: Readings }) {
+  // Her own columns, in the order she wrote them, whatever the form (reciprocal or l₁/l₂).
+  const colKey = (c: Readings["cells"][number]) => c.column_header_as_written ?? c.column;
+  const cols = [...new Set(readings.cells.map(colKey))];
   const rows = [...new Set(readings.cells.filter((c) => !/head/i.test(c.row)).map((c) => c.row))];
-  const cols = ["R", "l", "R_inv", "l_inv"] as const;
-  const cell = (row: string, col: (typeof cols)[number]) =>
-    readings.cells.find((c) => c.row === row && c.column === col);
-  const header = (col: (typeof cols)[number]) =>
-    readings.cells.find((c) => c.column === col)?.column_header_as_written ?? col;
+  const cell = (row: string, col: string) =>
+    readings.cells.find((c) => c.row === row && colKey(c) === col);
   return (
     <table style={{ borderCollapse: "collapse", fontSize: 14 }}>
       <caption style={{ textAlign: "left", marginBottom: 6, color: "#cbd5e1" }}>
@@ -340,7 +340,7 @@ function ReadingsTable({ readings }: { readings: Readings }) {
         <tr>
           {cols.map((c) => (
             <th key={c} style={{ border: "1px solid #334155", padding: "4px 10px" }}>
-              {header(c)}
+              {c}
             </th>
           ))}
         </tr>

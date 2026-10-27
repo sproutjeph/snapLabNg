@@ -14,6 +14,43 @@ export interface RedInkOverlayProps {
 }
 
 const OVERLAY_STYLE_ID = "snaplab-red-ink-overlay-style";
+
+/** Plain words for each rule, for a student (the rule codes stay in the detail view). */
+const RULE_WORDS: Record<MarkItem["rule"], string> = {
+  "CHEM-BUR-2DP": "Burette readings to 2 d.p.",
+  "CHEM-CONCORD": "Concordant titres",
+  "CHEM-ROUGH": "Rough titre",
+  "CHEM-PARALLAX": "Reading the meniscus",
+  "CHEM-MOLE-RATIO": "Mole ratio",
+  "CHEM-3SF": "Answer to 3 s.f.",
+  "CHEM-ENDPOINT": "End point",
+  "PHYS-OPT-TRACES": "Ray traces",
+  "PHYS-OPT-ARROW": "Ray arrows",
+  "PHYS-1DP": "Lengths to 1 d.p.",
+  "PHYS-3SF": "Values to 3 s.f.",
+  "PHYS-TABLE": "Table",
+  "GRAPH-AXES": "Graph axes",
+  "GRAPH-POINTS": "Plotted points",
+  "GRAPH-LINE": "Line of best fit",
+  "GRAPH-INTERCEPT": "Intercept",
+  "GRAPH-SCALE": "Graph scale",
+  "GRAPH-SLOPE": "Slope",
+  "PHYS-EVAL": "Working",
+  "PHYS-ACCURACY": "Accuracy",
+  PRECAUTIONS: "Precautions",
+};
+
+export function ruleWords(rule: MarkItem["rule"]): string {
+  return RULE_WORDS[rule] ?? rule;
+}
+
+/** Plain words for one item: the table's parts get their own names. */
+export function itemWords(item: MarkItem): string {
+  if (item.id.startsWith("PHYS-TABLE:units")) return "Units in the headings";
+  if (item.id === "PHYS-TABLE:columns") return "Table columns";
+  if (item.id === "PHYS-EVAL:mean") return "Mean";
+  return ruleWords(item.rule);
+}
 export const LOST_STEP_MS = 450;
 export const LOST_DRAW_MS = 400;
 export const EARNED_STAGGER_MS = 100;
@@ -327,6 +364,11 @@ export function RedInkOverlay({
     [preparedItems, selectedItemId],
   );
 
+  const offPageItems = useMemo(
+    () => preparedItems.filter((entry) => entry.marginIndex !== null),
+    [preparedItems],
+  );
+
   const handleActivateItem = (item: MarkItem) => {
     setSelectedItemId(item.id);
     onItemOpen?.(item.id);
@@ -451,114 +493,8 @@ export function RedInkOverlay({
               : `+${formatHalf(item.marks_earned)}`;
             const isSelected = selectedItemId === item.id;
 
-            // Margin list entry for items with no evidence box (e.g. PHYS-TABLE:columns)
-            if (marginIndex !== null) {
-              const marginY0 = 0.782 + marginIndex * 0.03;
-              const marginTickBox: Box = isLost
-                ? { x0: 0.07, y0: marginY0, x1: 0.095, y1: marginY0 + 0.024 }
-                : { x0: 0.02, y0: marginY0, x1: 0.092, y1: marginY0 + 0.024 };
-              const seed = hashSeed(`margin:${item.id}`);
-              const d = buildAnnotationPath(
-                isLost ? "strike" : "tick",
-                marginTickBox,
-                safeAspect,
-                seed,
-              );
-              const strokeStyle = shouldAnimate
-                ? {
-                    strokeDasharray: 1,
-                    strokeDashoffset: 1,
-                    animation: `snaplab-ink-draw ${drawMs}ms ease-out ${delayMs}ms forwards`,
-                  }
-                : { strokeDashoffset: 0 };
-              const marginText = `${item.rule}  ${markText}${
-                item.correction ? `  ${item.correction}` : ""
-              }`;
-
-              return (
-                // biome-ignore lint/a11y/useSemanticElements: SVG <g> requires role="button" + tabIndex for keyboard-focusable vector annotations
-                <g
-                  key={item.id}
-                  ref={(node) => {
-                    if (node) {
-                      itemRefs.current.set(item.id, node);
-                    } else {
-                      itemRefs.current.delete(item.id);
-                    }
-                  }}
-                  className="snaplab-ink-item"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${item.rule} (${item.outcome} ${markText})${
-                    item.correction ? ` — ${item.correction}` : ""
-                  }`}
-                  aria-pressed={isSelected}
-                  data-item-id={item.id}
-                  data-outcome={item.outcome}
-                  data-margin-item="true"
-                  onClick={() => handleActivateItem(item)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleActivateItem(item);
-                    }
-                  }}
-                >
-                  <rect
-                    x={0.065}
-                    y={marginY0 * safeAspect}
-                    width={0.36}
-                    height={0.026 * safeAspect}
-                    fill="transparent"
-                  />
-                  <rect
-                    className="snaplab-ink-focus-ring"
-                    x={0.062}
-                    y={marginY0 * safeAspect - 0.004}
-                    width={0.366}
-                    height={0.026 * safeAspect + 0.008}
-                    rx={0.006}
-                    fill="none"
-                    stroke="#2563eb"
-                    strokeWidth={0.0025}
-                    opacity={isSelected ? 0.9 : 0}
-                  />
-                  <path
-                    className="snaplab-ink-stroke"
-                    d={d}
-                    pathLength={1}
-                    fill="none"
-                    stroke="#dc2626"
-                    strokeWidth={0.003}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={strokeStyle}
-                  />
-                  <text
-                    className="snaplab-ink-label"
-                    x={0.105}
-                    y={(marginY0 + 0.011) * safeAspect}
-                    fill="#b91c1c"
-                    fontSize={0.0155}
-                    fontWeight={700}
-                    fontFamily={handFont}
-                    dominantBaseline="middle"
-                    style={
-                      shouldAnimate
-                        ? {
-                            opacity: 0,
-                            animation: `snaplab-ink-fade 220ms ease-out ${
-                              delayMs + drawMs * 0.5
-                            }ms forwards`,
-                          }
-                        : { opacity: 1 }
-                    }
-                  >
-                    {marginText}
-                  </text>
-                </g>
-              );
-            }
+            // Items with no place on her page (e.g. PHYS-TABLE:columns) are listed under it.
+            if (marginIndex !== null) return null;
 
             const firstBox = boxes[0] ?? null;
             const lostReason = isLost ? lostLabelReason(item) : null;
@@ -741,6 +677,44 @@ export function RedInkOverlay({
           })}
         </svg>
       </div>
+
+      {offPageItems.length > 0 && (
+        <ul
+          aria-label="Marks with no single place on the page"
+          style={{ listStyle: "none", margin: "10px 0 0", padding: 0, width: "100%" }}
+        >
+          {offPageItems.map(({ item }) => {
+            const isLost = item.outcome === "lost";
+            const markText = isLost
+              ? `−${formatHalf(item.marks_available - item.marks_earned)}`
+              : `+${formatHalf(item.marks_earned)}`;
+            return (
+              <li key={item.id} style={{ margin: "0 0 6px" }}>
+                <button
+                  type="button"
+                  onClick={() => handleActivateItem(item)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #334155",
+                    background: "#faf6ec",
+                    color: isLost ? "#b91c1c" : "#15803d",
+                    fontFamily: handFont,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {isLost ? "✗" : "✓"} {itemWords(item)} {markText}
+                  {item.correction ? ` · ${item.correction}` : ""}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {selectedItem && (
         <MarkDetail key={selectedItem.id} item={selectedItem} onClose={handleCloseDetail} />
