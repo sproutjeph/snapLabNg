@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { parseImageStream, recordsOfKind } from "@meta-sam/parser";
+import { buildObjectPrompt, parseImageStream, recordsOfKind } from "@meta-sam/parser";
 import {
   type Blueprint,
   BlueprintSchema,
@@ -23,16 +23,39 @@ export const MODELS = {
 
 /** One noun phrase per SAM request (docs/06 §5.2, Plan A). */
 export const SAM_PHRASES: Record<string, string[]> = {
-  meter_bridge: [
-    "galvanometer",
-    "resistance box",
-    "long straight wire",
-    "cell",
-    "key",
-    "graph",
-    "table",
-  ],
+  meter_bridge: ["table", "graph"],
 };
+
+/** SAM takes at most 16 objects per request (dev.meta.ai/docs/sam/segmenting). */
+const SAM_MAX_OBJECTS = 16;
+
+/**
+ * Box prompts for the drawn parts the blueprint found: Spark's 0–1 boxes in source
+ * pixels, ids 1…n, and the component name each id stands for. Null when nothing usable.
+ */
+export function componentBoxPrompt(
+  components: Blueprint["components"],
+  width: number,
+  height: number,
+): { text: string; names: string[] } | null {
+  const objects: Array<{
+    id: number;
+    prompts: Array<{ box: { left: number; top: number; right: number; bottom: number } }>;
+  }> = [];
+  const names: string[] = [];
+  for (const c of components) {
+    if (objects.length >= SAM_MAX_OBJECTS) break;
+    const left = Math.max(0, Math.floor(c.approx_box.x0 * width));
+    const top = Math.max(0, Math.floor(c.approx_box.y0 * height));
+    const right = Math.min(width, Math.ceil(c.approx_box.x1 * width));
+    const bottom = Math.min(height, Math.ceil(c.approx_box.y1 * height));
+    if (right - left < 2 || bottom - top < 2) continue;
+    names.push(c.kind);
+    objects.push({ id: names.length, prompts: [{ box: { left, top, right, bottom } }] });
+  }
+  if (!objects.length) return null;
+  return { text: buildObjectPrompt({ size: { width, height }, objects }), names };
+}
 
 export interface SnapInput {
   photo: Uint8Array;
@@ -50,8 +73,17 @@ export interface SnapResult {
 
 const BLUEPRINT_PROMPT =
   "This is a photo of a Nigerian student's WAEC science practical notebook page. Identify the experiment, the apparatus drawn and the values written. Copy every value exactly as written. Use Nigerian naming (e.g. trioxocarbonate(IV)). Boxes are 0–1 page coordinates. Leave notes empty.";
-const READINGS_PROMPT =
-  "Read the results table, graph and precautions on this WAEC practical page. Copy every number exactly as written (keep '57' as '57', '24.5' as '24.5'). Precautions word for word. Boxes are 0–1 page coordinates.";
+// Tightened after the Oct 27 live read of a real notebook: Wonder gave every cell of a
+// column the same box, left rows unnumbered and invented a graph for a page without one.
+const READINGS_PROMPT = [
+  "Read the results table, graph and precautions on this WAEC practical page.",
+  "Copy every number exactly as written: keep '57' as '57', '24.5' as '24.5', and a raised decimal point '33·30' exactly as '33·30'.",
+  "row: the row's S/N or number as written ('1', '2', …); if none is written, number the rows from 1 in order. Use 'header' for the heading row.",
+  "box: a tight 0–1 page box around that one number only, never the whole column.",
+  "If the table has columns that are not in the column list, use 'other' and keep the heading in column_header_as_written.",
+  "graph: null unless a graph is actually drawn on this page; never invent points, labels or a triangle.",
+  "Precautions word for word; an empty list if none are written.",
+].join(" ");
 
 function strict(schema: Record<string, unknown>): Record<string, unknown> {
   const { $schema: _drop, ...rest } = schema;
@@ -274,60 +306,95 @@ export async function runSnap(
     }
   })();
 
-  // --- Outlines (SAM, one phrase per request) ----------------------------------------
-  const phrases = SAM_PHRASES[input.hint ?? "meter_bridge"] ?? [];
-  const samDone = Promise.all(
-    phrases.map(async (phrase) => {
-      const name = `sam-${slug(phrase)}`;
-      const body = {
+  // --- Outlines (SAM) ------------------------------------------------------------------
+  // Text prompts find printed-like things (the table worked on a real page, Oct 27) but
+  // nothing in hand-drawn apparatus, so the drawn parts use docs/06 §5.2 Plan B: once
+  // the blueprint is in, Spark's boxes go to SAM as box prompts in one request.
+  const runSam = async (
+    name: string,
+    label: string,
+    body: Record<string, unknown>,
+    phraseOf: (objectId: string) => string | null,
+  ) => {
+    const start = sinceStart();
+    try {
+      const r = await callResponses(cfg, name, body, signal);
+      spent += costUsd(MODELS.sam, r.response.usage ?? { images_processed: 1 });
+      const source = r.events.length ? r.events : eventsFromResponse(r.response);
+      const parsed = await parseImageStream(
+        (async function* () {
+          yield* source;
+        })(),
+      ).finalResult;
+      const boxes = recordsOfKind(parsed.records, "box").flatMap((b) => {
+        const phrase = phraseOf(b.objectId);
+        return phrase
+          ? [{ phrase, box: toPageBox(b, input.width, input.height), score: b.confidence ?? null }]
+          : [];
+      });
+      await blueprintDone;
+      for (const b of boxes) send({ type: "sam_box", ...b });
+      timing(
+        name,
+        "sam",
+        MODELS.sam,
+        label,
+        start,
+        boxes.length ? "ok" : "fallback",
+        body,
+        boxes,
+        boxes.length ? null : "no detections; outline from the blueprint's box",
+      );
+    } catch (e) {
+      await blueprintDone;
+      timing(
+        name,
+        "sam",
+        MODELS.sam,
+        label,
+        start,
+        "fallback",
+        body,
+        null,
+        `${errorText(e)}; outline from the blueprint's box`,
+      );
+    }
+  };
+
+  const textSam = (SAM_PHRASES[input.hint ?? "meter_bridge"] ?? []).map((phrase) =>
+    runSam(
+      `sam-${slug(phrase)}`,
+      `Outline: ${phrase}`,
+      {
         model: MODELS.sam,
         stream: true,
         metadata: { include_confidence: "true" },
         input: [{ role: "user", content: [{ type: "input_text", text: phrase }, image] }],
-      };
-      const start = sinceStart();
-      try {
-        const r = await callResponses(cfg, name, body, signal);
-        spent += costUsd(MODELS.sam, r.response.usage ?? { images_processed: 1 });
-        const source = r.events.length ? r.events : eventsFromResponse(r.response);
-        const parsed = await parseImageStream(
-          (async function* () {
-            yield* source;
-          })(),
-        ).finalResult;
-        const boxes = recordsOfKind(parsed.records, "box").map((b) => ({
-          box: toPageBox(b, input.width, input.height),
-          score: b.confidence ?? null,
-        }));
-        await blueprintDone;
-        for (const b of boxes) send({ type: "sam_box", phrase, ...b });
-        timing(
-          name,
-          "sam",
-          MODELS.sam,
-          `Outline: ${phrase}`,
-          start,
-          boxes.length ? "ok" : "fallback",
-          body,
-          boxes,
-          boxes.length ? null : "no detections; outline from the blueprint's box",
-        );
-      } catch (e) {
-        await blueprintDone;
-        timing(
-          name,
-          "sam",
-          MODELS.sam,
-          `Outline: ${phrase}`,
-          start,
-          "fallback",
-          body,
-          null,
-          `${errorText(e)}; outline from the blueprint's box`,
-        );
-      }
-    }),
+      },
+      () => phrase,
+    ),
   );
+
+  const boxSam = (async () => {
+    await blueprintDone;
+    // Assigned inside the blueprint stage; TypeScript can't see that across the closure.
+    const bp = blueprint as Blueprint | null;
+    const prompt = bp ? componentBoxPrompt(bp.components, input.width, input.height) : null;
+    if (!prompt) return;
+    await runSam(
+      "sam-components",
+      `Outline: ${prompt.names.length} drawn parts (box prompts)`,
+      {
+        model: MODELS.sam,
+        stream: true,
+        metadata: { include_confidence: "true" },
+        input: [{ role: "user", content: [{ type: "input_text", text: prompt.text }, image] }],
+      },
+      (id) => prompt.names[Number(id) - 1] ?? null,
+    );
+  })();
+
+  const samDone = Promise.all([...textSam, boxSam]);
 
   await Promise.all([blueprintDone, readingsDone, samDone]);
   send({ type: "done", total_ms: sinceStart() });

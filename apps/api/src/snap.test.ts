@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "./app";
 import { type Config, loadConfig } from "./env";
 import { RateLimiter } from "./rateLimit";
-import { runSnap, toPageBox } from "./snap";
+import { componentBoxPrompt, runSnap, toPageBox } from "./snap";
 import { SpendLedger } from "./spend";
 
 const SPIKE = join(__dirname, "../../../fixtures/spike/2026-10-26");
@@ -47,7 +47,9 @@ describe("runSnap on the recorded Oct 26 responses", () => {
     const events = await collect(cfgFor(SPIKE));
     const timings = events.filter((e) => e.type === "timing");
     expect(timings.map((t) => t.lane).sort()).toEqual(
-      ["sam", "sam", "sam", "sam", "sam", "sam", "sam", "spark", "wonder"].sort(),
+      // Text prompts for "table" and "graph"; this blueprint fixture has no components, so
+      // there is no box-prompt request for drawn parts (docs/06 §5.2 Plan B).
+      ["sam", "sam", "spark", "wonder"].sort(),
     );
     // Spark copied NAME/SCHOOL into notes on Oct 26 (BUILD_LOG); it must not reach the client.
     expect(JSON.stringify(events)).not.toContain("Amina Bello");
@@ -141,5 +143,39 @@ describe("HTTP", () => {
     form.set("height", "10");
     const res = await app(cfgFor(SPIKE)).request("/api/snap", { method: "POST", body: form });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("componentBoxPrompt (SAM Plan B)", () => {
+  // dev.meta.ai/docs/sam/segmenting: box prompts in source pixels, at most 16 objects, ids we choose.
+  const comp = (
+    kind: "galvanometer" | "cell" | "key",
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+  ) => ({
+    kind,
+    label_as_written: null,
+    approx_box: { x0, y0, x1, y1 },
+  });
+
+  it("turns the blueprint's 0–1 boxes into pixel box prompts with ids 1…n", () => {
+    const p = componentBoxPrompt(
+      [comp("galvanometer", 0.5, 0.4, 0.55, 0.5), comp("key", 0.6, 0.2, 0.68, 0.28)],
+      1200,
+      896,
+    );
+    expect(p?.names).toEqual(["galvanometer", "key"]);
+    expect(p?.text).toContain("1<|box;x1=600;y1=358");
+    expect(p?.text).toContain("2<|box;x1=720;y1=179");
+  });
+
+  it("skips boxes that are too small and caps at 16 objects", () => {
+    expect(componentBoxPrompt([comp("cell", 0.5, 0.5, 0.5005, 0.6)], 1000, 1000)).toBeNull();
+    const many = Array.from({ length: 20 }, (_, i) =>
+      comp("cell", 0.01 * i, 0.1, 0.01 * i + 0.05, 0.2),
+    );
+    expect(componentBoxPrompt(many, 1000, 1000)?.names).toHaveLength(16);
   });
 });

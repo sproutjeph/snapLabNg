@@ -9,6 +9,7 @@
       "!**/golden",
       "!**/docs",
       "!**/dataset",
+      "!**/.spend",
       "!**/*.md",
       "!.claude"
     ]
