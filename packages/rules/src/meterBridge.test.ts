@@ -40,6 +40,14 @@ describe("reading what she wrote", () => {
     expect(lastNumber("c = 1.02 × 10⁻² cm⁻¹")).toBeCloseTo(0.0102, 12);
   });
 
+  it("reads a raised decimal point (33·30) as a decimal point", () => {
+    // Real Nigerian notebook (Oct 27 live read): lengths written "33·30", "66·7", means "4·00".
+    expect(decimalPlaces("33·30")).toBe(2);
+    expect(decimalPlaces("66·7")).toBe(1);
+    expect(sigFigs("2·00")).toBe(3);
+    expect(lastNumber("Mean X = 4·00 ohms")).toBeCloseTo(4, 12);
+  });
+
   it("reads standard form and ignores a unit written in the cell", () => {
     // Standard form is common in WAEC working; the rule counts the figures she wrote.
     expect(sigFigs("3.95×10⁻²")).toBe(3);

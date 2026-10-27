@@ -50,8 +50,17 @@ export interface SnapResult {
 
 const BLUEPRINT_PROMPT =
   "This is a photo of a Nigerian student's WAEC science practical notebook page. Identify the experiment, the apparatus drawn and the values written. Copy every value exactly as written. Use Nigerian naming (e.g. trioxocarbonate(IV)). Boxes are 0–1 page coordinates. Leave notes empty.";
-const READINGS_PROMPT =
-  "Read the results table, graph and precautions on this WAEC practical page. Copy every number exactly as written (keep '57' as '57', '24.5' as '24.5'). Precautions word for word. Boxes are 0–1 page coordinates.";
+// Tightened after the Oct 27 live read of a real notebook: Wonder gave every cell of a
+// column the same box, left rows unnumbered and invented a graph for a page without one.
+const READINGS_PROMPT = [
+  "Read the results table, graph and precautions on this WAEC practical page.",
+  "Copy every number exactly as written: keep '57' as '57', '24.5' as '24.5', and a raised decimal point '33·30' exactly as '33·30'.",
+  "row: the row's S/N or number as written ('1', '2', …); if none is written, number the rows from 1 in order. Use 'header' for the heading row.",
+  "box: a tight 0–1 page box around that one number only, never the whole column.",
+  "If the table has columns that are not in the column list, use 'other' and keep the heading in column_header_as_written.",
+  "graph: null unless a graph is actually drawn on this page; never invent points, labels or a triangle.",
+  "Precautions word for word; an empty list if none are written.",
+].join(" ");
 
 function strict(schema: Record<string, unknown>): Record<string, unknown> {
   const { $schema: _drop, ...rest } = schema;
