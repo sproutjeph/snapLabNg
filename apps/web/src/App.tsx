@@ -17,9 +17,11 @@ const MicPreview = lazy(() => import("./examiner/voice/MicPreview"));
 const PwaPreview = lazy(() => import("./pwa/PwaPreview"));
 const HomePreview = lazy(() => import("./home/HomePreview"));
 const AboutPreview = lazy(() => import("./about/AboutPreview"));
+const LitePreview = lazy(() => import("./lite/LitePreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
+  const isLitePreview = params.get("lite") === "1";
   const isHomePreview = params.get("home") === "1";
   const isMeterBridgeKit = params.get("kit") === "meter-bridge";
   const isTitrationKit = params.get("kit") === "titration";
@@ -40,7 +42,9 @@ export function App() {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isPwaPreview ? (
+        {isLitePreview ? (
+          <LitePreview />
+        ) : isPwaPreview ? (
           <PwaPreview />
         ) : isAboutPreview ? (
           <AboutPreview />
