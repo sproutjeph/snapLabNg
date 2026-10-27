@@ -81,8 +81,8 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `apps/web/src/examiner/**`, plus only the `?examiner=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/examiner-console.md`) | Gemini, while `gemini/examiner-console` is open |
-| `apps/web/src/teacher/**`, plus only the `?teacher=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/teacher-mode.md`) | Muse Code, while `muse/teacher-mode` is open |
+| `apps/web/src/apparatus/titration/**`, plus only the `?kit=titration` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/titration-kit.md`) | Gemini, while `gemini/titration-kit` is open |
+| `apps/web/src/quality/**`, plus only the `?quality=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/quality-tiers.md`) | Muse Code, while `muse/quality-tiers` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 The lead updates this table when it hands out a new slice.

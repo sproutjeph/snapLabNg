@@ -2,6 +2,9 @@ import type { Box, MarkItem, MarkSheet, Readings, RuleCode } from "@snaplab/cont
 import { judgePrecaution } from "./precautions";
 import { decimalPlaces, hasUnit, lastNumber, parseNumber, sigFigs } from "./text";
 
+/** The sheet label of this form (also how the examiner tells the forms apart). */
+export const L1L2_QUESTION_LABEL = "Metre bridge, l₁/l₂ form (SnapLab's mark split)";
+
 // Marking for the other common metre bridge write-up (docs/plans/rules-meter-bridge-l1l2.md):
 // for each R she finds l₁, writes l₂ = 100 − l₁, works out X = R·l₂/l₁, averages X, and may
 // plot l₂ against l₁. The items follow the WAEC metre bridge expectations already used for
@@ -468,7 +471,7 @@ export function markMeterBridgeL1L2(r: Readings, opts: MarkL1L2Options = {}): Ma
 
   return {
     experiment: "meter_bridge",
-    question_label: "Metre bridge, l₁/l₂ form (SnapLab's mark split)",
+    question_label: L1L2_QUESTION_LABEL,
     earned: s.items.reduce((t, i) => t + i.marks_earned, 0),
     available: s.items.reduce((t, i) => t + i.marks_available, 0),
     items: s.items,

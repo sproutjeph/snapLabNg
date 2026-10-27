@@ -2,6 +2,7 @@ import type { MarkSheet, Readings } from "@snaplab/contracts";
 import { markMeterBridge } from "./meterBridge";
 import { isL1L2Page, markMeterBridgeL1L2 } from "./meterBridgeL1L2";
 
+export * from "./examiner";
 export * from "./meterBridge";
 export * from "./meterBridgeL1L2";
 export * from "./precautions";

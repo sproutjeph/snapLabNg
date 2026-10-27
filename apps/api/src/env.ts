@@ -16,11 +16,14 @@ export interface Config {
   apiKey: string | null;
   recordFixtures: boolean;
   fixtureDir: string;
+  /** Recorded examiner turns, replayed in fixtures mode. */
+  examinerFixtureDir: string;
   recordDir: string;
   spendCapUsd: number;
   spendDailyCapUsd: number;
   spendLedgerPath: string;
   snapsPerHourPerIp: number;
+  examinerTurnsPerHourPerIp: number;
   /** Trust fly-client-ip / x-forwarded-for for rate limiting (only behind a real proxy). */
   trustProxy: boolean;
   port: number;
@@ -45,6 +48,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     apiKey: mode === "live" ? apiKey : null,
     recordFixtures: env.RECORD_FIXTURES === "1",
     fixtureDir: fromRoot(env.FIXTURE_DIR ?? "fixtures/spike/2026-10-26"),
+    examinerFixtureDir: fromRoot(
+      env.EXAMINER_FIXTURE_DIR ?? "fixtures/recorded/2026-10-27-examiner",
+    ),
     recordDir: fromRoot(
       env.RECORD_DIR ?? `fixtures/recorded/${new Date().toISOString().slice(0, 10)}`,
     ),
@@ -52,6 +58,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     spendDailyCapUsd: num(env.SPEND_DAILY_CAP_USD, 5),
     spendLedgerPath: fromRoot(env.SPEND_LEDGER_PATH ?? ".spend/ledger.json"),
     snapsPerHourPerIp: num(env.SNAPS_PER_HOUR_PER_IP, 10),
+    examinerTurnsPerHourPerIp: num(env.EXAMINER_TURNS_PER_HOUR_PER_IP, 30),
     trustProxy: env.TRUST_PROXY === "1",
     port: num(env.PORT, 8787),
   };

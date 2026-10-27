@@ -1,11 +1,12 @@
 import type { MarkSheet, Readings, SnapEvent } from "@snaplab/contracts";
-import { markMeterBridgePage } from "@snaplab/rules";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { examinerQuestions, markMeterBridgePage } from "@snaplab/rules";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import AiDrawer from "../ai-drawer/AiDrawer";
 import { ShowAiToggle } from "../ai-drawer/ShowAiToggle";
 import CaptureFlow from "../capture/CaptureFlow";
 import type { CaptureResult } from "../capture/types";
+import { makeAsk } from "../examiner/examinerClient";
 import { loadGolden } from "../golden/load";
 import { replay } from "../golden/replay";
 import { RedInkOverlay } from "../marking/RedInkOverlay";
@@ -15,6 +16,8 @@ import { useTeacher } from "../teacher/useTeacher";
 import { pageToUploadJpeg } from "./pageUpload";
 import { streamSnap } from "./snapClient";
 import { traceFromEvents } from "./trace";
+
+const ExaminerConsole = lazy(() => import("../examiner/ExaminerConsole"));
 
 type Step = "capture" | "reading" | "done";
 
@@ -197,6 +200,14 @@ export default function FlowPage() {
     };
     return { ...t, calls: [...t.calls, engineCall] };
   }, [events, t0, marked]);
+  // Which questions she gets comes from her own lost marks (packages/rules); the server
+  // only judges her answers.
+  const examiner = useMemo(() => {
+    if (!marked) return null;
+    const list = examinerQuestions(marked.sheet);
+    const first = list[0]?.question;
+    return first ? { first, ask: makeAsk(list) } : null;
+  }, [marked]);
   const errors = events.filter(
     (e): e is Extract<SnapEvent, { type: "error" }> => e.type === "error",
   );
@@ -257,6 +268,13 @@ export default function FlowPage() {
           )}
         </div>
       </div>
+      {examiner && step === "done" && (
+        <section style={{ maxWidth: 720, margin: "24px auto 96px" }}>
+          <Suspense fallback={null}>
+            <ExaminerConsole first={examiner.first} ask={examiner.ask} />
+          </Suspense>
+        </section>
+      )}
       <AiDrawer
         trace={trace}
         nowMs={nowMs}
