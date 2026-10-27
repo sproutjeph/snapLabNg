@@ -48,6 +48,23 @@ function ensureOverlayStyles(): void {
     .snaplab-ink-item:focus-visible .snaplab-ink-focus-ring {
       opacity: 1;
     }
+    .snaplab-score-slot {
+      z-index: 30;
+      flex-shrink: 0;
+    }
+    @media (max-width: 960px) {
+      .snaplab-score-slot {
+        align-self: flex-end;
+        margin-bottom: 8px;
+      }
+    }
+    @media (min-width: 961px) {
+      .snaplab-score-slot {
+        position: absolute;
+        top: 10px;
+        right: 16px;
+      }
+    }
     @media (prefers-reduced-motion: reduce) {
       .snaplab-ink-stroke,
       .snaplab-ink-label {
@@ -132,6 +149,17 @@ function buildAnnotationPath(kind: Annotation, box: Box, aspect: number, seed: n
     case "tick":
       return tickPath(box, aspect, seed);
   }
+}
+
+function lostLabelReason(item: MarkItem): string | null {
+  if (item.correction) return item.correction;
+  if (item.id === "GRAPH-SCALE:size" || item.rule === "GRAPH-SCALE") {
+    return "graph < ⅓ page";
+  }
+  if (item.id === "GRAPH-SLOPE:large" || item.rule === "GRAPH-SLOPE") {
+    return "small triangle";
+  }
+  return null;
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -329,15 +357,8 @@ export function RedInkOverlay({
         userSelect: "none",
       }}
     >
-      {/* Floating ScoreCard pinned at top-right */}
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "12px",
-          zIndex: 30,
-        }}
-      >
+      {/* ScoreCard: stacked above page on narrow screens, pinned in right margin outside page on laptop widths */}
+      <div className="snaplab-score-slot">
         <ScoreCard
           questionLabel={sheet.question_label}
           earned={earnedSoFar}
@@ -352,6 +373,8 @@ export function RedInkOverlay({
         style={{
           position: "relative",
           aspectRatio: `1 / ${safeAspect}`,
+          flex: "1 1 auto",
+          minHeight: 0,
           maxHeight: "100%",
           maxWidth: "100%",
           boxShadow: "0 12px 32px rgba(2, 6, 23, 0.55)",
@@ -538,6 +561,7 @@ export function RedInkOverlay({
             }
 
             const firstBox = boxes[0] ?? null;
+            const lostReason = isLost ? lostLabelReason(item) : null;
             const singleShareStats =
               firstBox && boxes.length === 1
                 ? (shareStatsByBoxKey.get(boxKey(firstBox)) ?? null)
@@ -694,7 +718,7 @@ export function RedInkOverlay({
                     x={labelX}
                     y={labelY}
                     fill="#b91c1c"
-                    fontSize={0.0165}
+                    fontSize={isSharedBox ? 0.015 : 0.0165}
                     fontWeight={700}
                     fontFamily={handFont}
                     dominantBaseline="middle"
@@ -709,7 +733,7 @@ export function RedInkOverlay({
                         : { opacity: 1 }
                     }
                   >
-                    {item.correction ? `${markText}  ${item.correction}` : markText}
+                    {lostReason ? `${markText}  ${lostReason}` : markText}
                   </text>
                 )}
               </g>

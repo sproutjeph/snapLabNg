@@ -29,8 +29,10 @@ export function ScoreCard({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "12px",
-        padding: "8px 14px",
+        gap: "10px",
+        padding: "8px 12px",
+        maxWidth: "350px",
+        boxSizing: "border-box",
         borderRadius: "10px",
         background: "#fffdf9",
         border: "2px solid #dc2626",
@@ -39,14 +41,15 @@ export function ScoreCard({
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
         <span
           style={{
-            fontSize: "11px",
+            fontSize: "10.5px",
             fontWeight: 700,
-            letterSpacing: "0.06em",
+            letterSpacing: "0.03em",
             textTransform: "uppercase",
             color: "#991b1b",
+            lineHeight: 1.25,
           }}
         >
           Examiner-style marking · based on WAEC reports
