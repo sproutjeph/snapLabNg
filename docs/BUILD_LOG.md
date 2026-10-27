@@ -2,6 +2,7 @@
 
 ## Oct 27 (Day 2)
 - `MarkSheet` contract in `packages/contracts` (the rules engine's output: half-mark items, evidence boxes, annotations, totals that must add up, accuracy only in teacher mode).
+- `/api/snap` (lead): Spark, Wonder and 7 SAM calls in parallel, every answer validated against the contracts, streamed as `SnapEvent`s; offline replay from `fixtures/`; hard spend cap ($20 total, $5/day, $0.18 reserved per snap, aborted or failed stages charged at the reserve); per-IP limit; name/school scrubbed from readings; output-token caps on Spark and Wonder.
 - Slices handed out: Gemini → red-ink marking overlay (`docs/plans/red-ink-overlay.md`); **Muse Code** (Meta's coding agent) joins as a third builder in `~/Desktop/SnapLabNG-muse` → procedural lab sounds (`docs/plans/lab-audio.md`). Every Muse Code slice is logged here as built with Muse Code.
 
 ## Oct 26 (Day 1)
