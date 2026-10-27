@@ -10,6 +10,7 @@ const FlowPage = lazy(() => import("./pipeline/FlowPage"));
 const GoldenPreview = lazy(() => import("./golden/GoldenPreview"));
 const MarkingPreview = lazy(() => import("./marking/MarkingPreview"));
 const ExaminerPreview = lazy(() => import("./examiner/ExaminerPreview"));
+const TeacherPreview = lazy(() => import("./teacher/TeacherPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -22,11 +23,14 @@ export function App() {
   const isGoldenPreview = params.get("golden-preview") === "1";
   const isMarkingPreview = params.get("marking") === "1";
   const isExaminerPreview = params.get("examiner") === "1";
+  const isTeacherPreview = params.get("teacher") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
         {isExaminerPreview ? (
           <ExaminerPreview />
+        ) : isTeacherPreview ? (
+          <TeacherPreview />
         ) : isMarkingPreview ? (
           <MarkingPreview />
         ) : isGoldenPreview ? (

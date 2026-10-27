@@ -1,13 +1,17 @@
 import type { MarkSheet, Readings, SnapEvent } from "@snaplab/contracts";
-import { markMeterBridge } from "@snaplab/rules";
+import { markMeterBridgePage } from "@snaplab/rules";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import AiDrawer from "../ai-drawer/AiDrawer";
 import { ShowAiToggle } from "../ai-drawer/ShowAiToggle";
 import CaptureFlow from "../capture/CaptureFlow";
 import type { CaptureResult } from "../capture/types";
+import { loadGolden } from "../golden/load";
+import { replay } from "../golden/replay";
 import { RedInkOverlay } from "../marking/RedInkOverlay";
 import { rectifyPage } from "../rectify/rectify";
+import TeacherPanel from "../teacher/TeacherPanel";
+import { useTeacher } from "../teacher/useTeacher";
 import { pageToUploadJpeg } from "./pageUpload";
 import { streamSnap } from "./snapClient";
 import { traceFromEvents } from "./trace";
@@ -53,9 +57,15 @@ export default function FlowPage() {
   const [nowMs, setNowMs] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const abort = useRef<AbortController | null>(null);
+  // Teacher mode: the teacher's true X marks accuracy; null (hidden) in student view.
+  const teacher = useTeacher();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: start a golden replay once, on load
   useEffect(() => {
     window.__SNAPLAB_READY__ = true;
+    // `?flow=1&golden=<id>` replays a recorded real read offline (docs/04 §6).
+    const golden = new URLSearchParams(location.search).get("golden");
+    if (golden && /^[a-z0-9-]+$/.test(golden)) void playGolden(golden);
     return () => abort.current?.abort();
   }, []);
 
@@ -68,10 +78,50 @@ export default function FlowPage() {
 
   useEffect(
     () => () => {
-      if (pageUrl) URL.revokeObjectURL(pageUrl);
+      if (pageUrl?.startsWith("blob:")) URL.revokeObjectURL(pageUrl);
     },
     [pageUrl],
   );
+
+  /** Feeds a stream of events (live or replayed) into the page. */
+  async function consume(stream: AsyncIterable<SnapEvent>) {
+    for await (const e of stream) {
+      // The drawer's clock starts when the server accepts the page (trace.ts).
+      if (e.type === "accepted") setT0(performance.now());
+      setEvents((prev) => [...prev, e]);
+    }
+  }
+
+  async function playGolden(id: string) {
+    abort.current?.abort();
+    const controller = new AbortController();
+    abort.current = controller;
+    setStep("reading");
+    setEvents([]);
+    setNowMs(performance.now());
+    try {
+      const rec = await loadGolden(id, controller.signal);
+      setPageUrl(`/golden/${rec.page.file}`);
+      setPageAspect(rec.page.height / rec.page.width);
+      await consume(replay(rec, { signal: controller.signal }));
+    } catch {
+      if (!controller.signal.aborted) {
+        setEvents((prev) => [
+          ...prev,
+          {
+            type: "error",
+            stage: "input",
+            message: "Couldn't load that recorded page.",
+            fallback: "none",
+          },
+        ]);
+      }
+    }
+    if (!controller.signal.aborted) {
+      setNowMs(performance.now());
+      setStep("done");
+    }
+  }
 
   async function onCaptured(result: CaptureResult) {
     // One read at a time: a new capture cancels the previous one.
@@ -98,16 +148,7 @@ export default function FlowPage() {
       setPageUrl(URL.createObjectURL(upload.blob));
       setPageAspect(upload.height / upload.width);
       try {
-        for await (const e of streamSnap(
-          upload.blob,
-          upload.width,
-          upload.height,
-          controller.signal,
-        )) {
-          // The drawer's clock starts when the server accepts the page (trace.ts).
-          if (e.type === "accepted") setT0(performance.now());
-          setEvents((prev) => [...prev, e]);
-        }
+        await consume(streamSnap(upload.blob, upload.width, upload.height, controller.signal));
       } catch {
         if (!controller.signal.aborted) fail("Lost the connection to the server.");
       }
@@ -132,12 +173,12 @@ export default function FlowPage() {
     if (!readings || !mode || mode.type !== "mode" || mode.experiment !== "meter_bridge")
       return null;
     const startMs = performance.now();
-    const sheet = markMeterBridge(readings, {
-      teacherXOhm: null,
+    const sheet = markMeterBridgePage(readings, {
+      teacherXOhm: teacher.xOhm,
       setupIssues: (setupIssues ?? []).map((i) => ({ description: i.description, box: null })),
     });
     return { sheet, startMs, endMs: performance.now() };
-  }, [readings, mode, setupIssues]);
+  }, [readings, mode, setupIssues, teacher.xOhm]);
 
   const trace = useMemo(() => {
     const t = traceFromEvents(events, t0);
@@ -174,6 +215,9 @@ export default function FlowPage() {
       }}
     >
       <ShowAiToggle running={step === "reading"} onClick={() => setDrawerOpen((o) => !o)} />
+      <div style={{ position: "fixed", left: 16, bottom: 16, zIndex: 20 }}>
+        <TeacherPanel teacher={teacher} />
+      </div>
       <h1 style={{ fontSize: 20, margin: "0 0 4px" }}>Reading your page</h1>
       <p style={{ margin: "0 0 16px", color: "#94a3b8" }}>
         {step === "reading" ? "Meta's models are reading it now…" : "Done."}

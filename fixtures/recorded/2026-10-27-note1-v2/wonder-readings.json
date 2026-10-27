@@ -1,0 +1,885 @@
+{
+  "name": "wonder-readings",
+  "status": 200,
+  "latencyMs": 33932,
+  "request": {
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "max_output_tokens": 6000,
+    "store": false,
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Read the results table, graph and precautions on this WAEC practical page. Copy every number exactly as written: keep '57' as '57', '24.5' as '24.5', and a raised decimal point '33·30' exactly as '33·30'. row: the row's S/N or number as written ('1', '2', …); if none is written, number the rows from 1 in order. Use 'header' for the heading row. box: a tight 0–1 page box around that one number only, never the whole column. If the table has columns that are not in the column list, use 'other' and keep the heading in column_header_as_written. graph: null unless a graph is actually drawn on this page; never invent points, labels or a triangle. Precautions word for word; an empty list if none are written."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 227 KB]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "table_found": {
+              "type": "boolean"
+            },
+            "cells": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "string"
+                  },
+                  "column": {
+                    "type": "string",
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ]
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "type": "object",
+                    "properties": {
+                      "x0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "x1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "legibility": {
+                    "type": "string",
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rows_averaged": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "p1": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p2": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p3": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "box": {
+                      "type": "object",
+                      "properties": {
+                        "x0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "x1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "precautions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "other_marks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "x0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "x1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "properties": {
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows_averaged": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cells": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "x0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "type": "object"
+                  },
+                  "column": {
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "legibility": {
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ],
+                    "type": "string"
+                  },
+                  "row": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "box": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "x0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "x1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "type": "object"
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "points": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "p1": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p2": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p3": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "other_marks": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "x1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "precautions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "table_found": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ],
+          "type": "object"
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae06e1aa118a73cdd4443f6",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793093146,
+    "completed_at": 1793093146,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae06e1aa118a73cdd4443f6:rs_14b357b7-69c7-4bae-9264-55d88771a98b",
+        "encrypted_content": "Q-PaDgFygse-Rl8Gm7dSA9r4hQuEC6khoadUGiX7vOadOar1MOkECiVNW8DsGpaJ4VpfIRgZqSYcoqBX9fSYt0kK-DuUD8c54xtdjrhPG0TGIS_I9UZr4Ge7dNVyeBACVN-UTWI4PHktl7A5AAw_5Gz6IRK3TMN1PT2g86GDggD1JfNQYonpy0SiOBFHdVCz_uWFAipbS2csppYlxL8nIqmN0x2FW2fGTW7LqqENetqrnMa_nwijRVmXeCyoWdEvk-JJTkQZ0qra9zp_AwHXyenVLSjCwR6OOXAKwlLWIhFn4qZvgoUFwyrFF212JnhjVDi-VuQCyXBx5FScksNP-pa6mg3-aUH4NDac1f-UVTfgffoVXs-7t9eZv4RRXMYM0d_TBZ_EcB5mkoIFWR6z61_IsXz18AfWkt0EswX0mTVfiSeBfh1YFG0PWOl79Zm9QL8A_NgIbGFTEIsPP4QrmG6NzHQex4wdKyCnZQAvoyKBdXsZXoGlZK9e6hi3f6W-WuKFj0bV8NNBsd-I5fJGmemcPEJM1ED1OJLojvccNiWvIe_v6n6RRd2CX4jaOCe24y48QBYU_n-H1d4Tqq8ffhSL82joa08K8NwNwmDmqVhW0P_oTYHCdh_RNZD1ahvEF-51qMPvTLHyovhKA2Lj_Z7ZMdcxK7MXoHYwU0BVTLM7smVRnjOykyQCvUOAJaGDLcIgOFpdI1_02_Fuk5yllcTJY9i-8nsPfvujjjr4LC6cEYD_jLi3IA5NszjFrvZM9PS4xfybAtyEn5DYalbgkVFyaOgeB3eOWjuj5-lAsDBQFMVE1arodnhL0vkBc6tVXJmzJGuFL1hTz4Zy4wHBjKMo4tudCNHay_8Ag5lHYhnscioYpdnOv24s4x09vzTrHbAzLiruWf-WD5FNGAHwyNFw58JXrl8dZxM2gv2jjvsCAMzrrVYrAzNKpCBybZ_IGnpGKBzvMYN9LHbJwnFVYH6D64a67SvBj707DjnOoyMnAN0M7sHDaI934X4VNoZ8dUUeQi5b6FusvFT7h5OpG4zX8Du-KbWApWPiCCra3OMOz-zJV0Q4l-oJv1BB9MOygynSIouBdb4F1E-fJ_yYnvJW1i4C1pS17hqE8Rt7_MRydxund4pOo3r1odAuA8QDotgIDkmXuPaNL5XqN35dfWrQWyDGJL9xThj-Ry9rNRVZNwng8BMBtIBgtOxwn01aVNcZtCclJ-4dtg4FQIKl-m6f_yOHjfG4F-5TF_LM4ozA45ca0FE9I-GjRX28JyjTMl9pY1VYr4shMU9r3SfTgE_rxXE7aSeDFllU2anKAxIBE-9Te83J3EDuq4p4PSXqGRmyM1Ah4W3KqTy-ByA9vHLrgX7Q7qeRnjGl62p-sVwOiKcWWc1icHA6mt5tOgDzBZLTShsT_dCqtN624h0fpXff97O2lP4buuI03OuiFRZlaLkaPBHZ0y4ebT1DgIjk_IeHiwyRwnZu29UT356z6xmZVXXXrjn2q8v-jjVPYjOPn18MmQRlWPxFE1oqcvgh-P8aVISSW-u4CyJLUGRccPxTR9UDzM0K6EtRne1-oX2HScWPZfaFmTwFQIWzSVpQsOttCb1a6_4qnQGd6eqvXwpak6gwEqMVn4TBecgXdRPAKov2ANG_wLd0gf-p0Wju5AVP2sSHqkOz9JwGobdEQ52KvrDJAXvU-Kt10866sA-08sjzlKZZ-Dxeah_CB_ETzXtKW__QQixOKxy1v_w50XmR4GEtnE1nPzXU28-jJbcUda4AZNmyYDLfmvieEvLMAsfc7r7ge9dJCy3ZIBpOI7maJryUbjH8NF2eYiiEZ61YIl4sSv5qyOPq7oafSay64CLuKouUdMaW2O_5jPVzakZm7cZyYFMdI9WBjw22KTuTMoYFCoZOsp7RUDcz16iIh3XIO5FhKuNWY7md1U_fLiqn_g2PG3XR1A7pjYw9y13tkiSoq9GpKnsZtBHYpqum93E9pcZ7Uld8DcguZbSKvcArM1oEhUad_F1qaYubutDlB5PLDULh4QURTTBOqyLG2Hr1f62ugtuCiCJbcw5Wwmo-8XfnDSBdcVhIGfk9scauvw-4bDCpFj4lSiRdrw-yyk32dvacyg3W4VMm3Og0HHXp6pTqIkLNpgeLKxD9fARIefg8iU4fJBGYQwTLM0WomHd8vdDxHAzsVA6bQlQtIDebZboSCetQ8wy3NNEpASrmuVtlb1B4IY1F0bAahPFBSs-KEMcb7YxHUCvaoVv-slRNO39d41tdvhsgzN6PT2njFltid8Y6rdTMnpIc5LQAwwY9G23IiiDKYcNXXDTBm8rkm8_icKG8VcueJtp1zTXFuBzr46Blczp5lpKZrPvsLbXMpFcYUZ91PIklvVWYwJ7GNQpEMJYctngSkA7o1SdnlEdn3W2DNjWZ88RlgzBc4f9N_5rcyR9I6H8GmuzHWc4UrMbWdkt1LIy-udv2oltw7QY7tBuz8MdxA0fJrOacgtjA7jUyp03v3k0NdU5rO7E5YXf2GNsiJ_Bj6It7t3cKXOVSfRv0E-5FZF5Whre4DadQ7jJYzXY_WNMPiwqETmYm0hWfGC2xhmhQ6AiUDt2oj8-r8aqedTBDRj3cX16ACDfF3uHx3qG_r7_itljxg3jsqfw82Lpk8rGw5KUuN-ZZO_hechzMx5X2lxI3soHN9Fx-Sm24pbmCMUn7Dlk1JmPTbrFTqMeeolUFtZxXrJo_TP8hVnFP4Cq6JANDncgn1XqrSqIFu5T44jr8Rp5riPRVleUQemKgGIr5qC-jpxZV4b2q3LweRc1CZbJcBqWBdBgK5zzwb44P4aUa1p5Z7st8AOl6IL770XIri-IpYp2ovxlF0ImG39Z07bf1T5ZNElSxJ4cqAO4Tc_7QVI4ydGRCXTOZeT47W1wyMydLJ_qFOnXFhpI2L1tOxA8sqJnxE_odUais0uaR_QxUyivvJp4KiHYA8yYitAVPrmhtkjch1s8zEN2z7XqKA6szFcMuHfDp8ZYaSNpyeWHadpqLZ6xdK2WCNOwqjtWdTZFWKZMZJ4f0wXoGCApNG4QwKwoodRZsDiWnllYGEwT0wGcbpmkHk3urtrxRngb38WcW9Jz4GFnfpNn5ZosGYc_kaZkj_GtlYmviOKQBBQ3fTKFDH_P4xtipJMen8AA6YNcCD5XGWpA1DRWE9jsaYP8BVKSRAW4vZgMnYKIAfOQAJWuAqq30jKoGFo8P8rNCPDsnqM8J97LxjpP_IAiak8DYM2x8c1D8VcPHlnP-dtj2ZuXFoHfN2XGa2hVW5_El69jyq0bbfaAPBL6mqUr-Y0aoqD__R_6F53koOJT6RLlZ89j41hY_G1tx5wvP6pK_X9XUVzZtj3sHZWTkpF5-6un0Wqkj9NxixapW1br6OB9S8Y8KC9KcbzfFX_KoW8p3pk6MMd6PiE6dXcYENcIOBUrBo7g7XCXydbXMpAWYXoFuVMzXOhOSCbhH5poNMWS8EHAug_itC3COKt7mmctGw0tPdqC6vlq_NnjBWrL95gxVAbo1Wsj-1kFjaUxssaAll1S-JLL3sSLpztdmbuixmVzvUFCo-e5pcazf9aBu8QtRqcEcYvLgMS5gQz1egx0R8_34yjpylaWwGgxfBoqZlJvRiDlokZRuiNUPQqem_vf-8zkJwh5xJKXz8yiTxsH-w7hq4WsWu4y1rSRTVbJElUbu0Cu1BMLZYAufxOhn8KGNzkwm24IOEIU6nXMwgXUhYCphR7RZ_3_6a8RRsOvlNcVUTdaP40dA9ovXgHrI6M6R2EYS64RH-gtcmaq-WNeRPcxg6Ql5__k1FYkl6Di3sU-A6cPyPxwbbgGJl2pUIKeC3HefcGaXSH2ekBUU_cMsDPnqKP34hNvt0xlQ4i_M7BiXWsUp4UKl1xVk0M5dL_GTFYbdUpLuARiN1DzejgUWegiEqG2xRrq60_KRUGh0xLUahwTxUY5v6gMPUm_8LWLBWUzBvkLrc-KkmCWTZgy8ibdgC_oi0jPh4O6r-GuN-Vj2tPysW_RBOizEdW5CgwScQ9zMSCmpRSYSlCPK3ApNYjqA43Hd9Yp1Ky5TvXgwtcC0S7ogDxZop-LEEs0M3AMqcBo7aA4kdc2NIkz5hR18IRDFFaIRpSHqWDIeOZjU4OH66ZVMWv2z_GFc4wHsmoPmj4Fkf_nJufexD1TQ_wvqOul2hmy7ZsInJfO2yfmtEZJlKZ_FDS5JTYdQey06wYWmnZAxuKxjxjm0Gb2sOUkU6DxSmATO3zN6VKMmpRNyKYI8BGtJfj9Ub8ULQZRs4TWwRl2ZNTPIfbuF3VA467BS22jH1pgtOY5DFUTt2H9EYFFfHhjwku-cVpaByZDmkwdtnQNLtDGzxQTYVCa2N0TNpsrdklxgZjsxEPrpXuFShTd6vhEkGdOy7Z2OBj3NO_ePTmB718cXKApAJXfl9yzKawmxHHUY_DA9ZxtnF-EKBraxoSwGUCCo5LzZvRUY-rgbpW7sP7krVOxyIwsFw7r6zYSE5E4IOAlUDEYSrZRwGYx-I76xl5cwg5M7tWGvYvmamn4n4X1G9ceKdVZYxZk1vfqokknFKi3O_kfPp8Ml9Lz2wAoXtnIjDbA2UrMEi0X32WY2vC3-dfGqaPhvsQvd9NFJL3grVs4Lbk7eiZvo7IjT0tl2szWsLyXjye-NsOlCWitDSjdsCmOiezhOsFbypBmbr5aWlcmQC4nRmyeQDvbcgKFFWhkuoKCp0uBJjWJtQ2GG7T0PoPqy4raxmTJ7naBMmOSpMuCV4OybjDr6nP9jYRGIyO2H6xzKdJftzC63AeIvauggMNla3FHJuoKaOzl7aVGKYKP7YeW66V9Ssg7Mc0w307Vq1pzo2ufz8p_cH9NvPDapMkuIC9wBKTLjVeVV8GHO4pc1OzOkRAsthOeoTrzq9INT43oOC7PCcBmTWYgGAKBT05bBV5BWP8OZjwkzHCEAp8PQESzupqW5TLrHGVyKbTwHfFJLX4SVSoNPlSPsT8FoZQY9DkWRtGPa0g7BYc-R5srUozLCfDPmfvrpsXmD9b4MJ3bl0bXCwOhZoQCqxwvUQ7qJYaOgQYwtZxhOUxq5idPoJ62Gb8Ef38WZEUorM9oefYG3oWtZ_CApLzrmopELtt5aQRdlcSUOFF6i0xECC1dACm8zaGnAlekRYVpXGwHyl2ZJT7Y_DqgRgnRPc-GdhXW1BJkr7UIeh5s7WLWNJUdRFrGBFWIX8y6n37yi8pUfVgufvB1Sb8KHOKhtzHltIC9A-VDAsrvlF3vG_D_xasQH0ye79JmIqdUySupNtbBMzEagu7pFN2nfIkieRKTd3pR8NMQZSZ_5bRFkODRn7EVOl8JgJx2tCfG1k2wMkzw0hkhGFdibCCEvjmlUeONnfB1ECQf3UmCbhpCRPvbDlqpU5wxzTcwKT0sZZlVeIrGIAhSCurYwEoT_slIRgGry8s8ORA0nGoz7wMzkZZjPAf_nNl9iNg5wGBCwe8BpoBhTcS7f547Yeo0Z1KuS1UuDlgo--d7c8hTqKh_GEjL8mOsqWSsaoUTDQeegxdEbnlc76sM23w_DwqcL8CdzRvJrb1CS7ZuvxFAH0DA6cFVCNKcG9MD1SWq4U7SgZOt9Bs-mgNswxAvZDVMwcYY-MQ_najPbupSXbJHHLU8wzTfHVGPvMBQCwDVioieyGHw94XX_bHSlDIka2NY59UfGFvSr8yv5rocZwCifMGhH_VvQtRkwvbdVvjWak6vYu4sqgznO0aD6KT9G5XfnEHgQqRG6z4dKkfy2SJtviOmb3mRZUISBGqO31gES-JyLmEXNdeuesLGRFE5jY97LB7NrLQLUlAM0dQibod_xSCzZl8zeFwaO8XhP-qivFQCx-uZUiIwlvjily6FRluJ8NMIl38wEg-cYGOrUMTdOn58Z0Ou3UbgrFwFzUIajMDWdPbI9IPn0Xc0b4Hq9EpfINOjeFVG8rI6j5dvuJVThgzMfEHkOarTq0ZR0DxNJMiwVTg0nwz355ZrkB2SpzPUyhYUyJlRwCdi4Fms9l6iiJlmlfKYwf4x46Ggefk4o9oz6kOBuWDq6u_EXeiE88WbMKcmhsW68hw6gPlty1iR5oevDNIj1Gj-4kd91x910KLhYPgHNT6tNAZF4wji7gLjbvVU_1NgDJi-MUKQPqS-yVO4ZMqnoQKLgD3DVpmk-7Wqt3SPfLfNiV5iNMhEwGt8I2CY7BxSXdFCcAmNp-ypNVRLw4bC2ead9yICq1SNtYmlIw7jc7Ehswfkwt7B36d2x8nsdfPSjdCB7RjQQEwAcPlUX8T4DZrklpuEQyT9P5HqVcBBw6U97Ipnef-ZwqlyGlhAV6fjFS8wuU9Bt57AhlRzQaCEX4LIwnQblpUI0LdezqfyDt0jwPevOPn4BO2uKG2zAPzLpx0UuJKV25CRP7QtMUdIQbhax1dodlMLehzrokcjyM_VPp1-5Sx0jMYrvo1ELu_MBzbtI1XLCtdc8X2EyrKsunvq_HgYTtt4kcER59L66yExM-bL4EfASsoxL0qrm3Y4_qhpSh-0ZKZqhRWFGTpem_DJvhapTphEUaOqajAmohtrvB3gr-COGhPmnrJavLxpDBU-Eipnx02EnuxOiJARniVdXY0hQ5hDSn2Jbt6qtv6GEOGlQ-Z2PmvH_X2lSiTRCd__YazRDIkXGRyj5wAuw-L1qZ9ETnJr2gUBsPQ2mrtNzoQ3sU_2YkC07cps26c0Xjg9RPyTokFLXuNKSfDviuU1hAe9QeySGorFsZs9LGzk6cNFFh6J3_uL3B19HmF0N_Nam3Om26-BdSrfS-WzGHzhrNF-2N9PkwIBP4v9u7PsVV-iKu8CuV_yI1oWlTjDepKYD4PRw_JHC7FRNKgPR_3MZZXyFrw0Sa12gpoL0d6Ep1i50Gt-meGgQOdziThZU4yR1CSdg8LBl8zCTMZZplFFR7-QQ040isdWZtQNQ7CRGteJZu8fw4_bdh_g2dMh77AyTaJlSykUjUKtPrM6Q4vwsTeIzT2kkMJFF9e0tybeugRg92CfIQgOzU07h_GBOUCTb-8QBi9-Td5JJdqSQCywyOM9Wp6WHuQtOuzw6Ny0lhnG2V27tW6KYqeIpdKeXMDDS5J-xU-PmDNgDdAmeajcZrOIg--jVHtuIVm3qcnVd4mtZ21T1WW4z-e0RgJGX6SyiZneDb02BTZQYIpRyKdgyuqUAVO3Nty6nF0vM90jYy-crPP8AEbJ1WgJY7JXlz9AI_Od7ylrybtsrHRSwywhH58EPty-iS6DMbrY449kWHCm2EB7mfghj-ihYPkAyY0ycy0nC8-nwRKazLQwnIviFPv6zwuA1eY1kmaAF0xqc379GfeOY-6VRqfia8TeQcMHXgp1SZ2zRHq3-EhLk_k4CwM3rvijfAkGv9xvnRVDqYB8tkHllkmNlT_AUY5WqL0SksRTLcRi1ZncInsgVonwrT0-gSpZQNx5z0_6oZNSq15T1_Z9iOSjwQbdhi-yVh5sECcoMul9zKhdfHu6HmlW2gvLNb6cRWa2b0i1ZC-zLcMkH46ogLRwz0wFC8tLHMeuia1D4jWxFgK-dNcNYqIz5yo05j-x9AQh7fVbYkPO3woDfscNYAcUXZNzAk4xrQIaEUU_A26vu1Gx5i1b6s2XXlZ7jGqvCkaOtNMtvj65F6hmuZULN89lxO2ruOKXrTWIfYIT3Ec8nlMFlzvcxev4UNZz93bod_owE0s5CrW0NH94J7U6HjisuXAeQchZjGzxDIs0MMWF1MSoEAjnnnNsdrYmirgaJzSwNGpgRkZt4q_ynzqie8yvU3ITAD4U-Dc6mmNk1vzJ1s6fzZYpg2Ed7vW-qs0E3a2PD9Obvl9fpJT3S-NqSrsKEoONdp9LiUZoxwf3hJiiyMVWEJuFIWcZzJy247ngWnyTd57eEnZXJWuqz-SMwmJ7B4RnjzZRbN3NdTNziKweGVQTh4q-3PB3581xt0TgyFFztMNDdbzoRObS7Dm9d3eEmQBKUI0I-HD9Fmhg3z637CYhravvxdL0rcYBTYyYJy0cdXC0s-g9dkeZAgWOpVrFqcoNQun2414K2NnDLhhrYgJ-xmhgAo5awMTr_LSn4TKG2RE4ZaJ4QF_cCoy31vLgG5FUq5-mAXL-aNFlNYjfHYpAumJv6PQweFistK82jg3SCY0uu5TQ6bwgEJVUvOLVHz3TPLSO1-FinzYqvktG4l2Qn7nYcl6sRWBWbqZ4N1Azk25uQls1JoE8UGu8ZbinVXrkFPjA8CuX_VmfdnsRs4U67aOipTZVc6LpCDGCBWGXUhV962cGJuA13nAYGnRLcsBNppqxz0Lor2mEdQ8eS4adCRuKfn2tvdGlgc4raB5ooXrjscZhLfkCyD80Cchkoy7q69eS6BrbBranq8XHZrTzvKSSA5l3tNs39pCV-m2iEVni4vOU9S2MPtu47yRVKhrPHZ3glbHCDVyJBBPcQegRefUYQKEXTwJkUkBPe7XZcE-15k3V2_kmX0IRMH1HB8ys3qI5AiRikyniE6PdVbl5rDVUWw-KGrKP-Iaq4aVE2BRfHJnEWnxUXMICMD4-VTI5m0d2iKwHbSr83bn0-Xg0bU8HluwSeON0Ethgfezn0mq3RrGCucdNQaNFMI86pRKV6wS4uKyT5yAIgcPt6tziyBBI0pPgBgP89G0WzBUi_sALfeRddLV4oDKm7Hvd0QejQGDbuv2kQqTahZga1W0JrEqcCbu49IXmLPTQcPZvrZ8Dpr-tWXXT-znz8l6yDsj4Ccpe4v8ijDbRhqvmKDNnpseMV7rQJAl4Mt9Dkg3bX31O8N7_Hae_FFZrwR_TIktBzGJ28zm74Z085wHnVTK6oXXRlP3Cett7OR-9_H3mI9MaJg4Ssc4HUfrEaVTVyxT3CkvU17kiDFXhHOlp7I60KYykXhLnRt8Hz5w0VCiJXuZSSXz3cG9-yyYYmwmrf-XqQlz9VGS2URBu6nD4xotiMEIWYAnC5ZI_9Kt20tK8tDb_LyHdLH18zO-mbZ_i7qzYRl6jp74s7SDN5qSSwHXm4N6-VKJRVgyyA53ZvPVBwLUA98npnU5mRShN6uYbVub-QtvavYcJtjtSNKzY-24ZW6kHMXOq3TzHroVEMq1twqc16WJCJJTkg_4ng_SnbJQWCRT42riFP_WaekQpSz8z2tnE4PhOmo9UeptG31jnc4PWlwUp0fUq5e1b1aTl4sKO-qQJBl5Z47LCK3cxtfA3Zkv5tjh8V-BqqfhUITac41mkDWJoEaBZzlnFZpCSccbVtVltVmmvJ236jQCLzv-yMXuzni0YcOaz88Kii0607ypFByRr-wpOlx_6uHzWtDkrxoK-lnzbuNSX-gb5INlZAqZ0BoWDVtRnmuBHAgRbi1y3SBwWK7fUO90wIN06O6p-h0ftkGg8Ztgp8lnGMv6GzAEiVgBlyt8lGjRyXqQ8S7-3H1yI9HqnpWsE86WPXdKzE9I7ctURsnrLUO9IQvFZY_hgmbZGvsETeXqO_vAikOV7_oaz-B6vokHcA63SzXpxwgdInMFkh_FI-6pL936BgI7QWmSIuMLb3H5U43OIQ7LHXBHAxF6WVvI13HY9Pf8QQZeNTDUQfncvJb5J0u1z4n7kaiFZTNCvgaMdpMnpZjBBEZoLWd8Xoqry5nz94Plv1T1yopspFZTk4C9pzkrfd56UZcZBlL0Ou9VgrJplBYZLo5Pw7M1IXEI5EOzr5uVR5-EW5FLvw6qKNXIZb2AOAxQRyVIG_1kn0okO9A6OBfAwhsKN7eiMszIE2xTPqAbauAbOLKWP5EYDNpRaEO2DpKG2_Qg6xMXRXf-vk5xVNvJ0-y8qJUvWccTOdp3_AxcPIIbHjGv6uc35-S8DDiKBZXZiRcDZ4Ud96a7fsMSjiDZohpq-QrPRPtcWz5Ys_X4qvyq1wKB32SWlQoyVVdQofWhUKElOGUwRZONPXPjAQZNbMC9Zo0c1QV2mVTWApjzg6Uj9MmKc-ESZRHoeztUqFhgEni7q92Wi0pEmtE6Qu071pv8uVFhpLcLF7mvPf99vn-EHHeBBOs40Yz59tEq-zRLOZmIxIhHdlNwvlUuhAenVXk4_rqvOnxYzdIbsWNFVw6Wo-kVUi-zF6Xot99vkT5jU66xKzsiNQXwMcHfvJtO003QxORYvTfbvWy_vRQZ4WphTRK18kUPExksGdSTewpVFEDDeGQGBpB0TdKEN0t0HXD0PuwVTt03tqsC4XHBwJr0K9W_AvpSYPWE2QrccJ5Xq1ELriFDrjQTwq6vtSeN2A8c-NLozShFMlOwt9W0XAwc6lXdfoQ1FGwIqqvY0D-gND19IZebBQLx0hfLb8OT03wP16BZPJFqUVmPUHL2gL5bsvWAgDCvRuC5BZ1O8x4a3SCOhb_Axfj6pgaHiTzmuANnWyxHAG28-VsuocWTAYamm0RLd7epg-rzdf73zQEgLV484_EmkWpftTPVl2MDnKHKYw3LZBbHTOjJYiuA2xDX4aZd5YuaooS35OWytqBVSzmO3IaxHw1Aq5cRMflpkJM1vx8nXsQXmpyz40f5urvRwzQ1tsPvztlJdcRkBtXyQokbQSALdU8qNhwHBtyQDW33ALWNlBuM5CPoeG2RNYesYMHty0bKQdc_S5OoTccVPI2PElrYLlCT1ZE3qjL1Nc5jWrZd7XldMeBkzlCsruIncergKmNEZAnoaVhYEroQucvaUyQiqad4dBaEfqaptPAfRzYpfQB6pgqTnuJXjC10uoTPuwR9leq58WCbA7zaXLuxJ0-lurEP72fluo50ti9XNMf7at2Ag-k5rrWWKxi5vdKcmWndFS4VN_MZ1kokAj078phT6-wwLJre5ahZ9AOTM3EOyunFQE1Z0aYAUSUe5SHVAl7SzwaeTVstvvDb3K1k_DPg64ZoPyOA8-v7PU1dzhC1F8bb9kOkHVq6UnVod4sUJ-1gfWwqYPrbU6qPQ_U3mVm4bC6PyyQ_gNEPXO4pnyeJiS3I4Yb76J7VqevY_wCPKE5oJVvVE_SSIaSesGOtPLUfpQPCJIveWNF_f1gzWhzvmu8rzb-2xXVeZanwoqIQThLg0SiefheLoi92nr2KyA07eUw4KFCSpA2BrUVfyY-PeUhUjdhpfRqe7ADeScSf7mlAWiFlhgC0nNUm3x7nxycmdt6fijW88-Yatuokp4wS6Xw_aV_-EA_d91SeC2_8rBZ30kGuxXlhd3LG_VNz4cSkCvu9UsIbffQQpjSAuBj-6kyjfja18h_PtTF5BD3PfWCzt7Ms1HSpM3oU8xQAjYtKP8pnZ_e_6e3Sr5qTERMHaij0gn20Umw9Rpy92Uw3Zp0IudipcTnVTksWcavHCttSYjxmvO5IffLHXUf5jCtkB9ncQbGXtbwo4XM1voVYEYY2JPtEHFR2CanfH7TOUd-hnWcqxYyLQYzPALI8nlaVjkIV5FEAHPIPs54hgSbAyKySJYkrYA2Yh7V8FStb8TdB_yoGAu1OAdgaze8QK_QLoFIn8ccn8IXkzizwJPmQRSstJh3fJ4BHsy-v03pPRTZy9B8ikH5sqG5YF9OkGI7JdvZbqbewLLsjclgqaJ2-yElsvjE-yaaUUQlYD5CdImQr2RA8YgD2Iuft_OUGkA_I5w4S-hI6RB82kRZrbUTk_naPV86Zs-1oWysbDok1B6PY980M96TluyOGoLzW5u9lyjIGk4zxB9q7GT3VoYJRhk8PDxY205lLdjMsF8tN7kd4btaI-alClCm3f7MZ9KSbZM_0sqps6sOTypb7UMoXEcz5Pl0qKQIF2Egg6dgrJCPW3hehMZSCld73KGY3Ntsbf1KoU0sE5CAnIjxmvSj7N47RXhs3ccciBGOY8MdoHYi8gvwtNb8w5fUR7Iim8I9g8G_YKUENIu4FhGny8mYIiAbltyeZPbkBj_uN-cwnn0oOSxPSiktDmaKueuzgC19kkK4ateu8PG-L9HfoFG9kVenF8ZP7weHlJ0Vuz0I6jpZh46-ANIl95BLrXH6I4gSeryIGsAutpsC5WPbdspzW-7QbKaJYMzsfQw6gn9iVzHJfG7p8_fhpPY2j5dEIHd5o67GnxJUTS3kWbGZPjHecSvUIicY08KSxGagkW34annV36AwCHcE4zAaZ0G_s-DcgwA2g_tuGnr_isjsse7wAbGtY5oE0s53XI0aDKnrI4XQT2_9Vq0vQNENcgEEhoKt5JVeeLu-BYabU0KQB9yChm741SuhEf7yvZXCuRMoHeHvRu3WtB2TrgnoCdyHCHNg1fPpDxC7O4P9mbdl2fjN4O1PD7lSyOCPrk85DIWAmzxy_Zt9vpVR1JMOsviPAMHNPt3qWwuFK-orS9s7Gnq7wx4oEcbKaptcw0_FoUQY3vzfY0aaEvV8LRDZkWNapsLB8svzdaUYshIvOQNs6U0aqoqWdcYMteqAaYExFqnFuzUVxV2Lcm4Lsqgjxk8vWefy2gHm-lhHvJjxLGM31N5XQvMhYkFa_6CmpdNUlsZQZFypK_TOizN9lgMvYUu_eH3nxSQLieXEbuUBArktSYQ6biEeCaJXwmIQxJ4OrH_b9Id-3bRGS0MKZcD-AQr0UzWHQggpHs745umtAD8gTe0Nsi6iwxAWG8Z5ELh03S51UEwyxCcidCSyteibeTfuDnAwzYDXtkfaBsyz-obLMnr_v3ZIHp9SnJZ6UaenkOuxCsrfD6POVpStq3PrmfsXXs5sYtRJgrZbu69mfaey23z8SP7bnTGM6djeBLdkAfYpusaFebRzd750mEWRMYLYQACwwjHW1guGaKMRpMEmpsAZyL97AtvRQEQpZC9cWBl9-BQAA6JY1txHrIl66amlhuAoX2yjQYfvBwn_ts3YyvRhAiTTioSP_pwGP_9_72PGdkx6-l7uxeIt9nqOXCYXy-D4bgkzcyKX7rr9aVPXH2hI5Y1pfR53hztDJGLJoSUWbfOIlNEbjApESnA6xJRVSSYGxundOouDJr1j1S3h_JOTSAik2rTKb1upKCIq2DCF0JP9EhCw1b61eqXFPV1wswGXHxXNwiQHd-LEs2MY92Qj0Ya2zkiHBWkihL96E1QFIGFH66RKKw02lXYDv9IlF4jMnDydJ14RbxXEoDbu3_YKhFRKChAFnc130ESKFBWnP9w-ooFj9ElMdlVPw8m-zWryh5oQrX3FOVKGJHC4Q_yDLqXycetifbGqYe1HmMO7X2Ybjh0i3WmrsHs6PlVcLVwrfjlWSk8jPMuD9Ol5c1_DTc-ITGXruNESYPyM1XeU1aw_ieqj5SbMDfFFGOqBXPK9FlqFeOtEwfUW4UDkJv_NUNmm4WGAGf4a9jAZ1-QSbdHmwZNC73fkqQtF6IKhJmCoQD8AjqRc7ik8u_dqz-Hehk8H8WV4moeRY36jRIl392hr2YrvObuX4KuEweLVqyOOvtiMCjG6pEYHtf-pK5Q1HoQYT_ax4olmrFHp3R6sR-Z5KFIPYc6vK5oi9GAzSfddnR4dEAWetzUMeN63oV1yaJhhhnWcu_KTVdQsuz2LkseByhUn2Fi0hcHia1AQjNWt0j8ighstHgeJM9U9oRyRE04LHei3dvLAP6K4fqE3sY2ebgkZGHRCX1sWVOzbojlaWiM4HF76dRMuaKE3R1CN62m7eh9zRGOBiqsXMHGNSwjjHgEAdSr0jKppIU1Cf4a7CkdgC8bzlJuT2Q54oaWfGb7RkTv1Skar13SmPyGIgOZ_GNRCfVWPIJjoHuCgJhrEVji-5mqEI6Gz-kGSedNrXO6nAyoZL65NPaqeKXUgZeYYDdzMtN2gHfZU8hlvYGV2wk9Y-u78SrhWCPPPioLFAlwVCncHd1BNbVKGIHfT7qE7a5XfDCaZNB9sXb7GzqNuawcC2np0BOMjN1hBteNJKI-b3QXkPu33PcUU_ang2Fd36qzKkYgvOzxh9guv641i0bK4uIOPm9kSrv33JZSdDweI6Kzx-kbcsJiSwS2eamD4lM-zf-piHzDdkvklNcb3bIedzZ_ljnDPY5RXM8hgIhvj64CnS18khfxm3L00ioNTSYYm7PthHN6CjXhkoeLC2OAaJhuwjeZEPUP_amDRdsNjDqHF8ov9JFqa0c5q5zjse98ODF8_apcX6nUWHGVHIdCYnUkqV-tofRxx154u_zNwfE6JlWcPlLaAx2eHgGvhEG65uRR0i8iRnOvayv75wCtipRJL4WCXsPr28qg_YT3QzliViUurGFTJdPY4Q3ttMwc3_PyaXtsh5EdxgWFBBBCE6JVkpoc6Mwm2XC_uQkSCNPUp93hqzDC4FCC1Yt8VNUqN4hwKGMqO8CeFSbWof4tRYkrPM9daYfVpHHsp9curLloiaEFty0lD6YUNlJsYnRmCIyReS1DasIBSBstSRWoZp6L8hyIl-vqVXvZGsYNuaUJ_MOFu3OicksjI3tC7ihHsn-sc34VDdnmlIpuzNZCIUWTY8BGhXItzWP8jK4xp0XSXJ7UFzb5oHfG_mxvcOyAFi05NVlIhCQ2nDE_XrEPN5gDO3XVb5z1IPmTiMdN1PRiZDvDIX_j6VBzYqyp86jRvk14_Bi9v7lQncS2fAp3pfn1VmTt_8Q5v33x6TsahHHdpXPKRajGM9SvZcPwHEQlYzlT4UMUds754tgshPPDs0aqmVrTmwn0TSE-Fpj3JkCS2sKV_peIvJMaWM-qUn_aeNisXn2DKKQNUGkG-Zgash-ATL8E6VR80ARVnAtir1uf22Ev5WewPyzOjmYX-gTLnfVWsTxQZnqQ3lMeyVsX5Qx6fyHUJDpNphDOIJlfZW_ZavJObIdKwr20LsjYYgJxeKerRbg9gcwmxmhTmhk-XE79GyBirdiDhXh7dpK4NrpPu5q3WiCPtpTBBq6DcqoH5c9xChKZxhMM3_CRlxz7_-3RqL6YmbvsfSJJmyOHFYfiyHl4RRsP4wRCppUPNxLQg1ff6DPMpZ6XzwG8xPq2lACvcDtVR6WyeMMfObiKWVckU-O3zdlIuVezppzKxOYHzlX4CMTYW6bkf2sFv876axWy0jsWek1YHzEHqYzQH2iH5KWmJtWvWec2T9tUQ_JdJ9vxSQ1kuMklK0PkAZv0lQh4LuU_33z2WkQEFb1G5Ql3ptyEeHH_elAG6zCcei_DLNcOE7bwXvqn-S9qqjvDY7DV-Q_g1HkQzOL6xx98ngXF0zNSf-ZM2jPolPzrkR3f4Byn8yl4QgaCZsm7V1Lgapk9LT0z0FchxNTu_o-YJHbnx_qSZPQ5RnC8KXb0Ypjl9z2_hU3mCx9XGgBq_gwLi3mzNYzDH7NzC9aCUieFCxq9V3tpiIA3FlmPo1D-tykbfDhp4Q8AHZDYsrwjDwmpx4qNpOd6TQ1YW36UlxTafgBCiIkxEmdm__ZXkXNk1IB_KCE6dHfeZNuuyHql0DoEWQu5lpGC9h-x4sZpyuCpplqyKEKtX-xA4TYNMtWnhCJOs3nsMnFYjKBzfW-AMBUHY5qPPb6yI49Vca2XeKT9UQFnfGfQIQz7JH7hQQUPEcXu9D6GJqtvajiRXH0UVnPeik2DU-mnqDoGQiIq_TYvPbdokfmhuNnZRF_iwK7xPfFcPD9IGVpq-CjT9X0oT2flqlKKcH7R78Encw_FhMeKv7l8I033aDw2vEt9p-DMDQEPijDS9UaJFhVCtUmVW2qoRePJRrv-x5yQo7YGfqDDvwdZhIb-CcDB3cjcyGeQ8qZV4jjLebJ0vo3i7xoUajrqLJMoxXh9RiiLnOH-CBdz41qslYfsqBKmTWDVvWqFC9T5oyk5sTX64CnPuPjecVU5TML5Ozql9aoRCCPYIgoyshP3fz4XJbsduFMQ4SwaGFLJQsnmaoMcLsf343NsN8E6ho5lbZ0U3oQURh6rwnB7mevo2t7eAiThRJpxq7BaULktsAWm3sypP85XS7JKOkuJsg8NNwjE6zy0lCCPsUz6KPx9c29EfbyjMeeDorsLM73AZB4kVjvhHG_ATU3sNShFZPvHaoRlFAjZ8vTP8iRYAuF86n3bcMARDN8toj_B_5H-5qDcfJBh_tE8YIyINq9O30PVZ-T6UxbLVXm54tjjOxqBnfmd80JNOaa6crMKaS9qdFCjwv4Zt5nzWRrnCPelGlqbzHSmLFu0A33a5i3FZSkKUUBzMgaq9aNB-OTNegM-2MiBkg-TwYqHE6-KfsIg0ZRVHYkW24CPZiv7z4LsC_I9c6m-LqJlEA_USihRIhtQ8gEzeb62-Wk6uXwyHt5Mlr3fwTqRMZpE9-jB1q9TA0x5Xbft64PPFfF5q3qMZAC1p1aHkOi06KBvTUrpDZIVqogitN42qvjj75DvRmYVl-DWPQQNOqJMXKKTR953c2MGEHIlEWZolJRP-ikrKoBBe63dILZCfxJpGNTbg91gbV9jdtEJNlVfQA2TRWM0W2KtXoXly1DgKufwymxvdgY0ttkMdGqyko_J8dYjtpEF3mr2WvJVMK95quuVTfyaXlfP7R5yIKtayocXMNrchOAHcoacWB6wdiZZGdSOT_I9vIKD_ITI7lUxD3BW0CCMYE1hbr2EkIYMaa9lmE27xo_90HMTdI9TaxylbDYp9NVG-DlxRFl_m2FGPXne94VNl6szNfxKHcc1di4LGanLi3_E3irDDF3FqG_LJeziiCzImFvIU_TdsyWHHPCSJaN_zT2qq2A0bWAmsuoroxfnSaSq3gx5NpK8IzSAJigWRYy8UNin5lF-SgfgRn7s69WiVugz-y06XuEbaY0umnk5L3-U_MWSzG_NQJcWS33uNoNX4arIx29kYoIMMfp1AlRh0wekqYY6xcNQLqBSWkyVj_9-WaFHKrsWopd6JSk6JWGDrURqMsOTbD-xof_VOAciYowIRld-8ORXCqMauG_Vhhw5JQK_ZlIB1DIDeIflDmzq6oSwZzi2iQ5SBrQL1C1IZz6PIGPXMRzYyhCDM8f5uZEbMZWoaKK9J1Z-gtOc8r1B2N3cAAERN7taGseYKHvTH1tWyoB6W5MbpXHR56ENQYTGKna0wG0GnlRDxrVA2YDEUqKX7cMyC1I6Ubq4Nf-NAXAU4py1kNmujl-SHuICGDMKHWRns1W9bLnlS_TSigRX_85qYcxNGQF_V3SH_xnGCyU4xt_W14xIF-iAWug1jKvkkdl3qpyOIO8-c91wfCNn2eJaCiciqds5AKU5ZYZdDx12SN9-BbnO-xVOp64hSoLKInhzptW9mTpNQHawYrGtQ-SbT9k4XQwVmPoWaVaQfilM4eOdq2j9cOJWn1U-YSxk90mR-WaHvPtupZBuxMKmciT2s00d9wbpaGBB_UTDOWHUwH8h0-g2kR7psWmRX1DHVsboUUIkFP4fQOaQeRuYBvTcxb1YFLthBhrgzI4Wy2DBY3H9dynsRdFRmjihuH1LOfdQrL1AR22uMCVebDQ4fmiUy8NfMl6BLWdSBbfI9ho7XG9GNqFcFyzNudjl4AXtPn7cJYGU4EPc00NjKRW6SpXMdizMY8grpJrDr7jGrbyJ9XTd8iYe-gwE0_p0ekemy1jSj8l6jx4SV6jh1XhNFJEELt_jRhXaqPTI0HY8MaX8sqBSvEZbleytEykHRRU93beb-aihQgZqBMUxw2ZtE2D9faD3nSJJPC4eUQ_tzq-xY02AscqJqY85JBREoUYxXTVqGhDqHj0Hwfs_GF9YZqQjGE3uvd1gTTgGIJrkqJtRSz40EeVZMx2uAtLuh-BHT7y4Q9svXar1kqKmmuVnbYq7UiMiIu9ggCxsz6wmKsrW2iMv82ROuxpoR-Uo6Nc03DDaUwYER18qXCaAFx4YEqvKzUEZsOR1DmfTXfGz3prvSqigxepaw-XXBKiQxiLWUdNlpEkCrMISWboNi_6Y8LacQWvln_lRGh4LCX8ZeEypDn5C5GG4068reS6cudfgQqu_MCVWikLwwDCaRPHH8IgRSwNuWOkSWo1t8Iitl6DsZA7YX9G1l2qliEzTWBC33s0jwmDlC8cJc0yxP63rlud5NndOI5aN0qVnqt6QMJD26VFrEgOeN69XOSEXF0sDkL5gjXVOqwnijZSc4VnpP_vn9uKZ3z446jbTQtNhJxtUUgD6yxcVlZ-tEe7ClBmzBWRg6ARzdswmsjMin5TLV9Xcmy7En6QrEd5Pc9RC9yoKkhWg-1MYpzrLtw1H7Ppz6YuWslPkpXrJMXOBR5B1q2v3YKQGqKDVM8zF3AqmM39Nez2NUoFGhn6gDcxTWFxQWtXBXJHTrbQy5c0FgEK9mhXBqcIj6u7f3QkXdYw4BU2yPnmZSqAXu-gKKaWl8LEGi-mORuqsF_4X6o4rpqGJ-_HU5s_SWYN3ntseYf6cPOSxlIQYfL4b7RTjKOCRzJ8EXL-WLL6EMxhRfg2EabjKcrMh3uwdKQ3Vm1AY2J-iz9ymV743U55Q9tQm-cZtdKs5zq4If4tNOm6aUvo1YPna6UAT-wy9WORfVhD-0jTLnIlNwQKu3AqMoKZy74EqzAxTtqzqqTHsdJU9Elv_2wR4IU1H41qe8dFA38sQcNK5vgadJAFWsui8eHfbtuAgZSWS9_lPqi6hSkxlVRziidWYcN5aJdeJYfyfAoC83l9VoKTOXpDh0SxMnJOQSa3fXdmRrr5MveGgXCYfkvAZNgp8EFVGEDmY8uWcsF5Pmke8LZv6kmQdTcRTbHKDWOKxp33lkrJX0P6srD2BzAPCLJQ1SOBd-PFMger2kQGEjAuEkwWdT6jrjs9yILTJGnd6csI9StbczfG-wCqgbXENi8YTNNd7JXXj-9sy_3xCxqjTCMzrrLduTYsMBEPwOQbjvPGJFSMwzJcXdJLtDJ35ZcJ2c34A5Mrl3TaasNmG7X1TxseGD-iiV8aymWjBQ0uSIJF5V1l3KQC5yOAV2QxJ6UsX3oivP_iTagKGokBs6LelFSHDmKUk3h4Bs4OjFLrqm6jTSjhU1B5AB0TTYj3X1GsB-Qj6BHQsRdoD_P8W6UvYgN_ZbtHsowPEHfkSGrGhy6z4ymX6ga7ZddfUG0ru7QbBMpXe2wvDPk1Ev8fdg7tHqQjySYWhS6v6Cxn0eX22x571gbkoQOY5iGNEFbOjvDLVEoThs8zdxXbj4jLEW5WdxPVvbCobvvVPyVrbBGOXulvmWIwI1tH6oWxzWFbNeRKZ1zzuPSN_h-2bcWNecZYPpBMiKNzMCmlIw_NTq9tbUw2FJpDThv1maovTzur06Wyl7rMddKikvDPf9DhRvwCN3L8x9fIvzAQkVOHYyHEOmtsl4wg7TfH28Ri3gyflSc9keNyzykJzzalHJ3M_1JVC_jkHShh2BAdOOcZDG2kLm9005oVI5Bs1xgA3mjxfWxwibagIm9kEtoLdXcgrmMSNFJDsJ28117Prp6GtthJqjj0Wig0B5ISZ9i3ih_eL0o68ufqFAX7sqOjzvlGefrehE-ssXkInDNP6zBy5oA3qcuI3EW6uGh-8Rcal1MskHZSVNexRfeERHXxo4RAON5dSa85iAIZywCPix9DwpacNMb5epirfHIZGIZaEllN8aD4D1Uzsv-3JvnMlno_7i3tUyXgA96jQShXkK6JwxtLktKDXtnMd_eN8dol6dO7Ne4kMCbA73MYAXgIIcNIh3rZ6l6oN2LNSvLvm9aqjzCYksxLQih2dJi6n4a5sqEBVT3f4DgL69N1U5hocg5miykafhp4hxR0jlju0VEcTn36OSjv8L3w_E3bhl6mvrHfPjKtciUFKxb1mqTmCxurBclhcSzhT0UfdF8i5c1liHmQudSc41F2hnlY-JkPUkXxv7hhCq7L1ErZNEda1wVVBBP48EQSTdOwBP_DBcr-uwfl7ZIFPJtETutfa1tennzvLXxNx19wmTb9S7-mJ97RLDp9c2C5CsrJtcyMXMBwlkCnGCrU8mFsbD6CIKoEo0LRgc4SbJVq4YsBNt1LO3c7ZPP-bklM7Vmc_kOOLTo-2sNYwG-d1akELYlVtFnIjTW-S3lETIjrHI69yzg9ZsAKBCLxO2QgGI7ZA9EBnfoLPemUv__DmQSFpPq7hJvzAJQ1HrZjeUgwtcUT4CvEKeehWl12mDGTTo6XVeEjk_jKzjvxuw56EYnbBSDKvK3-CnmddCoK2DnB_6oZG8vAKFHDQB5gee4jpXc-g51ek3vUEnYAUydelbz0r9_h23Ptbu2Mmd93H5M7bB-rmFbwd_iKKNwfruCXLYsahR3LiZmOfNHChnmmu7jmAYefDKCmug64476XaxSl2_KE0dmrGpjXewLlBwzUuVqLrmBY82rvY6WbrLk3glm4hwybGh1QqNoIS7z1jAUfijwac5O4ssxKrW-R71iUikNu0G7DBfrnlRJuHtlutm1FQAt64ryUtpoiLgyzYRKSzUEpmKK7EaNQg_uNnghOzA1A9YfX5Yi0iLbUrbcmwZtu9b9WOu2Wjr9eULNxQE0wF8G0MyyOK7yuflP0Regek2kIIYm0DAtXYaxtGnhh0We3ding-OQvvMytjjs5t3xp7hBDVwr5AF0FcqjZSNWJrOqppmxDmyb6N4Z6rtRXJUX6J6CfQwYFzvJaAQGZqO4ZboTkSXkn9phpjSMxLqNKfPt0WdtFtNzd2TLr1HLTWxYk22h4iG7rzQ5qeKPjLpPJg3_vjsIW4-Fg83TtmJ6dpHlJ67QQyQ0lipE1QeRkWbTaJUdFOFeFLg4Rjm0e9LZt3Jztv-jmzoRl5aj1Ek0XYPH1H0Z0UJ72jsMuwKCGUyhU_vSTRo4vnHuMg4yLhTxd2JwGCcqi7ZKzk1M3ju-GLTouS72Vhx5MQygUkhhmNRLRx7qxwpb1l3vs8CDQXf_2ptFDidHRC76bfZDrwVV_qzzbh_srx2jqSJbMb7sE40StfmSHtAOqX4rnqCq4T3rEw5LWw9VOSG0McdM1FEXp8fdM8ieAc1IcaWLPePciDeLViU1JTxB1QD0uKGksKghUcsM9P4n40LYlnsUB2ZzUP-IE-JsQ6FlWYHN3t0Tv3gAhlQuaeJnmX5fuxhOs3lmxT6gzAWpEsNSuJktoMFpSDIjXgzwD7JkzeLm8neNGRtdNPPOnO2Y1KZijo402-14RMWPKg5Z1sBqpfGFWEPUhXzzosWJl4hMLvQ1lbHndnYlsdY6StExYXy1MFJxohI_g9UXhgUz4dw8y-63ODFnwaB4nei_fGD5M2NUwyCFNSMcqSWKHugk5tuzODVixTa2XM850ZJGOrbmjrELrUyRQKAIj_wK3hWviFVtvNz35gxA2tG4OtWveaad6mKeghQWSTWkAu5nkLOiiOORBHgrBgt0QE0XuIq3GhxGErq2d_BrRk5LVohTUhsi0SBv6Fj-fUHhUr4vvmRwxgw_1-17UGYzBHjrLdYkKs95OInYqGWBBG0TBxxXsBkzSsUDKuOEb7hDm8DOxxRrfCYHQ3-sr8IlGAxDD0-Xr1pIGutFnRNk_YVJKUy1h9MX7FP108x5koJWmvZagiFSxPjqQZTFMSyeDcFfvzaMVRIyaU1jcl9s16XshAtWUraOtK06Bi5Mx1CRwXfm7G68tG2OuRFl5_WEyFvNCqv9f0w1Dq5TIsbH8O2Y3WHt4SN-XkwpUYYd5XOa7q5GofqW7IlAXDDDcKI371XevrYzsKCj6-3ykAd9XPEJgavxj_J025WFC_CTCXD9BS8q5eAIfyuS5EB7WkA_XSgzg3z9G0A2KHvsl8ODQAsO-E-YyhS2HhvHFF98o-P-ws-2ENAn_ZVHztNZ7S-7y_QCedOqHLcbPxkWDYyqD27lrR26kaBWHnKF8wJ-hA_hR0I73YEDszU8XTj6GTv8V3zHs8fYWYtaxtxI_uTUkraHYBQ6zub1LLrtbxJ2ojJqJrSNDjIxGuU_NoFzyEE4kL9kX40jMlIItvTTH-qGVeV4HJ5g",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_ccc9719d-49dd-490b-9ed9-505e83d80b89",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\n  \"average_as_written\": null,\n  \"cells\": [\n    {\n      \"box\": {\n        \"x0\": 0.134,\n        \"x1\": 0.165,\n        \"y0\": 0.672,\n        \"y1\": 0.715\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"S/N\",\n      \"legibility\": \"clear\",\n      \"row\": \"1\",\n      \"text_as_written\": \"1.\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 1.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.244,\n        \"x1\": 0.337,\n        \"y0\": 0.672,\n        \"y1\": 0.714\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\": \"1\",\n      \"text_as_written\": \"2·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 2.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.414,\n        \"x1\": 0.515,\n        \"y0\": 0.671,\n        \"y1\": 0.714\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l1 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"1\",\n      \"text_as_written\": \"33·30\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 33.3\n    },\n    {\n      \"box\": {\n        \"x0\": 0.594,\n        \"x1\": 0.696,\n        \"y0\": 0.671,\n        \"y1\": 0.714\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l2 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"1\",\n      \"text_as_written\": \"66·70\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 66.7\n    },\n    {\n      \"box\": {\n        \"x0\": 0.818,\n        \"x1\": 0.902,\n        \"y0\": 0.671,\n        \"y1\": 0.714\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"X = R(l2/l1)\",\n      \"legibility\": \"clear\",\n      \"row\": \"1\",\n      \"text_as_written\": \"4·01\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.01\n    },\n    {\n      \"box\": {\n        \"x0\": 0.134,\n        \"x1\": 0.165,\n        \"y0\": 0.731,\n        \"y1\": 0.775\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"S/N\",\n      \"legibility\": \"clear\",\n      \"row\": \"2\",\n      \"text_as_written\": \"2.\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 2.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.244,\n        \"x1\": 0.337,\n        \"y0\": 0.731,\n        \"y1\": 0.775\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\": \"2\",\n      \"text_as_written\": \"4·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.414,\n        \"x1\": 0.515,\n        \"y0\": 0.731,\n        \"y1\": 0.775\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l1 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"2\",\n      \"text_as_written\": \"50·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 50.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.594,\n        \"x1\": 0.696,\n        \"y0\": 0.731,\n        \"y1\": 0.775\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l2 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"2\",\n      \"text_as_written\": \"50·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 50.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.818,\n        \"x1\": 0.902,\n        \"y0\": 0.731,\n        \"y1\": 0.775\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"X = R(l2/l1)\",\n      \"legibility\": \"clear\",\n      \"row\": \"2\",\n      \"text_as_written\": \"4·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.134,\n        \"x1\": 0.165,\n        \"y0\": 0.784,\n        \"y1\": 0.824\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"S/N\",\n      \"legibility\": \"clear\",\n      \"row\": \"3\",\n      \"text_as_written\": \"3.\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 3.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.244,\n        \"x1\": 0.337,\n        \"y0\": 0.784,\n        \"y1\": 0.824\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\": \"3\",\n      \"text_as_written\": \"6·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 6.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.414,\n        \"x1\": 0.515,\n        \"y0\": 0.784,\n        \"y1\": 0.824\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l1 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"3\",\n      \"text_as_written\": \"60·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 60.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.594,\n        \"x1\": 0.696,\n        \"y0\": 0.784,\n        \"y1\": 0.824\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l2 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"3\",\n      \"text_as_written\": \"40·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 40.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.818,\n        \"x1\": 0.902,\n        \"y0\": 0.784,\n        \"y1\": 0.824\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"X = R(l2/l1)\",\n      \"legibility\": \"clear\",\n      \"row\": \"3\",\n      \"text_as_written\": \"4·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.134,\n        \"x1\": 0.165,\n        \"y0\": 0.833,\n        \"y1\": 0.875\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"S/N\",\n      \"legibility\": \"clear\",\n      \"row\": \"4\",\n      \"text_as_written\": \"4.\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.244,\n        \"x1\": 0.337,\n        \"y0\": 0.833,\n        \"y1\": 0.875\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\": \"4\",\n      \"text_as_written\": \"8·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 8.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.424,\n        \"x1\": 0.511,\n        \"y0\": 0.833,\n        \"y1\": 0.875\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l1 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"4\",\n      \"text_as_written\": \"66·7\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 66.7\n    },\n    {\n      \"box\": {\n        \"x0\": 0.594,\n        \"x1\": 0.696,\n        \"y0\": 0.833,\n        \"y1\": 0.875\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l2 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"4\",\n      \"text_as_written\": \"33·30\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 33.3\n    },\n    {\n      \"box\": {\n        \"x0\": 0.818,\n        \"x1\": 0.902,\n        \"y0\": 0.833,\n        \"y1\": 0.875\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"X = R(l2/l1)\",\n      \"legibility\": \"clear\",\n      \"row\": \"4\",\n      \"text_as_written\": \"3·99\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 3.99\n    },\n    {\n      \"box\": {\n        \"x0\": 0.134,\n        \"x1\": 0.165,\n        \"y0\": 0.884,\n        \"y1\": 0.927\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"S/N\",\n      \"legibility\": \"clear\",\n      \"row\": \"5\",\n      \"text_as_written\": \"5.\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 5.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.229,\n        \"x1\": 0.341,\n        \"y0\": 0.884,\n        \"y1\": 0.927\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\": \"5\",\n      \"text_as_written\": \"10·00\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 10.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.414,\n        \"x1\": 0.515,\n        \"y0\": 0.884,\n        \"y1\": 0.927\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l1 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"5\",\n      \"text_as_written\": \"71·40\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 71.4\n    },\n    {\n      \"box\": {\n        \"x0\": 0.594,\n        \"x1\": 0.696,\n        \"y0\": 0.884,\n        \"y1\": 0.927\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"l2 (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"5\",\n      \"text_as_written\": \"28·60\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 28.6\n    },\n    {\n      \"box\": {\n        \"x0\": 0.818,\n        \"x1\": 0.902,\n        \"y0\": 0.884,\n        \"y1\": 0.927\n      },\n      \"column\": \"other\",\n      \"column_header_as_written\": \"X = R(l2/l1)\",\n      \"legibility\": \"clear\",\n      \"row\": \"5\",\n      \"text_as_written\": \"4·01\"\n    ,\n      \"unit_as_written\": null,\n      \"value\": 4.01\n    }\n  ],\n  \"graph\": null,\n  \"other_marks\": [\n    {\n      \"box\": {\n        \"x0\": 0.411,\n        \"x1\": 0.529,\n        \"y0\": 0.937,\n        \"y1\": 0.978\n      },\n      \"description\": \"Mean X value written below the table: Mean X = 4·00 ohms\",\n      \"text_as_written\": \"4·00\"\n    }\n  ],\n  \"precautions\": [],\n  \"table_found\": true\n}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 1572,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 5270,
+      "output_tokens_details": {
+        "reasoning_tokens": 2164
+      },
+      "total_tokens": 6842
+    },
+    "parallel_tool_calls": true,
+    "store": false,
+    "max_output_tokens": 6000
+  }
+}
