@@ -24,8 +24,12 @@ export default function AudioPreview() {
   }
 
   async function handleUnlock() {
-    await audio().unlock();
-    setUnlocked(true);
+    try {
+      await audio().unlock();
+      setUnlocked(true);
+    } catch {
+      setUnlocked(false);
+    }
   }
 
   function handleMuted(next: boolean) {
