@@ -1,5 +1,8 @@
 # Build log
 
+## Oct 26, after the official rules
+- The rules say the building period is Oct 27 – Nov 4. Everything above this entry (PRs #1–#12) was committed Oct 26, 11:05–13:56 WAT, before the 17:00 kickoff. The repo is now public, tag `pre-kickoff` marks that commit, and the README lists the work. docs/01 is updated from the official guide.
+
 ## Oct 26 (Day 1)
 - First commit: planning docs, agent harness (`.claude/`, `.gemini/`, `.githooks/`), shared rulebook `AGENTS.md`, generic workspace config. No app code.
 - PR #1 web shell (desk, lined page, ink glow, screenshot script). PR #3 Gemini's procedural metre bridge kit, merged after two review rounds on wire pointer handling (world vs local cm, R3F capture, lifting off the wire must not count as a drag).
