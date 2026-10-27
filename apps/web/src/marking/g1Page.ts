@@ -1,3 +1,5 @@
+import type { Box } from "@snaplab/contracts";
+
 /**
  * Aspect ratio (`height / width`) of the synthetic G1 exercise-book page.
  */
@@ -6,12 +8,43 @@ export const G1_PAGE_ASPECT = 4 / 3;
 const PAGE_W = 960;
 const PAGE_H = Math.round(PAGE_W * G1_PAGE_ASPECT); // 1280
 
+export const G1_PRECAUTION_1_BOX: Box = {
+  x0: 0.07,
+  y0: 0.876,
+  x1: 0.435,
+  y1: 0.904,
+};
+
+export const G1_PRECAUTION_2_BOX: Box = {
+  x0: 0.07,
+  y0: 0.922,
+  x1: 0.495,
+  y1: 0.95,
+};
+
+/**
+ * Resolves the page bounding box for a written text line (such as a precaution)
+ * when the rule engine emits `box: null`.
+ */
+export function findPageTextLocation(textAsWritten: string | null): Box | null {
+  if (!textAsWritten) return null;
+  const trimmed = textAsWritten.trim();
+  if (!trimmed) return null;
+  if (/parallax/i.test(trimmed) || /^1\./.test(trimmed)) {
+    return G1_PRECAUTION_1_BOX;
+  }
+  if (/jockey|slid/i.test(trimmed) || /^2\./.test(trimmed)) {
+    return G1_PRECAUTION_2_BOX;
+  }
+  return null;
+}
+
 let cachedDataUrl: string | null = null;
 
 /**
  * Renders the synthetic G1 flawed metre-bridge exercise-book page (docs/15 §5, docs/11 §2)
  * onto an offscreen canvas and returns a PNG data URL.
- * Every drawn region lines up with the normalized 0..1 evidence boxes in `g1Sheet.ts`.
+ * Every drawn region lines up with the normalized 0..1 evidence boxes in `g1Readings.ts`.
  */
 export function createG1PageDataUrl(): string {
   if (cachedDataUrl) {
@@ -141,8 +174,9 @@ export function createG1PageDataUrl(): string {
   ctx.font = `500 14px ${handFont}`;
   ctx.fillText("← l = AB →", px(0.28), py(0.248));
 
-  // 4. Results Table (x = 0.07..0.85, y = 0.30..0.54)
-  const colX = [0.07, 0.25, 0.45, 0.67, 0.85] as const;
+  // 4. Results Table (x = 0.06..0.84, y = 0.30..0.54)
+  const colX = [0.06, 0.2, 0.44, 0.64, 0.84] as const;
+  const colTextX = [0.13, 0.265, 0.53, 0.725] as const;
   const rowY = [0.3, 0.34, 0.38, 0.42, 0.46, 0.5, 0.54] as const;
 
   ctx.strokeStyle = biro;
@@ -170,41 +204,37 @@ export function createG1PageDataUrl(): string {
   ];
 
   ctx.textAlign = "center";
-  ctx.font = `700 17px ${handFont}`;
+  ctx.font = `700 16.5px ${handFont}`;
   for (let c = 0; c < 4; c++) {
-    const left = colX[c] ?? 0;
-    const right = colX[c + 1] ?? 0;
-    const cx = (left + right) / 2;
+    const cx = colTextX[c] ?? 0;
     ctx.fillText(headers[c] ?? "", px(cx), py(0.32));
   }
 
-  ctx.font = `600 17px ${handFont}`;
+  ctx.font = `600 16.5px ${handFont}`;
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r] ?? [];
     const top = rowY[r + 1] ?? 0;
     const bottom = rowY[r + 2] ?? 0;
     const cy = (top + bottom) / 2;
     for (let c = 0; c < 4; c++) {
-      const left = colX[c] ?? 0;
-      const right = colX[c + 1] ?? 0;
-      const cx = (left + right) / 2;
+      const cx = colTextX[c] ?? 0;
       ctx.fillText(row[c] ?? "", px(cx), py(cy));
     }
   }
   ctx.textAlign = "left";
 
-  // 5. Lower-left slope, intercept & evaluation (x = 0.07..0.45, y = 0.60..0.76)
+  // 5. Lower-left slope, intercept & evaluation (x = 0.07..0.44, y = 0.60..0.76)
   ctx.fillStyle = biro;
   ctx.font = `600 14.5px ${handFont}`;
-  ctx.fillText("s = (0.0175 − 0.0160) ÷ (0.250 − 0.200) = 0.030", px(0.07), py(0.618));
+  ctx.fillText("s = (0.0175 − 0.0160) ÷ (0.250 − 0.200) = 0.030", px(0.07), py(0.618), px(0.38));
   ctx.font = `600 16px ${handFont}`;
   ctx.fillText("c = 0.010", px(0.07), py(0.678));
-  ctx.fillText("X = s/c = 0.030 ÷ 0.010 = 3.0 Ω", px(0.07), py(0.738));
+  ctx.fillText("X = s/c = 0.030 ÷ 0.010 = 3.0 Ω", px(0.07), py(0.738), px(0.34));
 
-  // 6. Small pencil graph in the lower right (x = 0.51..0.81, y = 0.57..0.80)
-  const gx0 = px(0.51);
+  // 6. Small pencil graph in the lower right (x = 0.50..0.79, y = 0.57..0.80)
+  const gx0 = px(0.5);
   const gy0 = py(0.57);
-  const gw = px(0.3);
+  const gw = px(0.29);
   const gh = py(0.23);
 
   ctx.fillStyle = "#f4f9f5";
@@ -228,10 +258,10 @@ export function createG1PageDataUrl(): string {
     ctx.stroke();
   }
 
-  // Graph axes inside the small graph box: origin at (0.55, 0.76), top at y = 0.60, right at x = 0.79
-  const ox = px(0.55);
+  // Graph axes inside the small graph box: origin at (0.54, 0.76), top at y = 0.60, right at x = 0.76
+  const ox = px(0.54);
   const oy = py(0.76);
-  const axRight = px(0.79);
+  const axRight = px(0.76);
   const axTop = py(0.6);
 
   ctx.strokeStyle = pencil;
@@ -245,13 +275,13 @@ export function createG1PageDataUrl(): string {
 
   // Axis labels (vertical axis missing unit "cm⁻¹")
   ctx.font = `700 15px ${handFont}`;
-  ctx.fillText("l⁻¹", px(0.532), py(0.595));
-  ctx.font = `600 14px ${handFont}`;
-  ctx.fillText("R⁻¹ (Ω⁻¹)", px(0.675), py(0.782));
-  ctx.font = `500 12px ${handFont}`;
-  ctx.fillText("0", px(0.535), py(0.772));
-  ctx.fillText("1.0", px(0.77), py(0.772));
-  ctx.fillText("0.04", px(0.515), py(0.612));
+  ctx.fillText("l⁻¹", px(0.522), py(0.595));
+  ctx.font = `600 13.5px ${handFont}`;
+  ctx.fillText("R⁻¹ (Ω⁻¹)", px(0.655), py(0.782));
+  ctx.font = `500 11.5px ${handFont}`;
+  ctx.fillText("0", px(0.525), py(0.772));
+  ctx.fillText("1.0", px(0.742), py(0.772));
+  ctx.fillText("0.04", px(0.505), py(0.612));
 
   const mapGraphPt = (rInv: number, lInv: number): [number, number] => [
     ox + (rInv / 1.0) * (axRight - ox),
@@ -298,17 +328,25 @@ export function createG1PageDataUrl(): string {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // 7. Precautions at the bottom of the page (y = 0.85..0.955)
+  // 7. Precautions at the bottom of the page (y = 0.85..0.95)
+  // Using maxWidth matching G1_PRECAUTION_1_BOX and G1_PRECAUTION_2_BOX so the strike covers the full line
+  // and the correction text to the right never overlaps the tail of the sentence.
   ctx.fillStyle = biro;
-  ctx.font = `700 17px ${handFont}`;
+  ctx.font = `700 16px ${handFont}`;
   ctx.fillText("Precautions:", px(0.07), py(0.855));
 
-  ctx.font = `600 16px ${handFont}`;
-  ctx.fillText("1. Avoid parallax error when reading the metre rule.", px(0.07), py(0.891));
+  ctx.font = `600 14px ${handFont}`;
+  ctx.fillText(
+    "1. Avoid parallax error when reading the metre rule.",
+    px(0.07),
+    py(0.89),
+    px(G1_PRECAUTION_1_BOX.x1 - G1_PRECAUTION_1_BOX.x0),
+  );
   ctx.fillText(
     "2. I slid the jockey gently along the wire to find the balance point.",
     px(0.07),
-    py(0.937),
+    py(0.936),
+    px(G1_PRECAUTION_2_BOX.x1 - G1_PRECAUTION_2_BOX.x0),
   );
 
   cachedDataUrl = canvas.toDataURL("image/png");
