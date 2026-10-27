@@ -1,0 +1,1043 @@
+{
+  "name": "spark-blueprint",
+  "status": 200,
+  "latencyMs": 18019,
+  "request": {
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "max_output_tokens": 3000,
+    "store": false,
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "This is a photo of a Nigerian student's WAEC science practical notebook page. Identify the experiment, the apparatus drawn and the values written. Copy every value exactly as written. Use Nigerian naming (e.g. trioxocarbonate(IV)). Boxes are 0–1 page coordinates. Leave notes empty."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 227 KB]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "lab_blueprint",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "experiment": {
+              "type": "string",
+              "enum": [
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "bridge_wire",
+                      "resistance_box",
+                      "unknown_resistor",
+                      "galvanometer",
+                      "jockey",
+                      "cell",
+                      "key",
+                      "protective_resistor",
+                      "connecting_wire",
+                      "burette",
+                      "pipette",
+                      "conical_flask",
+                      "retort_stand",
+                      "white_tile",
+                      "funnel",
+                      "beaker",
+                      "glass_block_outline",
+                      "normal",
+                      "incident_ray",
+                      "refracted_ray",
+                      "emergent_ray",
+                      "pin",
+                      "other"
+                    ]
+                  },
+                  "label_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "approx_box": {
+                    "type": "object",
+                    "properties": {
+                      "x0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "x1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label_as_written",
+                  "approx_box"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "values": {
+              "type": "object",
+              "properties": {
+                "meter_bridge": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "resistances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "text_as_written": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unknown_label_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cell_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "galvanometer_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "resistances",
+                        "unknown_label_as_written",
+                        "cell_type_as_written",
+                        "galvanometer_type_as_written"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "titration": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "acid_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "base_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acid_concentration": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "base_concentration": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "pipette_volume": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "indicator_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "equation_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "acid_as_written",
+                        "base_as_written",
+                        "acid_concentration",
+                        "base_concentration",
+                        "pipette_volume",
+                        "indicator_as_written",
+                        "equation_as_written"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "glass_block": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "width": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "text_as_written": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "angles_of_incidence": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "text_as_written": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "angles_of_incidence"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "meter_bridge",
+                "titration",
+                "glass_block"
+              ],
+              "additionalProperties": false
+            },
+            "setup_issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "rule_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "rule_code"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "experiment",
+            "confidence",
+            "components",
+            "values",
+            "setup_issues",
+            "notes"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "lab_blueprint",
+        "schema": {
+          "properties": {
+            "components": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "approx_box": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "x0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "type": "object"
+                  },
+                  "kind": {
+                    "enum": [
+                      "bridge_wire",
+                      "resistance_box",
+                      "unknown_resistor",
+                      "galvanometer",
+                      "jockey",
+                      "cell",
+                      "key",
+                      "protective_resistor",
+                      "connecting_wire",
+                      "burette",
+                      "pipette",
+                      "conical_flask",
+                      "retort_stand",
+                      "white_tile",
+                      "funnel",
+                      "beaker",
+                      "glass_block_outline",
+                      "normal",
+                      "incident_ray",
+                      "refracted_ray",
+                      "emergent_ray",
+                      "pin",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "label_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label_as_written",
+                  "approx_box"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "confidence": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            },
+            "experiment": {
+              "enum": [
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "setup_issues": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "rule_code": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "rule_code"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "values": {
+              "additionalProperties": false,
+              "properties": {
+                "glass_block": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "angles_of_incidence": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "text_as_written": {
+                                "type": "string"
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "length": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "width": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "angles_of_incidence"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "meter_bridge": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cell_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "galvanometer_type_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resistances": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "text_as_written": {
+                                "type": "string"
+                              },
+                              "unit_as_written": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "value": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit_as_written",
+                              "text_as_written"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "unknown_label_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "resistances",
+                        "unknown_label_as_written",
+                        "cell_type_as_written",
+                        "galvanometer_type_as_written"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "titration": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "acid_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acid_concentration": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "base_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "base_concentration": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "equation_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "indicator_as_written": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pipette_volume": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "text_as_written": {
+                                  "type": "string"
+                                },
+                                "unit_as_written": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "value": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "unit_as_written",
+                                "text_as_written"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "acid_as_written",
+                        "base_as_written",
+                        "acid_concentration",
+                        "base_concentration",
+                        "pipette_volume",
+                        "indicator_as_written",
+                        "equation_as_written"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "meter_bridge",
+                "titration",
+                "glass_block"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "experiment",
+            "confidence",
+            "components",
+            "values",
+            "setup_issues",
+            "notes"
+          ],
+          "additionalProperties": false,
+          "type": "object"
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae06af7602ed8f4246f41ec",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793092343,
+    "completed_at": 1793092343,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae06af7602ed8f4246f41ec:rs_4d97d6ec-43e1-499a-8645-3ce6f6f85e20",
+        "encrypted_content": "Q-PaDgEvrx5ouNnjOpJCofqGxQVkko3Y5VEGOM05HmiELaGPSvjlnnAbicVa8_1bHCBeSc87MT6rMglogUBGnUvFzHy0xLOMLzv9Qr7y5r1RT9rCLVZKBk7VqonctEC2lWI5XGM7tacKdSrxoRs3fLWqNRv0yy3c8I4DfVatadEz9sq_S5Ta0lqd7wU17GJ2nCitAl7q3h43OvIgwUJSdOnCIF4osuJeAU2-zllmklwB9En2YURTDgFUWdLYUhmo2JgvltgA6Hv5pAWH0JLFzf12dAlql7qvkMD76pOTxj-1s2EMsEmE5lLFkupJk5ErZvBoAtr6YuuEMGn3_glOa7dSSJFQyD_WSqb14CXn3rJ6U_T6JHnJ6J9msKYrYH0Grywlbuj7qp-jsj2aXW9KjqGBj5IESlE_hBYWwcgLMF7-EtF7rrD_-zITpuJjNk8wjMQT_Xwp4WH3z_eRgQ9zNPKu_NNSVF9Alk5U1_zRAZd9MtfT_B1iV1_FuVk_lpu7B7HptkbI9Gr-otU6yCtIB4n4E4gXXZUPVptG7YiFwr_4SAbwYHwtzgGCsAOMQkigzsJeO4cO8MMYFFYyX2NVMxgEzIu63AMVUXWKqQ6Yg3ugnQq6d2oo2aHUzC8lmhb5yeID-7o2LPzL2wOgAuEksR5I1AkIk86grukyHswx4kwtXVNtRTjg2VuW5HX5IC4dgRG-AH11W7ZRGl5ABBW2d7Wym_zjzLOI3wViiKXgoLa-MksGTG8RSaplnh5Y2_1iPKKcg7JIgrtXNU2DjPemlA1I5tXP418zTC84HLAuzfsvdB0zaL7npCb8G24daEo9dDV2Y_98lsALZbOLRKSf8UOcb84BFGaZ4vZXzIbpd0HJVzmT943xTrcRkvbCYPnCmxSqcByE_P3xMLkN2omg9lLYFyHG9KOP5HypnT4UYRSNFbtQ7hYfoZ_eodJ8P43O7vG_pG944pJSf4umsR6UbUSne0J4nF6ICkJAlSSnuNexc07ZuWf6z19Fzk-DozzaHrIaLDc7bmCEILCxNpPTU9u2IwM2alec2912j75jpnV7xmD9Vyo3xLpe_HRaqeknOTa34lLrRbpQfK6ND0FeXFzN45lGCJMm1pcjJna-3paY1FOrvA3UEP3B4YT-P_tmJPHsGosZFoIG9XrY57NiZzICpI58ReuKqwt3TGhxdf15ceihd_SldML7j8EGtDgzeVLF6xeJEiLn2KKfmUl21cUhjqcspUtDdO5R8reCRobhNRRweHpdVk-gZn8crwzFwJO_uBpu22EfRgQK0Z8gSbmeoX2bQybPbQkHlP8tg8xB2uB-VwgZgGtc7QRYK2F921_BV4dwCYCIj--kRzmgA1Nd-T6yRBclQ16MVc__5TUP31JrhxJ-KTWCafCTbq2_RiipnJTOQ_Z2LlnWkTBEzzRwda27X137hjVELAkvaKlReCTcEHEdzD0NLjVpicoJHF-ACe6HZDDtiJe92JlOyesNv-mnp0e36iMy9unFfCq3c1xhmuUrAulAVB1YqqHPwxXLdzr96k976qQjgLmZmlEoYzv-CLEA4k_FhFwZN--0kUF9L3RZ8hsHxilxgspDvqnxyd7Snh11YtKGPx1tQbE7C-s3qq3ZA8Bvzl02ih7Zf9fGYLTfTPqwKSp6JJ5RBlXmzC5LkCfpudd7mawIq5sVEVfqciSOH1F5iJw894My35e8VyqcX_HELKC4pVuXTGMYspKTlAcDbDHZo8PQvcKog5Pldb2IzQsfFZpSAhkwcF6tdxFQg6EBWbHJf9UddA93tQ4xObNxp_8liroR19T36_k40aGB7_K-c72RSQ_FT8MF7V_OWbzIjf36lU1W-_SNH1TEKT2TRoJLRM13t408Js6G5ho6CqAa0lAM4zxQqQ_-ZZVOO3WE_tHrEulJaHlXkH9tujeQnyUHAUHm8iT0alQiMp597b1mS6IqhK_zpMJ9EU5tL1Ev-SU1bF8_UVSiXsVZ4B9bd73sSc2ZCXm4ZldIUhAZ5x-RvWm0HhaDF1ussbH7WQBk45aXcj3UrEHQ1OpMgmSb85gAbnyRkIMHfuTnUNzUBSs4x7iWxlKfyi9xn_Yv1uOIhz3wCMQbuW6IZLkd-lqXSToNuP39_iDhSQJ3DveTU7LUTU-22UvlElEHWSJ-e1XCLDFphqE7loZG_QP2QAa5hIcfbLdmKIS9UPhvuKq-QGVuV8EYlTpxP7laURM3onUcT-K3vEXdsoO-xZsvnUtnKpWTQhZ8X4AWB6xek-3q5QyiV1UNnFOeF9Cv__8RnnDoMFVPTkdohXwqFEyWpSI8yNouY4zpJUxRRpnEqG9tyrWcQZ9hxQZr6aWiyVjmNaDSWVWn3V7ql5x30hY_12nVbdt2anCcN4kMgy6xmkLxTVnAXNY2RXbD3etjOhXlwgjdFD8sCsygn_liIw7hvCTqwlYD34qY4XBao8WQbSxSCqFwRGUrW_xr6kxSZ1P5r67AVC0u6r5f2eBNRo-LqcbtABUEAwnfhu9FZYSIf0znzCBHVeIoY21P-hPtI8SRUtoOWy4xo5ft2gFfv4IM-gQGwbM--TL2-6J6UhNI8BRJmZ3UpNFy1nrhIn2F8AjiKKyprgMzCn39lQZDVhQz1aEIzg23A5FGeSdAlsSrndDw1i9kJUBrcqqW2hyP0r0dH97Xtd19RjXEaEQeZ350eCtCjRRwCTTP7mv9fZUnuTSNzKrDEpltvjb3kevk0GX-B54k1H-bOt_4VQU5QjQ0rxcTG-4MFmIj7zPU6ipuuqP8V4xmvE1qClDdXSSHMDP3jO3jfH5RmEfVT_fXws2kxaqWxyeKGr_GTzwYtW0GRCiVLZxJEwpJNu6xGOOEo80VmIfJSQCu0RNgSJ5uWw7awOX6G5zgGR8iLQekOig9TgAZoqm_bEKeGkSN6yWSZdo7Lw7SEtG-KCKtJ1mMF9rTsgkng87hSRh6XAHZwEC1bpdtFrsCsX4bXGskyrBFJ_Fd64WmxNjgakPOqVbqwdHzREgX19isiqO9G4DZLxUWphvfGEw2KsBcKRWnykNrIyZvVbYHuNe-JnTSgcGCpw8lcDbU62f7fgny0kgtohDYygClmAuGXbS1ZUyiIOW69C6rVKDPHnWl8OiksuXIGyfi_G8CD39GJ1Rm4aX7ovAM-WMdvldPIZoC4JnvFP9V6iU6IAtcwjqS-c8p1H5GhLcsTGQnXT2KTuprCa_EoDvQGlaOMUB6tse4G72WQkjFmk7DMkiWonqVQMiz49p5g6-2X62y7D2Bcy8qDtkf6LrNvWVRsxTZL5Zae7IvVcGAyhpqZx2e3rIhVYNXIcXSWaBYe37pPtGLdYokjmw8iFCd2NgldIUd1X7Dv9IQghHL7eSuCgbXFmQqyrWqtV6g8k2Bus45lhF-oMIZTa83-JEfmL94n0GjkmZPV7U8EpLPljeh9RXwUaodWhLpkd1V2-I36RE_12wa15KJ8nbqFIbKWCeQp1ViOLVhYiHdRdjGCukg6Cuu_InBP83RXr_SjNbU35i4KoFubNufpLBorz6VR4ue9XoYsjeW52eMfd8mv0Ao0KwXKZ24hAsh08ujQMfYuT0bfgz9hf-QDyDxsSVsaQy9Ab10wneWcbD-xUrnT0IRq1NzIZ-zM1YWM-N1hprpX0QlSdz3SU1L92c1FpDn_bwUjNfyPRaQbG36SvmvKQfx-0uJMJJGJgoSQd2OLt5O9tf1306aX55yHmev9NcJCxUCE0z8H3vMBfvG5fV2Mg6zjPJZKBpwk2NxKidCpWaLeKsTeku0ycJlzLHyWAwvYWcaxwC4AGdOqFCj2fY_EzpMG5lqxnSsSABwEnWuj-qIXa7XRXwZu_M0WuITqinrk9JqeIGF2D5Y_4dzC8oHW7-xv6NxH8SSqD5xGxp7Fk58pO2k6hoTzOZs2uaOrbIB8h9hqi6tq-CjHGvIa3JDzgKBbzTr4EhJYxyi_mGU1YhT0z8jHJl4TxU55FS8jzOYP9ua6xUfVfriQwkB8J2pu4iGOd3a2zMR-ary-rVcFZb_Di67YEb6H_7IFRIElpRI8fafienz-nixZnBKGEL36BGBcX13QggpbtSdJOglELGpkV6dUoH-b_cA9J45SzJTHimZ42jEcEpP_YLSkHvFH5HJDQ-DNCSKEzoj1e04chsgGr_F_KYlTB3DNBUHgSHWi9xuELlWbiRtbdBfXJJ7xcGsvh6FZMphKlS9tzrIi_5fWJdxJi87nhFsg0K8lorGeCatrJUkFK8swaRdIIsVLJWEZQWdX_CyxZva5-XcjlVt9RLjj7kv0T7f3ep23xNymJim5ImOv4-rATUyZ31ve-CtotTFI_tz6FzBEJV1wF6RElihawVb8IatNJz5DBQSXmNmgb1CNsLENtBJW8Tih73M8Zv6ipPuKHOgH7z--YmnXQCBn3pRDUbtyVSTz5OQ9O3dZkG4NGAa1_Tv5VBjVxOgc0Drw86PfjeYyWA2sALpTlvJNqa24EADQFTMUqDwmqUh1cfT1aG4T1i-B87Qcw8Nc_FvYncJgpk1e38RpYxvL7dSkh6N8wIwrNUigegDfD333z-FBRCrlUi098hxKC10SaO5OhmKJzVq6MoUFR09Orw6oUd-rUCjBAb6Gh7nauqKOnqSDnp68PDFdf0Q19gPAEwpdAc7oF7AYiAzlDW30LV0-CPXfW-f7A9AXsw1WHgPcC79C7IBYxEsV266nZ1E2g5fRFJbNhOivwCmfPqBT8pPN9fH0CMq_AGLGz-TcMcRfjWrioDSEa-jqxceMuf36zeoKtA90wZjHDCK18ITFfoHN6abMd6MxPcl4CTETwwPYgiEg3x0o1A4RHJOpvuhQFlklGPYyNdrOvfxf7RzY7sL-ePMDe8iSfGpBP2fHpLogKrbWY00GccUiGwxOxIeuU0Qwe91EdaVqikT2DaKZEfYVi_fwb6S0XrEHpmbmQs3iSdn4d1C3DcMZQiDSA6W0eEMrHpq2NSpvhgwPxr8tIV7GD5wJzGTQS2YNaXT0trh71ESKq2aTT0ETLJ9vGvAEjMMjiUqLpHyF0PJxbOmKwmMQMEiwFUHyaP7cAxRCn_tgvSBV4fEQzeaFdb9Nv_6VID7YS1OxubZ9FlyZJUtDkyNIC8ttp5Kr93C4ymjhSAlmFg0YIeI6Y5_SXJA22XK1devhLjo9E1Io9QHTzd3L339tjiWjfjIxNmE3DY8yUikg0-A8yGy11Xh9KugxEmVdRzBCnOFKhZw69D0zIDMOIHLMAbK0OQvqays6ChOdZRFs4RA8GYA8_b2xIxNVB9ips-CZU4uvlCk2HZjbi9Sc4uBsRMig9zP-fS6Hg1HJv7Fw0yWGT_k6N42JOAWe96N2dEXK5TeZ7Li4wK7ve-GTPpRz95xPHtvnj_mWU7aZpHvjFY92V-NRK6SojdZ8SteQosJya6fEOgOIyQ2rpX3pW0MJPDBfsrKAgy9-cJB3AAeU7HxR7NAMEBTNWv9xS2Vh-DcyEv-xHDo2yFiGpbK-JXIMcx0vXQacLgqw6Cn2MfczJR8JveFNDS803Yi1_hZ_fw_RlOkFWZx57BGc4tVKc3dSmNR-Iq8HyNs1MmWuLYfticDMzjdjMYD94a-ioMD7ybhGE9R2VS8H9YZN_FyC6lvoxVgKz1c5xfmz-JdraH68sZIoEhG2Q7OPA2O44eST89clzydJ-QzrspuFjYgshcjVESqNkJuyjxBIqdDX-iJe73mN8qSN-QDZM4z2w67l2qBLzY-SCMygOKGOqRn2wo4a9_ltk8c8KKichMfHncheCi4R868RHCsnIOG2ELVFp9Z2fkDr7qZ1UWg4rfsyqwT4Y1BkXAktklhI_GylD_dEnPlQEACTGOsiQCBZJBDC3jS8urlJFw_8gyltT8Y-sifXqsr8AATutCQnhvxH1VIEAoF9DWPgc_jrTr_lrnixuHP6z4p8Y-kf_jCx9ywRKVqM_BeWMhlVC8aXTn9Rf_uY1qxbcP8a8o82bF9oMCApSI4kyyeqtQPHpG-GNTAowlASRdMQ-8AzaOIKOjFar4JK1PLmtW_PaZGhcoL_u71ZM2aXb2JKqeQ12zEhviSJq1IOCZ-IjdzzCbqGXE5QsUt_IlH320jbiLRtUwSnzLQC7an-5uM3RTVW44HRcUuR512JFCtt6ZORfFm4XkW4tMRsxwLvEbVUouCqPqOCm0tEn2PwMCNAueG5o5atM_DCop2GYclSqizThR4zzY-ffUjQ_XUG1XtAYhCxhjzJA5lOoZ1uOMvPox40EXFFPUwiKXDDcBmOxyGIoWxpvpQs1QY3undPshIs70O8U1xoeDXnWUBeP9I80KrOWe92VRZTp3k0fAIBMcwug_aX_lms8CBgXMc2YM8XRXdQoTDvPUr8X0WCPcPTsnlIT5APqqVNS16iduRzD8xLnbUkvK65UHWLC855aDIjpsFWz_eh4PMwdDBDl571ytlsnEUS1wxU_zX-m3NcJSVeK1oTXKHkwOOWg5lk5wmT7orVd-F_mTXUIWDGEraHe6c5h10-RLRmjGyb15gb76IXB19zS6uR20saG0xTJ2Pb6QjqdBrVUKnYE-iLBFONG1JRL9RMqyijrztvdYhlHlir_dBOeTqEQyz5Y5UtgHkI8D2sYXbptU4V30VtnnTATPp3uY1xPRY6ECLEZn-1ThXacsGlTZkZipMD2XzKqudAG0bsfO8RR-hHemOL0AqLgdrppTRCCz3b5StMtVrBhAIeZPm81RpFREYDN_g16Sb_s7Z8XfD1EvgRXFbEGsCsbZIpcFDIHamy4CbY_6Wo_8vocNg7Ug1Q3_4ILGDhuqNa8KjoQxzJ-zvxlqzGuOXryiiX-TGA9YGN_OWhUM9HMmEoGUUPsmXBtLyR4qoi2InjCmvAPpAtx1gHfCCEuCtM7o53xlLb37HLnxSvDOGbtNUkH8zagOW5l7u8jBwa2doR5M1JbIyvogQr6Y74yP7iFvTRHjWt-wVv9fnxfzq0ZsTGNMAdvUGTEvD19oCkH-Hg8nhxd6sDGsJRkQL46Vf4141NElzTCg84WnfL6ElUVmhU1GFdXnvxlA9VPJGjGZHTpWUqG3g9o9VjlApR8PI9SEVHOvxsUajCQZPs-qIvgGZ0Pu-Y8y7h9vPZTab7lvS87iwarbxizF1aeVodY_Cviq8BsIWJmrrv--WNsjvgMBaaOU6Ay7fjh8dMbyObkwW3hKgQi4z2pOwTO0_9WgimpB2lN72aGXlSo7ilDo-mNNy71MYRT2vW7orZLjLr_D6IajPtjXY5fhOOKB9oAz8EfEZ9GWj6rXcoGSJLYgiKj2-m2ijVLNOsXSipDby96dAdErxfLZMJbMHK2kp5ti7U5LSgr19FPOzzBwjRcdh0FqI3I7jy1k7BDFyljeFuBiQfrTCwn8lSQMAY7WLr60uVPc-AnnW9m6t2GP1d4zF3cb48mxhl0OIgsi1TFlMBphLiC6yZHPnvwdPuQVNhjMk1Y65FViNZWnJVN2DADs-cbkbO9Ad47if5SkU78ZfdFeZQkxPb7fxooaZgCaySMNIHdEsRIZpdFWZk3WOZayMVQeFrRKkQmf1OmKKpeEh8Lq8LQ934ndCHnjDS0h70vXZ5idsWWgHNYIuUU_O60mSI-INKev4d1us0jT5W4iABZ-Yyj628G4UTnYjcd_B8sHohD5rCWlQIs-Te2pdK6IpfaD3yUfZ9hkGQVztWCRKfeQS_UyhqBEQgYlAqaH94na-DDx4VzwwjrDAS2isKwBx4OUCIicHFqfvTFxBLphT1EVvNFIBXMmDMT1khBlYLaEDXikumdRhGLiGfZriAXPvYtOpui9FKjZhWU4UBsnyA0kWDvPiQez3lWEn1ZG6pJvYBLVIpLLKITl52oBas-gyl7VqPoe7HbECZpSL4RdVmJOdjXgf-xbxQIXQtMVIdHMTbHUpT6I7MN8KWp0bzpVc7CrGMgtVZLZxJBRBCfVnPOlegApwozFKZbg0zNsEEEr6eKwJpKzKFhtgi-hV_WM3vqrHmW-3qxq_j6NaLMNTuKwB0m1HFA5Ytmwg6DGyvkIWFJo4hWVTEF1hT81rUziiPbt2JYNYBWFEZUQIWgEaD7zagsilB3E23QACuqQVL1V3PrQZxjIXbekf3vPfPh3CZOhvcVoYGmgAW7HcfMwfK7hvUX1DCi8Hjyn8awjvQoCYpTSNv2YWBImnxqTYKVMMFzPZcchsT3inVOT-XEht6N1yGNMMSEAFFcCmMyPD16L_W33jhyPxBOxWTfcdXSHeaEOvFeYmslVspAKN2j19QXvJ5y5IDHxja-pyqjJV61cVkl5ARgWjF8Ex0DOaiGhObbeYHxiAfecMydTHyLvTuDXRiQbplO9aGgNFr6QEjG-EtjQlixAPEYkRAlEzRKB3dOqrkg1PVCO1IXzfH3LLkgb5mqppFrPz67dGUedZPUetRHaYf8IOPTyzQiUbvgZ7R5OGBAq0XOzNjg6zY0Q11V0LFky9Yxhgh-gYYCL_lacLBfiFINcaqRdDjJgXZYx7bvGTcoqeRCybU2qZLcxv5od-cYKUXmooaLAXLDpA-twPOqBTMkWVseXGt-n1gzjf4_3v-xMDH0V6QrJcWaMXT5sclYPxlxB7vS8oIYXuyKcN-nLx12EBW1CIUZtLMwbC9Kc7MZfD8ZAviic_VIkT7qhEJ-YaVqBtoTU-SvOCaxPkxdOCWa5ShgKD_hnBW8Nt898Z_JRAP9QY2hquYpb56rwu_BcBT3QdHD9wcPer5ufC_WeAgWYmovKD3lCZL_nXTSMO0WyOcrGc9RRXkMJ-Qc65cDRIeVocRLYyA9lE3tA_H98xbnw1snVorbsum4dfUtsMg3r_1CEVJxUVwlr5AOpBatpiEUudAVotkYzU1H8tdk4ya63i8SnJqgl28xrrAYUwwqe-RroxqtEckOjF07Ktf_80iGmcLdkJLDN-bFdiIhsE8RVfo8P77Xon0XQKXm4GuoeOSAcugP9PhGHFcVHHV-wUNdyUDAqj_AMfMRbTwxN4MYEFAdf-PXOWiwMCfXhICbh98rKISyBxkyAQr1ecgVLtRZChWOPVsiLt5YKEpi9KkLK8-FPy0r12EEYiBkvjY0zi_E-F9x6sUrlFxWiy-yJJY31Rfcm3ardKST3y_a5jomzdI6KtH6rrTZKAlGraRo37pm2qo8j5Xts1IKc-qW4t0RVfxGBbPI6uuja6_DkIQlSAXZ55GhfjHBJrYFc3IyDXUCTya5H5Qp9CmmI-luBVM4WRhsFy53ChuJdGH7eTtK51viwgw7-MbPxN6d89Sn3nKUJY1BGLg7oBA6FAiz4XTWFSIi0sqNS8Z783mTzg2etSFFq55pCljObWX7OWpCkeszapXG4tG38oVY2z0iwrcm_--EP8cG9CmPTdwpyl8d5YB4GG425gVlBtN38wmRZr3LS8XR6UFeifPxwLWBBYqxKneseskZPlpFyGQ0FM6uztXVgoK1SyeF-Eudpz1V7D3IgqC_haIvM-hhsKSXP1EYctLu2uSSK-OOiqSMZ7B9I1aBG3pTT_HPjOBZHRih1_NDIaJXUEjbEbEB4vBVhftlOa7AIVBaisZDta8ZuurCbr4aJQYdLJPQvZchP8Xk0DlAf7svKaFBlcvngk1QfQD8X9uLSNk3sE3243CJNm_U6q4kOTcVWIW9FxwnM1uoUZ1uKvxVNeo7TkiiY4gdZ1kSVHYNceZJ-15tb9GzOhDCECeOmQg2CZQjxf2buIQvhq0IhqHHzfSLEnudicD9BJ3mNJGgfmeGyxpWpnhZqDJXbYusVva4vc2h8h_50fJyIAHV2N1RFFMW6KOMOXkJXa1U7dG1fBeQeq9JZydZy-_nDMOF8E0BMPXAvNFbHymJyzaPQ0bWQgZKqrwGn7lLOpnYodwCUYznFq1T0QcajBqdlliEzRjOjSivzMcLsV1chjyVYCrM4nnYmBPxKTwyytcN7DZsI1qfl3MQvrYZNy5Ul6XxV7u7vSzUzV9oGU0H2uE6oH7BjafwEDkmxLGuO2Ftxm5j4leGRGfxB-AidNwjz1GSue7uK8pvhP0COb5NenZACyRvsaqAElXu-En3Cx38EfNpnk4M1c70At3SqYei8-gSNA_d66QZUTDn1pcRkgzHa7p4PK5JKB_vyZYcjy3cOfRYi-ej1uxzHf05ckVKjRkb-wIQAJCPTLoFj4fzi2Ke1oM2BD6xDfAEeeAaxQXdxKyovm62mdZGhFPcd23-rGJk974oR4RffxolaHLy0MSiaWOI_dJGxY0-q9JA2znQgcUfVueKCQY4z0eYlrcGGnly5SbzZPeYtezwHDqzZFNtIfRgpqeG4Cs-xgvXyhFhWXTSiU1EyNvfKH5EY0NdWd08icd1LNlR8TTd8TrK_HfDD8ON1ofODDAhr_X3_fl-ttBWOCocmYPbt8r5QfD28jb8WugLaQmh_EyE5Qshq2QAMLbwgVmiNdsCtZdNrn39xsVpyHDTeWXNa_WYFhn5CYcCnv25w8thV3Kb23TU8_Eq0npxz6Ue3abaWP0-VBKl_EPvD-QBKEQyxwl0ACFSuzHnwZBstXvwAxxRH5OFv0L23BXOuCr3JhgmVl7ttsyr6AlEDM8GieLZXwpCe_Wpw8PMDOT6HLNDkDtQfXjoamlWdvgo35OnnS0oTsQS20Vq9YZN2tFHGvOxM-W5_Zi6Clf_HpoPGW4cAsytY_Fl6JLehqjhZr22UFteO23k17iT4ghDl_twKlGcOtc8laDcQWfCcy9Qg9V-qT7kOa3kNhbvwWXLYJHCpCgsvMt7N5v5_r3WII_K09-4HrrJoAL8t73HaEjpcQiYlDyd2R9znKtHUuBWDFJyndTQ-gsexOQFojBzLQXY5pamTAX4B9z5Jk8QtTCGG0ZsBi1InS20wwBzJJQeBK7nzJB7eMu0hxInwpAWmT-COWGpTrGVDNuNIaoStkrsLMNKqXXkA95kTrwNIXMRmQJYou_9o",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_760134b8-7233-47b9-831b-cb62a3bf9f6d",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"components\": [{\"approx_box\": {\"x0\": 0.175, \"x1\": 0.93, \"y0\": 0.39, \"y1\": 0.43}, \"kind\": \"bridge_wire\", \"label_as_written\": \"AB (100cm Wire)\"}, {\"approx_box\": {\"x0\": 0.285, \"x1\": 0.445, \"y0\": 0.305, \"y1\": 0.36}, \"kind\": \"resistance_box\", \"label_as_written\": \"R-Box (R)\"}, {\"approx_box\": {\"x0\": 0.695, \"x1\": 0.915, \"y0\": 0.285, \"y1\": 0.355}, \"kind\": \"unknown_resistor\", \"label_as_written\": \"Unknown X\"}, {\"approx_box\": {\"x0\": 0.51, \"x1\": 0.555, \"y0\": 0.437, \"y1\": 0.497}, \"kind\": \"galvanometer\", \"label_as_written\": \"G\"}, {\"approx_box\": {\"x0\": 0.52, \"x1\": 0.685, \"y0\": 0.49, \"y1\": 0.535}, \"kind\": \"jockey\", \"label_as_written\": \"Jockey J\"}, {\"approx_box\": {\"x0\": 0.51, \"x1\": 0.6, \"y0\": 0.225, \"y1\": 0.33}, \"kind\": \"cell\", \"label_as_written\": \"E (2\\u00b70V)\"}, {\"approx_box\": {\"x0\": 0.595, \"x1\": 0.68, \"y0\": 0.21, \"y1\": 0.28}, \"kind\": \"key\", \"label_as_written\": \"K\"}], \"confidence\": \"high\", \"experiment\": \"meter_bridge\", \"notes\": \"\", \"setup_issues\": [], \"values\": {\"glass_block\": null, \"meter_bridge\": {\"cell_type_as_written\": \"E (2\\u00b70V)\", \"galvanometer_type_as_written\": \"G\", \"resistances\": [{\"text_as_written\": \"2\\u00b700\", \"unit_as_written\": \"ohms\", \"value\": 2}, {\"text_as_written\": \"4\\u00b700\", \"unit_as_written\": \"ohms\", \"value\": 4}, {\"text_as_written\": \"6\\u00b700\", \"unit_as_written\": \"ohms\", \"value\": 6}, {\"text_as_written\": \"8\\u00b700\", \"unit_as_written\": \"ohms\", \"value\": 8}, {\"text_as_written\": \"10\\u00b700\", \"unit_as_written\": \"ohms\", \"value\": 10}], \"unknown_label_as_written\": \"Unknown X\"}, \"titration\": null}}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 1448,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 1747,
+      "output_tokens_details": {
+        "reasoning_tokens": 1094
+      },
+      "total_tokens": 3195
+    },
+    "parallel_tool_calls": true,
+    "store": false,
+    "max_output_tokens": 3000
+  }
+}

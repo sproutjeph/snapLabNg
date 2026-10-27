@@ -1,0 +1,885 @@
+{
+  "name": "wonder-readings",
+  "status": 200,
+  "latencyMs": 31831,
+  "request": {
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "max_output_tokens": 6000,
+    "store": false,
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Read the results table, graph and precautions on this WAEC practical page. Copy every number exactly as written (keep '57' as '57', '24.5' as '24.5'). Precautions word for word. Boxes are 0–1 page coordinates."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 227 KB]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "table_found": {
+              "type": "boolean"
+            },
+            "cells": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "string"
+                  },
+                  "column": {
+                    "type": "string",
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ]
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "type": "object",
+                    "properties": {
+                      "x0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y0": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "x1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y1": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "legibility": {
+                    "type": "string",
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rows_averaged": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "p1": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p2": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "p3": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "box": {
+                      "type": "object",
+                      "properties": {
+                        "x0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y0": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "x1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y1": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "precautions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "other_marks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "box": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "x0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "x1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-wonder-1.0",
+    "reasoning": {
+      "effort": "medium"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "page_readings",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "average_as_written": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows_averaged": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "text_as_written": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text_as_written",
+                    "value",
+                    "rows_averaged"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cells": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "x0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y0": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y1": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x0",
+                      "y0",
+                      "x1",
+                      "y1"
+                    ],
+                    "type": "object"
+                  },
+                  "column": {
+                    "enum": [
+                      "R",
+                      "l",
+                      "R_inv",
+                      "l_inv",
+                      "initial",
+                      "final",
+                      "volume_used",
+                      "i",
+                      "r",
+                      "d",
+                      "tan_i",
+                      "tan_r",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "column_header_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "legibility": {
+                    "enum": [
+                      "clear",
+                      "unsure"
+                    ],
+                    "type": "string"
+                  },
+                  "row": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": "string"
+                  },
+                  "unit_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "row",
+                  "column",
+                  "column_header_as_written",
+                  "text_as_written",
+                  "value",
+                  "unit_as_written",
+                  "box",
+                  "legibility"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "graph": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "box": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "x0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "x1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y0": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "y1": {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x0",
+                        "y0",
+                        "x1",
+                        "y1"
+                      ],
+                      "type": "object"
+                    },
+                    "intercept_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "line_drawn": {
+                      "type": "boolean"
+                    },
+                    "points": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "result_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "slope_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "triangle": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "p1": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p2": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            },
+                            "p3": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "p1",
+                            "p2",
+                            "p3"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "x_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "y_label_as_written": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "x_label_as_written",
+                    "y_label_as_written",
+                    "points",
+                    "line_drawn",
+                    "triangle",
+                    "slope_as_written",
+                    "intercept_as_written",
+                    "result_as_written",
+                    "box"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "other_marks": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "box": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "x1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "text_as_written": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "text_as_written",
+                  "box"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "precautions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "table_found": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "table_found",
+            "cells",
+            "average_as_written",
+            "graph",
+            "precautions",
+            "other_marks"
+          ],
+          "type": "object"
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae06b057763fa728ef741cf",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793092357,
+    "completed_at": 1793092357,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae06b057763fa728ef741cf:rs_ddcb54af-c4d8-4e91-b51e-c42dc3e18703",
+        "encrypted_content": "Q-PaDgEG7gONVIfXR3u3frgcN3j1Q-zkIgLmL-QztkFd87m6sGb0AU9L0BCLjuBXnQCecyDsBdVGm9YaDvxbnoCObWtu0RZh5rxIRQjmR3AmxWukqH2RzqkQHXFB9gLXT_MXqDJUKyd6CLhYoPdf0GMA03g6IMdy6VnM9qxXRboSHlX-eacQXmS7xL5fqvlCQfBe6Ag2uNOhWUt9xuQnAUgUWAWIJU044Yz5HKuCh6hVHUnQgSR1d0iv8i_6P5zRCxOzms9xrgncZNFsXGZ2orGijZYVaSAPmwi9w44-Qv2MWRu0PpRQz3L3xL39CPwkntbLShdyRHlLEBy1NN97WhbDlDujUENHBZcj2j11UAEA0nomITY0TFpq7yjrIh7xVd_vimqowzxLX2P0ZtSSMgPeMVz7HncQwesi1mqYcddV7OzDenfxL2OwMqqB5Or1xwQhxYBo5STOjAQc1Y5GMYeqiE3FGcdEakylWJlPzCX8K8wDdmhO7fjQppUmAKsX8dEP_y0n0c3k6gH-hQ7D0zZgCVAk5yMZKK96UCti25p5UXkDlK3oIg0eyXKOuW00Qd0fGSSHuz5cksCWFOqzLGSlZMDkOAI2oT4KDzysSAVSA9JRutrJvUJYoUTVmbMrIwTKDOapQIlX6V2Z4N0LlVu_ll8ojGZhmwhIRlIeedEAeOiU5Ek4dZ0gzZx8ZmFjzDT9RUzRtfUAwDJXwutWLErX2Loa36chc_iYy3anHEjW44sor9wBdEovVQyoC1S1sJxe5FfrbtyUB_eVHDRyOXCB5KK5pm1g-afTRMrhTuh5IKaXnjKmlMzgrj9nmscFa7JNRdZUaREx_Nidxr3h0B7DhdEQewfua6qgwj_MDELWit5KUCDDEet-4tXeZrmx1gPvF5UTxOqw3JR9cWAWcRJBxOrHyG-1Agg31Y5_guq8Zj49qGZlvushUsEqYYX1RSm0Y_Lau-9O230yew-pwq0QXs9tZACC16-B0Vipy5smpunJcbgEKSMry1MH8-RuNzIqLRziOMdaOKdVYxhvHMlCKL7SJr0YXrTuktwYCBthFrT0rnDfg-kfVPzIWiIC1GbsEOyW_Mgr5klrrpfJ4Pc-gtdSdv92n8B3ifCCT-Lj-uq8LAV_MeYZGox2dyj7YBLWgfv7tbCkb7pULjyjo2pz7lUl1qBmQ8kjdb6VIoF0KOl65hZQDBGAe15bDS4BPt56HUbmXWQrqLxfoykvcfxB2J8fAt3N_9SShP_3_XwCXML1hcUBplFyphaHL8a1R3yq8UNKDGonxwycXiS9noQMeNDSrpxArNACSzR1V1LkbfrAj5BPon03i7Fc9CrQmm4biouii7vXFLh3mSW0e9znbBJttOtdCe9hg3VdL3SEIf5CVqvyAFXRwk9WH6XDgWQLdZE_y7IV8-U86U0Cn3evCWhdOg-A2cue_xcEhnlX4JARHrYxXoZLjZzXMitFcrEexX8M9LCKV_fmTy-rBcJ8kgXKEZwJbueT2FNAm5Drq0cK_RlLjr-iKm_r9mtbWf1Bm5Albqrq6WnVWczpqGZbrlLQINP52pwtpo0loNBodgoEsi-aqsqhoL1hGvvYfDIFVHDs0AM7z8wxfQ-Du-o2oPDwYNxgNGdyb_xcXnxY5H8YHx9SzV-G9KqDQvBxsQX7tzGnXTLJ3rHmvFZTSrNarW8ihXSyL-ME8rXDmQZiMNEEMPFRNhdCN3YbPM8BCfv8QxcNymVNRLcd_BrMhWUkzAwgIcOqeQDY14YZwSZbpImXcOdtys_4SoBxDq0x_KyrS9N0ux1uALQhIceU0HMX99bEC76uwRDU5MfSB4SBbemhtguhF2ZeLoPL03eVpaZPOzhLn7PDUCfJo-0E3TXARuP1rh48iLEZJwjFeRiZU736UZXwsDDum213-f8prVkGpG2eSsFMnF-JnP__lUdTXe6ggkMGgQyJkzYdeWT3G2dEdme3WR7qndECU8fJDshK73TwlgtDwzpFnSVvkLTgnjO67T3wJ2hHcZmQq7iEq8EqEF-AzLtEZZB1JsthV-JAm9ok-RbtnWMc-ZHdk8ps8H-qCahqGKo-AhqVzsdrpFJSOXcE6obQNA7r6bBhM1u9fpD_DoL4as3Oujd5SI0Zvz6O7vCWgnYvhXCpL8WK1efZ7dO573yAKPDVJxk2XI8y-c_Xb5OsbinQ79Fk9zTTJ3coe0RegmWgAN_oY5DPy40NwPdVTB0SmYCKlo_vbKwkTqgTXlqs_828vP1HGNbch4v7Ews3XKqmZeN2XLDkyYLjNLNhyviw7RQRJsKWKjKQSQSh6RzNhg5tHcxCfxSdj-rcxyCMkF_K31b5xtgt1VTsIX6JJY2MfL_9uflq-L9md1J8e7LEuqDpDc2yB4l6YXQq07tADPgCAqSberVbKwXxcYvVvIrvhkdqs1GHXA5zqcl-COHcGbWxDlpY83AAihNhbAkII2bRlLjoePZ7v5rzdkYT0ii31o3pR-XR7Q_Uf04VPflncXiaAkGqEjN9psCtR0L4DO8zvvh05_WccHAovdBLXtOKEKRKdIaHp9eV_6daZfRwISiqprTbtvW56O-2naZWXaQiJY6hlfgDihSEDTqvxGdBa4457ku9vI0_XbucIwkSHeqHeknJVs5XzURsqRkauvRtAwoo-jK-N5Mih3_iwD6AzNFge188IKiSoPBgAuhSLT9SzBXNepFeIAjo6qYhscDMyOvxeBWmYczHBE3d8o5lZ2tps9FmKG7dBRzqc1u5f2-KDWL2DvtVxUsN_N-Eck3V4LfrQ_Yd5FbbKFPzYMHobt9WQtcs62_frxafdxpfu8WGpwPpV04rlVO987HwN3j6ssKgyT2FRvXRWNXwViNJJfaHadWTNAJEt1ICef2T5KpE8pj9PzZQNM6-2EvgA_S39vKuyDsRZHtWuMVnAMJ5BiLgDVw4RMyehicOIId_pyp5qZUKSgqXnqlXWT1U6skHELvxtmXXOs-heWOtu8YWBVYBnfpM3VhK3JAmyT2VguhiUvHLvz44e98-upCQZsZvTUeWRie-M1xza1xYwCB9r2o5Ol45HSiSXQSwDvoSJ6F_oMwtxpHubeXLMfSQN-SXG5HZc4aBlWMzz3_vsc2ZwGcEX5DuY1DZLqMykhgGYi83whhBarN7YwIruHEmVxLI-lNrF8qT7IW3fQsq64IaE9RBiA8KvUKl3W1mE55fCRnuZkaWRg5JNWCilOj7QgrwERVMSKYMMA9de42U7jINL8tiDoZaA2srYehEZ_7LdY32XQHcIpFkhnS8DCCEcOmCIC8s5WFWk2Knrs_RnEqwxGIKjQubWk3qlldY8LSuLgOaRP0a5d0fC0S0Kd7JmgdQz6mmFfo49WQ4ojN1zvbdrAoK8zL99nvx1YQcD1yPEetaqzRLL4lxo1kyMgQTY1N6riDLYiaoy6REr7-5oOSugtYQDzCZFNSN4lirdTYvxV8bj1AWQDGaK0X_wNJRUEQBlzfi6vnLmPSKJk3bMo-W0w28NdAQv7Jeh67KPFryI1kOvxJpwS-B8xnZ-K55DKTvtME05gs1aAi6sQ_6Dkr_MR2cYjIdf7yq6e_7S5W162sdotchL0IvG3CBKWhNzkEYrwtndV99dLP7j4Kda0jbAo4ZbQyoUztz41d7CD2Ds2bBoJWR5NGlFRksVDMEjRPwr0qmjPqXImflmijFuEq1-M96MOY0qhSwQ7X4lRVGHLnkDDSk2xtMYeznPHJpyllCBIz2SjgioEtyJKSlo10ODUWA-xCR_sjH2dRwLURnfhRtbSB7kdWn0Gq0K9nE7jISGuLD-Ha_YTCDpjm3GdkQxqlcsIUo8YtsrWkk__-hQIDMeqYvVuibO-IHMCIO5GIXF8yQf5q2zSzbc2VvBifFtTh5yJuyb85_Fac4-8tvlYvk5e_1nmWzKBfeN6R6vcTOSd3KQqD1VlmIfxonQdgzoAzLTv2Avkt7y_Kn-0-xJIa4tKq2nocO9Qin-6bWJgw75ISMKZ8VXcAOoiDm1qaqR6oDP--dRu7QCDw76zsm4DKZuC9_5vGeLIxTj3JfFyvQ368NAdDYEn-PMntjHcDuCU3LnxU9WANDDTPq5LRzyT26yDP8Ddyb5-C2VPjBI-fg5EEJ9QJQFG3ocu85LO3qtHVWYTiM7e7JgzST9p0YNXb6lc2WQHRULWlyXaLza3oSbOaL__Pxj2e-0qJ_4kwCSHeOaCScAXrRd_1VcsRZKylOsf_6EoM-GXE7tp9bJBwKsDe8DBF6YBvyoLgpKYiOXNPixh59MKNGFjmZKnSKJmQ_Q_NStkZs2599D3kFxX48yiYCfKoXDemUNQ-Us-Yf_KAqa3hVQcQYmej4TXO7s2Q6PpvTNgaC4qD8JoxynHNTVZmunoGn6DJINS0y7iZipeTrDCE9XUvYEJ4JczqorNDYB7scr0-ZeZl5_1_WFdBPhwodpRiPKNwLWWij-VSHUUx-C7wt3i5leWNkN3l4lCjvIwpRb_WZ2IlfDcOPlOnjBokrW_fG-_TC3BPaahER-FdzeNe8YuqkfKVr8P4luuHbtqrRqditq4x2JO0HKoAr3Nw9pw_beocdoZ4IjCuMx57wpyNv3uVzKQl_e4tTFaFNaU6kqO2nx0GDz5esBKQAckxR4F5OB6CycSgv94wr7qOLfzS8lhyAsMHoVjb8LLqmCnNNZnEuciyl1JBjl-icCXyW8r5H2Rz6wZjr7wkTfIfHVxCEHhDmhIXhhcU5LIG8rZgVnJ6lLzg9bcW0xJ8l53aFlmqWRG7HXUgpctaNdTby9lQ-lotfIpiXQZxqvTYq0EjtVhFeOhvw7t5yvyJwI6s-qO5Ga3PLimh6x8EGRZ4zcrB15_IwTM-QRg6ZlYciQ66vHyviHaPmdnY2efuSGdEc4oPvSi1IsUs_3WnjRwo2zWoUUyza6TBtV6Ig3XkQPMu6BGH7v5MxwpZgItuVZRDhs79d9So3BFVUCQAjgjIFaOv_bfxi6xzoNeyAQkju5tZ4saXNAzW7k74CA_zoR_qYznNCvy_13PAzHhuZGKSxrkrENEEveQWsL1nsPLOUPDA5ZLGKx0EvtgM7o7_i5hs2NTuGxQK8sMJU3c8TwQXz7LO-1EJBX0LFuPIRhgPfXPMBPyNp7hFGLNfcQbDAIZWfntbtF0YNB7E8OOulPd7h-hdgtd68IvH6NyuUXY7wyxDJ2ctYdeUYAppt9l8tSlED0uf58HzuwF50f4YWZ4Q53DLmlXb1x0cUO6m4bc1shSwEFgtz6hnRfH7M9ZZe8AFgNavPSxgWqjiD15aWK4QaYQTaR2btcVfsr1QWnLj8B2HNgPHC33vMAxN5YLTOXomclu-3wxU6gNK1aGCiI33fLmp1gz53zSN1AAKnukuy537xxOsTv49Hoj0btKcbZDloYCynq9iaWvv2Gt2bjvPSDCrtD7lVOTy7ziiifYnCRZKrogCUrkluCJbcAeJHn0wwI_MOHLiivzpUhdo5AFlytTxFearIJkYBPzlNVjSZkM2GF6EosXmofK0hlLYAnP_Y450-BhtzoKELH_ekz-JEM-WKmyxCzFtogunK7iX66LkAR3jsfpI_umoxlY5OnYcGrFLAZtQmAoiDdp7QNqwWcIFvyFKIxqXaFGjp55daiXirqqRwYY7DGIMqcTtWLlsfJ8mFhAhHelweG2qYB6tG4DaDMqzyWuz3tPR-nTCIfXw35_EItyeXI3uvxg8VkufX9qgXJ_ODTNb2RC8omI-S5VD7Pzyw0X0kLz4SEstJsmGopgGzigVJbZ_6jOthZVUze0u_ubgeIb84AwqZ-p5StYw3v0IPDeBWKxFb6mitV_2BkydxTb-ked_EHnEYePX_fE5UNZD1qiScGex_ou3ZdBqssNbH7Bj6SGpJW0TFj1T7_fk8ocMHWNpuOrFyG-O19_IKCrm51fvWz5456zigaCTsnI9GXKay6hWqbVGqSQqvxLcawRuVXtVr1oQaeuUBjm_-6oPgNU1a38-Abcm1jasBeQ_OAGJXrUlOrdFyxpKjzgP2rZzoTbzRwD0C8INNZjWjw4Yuu1NKLSx5d6Ys1iiynoRKOW8sVH2cW4S0XWpQah3XfJ0yQ2ntVobJA2vDwEjrFAgXu0Z2qYGBoD3VFMeQ8ZTyJkHhKrKOtyrT0kQrEyzmcY9pMOk-_cVeG0nE6ltWCV2vqqCxKDQwCsatrXBlkUY9WTki1S5pUhK98WAJs18M4A--x_2aRMQxXDjmTZNpeknDCCNxE2qgWgC_-2TefIYi-0LyRAiYgaEJrvkYe17HiFckUvRswmNIK4tRLiPkisZXomMSkwLhACIP8bJYGnnLml6lF-Yua1QYsSvzSwxuYfPjwVc1_5Mi-jIdI2IyxjZ3Vnyf_k4z9NV_mvpIfNlnv_nwYGPeInIOiq-WCLJo61kGbODZnpY0FSTMM6l1BzNoEmkbErljZ4ZLzEfZ7otg3tKa4dtUMdrdYYZT3ZErXiSUaWye-uuP44y8y0qqjUOFJIm1Vgm6B9BBDldIyoGm0sM0VkQaNC0w7_ngCwC9efxjqOUr9Vhg12qPOAT19tpJIGd05z04L_Kc__qpMIY89EqqrZkrMNgIg1K4UYLY7F_m84Bhnsk-AA6wlbdlstrEaK4LlayQyzp0Y3l9bhYi4H7S1otpaSsiUdMbVssqJhhUDpa5kEvO07BJQbhbhbIaDfNedzsJWBSHjHMK2B0ouURPNobhHFtx1dPK3kk4brBvQRakxhr88sHbMv6lpTVjVCbs2q4NwiheprXEaDU2l2plT5QyjtgHDpDAwfO8zHAmRaq07itOzMWMEaKS2yVWN7Kis7vGJmfDrD_NG45mnDH3-0qr47Ev5V855dGq5mCDdAd3U_YMKzF0cw9UkClZj6pdZG4PrrcnA8-PywVNxzSyUTazoqQ4_LMK89rJu0YLJzLuAqrUxrdZh7IQbWWw1qMj8b8Urmo3_Fxa9-e1yPqmL6f-YUG55gr5RIT2d3PElrY_l_N2dk5HIm9KRWtn8PW7-_9y-gqxtJruAsZvyU70gIivYQxn606zM8uGA1drzVkm6dnTbNeENYKvdWNEMaOLV1mdv5fDnYThuPdDYItMTicLH2pQrmKzcGfKsn4YUgUhdFEM-ytMtarhXP40vIjjztE5OcU2jKRy2mvRWVq49td1YAqTfO4uT-g6cBG6Byf31dY1yhjiadVp3LB8Bpf3vdE03uR8wFxsfB4lyWFAC-wKveOX9pNZtJX1CWi5MpsEYZ94cjt65N5sx25PuCGjvqYGO79Xfeu3eHHGxiBbhe3CJoR7V8wHqUdKzH1MPhaMEE1hnrV8f1_fKqQEh93XvEi5PWM2pvUNZG_A7HkAr_RGl-bV4aQPFG6WuENhpdjg0t5mmOdC2D5wSDOqYDl_kg9vH6ZK5u05pTHmDxTs4qajX-BO9Vn2ydK8Qvx5Crrr01VhWoIqW9nb-izJ1Ao8iNvWx_RO0Mt36jQGyzGJKni1Ml_cZXAz4xgp_VbQx23pRFY4rrgK9Hr4fXSXpWHxH-243uJfUj0ByCCshs8nRvYa-Nps9MYJxZfeZMbX_9_pBt3Y-lpQlERrd5wmHP34e5tUnCNP1tCvzoqq7vekynZrK2K9Wrt24AIw5xJD3sVgm0hgnByHcUFJqrPL0Si8ZZIybJ3rJwtR4iT0oHibSWJHs2NTvoXUzioKd5tkk6U-XQ5gG8y2GEINexLhAnIeyUm8ndvOoSRMBjLwGxvKYUtxQL6pdJnL-TWwWlqU_ICXfxP66YhLoicuFv6SlZSSvkQTUsetJbGvlvruyOqaitMUIzmBneNkYT4xoOoA0-G8iDBSbKDh-ashj-3Na9T1_lbbpcFIoCH80N0ns3asrF290s4Zp0p18lNLGJXk9ScEe1O7NpQI2iFB0plBp8YtJ8166xZsUdNDEAU7hN3YXLdNKAI-4tfjTmsb8Ur3M7VDA9NW9mWuP0hXl2VMmD_6_BXXkhfb4FFCHJVpfreUbvDgNyUWH5r-nCm4RfqApyWyGm0jr8-vOE4_BiTIZ1Qs0HIezR7-zLdyyCu1VA1SjHeQSjhd31IQX3OV7a4wgS-H_e9zdfScZXX3-uGDXtqLKpdh5FAABAdJkjscuqY63_OAcC0oe8z8z_7W16HZPZvFkVibApD4QbLng0gNlRprp5GiS9GCBStAworjnXEcD86X0ogJ1dzIhFPb4xy-l61Sm5yWD8gFxkdX0Icdmv_wWFvla1TmmH10t-Vq0-Csdfor1MU7x3nGgPyCL0MSkDnDFyoB7JFmkDNjDMMdbnadKJiL7iHJILGkRVsC3h2YLbegQLSaUs2sezw70CUSLAByp2VMv7VVqzWZxT11wVcOaDdxKyTlorE5XmZNqY_qpz_tWNA8hQCUt_Z00N2htGs1u1p5QthSiuqgjKNkJSxZaFMdFw5-YNXUGveCICmxTsTWx365dSfVJipdXOfbYdy0aP32tLD2f61WDAMkELsNh_jGyvM-M4sjh0XlHeir9xGS-l_2swZWLV4q5pgvbZ0CJQfxpDKkcAzUik0zIyBAlkbO-V3_zGVbrgI0IrqlFlZsNe52wPJk762wrki63wZQMObHjzNJBMOFfB6KRvjbE4pQTL8tUKK_37UEPOWD4pQ-gN8E9yELERDFG4rtFDVCMTI-watiUSfG2f4sOBje_BOh7_L-iyaXM1ClUHuKq042T0J5JZjHABCItr8Bvg4BtDh_Zg1MprcYlW9obqk54vQ3N__czcs7pZ1vPiCFQIzvZjjHidAJ1svQRQR8PbcwMrofWqKbcVz4fQs0OrUYSIANKAprMfpQBWC-vPsvGIyKH37A9GDuRTchF-ESZjYAtkGZpNtbwgPL_57LL8_YOzblf_s8Pr1fffw3hAAnbEvwHxMWnvZApe0Iwj1CbimsWFdJUpKMCm6AipRr5K2DDMTqODYN6lsnc-iBKnCuaaKezBA9652MfGUpw15CNudg28DJ400P6RreQuIzMRH17Kgldl5_OuZpSWh55ZOYY0wSYilW_ak06wDQhz2Dg3s170j523QzESa0y7l00cHWhS-lOvW2VGF4xcWPtqz0qwOfx1r-5x8nlU57sil0xMfVtF4oHAY3F1clV8Jh0VnmxrInJ1VzS7H3oIf7fa1S_j73ZtKykdQw-OOxUhuqzPhN1hJEYlFvnVqqNoTwzLVC6m77X18Mru8gxztf8Cgj2LKoG1mgJe-OWINOWCveO8V63ODFEBq-v_7eQxfyFqgysRqBWa9jwMtGzPTb28kgMq4eLSSK4gP-O86_ezEcygue1cG8R-dtMp53gSkacDc8tghPQaIE32Q1UBbGT2SIH9R5JK-hYJQZNB3EQ-BVzPrKrQf4S9jklsVPeNj1vwfwFwNCLyEUMNmjOgjHZ-ASFbgWQJx-J1b9S7yd6civWsFzpGwwEs-d22BvCk8fB-2wJQTmFSWmKGL_sAb5MyHklERDC3mXEObdCgtyVcDfxrNRnopQ2q_4OXT08Udox46AsYlmvzYS7zwE8uQaNcBNjRQ2A7H49C32k2d8Siah8Nr8zm2DBbWVSduEGeeXveiLEUJnb4XiqW9E2I_EsbH1j42TqpNa81WFHsg3vwlSBCHa8xqowb34DM4OpRHzL-jm7S2IT1JkfpSIhNPypLk_0A2nbZPqXdUWGxULzDBpwIN7u9zDj4HeNi3rH2f1UY1S2z942VS-cDd90HCjxyd5BeI-N7Y-68qmHV3GCaFle7us5wWzhjLgiahmshZgHGeBoGbNaUwkXDOAH-Lu1uVpHYo6OexFdwoFE76_kM9b7EDqRDYkPNjGv1cm7-XVcsKH-r72JBmFzNF8NgnXumUDa_gN2aWYEWQtplYqtYUMTkpmVzFEHd8JOnqX429MK5DTpXveV_JPFiog7hTeKGz-CID4mW1nFrvykaM_pTalT2zzE_sr8K5lDxR1xMQ7v1pHnGGUQAw6Ybc-fd_Y7NzjbvW8wn5jpQwnj7X93Xrti6aqkz8nntyczfhORrdU5CroIz5fqkuayLME8hTaqFJrIQ2dxbSlKQaJxvvZ6cFNvZpjlhwSzC4qCKNWlX64PUPKSayO6Rzrt5Fx0NQ4zvOaaNxfGriFo37BfkJ5do9_kYMGwGuJAMUN0I_WRNuw935HCcxRYgtCrr9oyIetPYEbSefBoXeiaYSKmjEkU5vw2XXPImI16J9RHo_PqAXH6dQGfILDtYNlvnkjkop-xzjEVKoNJ0CiEY-ar2L2rGMN5auWgbZkb9OVo6JqO7gFBheH4gH7Mo01qExb3rpsCwqwPjYpsH2i8C7TPTycxA1XOwhWIArTvAVuHuxcSW2JGS5E_bR_DAjoYC4Dt_xEyQ1M_s7lMU1kn0jSNbuUXNhhoYSgro5VSavPMQB5Pdepfzo4PVVgyosQSLSIgPP2mTbB11Q7E_nRLIhBlnYidb4SoIFUD12osvVqrjqLOzRtFlNXRhd81p88gyT3bNHFOxnUUBcwwrXGuZmH3ELncpMJaPXSJdMZyvRX6nzTu7LGpHkQMTs21R-fQQfh2fCobk64yvUo-4Bp7PSd_9KTHvFOf9zR6Ipebcj5myGOyTtsssF1M2QX-IqLsHwfpyfitOkyRDO5SNrGgSu9GC-J4ef4YD7Mc7Zoas0rsX6r2zwddiuynmheuH74z3IdosvQfkMtkmETvQvF_uiu_UQL0YW6RUIn_xsIjvLw4N9FhZrAL1yg-DSG0PcQhclGCIs4YyquLoIRdpWp2hlp4OHX1Ag2sm2kpDVP2xOix9cQ2ApQyxKo-corPiJ1kipJ2P1rxzTUZMaJ_EBu730csu-q1nltrVnD0MUIeahedn1qAWfDrjarkjgV2LV6qpP_v9WDzrYQZ9xm9yueSMUeFcB2KK1FrbWpZRg2duyuurL6J8fGAaT-DqjJvqGzDOQpv0VT-X02lskRsQrNexEL__smP4troj7Wxq4rLvo",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_7ce6796e-238c-4a98-9ce2-85c71fb493d4",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\n  \"average_as_written\": {\"rows_averaged\":   [\"4·01\",\"4·00\",\"4·00\",\"3·99\",\"4·01\"],\n  \"text_as_written\":  \"Mean X = 4·00 ohms\",\n  \"value\": 4.0},\n  \"cells\": [\n    {\n      \"box\": {\n        \"x0\": 0.2,\n        \"x1\": 0.395,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"R\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\":   \"?\",\n      \"text_as_written\": \"2·00\",\n      \"unit_as_written\": \"text_as_written\",\n      \"value\": 2.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.2,\n        \"x1\": 0.395,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"R\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\":   \"?\",\n      \"text_as_written\": \"4·00\",\n      \"unit_as_written\": \"text_as_written\",\n      \"value\": 4.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.2,\n        \"x1\": 0.395,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"R\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\":   \"?\",\n      \"text_as_written\": \"6·00\",\n      \"unit_as_written\": \"text_as_written\",\n      \"value\": 6.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.2,\n        \"x1\": 0.395,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"R\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\":   \"?\",\n      \"text_as_written\": \"8·00\",\n      \"unit_as_written\": \"text_as_written\",\n      \"value\": 8.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.2,\n        \"x1\": 0.395,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"R\",\n      \"column_header_as_written\": \"R (ohms)\",\n      \"legibility\": \"clear\",\n      \"row\":   \"?\",\n      \"text_as_written\": \"10·00\",\n      \"unit_as_written\": \"text_as_written\",\n      \"value\": 10.0\n    },\n    {\n      \"box\": {\n        \"x0\": 0.405,\n        \"x1\": 0.61,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₁ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"33·30\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 33.3\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.405,\n        \"x1\": 0.61,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₁ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"50·00\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 50.0\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.405,\n        \"x1\": 0.61,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₁ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"60·00\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 60.0\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.405,\n        \"x1\": 0.61,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₁ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"66·7\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 66.7\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.405,\n        \"x1\": 0.61,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₁ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"71·40\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 71.4\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.615,\n        \"x1\": 0.78,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₂ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"66·70\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 66.7\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.615,\n        \"x1\": 0.78,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₂ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"50·00\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 50.0\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.615,\n        \"x1\": 0.78,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₂ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"40·00\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 40.0\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.615,\n        \"x1\": 0.78,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₂ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"33·30\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 33.3\n    },\n    {\n      \"box\":  {\n        \"x0\": 0.615,\n        \"x1\": 0.78,\n        \"y0\": 0.685,\n        \"y1\": 0.78\n      },\n      \"column\": \"l_inv\",\n      \"column_header_as_written\": \"ℓ₂ (cm)\",\n      \"legibility\": \"clear\",\n      \"row\": \"?\",\n      \"text_as_written\": \"28·60\",\n      \"unit_as_written\": \"ℓ₁ (cm)\",\n      \"value\": 28.6\n    }\n  ],\n  \"graph\": {\n    \"box\": {\n      \"x0\": 0.045,\n      \"x1\": 0.99,\n      \"y0\": 0.12,\n      \"y1\": 0.99\n    },\n    \"intercept_as_written\": \"Mean X = 4·00 ohms\",\n    \"line_drawn\": false,\n    \"points\": [\n      {\n        \"x\": 0.125,\n        \"y\": 0.28\n      }\n    ],\n    \"result_as_written\": \"Mean X = 4·00 ohms\",\n    \"slope_as_written\": \"X = R(ℓ₂/ℓ₁) — average_as_written: Mean X = 4·00 ohms\"\n  ,\n    \"triangle\": {\n      \"p1\": {\n        \"x\": 0.112,\n        \"y\": 0.302\n      },\n      \"p2\": {\n        \"x\": 0.97,\n        \"y\": 0.302\n      },\n      \"p3\": {\n        \"x\": 0.88,\n        \"y\": 0.615\n      }\n    }\n  ,\n    \"x_label_as_written\": \"ℓ₁ (cm)\",\n    \"y_label_as_written\": \"ℓ₂ (cm)\"},\n  \"other_marks\": [\n    {\n        \"box\": {\n          \"x0\": 0.125,\n          \"x1\": 0.975,\n          \"y0\": 0.105,\n          \"y1\": 0.998\n        },\n        \"description\": \"EXPT 4: UNKNOWN RESISTANCE X (METRE BRIDGE) — A. CIRCUIT DIAGRAM: E (2·0V), K, R-Box (R), Unknown X, AB (100cm Wire), A (0cm), B (100cm), G, Jockey J, ℓ₁ (cm), ℓ₂ = (100−ℓ₁) cm. B. TABLE OF OBSERVATIONS.\",\n        \"text_as_written\": \"EXPT 4: UNKNOWN RESISTANCE X (METRE BRIDGE)\"\n    }\n  ],\n  \"precautions\": [],\n  \"table_found\": true\n}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 1443,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 3733,
+      "output_tokens_details": {
+        "reasoning_tokens": 1354
+      },
+      "total_tokens": 5176
+    },
+    "parallel_tool_calls": true,
+    "store": false,
+    "max_output_tokens": 6000
+  }
+}

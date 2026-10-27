@@ -4,6 +4,8 @@ export interface ReplayOptions {
   signal: AbortSignal;
   speed?: number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Clock for scheduling; defaults to performance.now (or a virtual clock when `sleep` is injected). */
+  now?: () => number;
 }
 
 function defaultSleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -39,18 +41,23 @@ export async function* replay(
     throw new Error("replay speed must be a positive number");
   }
   const sleep = opts.sleep ?? defaultSleep;
-  let previousAtMs = 0;
+  // Each event is scheduled against the replay's start, not after the previous wait, so
+  // time spent rendering between events does not add up into drift on slow phones.
+  let virtual = 0;
+  const now = opts.now ?? (opts.sleep ? () => virtual : () => performance.now());
+  const start = now();
   for (const [index, item] of rec.events.entries()) {
     if (opts.signal.aborted) {
       return;
     }
     if (index > 0) {
-      await sleep(Math.max(0, item.at_ms - previousAtMs) / speed, opts.signal);
+      const wait = Math.max(0, start + item.at_ms / speed - now());
+      await sleep(wait, opts.signal);
+      virtual += wait;
       if (opts.signal.aborted) {
         return;
       }
     }
-    previousAtMs = item.at_ms;
     yield item.event;
   }
 }
