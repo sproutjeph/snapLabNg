@@ -29,7 +29,8 @@ const SRC = {
 } as const;
 
 /** l₂ written must equal 100 − l₁ to within this (cm): one unit in the 1st decimal place. */
-const L2_TOLERANCE_CM = 0.15;
+/** l₂ = 100 − l₁ is exact arithmetic on what she wrote: allow only float noise. */
+const L2_TOLERANCE_CM = 0.005;
 /** A row's X must equal R·l₂/l₁ from her own numbers within this share. */
 const X_MATCH = 0.01;
 /** Her mean must equal the mean of her own X values within this share. */
@@ -37,7 +38,6 @@ const MEAN_MATCH = 0.01;
 /** A plotted point must satisfy l₁ + l₂ = 100 within this share of the axis span. */
 const POINT_TOLERANCE = 0.02;
 const LARGE_TRIANGLE = 0.5;
-const SLOPE_MATCH = 0.05;
 const GRAPH_PAGE_SHARE = 1 / 3;
 
 type Cell = Readings["cells"][number];
@@ -63,7 +63,14 @@ export function columnOf(c: Cell): Col | null {
 /** Whether a page's table is the l₁/l₂ form (an l₁ and an l₂ column). */
 export function isL1L2Page(r: Readings): boolean {
   const cols = new Set(r.cells.map(columnOf));
-  return cols.has("l1") && cols.has("l2");
+  if (cols.has("l1") && cols.has("l2")) return true;
+  // A graph-only page (the table is on the facing page): l₂ plotted against l₁.
+  const q = (label: string | null | undefined) =>
+    (label ?? "").replace(/\(.*\)/, "").replace(/\s+/g, "");
+  return (
+    /^(l|ℓ)(₁|1)$/i.test(q(r.graph?.x_label_as_written)) &&
+    /^(l|ℓ)(₂|2)$/i.test(q(r.graph?.y_label_as_written))
+  );
 }
 
 const isHeaderRow = (row: string) => /head/i.test(row);
@@ -354,12 +361,32 @@ export function markMeterBridgeL1L2(r: Readings, opts: MarkL1L2Options = {}): Ma
       SRC.y2023,
     );
 
-    // Points: each must lie on l₁ + l₂ = 100 (the wire is 100 cm), within 2% of the span.
+    // Points: against her own table when it is on this page; otherwise each must at least
+    // lie on l₁ + l₂ = 100 (the wire is 100 cm). Within 2% of the span; one point per row.
     const span =
       Math.max(1e-9, ...g.points.flatMap((p) => [p.x, p.y])) -
       Math.min(0, ...g.points.flatMap((p) => [p.x, p.y]));
-    const good = g.points.filter((p) => Math.abs(p.x + p.y - 100) <= POINT_TOLERANCE * span).length;
-    const pts = Math.min(good, 5);
+    const tableRows = rows
+      .map(([, x]) => ({ x: v(x.l1), y: v(x.l2) }))
+      .filter((p): p is { x: number; y: number } => p.x !== null && p.y !== null);
+    let pts = 0;
+    if (tableRows.length) {
+      const unused = [...g.points];
+      for (const t of tableRows) {
+        const k = unused.findIndex(
+          (p) =>
+            Math.abs(p.x - t.x) <= POINT_TOLERANCE * span &&
+            Math.abs(p.y - t.y) <= POINT_TOLERANCE * span,
+        );
+        if (k !== -1) {
+          unused.splice(k, 1);
+          pts += 1;
+        }
+      }
+    } else {
+      pts = g.points.filter((p) => Math.abs(p.x + p.y - 100) <= POINT_TOLERANCE * span).length;
+    }
+    pts = Math.min(pts, 5);
     s.add(
       "GRAPH-POINTS",
       "GRAPH-POINTS",
@@ -383,7 +410,6 @@ export function markMeterBridgeL1L2(r: Readings, opts: MarkL1L2Options = {}): Ma
 
     const tri = g.triangle;
     const tx = tri ? [tri.p1.x, tri.p2.x, tri.p3.x] : [];
-    const ty = tri ? [tri.p1.y, tri.p2.y, tri.p3.y] : [];
     const leg = tri ? Math.max(...tx) - Math.min(...tx) : 0;
     const pSpan = g.points.length
       ? Math.max(...g.points.map((p) => p.x)) - Math.min(...g.points.map((p) => p.x))
@@ -398,25 +424,13 @@ export function markMeterBridgeL1L2(r: Readings, opts: MarkL1L2Options = {}): Ma
       "Use a large right-angled triangle, covering at least half of the line.",
       SRC.y2023,
     );
-    // l₂ falls as l₁ rises, so her slope is negative: rise ÷ run keeps the sign.
-    let sTri: number | null = null;
-    if (tri && leg > 0) {
-      const left = [tri.p1, tri.p2, tri.p3].reduce((a, b) => (b.x < a.x ? b : a));
-      const right = [tri.p1, tri.p2, tri.p3].reduce((a, b) => (b.x > a.x ? b : a));
-      const dy = Math.max(...ty) - Math.min(...ty);
-      sTri = (right.y < left.y ? -dy : dy) / leg;
-    }
-    const sWritten = lastNumber(g.slope_as_written);
-    s.add(
-      "GRAPH-SLOPE:value",
-      "GRAPH-SLOPE",
-      sWritten !== null && sTri !== null && rel(sWritten, sTri) <= SLOPE_MATCH ? 1 : 0,
-      1,
-      [{ box: g.box, text_as_written: g.slope_as_written }],
-      "circle",
-      "Show Δl₂ and Δl₁ from your triangle and divide them; mind the sign.",
-      SRC.y2023,
-    );
+    // No mark for the slope's value: l₂ = 100 − l₁ by definition, so this graph always has
+    // slope −1 and intercept 100 whatever X is. Say so instead of rewarding it.
+    notes.push({
+      description:
+        "A graph of l₂ against l₁ always has slope −1, whatever X is, so it cannot give X. To find X from a graph, plot R against l₁/l₂: its slope is X.",
+      box: null,
+    });
   } else {
     notes.push({
       description: "No graph on this page: snap the graph page to mark it.",
@@ -454,7 +468,7 @@ export function markMeterBridgeL1L2(r: Readings, opts: MarkL1L2Options = {}): Ma
 
   return {
     experiment: "meter_bridge",
-    question_label: "Metre bridge (l₁, l₂ form)",
+    question_label: "Metre bridge, l₁/l₂ form (SnapLab's mark split)",
     earned: s.items.reduce((t, i) => t + i.marks_earned, 0),
     available: s.items.reduce((t, i) => t + i.marks_available, 0),
     items: s.items,

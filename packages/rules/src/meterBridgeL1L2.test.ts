@@ -64,12 +64,47 @@ describe("l₁/l₂ metre bridge marking", () => {
     ]);
   });
 
-  it("marks page 2 (graph and precautions) in full: 10 / 10", () => {
-    // Slope from her triangle: −46.0 / 46.0 = −1.00; all points satisfy l₁ + l₂ = 100;
-    // three past-tense precautions, two counted (WAEC: "any two").
-    const sheet = markMeterBridgeL1L2(PAGE2);
+  it("marks page 2 (graph and precautions) in full, through the page dispatcher: 9 / 9", () => {
+    // All points satisfy l₁ + l₂ = 100; a large triangle (Δl₁ = 46 of a 38 cm point span);
+    // three past-tense precautions, two counted (WAEC: "any two"). The slope's value earns
+    // nothing: this graph always has slope −1, and the sheet says so.
+    const sheet = markMeterBridgePage(PAGE2, { teacherXOhm: null });
+    expect(sheet.question_label).toContain("l₁/l₂");
     expect(MarkSheet.parse(sheet)).toBeTruthy();
-    expect([sheet.earned, sheet.available]).toEqual([10, 10]);
+    expect([sheet.earned, sheet.available]).toEqual([9, 9]);
+    expect(sheet.setup_issues.map((i) => i.description).join(" ")).toContain("slope −1");
+  });
+
+  it("catches a 1 d.p. failure and a 3 s.f. failure in this form", () => {
+    // WAEC Phys P3 2018 Q3A: lengths to at least 1 d.p.; derived values to 3 s.f.
+    const flawed: Readings = {
+      ...NOTE1_PAGE1_READINGS,
+      cells: NOTE1_PAGE1_READINGS.cells.map((c) =>
+        c.row === "4" && /l1/.test(c.column_header_as_written ?? "")
+          ? { ...c, text_as_written: "67", value: 67 }
+          : c.row === "2" && /^X/.test(c.column_header_as_written ?? "")
+            ? { ...c, text_as_written: "4·0", value: 4 }
+            : c,
+      ),
+    };
+    const ids = lost(markMeterBridgeL1L2(flawed)).map((l) => l[0]);
+    expect(ids).toContain("PHYS-1DP:l1:4");
+    expect(ids).toContain("PHYS-3SF:X:2");
+  });
+
+  it("only accepts l₂ that is exactly 100 − l₁", () => {
+    // l₂ = 100 − l₁ is arithmetic, not a measurement: 66·70 is right for 33·30, 66·80 is not.
+    const withL2 = (t: string) =>
+      markMeterBridgeL1L2({
+        ...NOTE1_PAGE1_READINGS,
+        cells: NOTE1_PAGE1_READINGS.cells.map((c) =>
+          c.row === "1" && /l2/.test(c.column_header_as_written ?? "")
+            ? { ...c, text_as_written: t }
+            : c,
+        ),
+      }).items.find((i) => i.id === "PHYS-1DP:l2:1")?.outcome;
+    expect(withL2("66·70")).toBe("earned");
+    expect(withL2("66·80")).toBe("lost");
   });
 
   it("catches a wrong l₂, a wrong X and a wrong mean", () => {
