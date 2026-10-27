@@ -13,6 +13,7 @@ const MarkingPreview = lazy(() => import("./marking/MarkingPreview"));
 const ExaminerPreview = lazy(() => import("./examiner/ExaminerPreview"));
 const TeacherPreview = lazy(() => import("./teacher/TeacherPreview"));
 const QualityPreview = lazy(() => import("./quality/QualityPreview"));
+const MicPreview = lazy(() => import("./examiner/voice/MicPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -28,10 +29,13 @@ export function App() {
   const isExaminerPreview = params.get("examiner") === "1";
   const isTeacherPreview = params.get("teacher") === "1";
   const isQualityPreview = params.get("quality") === "1";
+  const isMicPreview = params.get("mic") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isQualityPreview ? (
+        {isMicPreview ? (
+          <MicPreview />
+        ) : isQualityPreview ? (
           <QualityPreview />
         ) : isExaminerPreview ? (
           <ExaminerPreview />
