@@ -36,6 +36,7 @@ export function App() {
   const isMicPreview = params.get("mic") === "1";
   const isPwaPreview = params.get("pwa") === "1";
   const isAboutPreview = params.get("about") === "1";
+  const isScene = params.get("scene") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
@@ -71,8 +72,11 @@ export function App() {
           <KitPreview />
         ) : isTitrationKit ? (
           <TitrationKitPreview />
-        ) : (
+        ) : isScene ? (
           <Scene />
+        ) : (
+          // The home page is the first screen (docs/plans/home-page.md).
+          <HomePreview />
         )}
       </Suspense>
     </div>

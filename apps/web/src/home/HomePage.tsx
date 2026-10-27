@@ -202,8 +202,11 @@ export default function HomePage() {
         </section>
 
         <footer style={{ marginTop: 40, borderTop: "1px solid #1e293b", paddingTop: 20 }}>
-          <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
-            Not affiliated with WAEC. Built for the Meta Global AI Developer Hackathon, 2026.
+          <p style={{ margin: 0, color: "#94a3b8", fontSize: 13, lineHeight: 1.5 }}>
+            <a href="/?about=1" className="snaplab-btn" style={{ color: "#7dd3fc" }}>
+              About SnapLab NG
+            </a>
+            {" · "}Not affiliated with WAEC. Built for the Meta Global AI Developer Hackathon, 2026.
           </p>
         </footer>
       </main>
