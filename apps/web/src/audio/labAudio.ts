@@ -82,7 +82,7 @@ export function createLabAudio(): LabAudio {
       if (master && ctx) {
         master.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.01);
       }
-      if (ctx.state === "suspended") {
+      if (ctx.state !== "running") {
         await ctx.resume();
       }
     },
@@ -129,14 +129,12 @@ export function createLabAudio(): LabAudio {
         if (!oldest) {
           break;
         }
-        try {
-          oldest.source.stop();
-        } catch {
-          // Already stopped; disconnect below still applies.
-        }
-        oldest.source.disconnect();
-        oldest.filter.disconnect();
-        oldest.gain.disconnect();
+        const t = ctx.currentTime;
+        const g = oldest.gain.gain;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(0, t + 0.015);
+        oldest.source.stop(t + 0.02);
       }
       const now = ctx.currentTime;
       const source = ctx.createBufferSource();
