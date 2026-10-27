@@ -18,6 +18,7 @@ import { streamSnap } from "./snapClient";
 import { traceFromEvents } from "./trace";
 
 const ExaminerConsole = lazy(() => import("../examiner/ExaminerConsole"));
+const LabBench = lazy(() => import("../lab/LabBench"));
 
 type Step = "capture" | "reading" | "done";
 
@@ -208,6 +209,18 @@ export default function FlowPage() {
     const first = list[0]?.question;
     return first ? { first, ask: makeAsk(list) } : null;
   }, [marked]);
+  // Her bench: the parts she drew (Spark's boxes) and the R values she wrote.
+  const lab = useMemo(() => {
+    if (mode?.type !== "mode" || mode.experiment !== "meter_bridge" || !readings) return null;
+    const parts = events.flatMap((e) =>
+      e.type === "component" ? [{ kind: e.component.kind, box: e.component.approx_box }] : [],
+    );
+    const values = events.find(
+      (e): e is Extract<SnapEvent, { type: "values" }> => e.type === "values",
+    )?.values;
+    const resistancesOhm = (values?.meter_bridge?.resistances ?? []).map((r) => r.value);
+    return { parts, resistancesOhm, herMeanXOhm: readings.average_as_written?.value ?? null };
+  }, [events, mode, readings]);
   const errors = events.filter(
     (e): e is Extract<SnapEvent, { type: "error" }> => e.type === "error",
   );
@@ -234,6 +247,32 @@ export default function FlowPage() {
         {step === "reading" ? "Meta's models are reading it now…" : "Done."}
         {mode && mode.type === "mode" ? ` Experiment: ${EXPERIMENT_NAME[mode.experiment]}.` : ""}
       </p>
+      {lab && pageUrl && step === "done" && (
+        <section style={{ margin: "0 0 24px" }}>
+          <h2 style={{ fontSize: 18, margin: "0 0 8px" }}>Your lab</h2>
+          <div
+            style={{
+              height: "min(72vh, 640px)",
+              borderRadius: 12,
+              overflow: "hidden",
+              border: "1px solid #1e293b",
+            }}
+          >
+            <Suspense fallback={null}>
+              <LabBench
+                // A new teacher's X sets up a new bench (the engine copies X once).
+                key={teacher.xOhm ?? "none"}
+                pageUrl={pageUrl}
+                pageAspect={pageAspect}
+                parts={lab.parts}
+                resistancesOhm={lab.resistancesOhm}
+                teacherXOhm={teacher.xOhm}
+                herMeanXOhm={lab.herMeanXOhm}
+              />
+            </Suspense>
+          </div>
+        </section>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
         {pageUrl && marked ? (
           <div style={{ flex: "2 1 480px", minWidth: 0 }}>
