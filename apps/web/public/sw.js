@@ -3,7 +3,10 @@
 // The routing decision below is the same logic as `routeFor` in
 // apps/web/src/pwa/routing.ts, copied into plain JavaScript because a
 // service worker cannot import that module. Keep the two in sync.
-// `/api/*` responses are never cached.
+// `/api/*` responses are never cached. Cache reads use `ignoreVary: true`:
+// the dev/preview server sends `Vary: Origin`, and the texture loader's
+// CORS fetch (with an `Origin` header) must still match the precached
+// entries stored by `addAll` (no `Origin` header).
 const CACHE = "snaplab-v1";
 
 const APP_SHELL = [
@@ -59,16 +62,27 @@ self.addEventListener("fetch", (event) => {
 
   if (route === "navigate-network-first") {
     event.respondWith(
-      fetch(request).catch(async () => {
-        const cached = await caches.match("/index.html");
-        return cached ?? Response.error();
-      }),
+      (async () => {
+        try {
+          const response = await fetch(request);
+          // Keep the cached shell fresh: a deploy replaces what offline
+          // navigations fall back to, instead of the install-time copy.
+          if (response.ok) {
+            const cache = await caches.open(CACHE);
+            await cache.put("/index.html", response.clone());
+          }
+          return response;
+        } catch {
+          const cached = await caches.match("/index.html", { ignoreVary: true });
+          return cached ?? Response.error();
+        }
+      })(),
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then(async (cached) => {
+    caches.match(request, { ignoreVary: true }).then(async (cached) => {
       if (cached) return cached;
       const response = await fetch(request);
       if (response.ok) {
