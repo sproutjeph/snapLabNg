@@ -55,6 +55,13 @@ export const EXAMINER_RESERVE_USD = costUsd("muse-spark-1.3", {
   output_tokens: MAX_OUTPUT_TOKENS.examiner,
 });
 
+/** Voice Transcribe: $0.18 per audio hour, metered in whole seconds (dev.meta.ai pricing). */
+export const VOICE_USD_PER_S = 0.18 / 3600;
+/** The longest spoken answer the relay accepts, in seconds of audio. */
+export const MAX_VOICE_S = 60;
+/** Worst case for one spoken answer, reserved before the speech socket opens. */
+export const VOICE_RESERVE_USD = MAX_VOICE_S * VOICE_USD_PER_S;
+
 interface LedgerFile {
   totalUsd: number;
   day: string;

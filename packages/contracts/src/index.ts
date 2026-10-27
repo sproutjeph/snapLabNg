@@ -6,3 +6,4 @@ export * from "./golden";
 export * from "./json-schema";
 export * from "./marks";
 export * from "./readings";
+export * from "./voice";
