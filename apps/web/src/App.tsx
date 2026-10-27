@@ -16,6 +16,7 @@ const QualityPreview = lazy(() => import("./quality/QualityPreview"));
 const MicPreview = lazy(() => import("./examiner/voice/MicPreview"));
 const PwaPreview = lazy(() => import("./pwa/PwaPreview"));
 const HomePreview = lazy(() => import("./home/HomePreview"));
+const AboutPreview = lazy(() => import("./about/AboutPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -34,11 +35,14 @@ export function App() {
   const isQualityPreview = params.get("quality") === "1";
   const isMicPreview = params.get("mic") === "1";
   const isPwaPreview = params.get("pwa") === "1";
+  const isAboutPreview = params.get("about") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
         {isPwaPreview ? (
           <PwaPreview />
+        ) : isAboutPreview ? (
+          <AboutPreview />
         ) : isMicPreview ? (
           <MicPreview />
         ) : isHomePreview ? (
