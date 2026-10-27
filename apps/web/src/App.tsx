@@ -14,6 +14,7 @@ const ExaminerPreview = lazy(() => import("./examiner/ExaminerPreview"));
 const TeacherPreview = lazy(() => import("./teacher/TeacherPreview"));
 const QualityPreview = lazy(() => import("./quality/QualityPreview"));
 const MicPreview = lazy(() => import("./examiner/voice/MicPreview"));
+const PwaPreview = lazy(() => import("./pwa/PwaPreview"));
 const HomePreview = lazy(() => import("./home/HomePreview"));
 
 export function App() {
@@ -32,10 +33,13 @@ export function App() {
   const isTeacherPreview = params.get("teacher") === "1";
   const isQualityPreview = params.get("quality") === "1";
   const isMicPreview = params.get("mic") === "1";
+  const isPwaPreview = params.get("pwa") === "1";
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isMicPreview ? (
+        {isPwaPreview ? (
+          <PwaPreview />
+        ) : isMicPreview ? (
           <MicPreview />
         ) : isHomePreview ? (
           <HomePreview />
