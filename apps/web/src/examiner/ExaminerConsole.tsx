@@ -610,7 +610,50 @@ export default function ExaminerConsole({
               );
             })}
           </fieldset>
+        </div>
 
+        {voiceAnswer.error && (
+          <p role="status" style={{ margin: "0 0 6px", color: "#fca5a5", fontSize: "0.78rem" }}>
+            {voiceAnswer.error}
+          </p>
+        )}
+
+        {/* Text Input & Send */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "flex-end" }}>
+          <textarea
+            value={answer}
+            maxLength={600}
+            onChange={(e) => setAnswer(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder={
+              isCompleted
+                ? "All questions completed. Well done!"
+                : language === "pidgin"
+                  ? "Hold the mic and speak, or type in Pidgin (Enter sends)…"
+                  : "Hold the mic and speak, or type your answer (Enter sends)…"
+            }
+            disabled={isCompleted || isSubmitting}
+            rows={2}
+            style={{
+              flex: "1 1 260px",
+              background: isCompleted ? "#0f172a" : "#1e293b",
+              color: "#f8fafc",
+              border: "1px solid #334155",
+              borderRadius: "8px",
+              padding: "8px 12px",
+              fontSize: "0.92rem",
+              fontFamily: "inherit",
+              resize: "none",
+              outline: "none",
+              boxSizing: "border-box",
+              opacity: isCompleted ? 0.7 : 1,
+            }}
+          />
           {/* Hold to speak: her voice goes to the server's relay; her words fill the box */}
           <button
             type="button"
@@ -632,13 +675,15 @@ export default function ExaminerConsole({
             }}
             aria-pressed={voiceAnswer.state === "listening"}
             style={{
-              background: voiceAnswer.state === "listening" ? "#7f1d1d" : "#1e293b",
-              color: "#e2e8f0",
-              border: "1px solid #334155",
-              borderRadius: "6px",
-              padding: "4px 10px",
-              fontSize: "0.74rem",
-              fontWeight: 500,
+              background: voiceAnswer.state === "listening" ? "#b91c1c" : "#0f766e",
+              color: "#f8fafc",
+              border: "none",
+              borderRadius: "8px",
+              padding: "10px 16px",
+              height: "46px",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
               cursor: isCompleted || isSubmitting ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
@@ -647,7 +692,7 @@ export default function ExaminerConsole({
               userSelect: "none",
             }}
           >
-            <span>🎙️</span>
+            <span aria-hidden="true">🎙️</span>
             <span>
               {voiceAnswer.state === "listening"
                 ? "Listening… let go to stop"
@@ -656,50 +701,6 @@ export default function ExaminerConsole({
                   : "Hold to speak"}
             </span>
           </button>
-        </div>
-
-        {voiceAnswer.error && (
-          <p role="status" style={{ margin: "0 0 6px", color: "#fca5a5", fontSize: "0.78rem" }}>
-            {voiceAnswer.error}
-          </p>
-        )}
-
-        {/* Text Input & Send */}
-        <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
-          <textarea
-            value={answer}
-            maxLength={600}
-            onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder={
-              isCompleted
-                ? "All questions completed. Well done!"
-                : language === "pidgin"
-                  ? "Type your answer here in Pidgin (Press Enter to send)..."
-                  : "Type your answer here (Press Enter to send)..."
-            }
-            disabled={isCompleted || isSubmitting}
-            rows={2}
-            style={{
-              flex: 1,
-              background: isCompleted ? "#0f172a" : "#1e293b",
-              color: "#f8fafc",
-              border: "1px solid #334155",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              fontSize: "0.92rem",
-              fontFamily: "inherit",
-              resize: "none",
-              outline: "none",
-              boxSizing: "border-box",
-              opacity: isCompleted ? 0.7 : 1,
-            }}
-          />
           <button
             type="button"
             onClick={() => handleSend()}

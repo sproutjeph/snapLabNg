@@ -22,6 +22,20 @@ const LabBench = lazy(() => import("../lab/LabBench"));
 
 type Step = "capture" | "reading" | "done";
 
+const LINK_BUTTON = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 36,
+  padding: "6px 12px",
+  borderRadius: 8,
+  border: "1px solid #334155",
+  background: "#1e293b",
+  color: "#e2e8f0",
+  fontSize: 14,
+  textDecoration: "none",
+  cursor: "pointer",
+} as const;
+
 /** UI names, with the WAEC spelling "metre bridge" (AGENTS.md). */
 const EXPERIMENT_NAME: Record<string, string> = {
   meter_bridge: "metre bridge",
@@ -61,6 +75,10 @@ export default function FlowPage() {
   const [nowMs, setNowMs] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const abort = useRef<AbortController | null>(null);
+  const goldenId = useMemo(() => {
+    const g = new URLSearchParams(location.search).get("golden");
+    return g && /^[a-z0-9-]+$/.test(g) ? g : null;
+  }, []);
   // Teacher mode: the teacher's true X marks accuracy; null (hidden) in student view.
   const teacher = useTeacher();
 
@@ -68,10 +86,15 @@ export default function FlowPage() {
   useEffect(() => {
     window.__SNAPLAB_READY__ = true;
     // `?flow=1&golden=<id>` replays a recorded real read offline (docs/04 §6).
-    const golden = new URLSearchParams(location.search).get("golden");
-    if (golden && /^[a-z0-9-]+$/.test(golden)) void playGolden(golden);
+    if (goldenId) void playGolden(goldenId);
     return () => abort.current?.abort();
   }, []);
+
+  // The drawer shows the models working; once the read is done it steps aside so the lab,
+  // the marks and the examiner are in view. "Show the AI" opens it again.
+  useEffect(() => {
+    if (step === "done") setDrawerOpen(false);
+  }, [step]);
 
   // The drawer's clock, ten times a second while the stream is open.
   useEffect(() => {
@@ -96,7 +119,7 @@ export default function FlowPage() {
     }
   }
 
-  async function playGolden(id: string) {
+  async function playGolden(id: string, speed = 1) {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
@@ -107,7 +130,7 @@ export default function FlowPage() {
       const rec = await loadGolden(id, controller.signal);
       setPageUrl(`/golden/${rec.page.file}`);
       setPageAspect(rec.page.height / rec.page.width);
-      await consume(replay(rec, { signal: controller.signal }));
+      await consume(replay(rec, { signal: controller.signal, speed }));
     } catch {
       if (!controller.signal.aborted) {
         setEvents((prev) => [
@@ -239,16 +262,52 @@ export default function FlowPage() {
       }}
     >
       <ShowAiToggle running={step === "reading"} onClick={() => setDrawerOpen((o) => !o)} />
-      <div style={{ position: "fixed", left: 16, bottom: 16, zIndex: 20 }}>
-        <TeacherPanel teacher={teacher} />
-      </div>
-      <h1 style={{ fontSize: 20, margin: "0 0 4px" }}>Reading your page</h1>
-      <p style={{ margin: "0 0 16px", color: "#94a3b8" }}>
-        {step === "reading" ? "Meta's models are reading it now…" : "Done."}
+      <h1 style={{ fontSize: 20, margin: "0 0 4px", paddingRight: 140 }}>Reading your page</h1>
+      <p style={{ margin: "0 0 8px", color: "#94a3b8" }}>
+        {step === "reading"
+          ? goldenId
+            ? "Replaying a real read of this page, at the models' real speed (about 34 s)…"
+            : "Meta's models are reading it now…"
+          : "Done."}
         {mode && mode.type === "mode" ? ` Experiment: ${EXPERIMENT_NAME[mode.experiment]}.` : ""}
       </p>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          alignItems: "center",
+          margin: "0 0 16px",
+        }}
+      >
+        {step === "reading" && goldenId && (
+          <button type="button" onClick={() => void playGolden(goldenId, 40)} style={LINK_BUTTON}>
+            Skip the wait
+          </button>
+        )}
+        {step === "done" && (
+          <nav aria-label="Jump to" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {lab && pageUrl && (
+              <a href="#your-lab" style={LINK_BUTTON}>
+                Your lab
+              </a>
+            )}
+            {marked && (
+              <a href="#your-marks" style={LINK_BUTTON}>
+                Your marks
+              </a>
+            )}
+            {examiner && (
+              <a href="#examiner" style={LINK_BUTTON}>
+                Examiner questions
+              </a>
+            )}
+          </nav>
+        )}
+        <TeacherPanel teacher={teacher} />
+      </div>
       {lab && pageUrl && step === "done" && (
-        <section style={{ margin: "0 0 24px" }}>
+        <section id="your-lab" style={{ margin: "0 0 24px", scrollMarginTop: 16 }}>
           <h2 style={{ fontSize: 18, margin: "0 0 8px" }}>Your lab</h2>
           <div
             style={{
@@ -273,9 +332,19 @@ export default function FlowPage() {
           </div>
         </section>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
+      <div
+        id="your-marks"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 20,
+          alignItems: "flex-start",
+          scrollMarginTop: 16,
+        }}
+      >
         {pageUrl && marked ? (
-          <div style={{ flex: "2 1 480px", minWidth: 0 }}>
+          // Wide enough to read her handwriting, short enough to keep the examiner in reach.
+          <div style={{ flex: "2 1 480px", minWidth: 0, maxWidth: 620 }}>
             <RedInkOverlay
               pageImageUrl={pageUrl}
               pageAspect={pageAspect}
@@ -308,7 +377,10 @@ export default function FlowPage() {
         </div>
       </div>
       {examiner && step === "done" && (
-        <section style={{ maxWidth: 720, margin: "24px auto 96px" }}>
+        <section
+          id="examiner"
+          style={{ maxWidth: 720, margin: "24px auto 96px", scrollMarginTop: 16 }}
+        >
           <Suspense fallback={null}>
             <ExaminerConsole first={examiner.first} ask={examiner.ask} />
           </Suspense>

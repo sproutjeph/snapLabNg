@@ -85,22 +85,12 @@ function ensureOverlayStyles(): void {
     .snaplab-ink-item:focus-visible .snaplab-ink-focus-ring {
       opacity: 1;
     }
+    /* Above the page at every width: pinned over it, it hid her heading in narrow columns. */
     .snaplab-score-slot {
       z-index: 30;
       flex-shrink: 0;
-    }
-    @media (max-width: 960px) {
-      .snaplab-score-slot {
-        align-self: flex-end;
-        margin-bottom: 8px;
-      }
-    }
-    @media (min-width: 961px) {
-      .snaplab-score-slot {
-        position: absolute;
-        top: 10px;
-        right: 16px;
-      }
+      align-self: stretch;
+      margin-bottom: 8px;
     }
     @media (prefers-reduced-motion: reduce) {
       .snaplab-ink-stroke,
