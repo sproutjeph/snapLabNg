@@ -15,8 +15,10 @@ import { benchSetupFrom } from "./benchSetup";
 import { CurrentFlow } from "./CurrentFlow";
 import { type DrawnPart, InkSparks } from "./InkSparks";
 import { BENCH_TOP_Y, pageLayout } from "./layout";
+import { MAX_EYE_DEG } from "./loupe";
 import { PageSheet } from "./PageSheet";
 import { RevealClip } from "./RevealClip";
+import { type LoupeState, RuleLoupe } from "./RuleLoupe";
 import { ease, REVEAL_S, type RevealPhases, revealAt, revealInto } from "./reveal";
 
 const LiteBench = lazy(() => import("../lite/LiteBench"));
@@ -56,9 +58,12 @@ function RevealDirector({
   skipKey,
   reducedMotion,
   pageCentre,
+  home,
   onDone,
 }: {
   phases: { current: RevealPhases };
+  /** The bench view the reveal ends on; the metre-rule close-up returns to it. */
+  home: { position: THREE.Vector3; target: THREE.Vector3 };
   startKey: number;
   skipKey: number;
   reducedMotion: boolean;
@@ -93,12 +98,13 @@ function RevealDirector({
     // Real time, so a slow phone sees the same 4.6 s reveal (only a long stall is cut short).
     c.t += Math.min(dt, 0.25);
     const p = revealInto(c.t, phases.current, reducedMotion);
-    if (c.done) return;
-
     const aspect = size.width / Math.max(size.height, 1);
     // Far enough back that the 1.3 m-wide bench fits across: half-width / tan(half-fov).
     const dist = Math.max(1.15, 0.66 / (FOV_HALF_TAN * Math.max(aspect, 0.3)));
     v.toPos.set(0, dist * 0.62, BENCH_TARGET.z + dist * 0.78);
+    home.position.copy(v.toPos);
+    home.target.copy(BENCH_TARGET);
+    if (c.done) return;
     v.fromTarget.set(pageCentre[0], pageCentre[1], pageCentre[2]);
     v.fromPos.set(pageCentre[0], pageCentre[1] + (aspect < 1 ? 0.62 : 0.5), pageCentre[2] + 0.12);
     const k = ease(p.camera);
@@ -120,14 +126,24 @@ function BenchScene({
   bench,
   startKey,
   skipKey,
+  loupe,
+  loupeOn,
 }: {
   props: LabBenchProps;
   bench: Bench;
   startKey: number;
   skipKey: number;
+  loupe: { current: LoupeState };
+  loupeOn: boolean;
 }) {
   const { settings, tier } = useQuality();
   const [done, setDone] = useState(false);
+  // True from opening the close-up until the camera is back at the bench view.
+  const [inLoupe, setInLoupe] = useState(false);
+  useEffect(() => {
+    if (loupeOn) setInLoupe(true);
+  }, [loupeOn]);
+  const home = useMemo(() => ({ position: new THREE.Vector3(), target: BENCH_TARGET.clone() }), []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
   const phases = useRef<RevealPhases>(revealAt(0, reducedMotion));
   // Fixed at mount: the tier can settle while the sparks are in flight, and a new budget
@@ -189,9 +205,13 @@ function BenchScene({
         skipKey={skipKey}
         reducedMotion={reducedMotion}
         pageCentre={page.centre}
+        home={home}
         onDone={() => setDone(true)}
       />
       {done && (
+        <RuleLoupe loupe={loupe} state={visual} home={home} onReturned={() => setInLoupe(false)} />
+      )}
+      {done && !inLoupe && (
         <OrbitControls
           target={BENCH_TARGET}
           makeDefault
@@ -236,6 +256,15 @@ function LabCanvas({
   const [skipKey, setSkipKey] = useState(0);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const replay = useCallback(() => setStartKey((k) => k + 1), []);
+  const loupe = useRef<LoupeState>({ on: false, eyeDeg: 0 });
+  const [loupeOn, setLoupeOn] = useState(false);
+  const [eyeDeg, setEyeDeg] = useState(0);
+  const toggleLoupe = () => {
+    loupe.current.on = !loupe.current.on;
+    loupe.current.eyeDeg = 0;
+    setEyeDeg(0);
+    setLoupeOn(loupe.current.on);
+  };
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -247,9 +276,53 @@ function LabCanvas({
         camera={{ fov: FOV_DEG, near: 0.02, far: 20, position: [0, 0.6, 0.6] }}
         onCreated={({ gl }) => setCanvasEl(gl.domElement)}
       >
-        <BenchScene props={props} bench={bench} startKey={startKey} skipKey={skipKey} />
+        <BenchScene
+          props={props}
+          bench={bench}
+          startKey={startKey}
+          skipKey={skipKey}
+          loupe={loupe}
+          loupeOn={loupeOn}
+        />
       </Canvas>
       <ContextLossOverlay canvas={canvasEl} onReload={() => setCanvasKey((k) => k + 1)} />
+      {loupeOn && (
+        <label
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            right: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "rgba(12, 15, 20, 0.78)",
+            color: "#e2e8f0",
+            fontSize: 13,
+          }}
+        >
+          <span style={{ whiteSpace: "nowrap" }}>Your eye</span>
+          <input
+            type="range"
+            min={-MAX_EYE_DEG}
+            max={MAX_EYE_DEG}
+            step={1}
+            value={eyeDeg}
+            onChange={(e) => {
+              const d = Number(e.target.value);
+              loupe.current.eyeDeg = d;
+              setEyeDeg(d);
+            }}
+            style={{ flex: 1 }}
+            aria-label="Move your eye left or right of the jockey"
+          />
+          <span style={{ minWidth: 150 }}>
+            {eyeDeg === 0 ? "Square to the scale: no parallax" : "To the side: parallax error"}
+          </span>
+        </label>
+      )}
       <div
         style={{
           position: "absolute",
@@ -279,6 +352,9 @@ function LabCanvas({
           it.
         </p>
         <div style={{ display: "flex", gap: 8, pointerEvents: "auto" }}>
+          <button type="button" onClick={toggleLoupe} aria-pressed={loupeOn} style={BUTTON_STYLE}>
+            {loupeOn ? "Back to bench" : "Read the scale"}
+          </button>
           <button type="button" onClick={onLite} style={BUTTON_STYLE}>
             2D
           </button>

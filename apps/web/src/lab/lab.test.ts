@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { benchSetupFrom, PLUG_BOX_COILS, plugsInFor } from "./benchSetup";
 import { flowRate } from "./flow";
+import { loupePose, MAX_EYE_DEG } from "./loupe";
 import { REVEAL_S, revealAt } from "./reveal";
 
 const pulled = (plugsIn: boolean[] | null) =>
@@ -76,5 +77,17 @@ describe("current-flow rate", () => {
     expect(flowRate(-0.3)).toBe(1);
     expect(flowRate(1e-3)).toBeCloseTo(0.5, 6); // half-way on the log scale
     expect(flowRate(Number.NaN)).toBe(0);
+  });
+});
+
+describe("metre-rule close-up", () => {
+  it("looks square at the jockey at 0° and leans along the wire, clamped to the limit", () => {
+    const straight = loupePose(0.1, 0);
+    expect(straight.target[0]).toBeCloseTo(0.1, 9);
+    expect(straight.position[0]).toBeCloseTo(0.1, 9);
+    const leaning = loupePose(0.1, 20);
+    expect(leaning.position[0]).toBeGreaterThan(0.1);
+    expect(loupePose(0.1, 90).position[0]).toBeCloseTo(loupePose(0.1, MAX_EYE_DEG).position[0], 9);
+    expect(loupePose(0.1, -20).position[0]).toBeLessThan(0.1);
   });
 });
