@@ -1,8 +1,11 @@
 import { createApp } from "./app";
 import { loadConfig } from "./env";
+import { mountWebDist } from "./static";
 
 const cfg = loadConfig();
 const app = createApp(cfg);
+// After every API route: the site and the API share one origin (docs/plans/deploy-fly.md).
+mountWebDist(app, cfg.webDistDir);
 console.log(`snaplab api on :${cfg.port} (mode ${cfg.mode})`);
 
 export default {
