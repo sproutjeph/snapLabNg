@@ -82,7 +82,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
 | `apps/web/src/marking/**`, plus only the `?marking=1` preview switch in `apps/web/src/App.tsx`, and adding `@snaplab/contracts` to `apps/web` (plan: `docs/plans/red-ink-overlay.md`) | Gemini, while `gemini/red-ink` is open |
-| `apps/web/src/notebook/**`, plus only the `?notebook=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/lab-notebook.md`) | Muse Code, while `muse/lab-notebook` is open |
+| `apps/web/src/golden/**`, plus only the `?golden-preview=1` preview switch in `apps/web/src/App.tsx` (plan: `docs/plans/golden-replay.md`) | Muse Code, while `muse/golden-replay` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 The lead updates this table when it hands out a new slice.
