@@ -16,6 +16,14 @@ describe("notebook formatting", () => {
     expect(formatSig3(1 / 3)).toBe("0.333");
   });
 
+  it("shows a dash for non-finite values such as R = 0", () => {
+    expect(formatLength(Infinity)).toBe("—");
+    expect(formatOhm(NaN)).toBe("—");
+    expect(formatSig3(1 / 0)).toBe("—");
+    expect(formatSig3(NaN)).toBe("—");
+    expect(reciprocalRow({ id: "zero", rOhm: 0, lCm: 50 }).rInv).toBe("—");
+  });
+
   it("works out R and l reciprocals from her own reading (docs/15 section 5, G1 row 4)", () => {
     // Source: docs/15 section 5 golden page row R = 4.0 ohm, l = 57 cm.
     expect(reciprocalRow({ id: "g1-4", rOhm: 4, lCm: 57 })).toEqual({

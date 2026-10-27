@@ -21,11 +21,17 @@ function roundHalfUp(value: number, decimals: number): number {
 
 /** Length to 1 d.p. in cm: the metre rule is read to 1 mm. */
 export function formatLength(lCm: number): string {
+  if (!Number.isFinite(lCm)) {
+    return "—";
+  }
   return roundHalfUp(lCm, 1).toFixed(1);
 }
 
 /** Resistance to 1 d.p. in ohm. */
 export function formatOhm(r: number): string {
+  if (!Number.isFinite(r)) {
+    return "—";
+  }
   return roundHalfUp(r, 1).toFixed(1);
 }
 
@@ -35,7 +41,7 @@ export function formatSig3(x: number): string {
     return "0.00";
   }
   if (!Number.isFinite(x)) {
-    return String(x);
+    return "—";
   }
   const sign = x < 0 ? "-" : "";
   const ax = Math.abs(x);
