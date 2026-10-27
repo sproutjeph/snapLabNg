@@ -30,6 +30,7 @@
         "@react-three/postprocessing": "^3.2.2",
         "@snaplab/contracts": "workspace:*",
         "@snaplab/engine": "workspace:*",
+        "@snaplab/rules": "workspace:*",
         "postprocessing": "^6.39.5",
         "react": "19.3.1",
         "react-dom": "19.3.1",
