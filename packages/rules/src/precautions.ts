@@ -11,7 +11,8 @@ export type PrecautionId =
   | "repeated_readings"
   // Ohm's law (V–I) only, docs/07 §5.2. DRAFT: needs a physics teacher's check.
   | "plugs_firm"
-  | "wire_straight";
+  | "wire_straight"
+  | "current_brief";
 
 /** Which practical's precaution list to judge against. The metre bridge list is the default. */
 export type PrecautionExperiment = "meter_bridge" | "ohms_law_vi";
@@ -59,6 +60,16 @@ function topicById(id: PrecautionId): { id: PrecautionId; test: (t: string) => b
  */
 const OHMS_LAW_TOPICS: Array<{ id: PrecautionId; test: (t: string) => boolean }> = [
   topicById("key_opened"),
+  {
+    // "Current was not allowed to flow for long": here the negation is the precaution.
+    id: "current_brief",
+    test: (t) =>
+      /\bcurrents?\b/.test(t) &&
+      (new RegExp(
+        String.raw`\b${NEG}\s+(?:\w+\s+){0,3}?(flow|flowing|flowed|pass|passing|passed)\b.*\b(long|continuously|unnecessarily)\b`,
+      ).test(t) ||
+        /\b(flow|flowed|passed)\b.*\b(briefly|short time|only when)\b/.test(t)),
+  },
   topicById("tight_clean_connections"),
   {
     id: "plugs_firm",
@@ -71,15 +82,45 @@ const OHMS_LAW_TOPICS: Array<{ id: PrecautionId; test: (t: string) => boolean }>
     test: (t) => /\bwires?\b/.test(t) && /\b(straight|taut|stretched)\b/.test(t),
   },
   {
-    // Parallax at the meter's mirror strip: the pointer read over its own image.
+    // Parallax at the meter: the pointer read over its own image in the mirror strip, or the
+    // eye directly above / in line with the pointer.
     id: "parallax_avoided",
     test: (t) =>
       topicById("parallax_avoided").test(t) ||
-      (/\bmirror\b/.test(t) && /\b(image|pointer|needle)\b/.test(t)),
+      (/\bmirror\b/.test(t) && /\b(image|pointer|needle)\b/.test(t)) ||
+      (/\b(pointer|needle)\b/.test(t) && /\b(image|reflection)\b/.test(t)) ||
+      (/\beyes?\b/.test(t) &&
+        /\b(above|in line|over|perpendicular|vertically|normal)\b/.test(t) &&
+        /\b(pointer|needle|scale|meters?|dial)\b/.test(t)),
   },
   topicById("zero_error"),
   topicById("repeated_readings"),
 ];
+
+/**
+ * V–I path only: the words a negation must reach to say the precaution was NOT done, per
+ * topic ("the key was not opened"). A negation elsewhere ("…when readings were not being
+ * taken") leaves the precaution standing. Null: the negation is the precaution itself.
+ */
+const OHMS_LAW_NEGATABLE: Record<PrecautionId, string | null> = {
+  key_opened: "open|opened|removed",
+  current_brief: null,
+  tight_clean_connections: "tight|tightened|clean|cleaned",
+  plugs_firm: "firm|firmly|tight|tightly|pushed|pressed|secure|securely",
+  wire_straight: "straight|taut|stretched|kept",
+  parallax_avoided:
+    // Not "read": "the meters were not read at an angle" is the precaution, said negatively.
+    "avoided|eliminated|minimi[sz]ed|reduced|prevented|above|in|over|level|perpendicular|covered",
+  zero_error: "checked|corrected|noted|adjusted|eliminated|removed|accounted|considered",
+  repeated_readings: "repeat|repeated",
+  jockey_not_dragged: null,
+};
+
+function negatesTopic(t: string, id: PrecautionId): boolean {
+  const verbs = OHMS_LAW_NEGATABLE[id];
+  if (verbs === null) return false;
+  return new RegExp(String.raw`(\b(not|never)|n't)\s+(?:\w+\s+){0,2}?(${verbs})\b`).test(t);
+}
 
 const TOPICS_FOR: Record<PrecautionExperiment, typeof TOPICS> = {
   meter_bridge: TOPICS,
@@ -147,12 +188,21 @@ export function judgePrecaution(
   }
   if (!topic) return { accepted: false, matched: null, reason: "not_a_listed_precaution" };
   if (MODAL.test(t)) return { accepted: false, matched: topic, reason: "not_past_tense" };
-  if (new RegExp(String.raw`\b${NEG}\b|n't`).test(withoutDragNegation)) {
+  if (experiment === "ohms_law_vi") {
+    // V–I only: the negation must reach the topic's own verb (the metre bridge path below is
+    // unchanged).
+    if (negatesTopic(t, topic)) return { accepted: false, matched: topic, reason: "not_done" };
+  } else if (new RegExp(String.raw`\b${NEG}\b|n't`).test(withoutDragNegation)) {
     return { accepted: false, matched: topic, reason: "not_done" };
   }
   // WAEC's own wording can drop the subject: "Jockey not allowed to scratch resistance wire"
   // (2008 expected answer, docs/15 §9). A negated dragging phrase states the practice.
-  const statesPractice = topic === "jockey_not_dragged" && negatedDrag().test(t);
+  const statesPractice =
+    (topic === "jockey_not_dragged" && negatedDrag().test(t)) ||
+    // V–I: "The pointer covered its image in the mirror" reports the reading in the past tense.
+    (experiment === "ohms_law_vi" &&
+      topic === "parallax_avoided" &&
+      /\b(covered|coincided)\b/.test(t));
   if (!DONE.test(t) && !statesPractice) {
     return { accepted: false, matched: topic, reason: "not_past_tense" };
   }
