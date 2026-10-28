@@ -14,8 +14,10 @@
   --line: #ddd2bd;
   --ink: #1d2430;
   --ink-2: #3a4250;
-  --muted: #8a8478;
-  --red-ink: #c8372d;
+  /* Darkened from #8a8478 (Oct 29) so body text in it passes WCAG AA (≥ 5:1 on every paper tone). */
+  --muted: #655f55;
+  /* Darkened from #c8372d (Oct 29) so small red-ink fix text passes WCAG AA (≥ 4.7:1). */
+  --red-ink: #b83228;
   --green: #1f6b45;
   --rail: #22312a;
   --accent: #e0752e;
