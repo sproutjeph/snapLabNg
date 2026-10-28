@@ -4,7 +4,7 @@ import { DIAGRAM_LEADS, TERMINAL_IDS, type TerminalId } from "@snaplab/engine";
 import { type CSSProperties, useEffect, useReducer, useState } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
-import { getLeadCurve, leadCurveKey } from "../../apparatus/ohms-law/Lead";
+import { getLeadCurve } from "../../apparatus/ohms-law/Lead";
 import { createLabAudio } from "../../audio/labAudio";
 import { InkComposer } from "../../scene/ink/InkComposer";
 import { InkLights } from "../../scene/ink/InkLights";
@@ -131,7 +131,7 @@ function DevHook({ bench }: { bench: OhmsLawBenchController }) {
       },
       leadMid(leadId: string): [number, number] | null {
         const l = bench.visual.current.leads.find((x) => x.id === leadId);
-        const c = l && getLeadCurve(bench.visual, leadCurveKey(l.a, l.b));
+        const c = l && getLeadCurve(bench.visual, l.id);
         if (!c) return null;
         const i = Math.floor(c.count / 2);
         _p.set(c.points[i * 3] ?? 0, c.points[i * 3 + 1] ?? 0, c.points[i * 3 + 2] ?? 0);

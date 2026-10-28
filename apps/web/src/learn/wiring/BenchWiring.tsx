@@ -3,11 +3,11 @@ import { DIAGRAM_LEADS } from "@snaplab/engine";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
-import { getLeadCurve, Lead, type LeadCurve, leadCurveKey } from "../../apparatus/ohms-law/Lead";
+import { getLeadCurve, Lead, type LeadCurve } from "../../apparatus/ohms-law/Lead";
 import type { LabAudio } from "../../audio/labAudio";
 import { flowRate } from "../../lab/flow";
 import { useTerminalRegistry } from "../terminals";
-import type { BenchLead, LeadColour, OhmsLawBench, OhmsLawVisualState } from "../types";
+import type { LeadColour, OhmsLawBench, OhmsLawVisualState } from "../types";
 
 // The wiring layer of the V–I bench (docs/plans/ohms-law-vi.md, "Wave 2 → Wiring"), used inside
 // the Canvas under a <TerminalProvider>. It steps the bench controller each frame, routes nut
@@ -33,10 +33,15 @@ function useBenchVersion(bench: OhmsLawBench): void {
 /** Where the rubber band's free end starts: a little toward the student from the nut. */
 const BAND_START_DZ_M = 0.06;
 const _nut = new THREE.Vector3();
+/** The desk's size (PaperDesk's default), metres. Module-level, so the plane is built once. */
+const DEFAULT_DESK = [2.4, 1.6] as const;
+/** A press and release on bare desk closer than this (CSS px) is a tap, not a camera drag. */
+const TAP_SLOP_PX = 8;
 
-export function BenchWiring({ bench, quality, deskSize = [2.4, 1.6], audio }: BenchWiringProps) {
+export function BenchWiring({ bench, quality, deskSize = DEFAULT_DESK, audio }: BenchWiringProps) {
   useBenchVersion(bench);
   const slamsSeen = useRef(-1);
+  const deskDown = useRef<{ x: number; y: number } | null>(null);
   const registry = useTerminalRegistry();
   const state = bench.visual;
 
@@ -71,11 +76,12 @@ export function BenchWiring({ bench, quality, deskSize = [2.4, 1.6], audio }: Be
     slamsSeen.current = slams;
   });
 
+  const [deskW, deskD] = deskSize;
   const plane = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(deskSize[0], deskSize[1]);
+    const geo = new THREE.PlaneGeometry(deskW, deskD);
     geo.rotateX(-Math.PI / 2);
     return { geo, mat: new THREE.MeshBasicMaterial() };
-  }, [deskSize]);
+  }, [deskW, deskD]);
   useEffect(
     () => () => {
       plane.geo.dispose();
@@ -87,6 +93,23 @@ export function BenchWiring({ bench, quality, deskSize = [2.4, 1.6], audio }: Be
     if (!bench.visual.current.pendingFrom) return;
     bench.setPointer(e.point.x, 0, e.point.z);
   };
+  // Phones have no Esc: a tap on bare desk cancels a pending lead. The plane only sees the
+  // press when nothing nearer took it (nuts, leads and parts stop it), and a press that turns
+  // into a camera drag is not a tap.
+  const onDeskDown = (e: ThreeEvent<PointerEvent>) => {
+    onMove(e);
+    deskDown.current = bench.visual.current.pendingFrom
+      ? { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+      : null;
+  };
+  const onDeskUp = (e: ThreeEvent<PointerEvent>) => {
+    const down = deskDown.current;
+    deskDown.current = null;
+    const from = bench.visual.current.pendingFrom;
+    if (!down || !from) return;
+    const moved = Math.hypot(e.nativeEvent.clientX - down.x, e.nativeEvent.clientY - down.y);
+    if (moved <= TAP_SLOP_PX) bench.tapTerminal(from); // tapping the start nut again cancels
+  };
 
   const leads = state.current.leads;
   return (
@@ -97,7 +120,8 @@ export function BenchWiring({ bench, quality, deskSize = [2.4, 1.6], audio }: Be
         position-y={0.0005}
         visible={false}
         onPointerMove={onMove}
-        onPointerDown={onMove}
+        onPointerDown={onDeskDown}
+        onPointerUp={onDeskUp}
       />
       {leads.map((l) => (
         <Lead
@@ -215,8 +239,8 @@ const MAX_FLOW_LEADS = 20;
 const DOT_M = 0.003;
 /** At full rate a dot runs along a lead at 0.25 m/s, as on the metre bridge (lab/CurrentFlow). */
 const MAX_SPEED_M_S = 0.25;
-/** Ink blue on paper, readable on every lead colour. */
-const DOT_COLOUR = "#2f6fb8";
+/** Solid blue-black pen ink (a touch bluer than --ink), so the dots read on paper and leads. */
+const DOT_COLOUR = "#1d2c4a";
 
 interface CurveLengths {
   version: number;
@@ -224,7 +248,6 @@ interface CurveLengths {
   cum: Float32Array;
 }
 const LENGTHS = new WeakMap<LeadCurve, CurveLengths>();
-const KEYS = new WeakMap<BenchLead, string>();
 
 function lengthsOf(c: LeadCurve): CurveLengths {
   let l = LENGTHS.get(c);
@@ -292,6 +315,8 @@ function LeadFlowDots({
     m.frustumCulled = false;
     m.renderOrder = 3;
     m.name = "lead-flow-dots";
+    // Not outlined by the ink pass (scene/ink): the dots are solid ink already.
+    m.userData.noInk = true;
     return m;
   }, [quality, perLead]);
   useEffect(
@@ -320,12 +345,7 @@ function LeadFlowDots({
       const iA = currents[lead.id] ?? 0;
       const rate = flowRate(iA);
       if (rate <= 0) continue;
-      let key = KEYS.get(lead);
-      if (key === undefined) {
-        key = leadCurveKey(lead.a, lead.b);
-        KEYS.set(lead, key);
-      }
-      const curve = getLeadCurve(state, key);
+      const curve = getLeadCurve(state, lead.id);
       if (!curve || curve.count < 2) continue;
       const { cum } = lengthsOf(curve);
       const total = cum[curve.count - 1] ?? 0;

@@ -103,6 +103,17 @@ try {
   s = await state(page);
   check("Escape cancels the pending lead", s.pending === null && s.leads.length === 0, s);
 
+  // Phones have no Esc: a tap on bare desk (below the wire board) cancels too.
+  await tapNut(page, "K1");
+  await page.mouse.click(500, 790);
+  await page.waitForTimeout(60);
+  s = await state(page);
+  check(
+    "a tap on bare desk cancels the pending lead",
+    s.pending === null && s.leads.length === 0,
+    s,
+  );
+
   for (const [a, b] of DIAGRAM) {
     await tapNut(page, a);
     await tapNut(page, b);
@@ -148,6 +159,25 @@ try {
   await page.waitForTimeout(100);
   s = await state(page);
   check("Undo puts the lead back", s.leads.length === 7 && s.matches, s);
+
+  // A second lead in parallel with K2–A+ publishes its own curve (keyed by lead id).
+  await tapNut(page, "K2");
+  await tapNut(page, "A+");
+  await page.waitForTimeout(150);
+  const both = await page.evaluate(() => {
+    const h = (window as W).__SNAPLAB_WIRING__;
+    const ids = (h?.bench.visual.current.leads ?? [])
+      .filter((l) => l.a === "K2" && l.b === "A+")
+      .map((l) => l.id);
+    return ids.map((id) => h?.leadMid(id) !== null);
+  });
+  check(
+    "two parallel leads each have their own curve",
+    both.length === 2 && both.every(Boolean),
+    both,
+  );
+  await page.getByRole("button", { name: "Undo" }).click();
+  await page.waitForTimeout(100);
 
   // X holds R2–X and V+–X; a third lead fills it, and a fourth tap there is ignored.
   await tapNut(page, "X");

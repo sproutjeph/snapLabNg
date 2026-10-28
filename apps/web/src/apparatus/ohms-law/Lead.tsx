@@ -40,26 +40,70 @@ export interface LeadCurve {
   version: number;
 }
 
-/** Published curves, per visual-state ref (one bench), keyed by leadCurveKey(from, to). */
-const LEAD_CURVES = new WeakMap<object, Map<string, LeadCurve>>();
+/**
+ * Per visual-state ref (one bench): which mounted Lead draws which bench lead (by lead id), and
+ * the curve each publishes. A Lead's props carry only its two ends, so each mounted Lead claims
+ * one unclaimed lead in `state.current.leads` with its ends (and colour, when one matches);
+ * two parallel leads between the same nuts therefore publish under their own ids.
+ */
+interface LeadBook {
+  owner: Map<string, object>;
+  curve: Map<string, LeadCurve>;
+}
+const LEAD_BOOKS = new WeakMap<object, LeadBook>();
 
-export const leadCurveKey = (from: TerminalId, to: TerminalId): string => `${from}>${to}`;
-
-/** The mounted lead's cable from `from` to `to` on this bench, or undefined while it is not drawn. */
-export function getLeadCurve(
-  state: { current: OhmsLawVisualState },
-  key: string,
-): LeadCurve | undefined {
-  return LEAD_CURVES.get(state)?.get(key);
+function bookOf(state: object): LeadBook {
+  let b = LEAD_BOOKS.get(state);
+  if (!b) {
+    b = { owner: new Map(), curve: new Map() };
+    LEAD_BOOKS.set(state, b);
+  }
+  return b;
 }
 
-function curvesOf(state: object): Map<string, LeadCurve> {
-  let m = LEAD_CURVES.get(state);
-  if (!m) {
-    m = new Map();
-    LEAD_CURVES.set(state, m);
+/** The cable of bench lead `leadId` (from lead.a to lead.b), or undefined while it is not drawn. */
+export function getLeadCurve(
+  state: { current: OhmsLawVisualState },
+  leadId: string,
+): LeadCurve | undefined {
+  return LEAD_BOOKS.get(state)?.curve.get(leadId);
+}
+
+/** Keeps `claim.id` on one bench lead with these ends (claimed by no other Lead). No allocation. */
+function claimLead(
+  book: LeadBook,
+  leads: OhmsLawVisualState["leads"],
+  claim: { id: string | null },
+  from: TerminalId,
+  to: TerminalId,
+  colour: LeadColour,
+): void {
+  if (claim.id !== null) {
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (l && l.id === claim.id && l.a === from && l.b === to) return;
+    }
+    releaseLead(book, claim);
   }
-  return m;
+  for (let pass = 0; pass < 2 && claim.id === null; pass++) {
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (!l || l.a !== from || l.b !== to || book.owner.has(l.id)) continue;
+      if (pass === 0 && l.colour !== colour) continue;
+      claim.id = l.id;
+      book.owner.set(l.id, claim);
+      break;
+    }
+  }
+}
+
+function releaseLead(book: LeadBook, claim: { id: string | null }): void {
+  if (claim.id === null) return;
+  if (book.owner.get(claim.id) === claim) {
+    book.owner.delete(claim.id);
+    book.curve.delete(claim.id);
+  }
+  claim.id = null;
 }
 
 /** Where along the lead the control points sit (0 = first plug, 1 = second). */
@@ -242,19 +286,12 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       e: new THREE.Vector3(),
     };
   }, [from, to, colour, quality]);
-  const curveKey = useMemo(() => (to === "pointer" ? null : leadCurveKey(from, to)), [from, to]);
   const curve = useMemo<LeadCurve>(
     () => ({ points: res.main, count: res.mainN + 1, version: 0 }),
     [res],
   );
-  useEffect(
-    () => () => {
-      if (!curveKey) return;
-      const m = LEAD_CURVES.get(state);
-      if (m?.get(curveKey) === curve) m.delete(curveKey);
-    },
-    [state, curveKey, curve],
-  );
+  const claim = useMemo<{ id: string | null }>(() => ({ id: null }), []);
+  useEffect(() => () => releaseLead(bookOf(state), claim), [state, claim]);
   useEffect(
     () => () => {
       res.tube.dispose();
@@ -281,10 +318,13 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     } else okB = registry.worldPosition(to, _b);
     const ok = okA && okB;
     g.visible = ok;
-    if (curveKey) {
-      const m = curvesOf(state);
-      if (ok && m.get(curveKey) !== curve) m.set(curveKey, curve);
-      else if (!ok && m.get(curveKey) === curve) m.delete(curveKey);
+    if (to !== "pointer") {
+      const book = bookOf(state);
+      claimLead(book, state.current.leads, claim, from, to, colour);
+      if (claim.id !== null) {
+        if (ok && book.curve.get(claim.id) !== curve) book.curve.set(claim.id, curve);
+        else if (!ok && book.curve.get(claim.id) === curve) book.curve.delete(claim.id);
+      }
     }
     // A missing end must not leave a stale tap tube behind.
     if (hit) {
