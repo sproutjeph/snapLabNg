@@ -3,6 +3,7 @@ import type {
   PartId as CircuitPartId,
   DiagramComparison,
   Lead,
+  OhmsLawParams,
   OhmsLawReadout,
   TerminalId,
 } from "@snaplab/engine";
@@ -158,3 +159,43 @@ export interface Lesson {
 }
 
 export type LessonMode = "practice" | "exam";
+
+/**
+ * The V–I bench controller (Wave 2 wiring slice builds it; readings, shell and the lesson page
+ * use it). Renderer-free, like the metre bridge's createBenchController: it owns the engine state,
+ * steps it at a fixed 120 Hz inside advance(), and writes `visual` in place. Discrete changes
+ * (leads, key, plugs, mode, notes) notify subscribers so React UI can re-render; per-frame values
+ * are read from `visual` inside useFrame only.
+ */
+export interface OhmsLawBench {
+  readonly params: OhmsLawParams;
+  readonly visual: { current: OhmsLawVisualState };
+  /** Real time since the last call; the controller runs whole 120 Hz steps and keeps the rest. */
+  advance(dtS: number): void;
+  /** A nut was tapped: start a lead there, finish the pending one, or cancel it. */
+  tapTerminal(id: TerminalId): void;
+  /** A lead was tapped: remove it. */
+  removeLead(leadId: string): void;
+  /** Takes back the last lead change (add or remove). */
+  undo(): void;
+  /** Clears every lead, opens the key and puts every plug back in. */
+  reset(): void;
+  toggleKey(): void;
+  togglePlug(index: number): void;
+  /** World point on the bench under the pointer, for the rubber band. */
+  setPointer(x: number, y: number, z: number): void;
+  /** Exam mode clears the ring and the guided hints and stops procedure notes. */
+  setMode(mode: LessonMode): void;
+  readonly mode: LessonMode;
+  /** The diagram comparison for the current leads (topology only). */
+  readonly comparison: DiagramComparison;
+  /** The box setting as a real box shows it (sum of unplugged coils). Never an engine value. */
+  readonly boxSettingOhm: number;
+  /** Seconds the key has been closed without a break (0 while open), for procedure notes. */
+  readonly keyClosedForS: number;
+  /** Practice-mode notes about procedure, newest last. Never a value. */
+  readonly notes: readonly ProcedureNote[];
+  addNote(note: Omit<ProcedureNote, "id" | "atS">): void;
+  /** Called after every discrete change; returns the unsubscribe function. */
+  subscribe(fn: () => void): () => void;
+}
