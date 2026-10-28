@@ -41,8 +41,7 @@
 .ol-tools {
   position: absolute;
   top: calc(var(--sh-head, 56px) + 12px);
-  right: 428px;
-  justify-content: flex-end;
+  left: calc(var(--sh-rail, 76px) + 12px);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -85,7 +84,7 @@
 
 .ol-note {
   position: absolute;
-  right: 428px;
+  left: calc(var(--sh-rail, 76px) + 12px);
   top: calc(var(--sh-head, 56px) + 68px);
   max-width: min(460px, calc(100% - var(--sh-rail, 76px) - 440px));
   margin: 0;
@@ -202,7 +201,6 @@
 @media (min-width: 641px) and (max-width: 900px) {
   .ol-tools,
   .ol-note {
-    right: 368px;
     max-width: calc(100% - var(--sh-rail, 76px) - 380px);
   }
 
@@ -211,18 +209,32 @@
   }
 }
 
+/* The shell's diagram or Identify card floats top-left: the toolbar and note go bottom-left. */
+.ol-float-open .ol-tools {
+  top: auto;
+  bottom: calc(var(--sh-bar, 80px) + 12px);
+}
+
+.ol-float-open .ol-note {
+  top: auto;
+  bottom: calc(var(--sh-bar, 80px) + 68px);
+}
+
 /* Phone: no rail; a two-row header on top and the bottom sheet over the lower canvas. */
 @media (max-width: 640px) {
-  .ol-tools {
+  .ol-tools,
+  .ol-float-open .ol-tools {
     top: 96px;
+    bottom: auto;
     left: 12px;
     right: 12px;
-    justify-content: flex-start;
     max-width: none;
   }
 
-  .ol-note {
+  .ol-note,
+  .ol-float-open .ol-note {
     top: 152px;
+    bottom: auto;
     left: 12px;
     right: 12px;
     max-width: none;

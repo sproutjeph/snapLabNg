@@ -3,7 +3,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import type { MarkSheet, OhmsLawRecord } from "@snaplab/contracts";
 import type { TerminalId } from "@snaplab/engine";
 import { markOhmsLaw } from "@snaplab/rules";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { createLabAudio } from "../audio/labAudio";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
@@ -61,35 +61,42 @@ function FrameBench({ paused }: { paused: boolean }) {
   const camera = useThree((st) => st.camera);
   const width = useThree((st) => st.size.width);
   const height = useThree((st) => st.size.height);
+  // The view offset always follows the size, close-up or not, so nothing jumps.
   useEffect(() => {
-    // While a close-up owns the camera, leave it alone (it returns to where it started).
-    if (paused) return;
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const c = coveredPx(width);
+    camera.setViewOffset(
+      width,
+      height,
+      (c.right - c.left) / 2,
+      (c.bottom - c.top) / 2,
+      width,
+      height,
+    );
+    return () => camera.clearViewOffset();
+  }, [camera, width, height]);
+  // The framing runs once, then again only after a resize. A close-up owns the camera while it
+  // is open, so a resize then waits until it is back; her own orbit is never thrown away.
+  const dirty = useRef(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new size is what marks it dirty.
+  useEffect(() => {
+    dirty.current = true;
+  }, [width, height]);
+  useEffect(() => {
+    if (paused || !dirty.current) return;
+    dirty.current = false;
     const aspect = width / Math.max(height, 1);
     const c = coveredPx(width);
     // Back off so the bench (about 1.5 m with the tray) spans the uncovered width.
-    const k =
-      aspect < 1
-        ? Math.min(2.6, 1 / aspect)
-        : Math.max(1, (0.9 * width) / Math.max(width - c.left - c.right, 1));
+    const fitTall = aspect < 1 ? 1 / aspect : 1;
+    const fitPanels = (0.9 * width) / Math.max(width - c.left - c.right, 1);
+    const k = Math.min(2.6, Math.max(1, fitTall, fitPanels));
     camera.position.set(
       BENCH_TARGET[0] + (BENCH_CAMERA[0] - BENCH_TARGET[0]) * k,
       BENCH_TARGET[1] + (BENCH_CAMERA[1] - BENCH_TARGET[1]) * k,
       BENCH_TARGET[2] + (BENCH_CAMERA[2] - BENCH_TARGET[2]) * k,
     );
     camera.lookAt(BENCH_TARGET[0], BENCH_TARGET[1], BENCH_TARGET[2]);
-    if (camera instanceof THREE.PerspectiveCamera) {
-      camera.setViewOffset(
-        width,
-        height,
-        (c.right - c.left) / 2,
-        (c.bottom - c.top) / 2,
-        width,
-        height,
-      );
-    }
-    return () => {
-      if (camera instanceof THREE.PerspectiveCamera) camera.clearViewOffset();
-    };
   }, [camera, width, height, paused]);
   return null;
 }
@@ -235,7 +242,7 @@ function LearnView() {
       diagramOpen={diagramOpen}
       onDiagramOpenChange={setDiagramOpen}
     >
-      <div className="ol-stage">
+      <div className={diagramOpen ? "ol-stage ol-float-open" : "ol-stage"}>
         <Canvas
           shadows={settings.shadows}
           dpr={settings.dpr}
