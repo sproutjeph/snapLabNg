@@ -24,6 +24,11 @@ export const RuleCode = z.enum([
   "PHYS-EVAL",
   "PHYS-ACCURACY",
   "PRECAUTIONS",
+  // Ohm's law (V–I), docs/07 §4.4 and §5.2. DRAFT: needs a physics teacher's check.
+  "PHYS-2DP",
+  "PHYS-TREND",
+  "PHYS-LAW",
+  "PHYS-CALC",
 ]);
 export type RuleCode = z.infer<typeof RuleCode>;
 

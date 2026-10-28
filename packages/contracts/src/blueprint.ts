@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Box, Confidence, Experiment, Measured } from "./common";
+import { Box, Confidence, Measured, SnapExperiment } from "./common";
 
 export const ComponentKind = z.enum([
   // meter_bridge
@@ -91,7 +91,7 @@ const GlassBlockValues = z.strictObject({
 });
 
 export const BlueprintSchema = z.strictObject({
-  experiment: Experiment,
+  experiment: SnapExperiment,
   confidence: Confidence,
   components: z.array(
     z.strictObject({

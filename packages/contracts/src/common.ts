@@ -19,8 +19,22 @@ export const Measured = z.strictObject({
 });
 export type Measured = z.infer<typeof Measured>;
 
-export const Experiment = z.enum(["meter_bridge", "titration", "glass_block", "unknown"]);
+export const Experiment = z.enum([
+  "meter_bridge",
+  "titration",
+  "glass_block",
+  "ohms_law_vi",
+  "unknown",
+]);
 export type Experiment = z.infer<typeof Experiment>;
+
+/**
+ * What a snapped page can be read as. `ohms_law_vi` is hands-on only until the snap flow
+ * supports it (docs/plans/ohms-law-vi.md), so the Spark schema and the recorded fixtures
+ * stay exactly as they were.
+ */
+export const SnapExperiment = Experiment.exclude(["ohms_law_vi"]);
+export type SnapExperiment = z.infer<typeof SnapExperiment>;
 
 export const Confidence = z.enum(["low", "medium", "high"]);
 export type Confidence = z.infer<typeof Confidence>;

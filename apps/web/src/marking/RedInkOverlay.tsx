@@ -38,6 +38,10 @@ const RULE_WORDS: Record<MarkItem["rule"], string> = {
   "PHYS-EVAL": "Working",
   "PHYS-ACCURACY": "Accuracy",
   PRECAUTIONS: "Precautions",
+  "PHYS-2DP": "Meter readings to 2 d.p.",
+  "PHYS-TREND": "Trend of the readings",
+  "PHYS-LAW": "The law",
+  "PHYS-CALC": "Calculation",
 };
 
 export function ruleWords(rule: MarkItem["rule"]): string {
