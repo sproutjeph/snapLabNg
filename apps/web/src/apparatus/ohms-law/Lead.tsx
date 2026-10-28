@@ -28,6 +28,84 @@ export interface LeadProps {
   onTap?: () => void;
 }
 
+/**
+ * A lead's sampled cable centreline, published so the current-flow dots can follow it. Points
+ * run from the `from` plug to the `to` plug, xyz packed, in the Lead's parent space (the same
+ * space as its siblings). `version` rises each time the points are rewritten.
+ */
+export interface LeadCurve {
+  readonly points: Float32Array;
+  /** Number of points (xyz triples) in `points`. */
+  readonly count: number;
+  version: number;
+}
+
+/**
+ * Per visual-state ref (one bench): which mounted Lead draws which bench lead (by lead id), and
+ * the curve each publishes. A Lead's props carry only its two ends, so each mounted Lead claims
+ * one unclaimed lead in `state.current.leads` with its ends (and colour, when one matches);
+ * two parallel leads between the same nuts therefore publish under their own ids.
+ */
+interface LeadBook {
+  owner: Map<string, object>;
+  curve: Map<string, LeadCurve>;
+}
+const LEAD_BOOKS = new WeakMap<object, LeadBook>();
+
+function bookOf(state: object): LeadBook {
+  let b = LEAD_BOOKS.get(state);
+  if (!b) {
+    b = { owner: new Map(), curve: new Map() };
+    LEAD_BOOKS.set(state, b);
+  }
+  return b;
+}
+
+/** The cable of bench lead `leadId` (from lead.a to lead.b), or undefined while it is not drawn. */
+export function getLeadCurve(
+  state: { current: OhmsLawVisualState },
+  leadId: string,
+): LeadCurve | undefined {
+  return LEAD_BOOKS.get(state)?.curve.get(leadId);
+}
+
+/** Keeps `claim.id` on one bench lead with these ends (claimed by no other Lead). No allocation. */
+function claimLead(
+  book: LeadBook,
+  leads: OhmsLawVisualState["leads"],
+  claim: { id: string | null },
+  from: TerminalId,
+  to: TerminalId,
+  colour: LeadColour,
+): void {
+  if (claim.id !== null) {
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (l && l.id === claim.id && l.a === from && l.b === to) return;
+    }
+    releaseLead(book, claim);
+  }
+  for (let pass = 0; pass < 2 && claim.id === null; pass++) {
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (!l || l.a !== from || l.b !== to || book.owner.has(l.id)) continue;
+      if (pass === 0 && l.colour !== colour) continue;
+      claim.id = l.id;
+      book.owner.set(l.id, claim);
+      break;
+    }
+  }
+}
+
+function releaseLead(book: LeadBook, claim: { id: string | null }): void {
+  if (claim.id === null) return;
+  if (book.owner.get(claim.id) === claim) {
+    book.owner.delete(claim.id);
+    book.curve.delete(claim.id);
+  }
+  claim.id = null;
+}
+
 /** Where along the lead the control points sit (0 = first plug, 1 = second). */
 const CTRL_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
 /** The lowest the cable's centre goes: it lies on the desk. */
@@ -208,6 +286,12 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       e: new THREE.Vector3(),
     };
   }, [from, to, colour, quality]);
+  const curve = useMemo<LeadCurve>(
+    () => ({ points: res.main, count: res.mainN + 1, version: 0 }),
+    [res],
+  );
+  const claim = useMemo<{ id: string | null }>(() => ({ id: null }), []);
+  useEffect(() => () => releaseLead(bookOf(state), claim), [state, claim]);
   useEffect(
     () => () => {
       res.tube.dispose();
@@ -234,6 +318,14 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     } else okB = registry.worldPosition(to, _b);
     const ok = okA && okB;
     g.visible = ok;
+    if (to !== "pointer") {
+      const book = bookOf(state);
+      claimLead(book, state.current.leads, claim, from, to, colour);
+      if (claim.id !== null) {
+        if (ok && book.curve.get(claim.id) !== curve) book.curve.set(claim.id, curve);
+        else if (!ok && book.curve.get(claim.id) === curve) book.curve.delete(claim.id);
+      }
+    }
     // A missing end must not leave a stale tap tube behind.
     if (hit) {
       const k = ok ? 1 : 0;
@@ -314,6 +406,7 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       res.main[i * 3 + 2] = _pt.z;
     }
     writeTube(res.tube, res.main, res.mainN, res.radial, LEAD_RADIUS_M);
+    curve.version++;
     if (to !== "pointer") {
       // The tap target covers the middle only, so the ends stay free for tapping the nuts.
       const span = Math.hypot(_b.x - _a.x, _b.z - _a.z);
