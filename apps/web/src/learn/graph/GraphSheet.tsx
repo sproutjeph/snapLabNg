@@ -47,17 +47,22 @@ export interface GraphSheetProps {
   table: OhmsLawRecord;
 }
 
-type Tool = "plot" | "line" | "triangle";
+type Tool = "plot" | "erase" | "line" | "triangle";
 
 const TOOLS: ReadonlyArray<{ id: Tool; name: string }> = [
   { id: "plot", name: "Mark points" },
+  { id: "erase", name: "Rub out a point" },
   { id: "line", name: "Draw line" },
   { id: "triangle", name: "Slope triangle" },
 ];
+/** The form of a scale, with numbers that suit no particular table. */
+const SCALE_FORM = "1 cm to 0.5 V";
+const samePlace = (a: SheetPoint, b: SheetPoint) => a.x_cm === b.x_cm && a.y_cm === b.y_cm;
 const ZOOMS = [1, 1.5, 2, 3, 4] as const;
 /** Finger-sized hit areas, in screen px. */
 const HANDLE_HIT_PX = 24;
-const POINT_HIT_PX = 18;
+/** A point is rubbed out only by a tap close to it: never more than this far, in sheet cm. */
+const ERASE_HIT_MAX_CM = 0.2;
 
 /**
  * Her sheet of 2 mm graph paper: she labels the axes, writes her scales, taps her points, lays
@@ -79,18 +84,19 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
   const zoom = ZOOMS[zoomIx] ?? 1;
   const hint = (text: string) => (mode === "practice" ? text : undefined);
 
+  const sheetW = g.sheet.width_cm;
   useEffect(() => {
     const el = svgRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const w = el.getBoundingClientRect().width;
-      if (w > 0) setPxPerCm(w / viewBoxFor(g.sheet).w);
+      if (w > 0) setPxPerCm(w / (MARGIN.left + sheetW + MARGIN.right));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [g.sheet]);
+  }, [sheetW]);
 
   const toSheet = (clientX: number, clientY: number): SheetPoint | null => {
     const el = svgRef.current;
@@ -116,13 +122,13 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
       onChange(addPoint(g, p));
     } else if (tool === "line" && g.line === null) {
       if (pending === null) setPending(p);
-      else {
+      else if (!samePlace(pending, p)) {
         onChange(setLine(g, pending, p));
         setPending(null);
       }
     } else if (tool === "triangle" && g.triangle === null) {
       if (pending === null) setPending(p);
-      else {
+      else if (!samePlace(pending, p)) {
         onChange(setTriangle(g, pending, p));
         setPending(null);
       }
@@ -136,7 +142,7 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
   const H = g.sheet.height_cm;
 
   const hitCm = HANDLE_HIT_PX / pxPerCm;
-  const pointHitCm = POINT_HIT_PX / pxPerCm;
+  const pointHitCm = Math.min(HANDLE_HIT_PX / pxPerCm, ERASE_HIT_MAX_CM);
 
   const dragLineEnd = (end: "p1" | "p2") => (cx: number, cy: number) => {
     const at = toSheet(cx, cy);
@@ -160,8 +166,11 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
   const status = (() => {
     if (tool === "plot") {
       return g.points.length === 0
-        ? "Tap the paper to mark a point. Tap a point again to rub it out."
-        : `${g.points.length} ${g.points.length === 1 ? "point" : "points"} marked. Tap a point to rub it out.`;
+        ? "Tap the paper to mark a point."
+        : `${g.points.length} ${g.points.length === 1 ? "point" : "points"} marked. Tap the paper to mark another.`;
+    }
+    if (tool === "erase") {
+      return "Tap right on a point to rub it out. Zoom in to be exact, or use Remove in the list below.";
     }
     if (tool === "line") {
       if (g.line) return "Drag either end of the ruler to lay your line.";
@@ -190,6 +199,7 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
             graph={g}
             idBase={`${uid}-${axis}`}
             hint={hint}
+            mode={mode}
             onChange={onChange}
           />
         ))}
@@ -323,11 +333,11 @@ export function GraphSheet({ value, onChange, mode, table }: GraphSheetProps) {
               <g
                 // biome-ignore lint/suspicious/noArrayIndexKey: points have no identity but their place
                 key={i}
-                className={`gs-point${tool === "plot" ? " gs-live" : ""}`}
+                className={`gs-point${tool === "erase" ? " gs-live" : ""}`}
                 transform={`translate(${sx(p.x_cm)} ${sy(p.y_cm)})`}
               >
                 <path d="M-0.22 -0.22 L0.22 0.22 M-0.22 0.22 L0.22 -0.22" />
-                {tool === "plot" && (
+                {tool === "erase" && (
                   // biome-ignore lint/a11y/noStaticElementInteractions: a tap rubs out a point; the points list has a Remove button for the keyboard
                   <circle
                     r={pointHitCm}
@@ -602,6 +612,7 @@ function Handle({ name, at, hit, X, Y, onDrag, onNudge }: HandleProps) {
     // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be a <button>
     <g
       className="gs-handle"
+      style={{ touchAction: "none" }}
       role="button"
       tabIndex={0}
       aria-label={`${name}, ${fmtCm(at.x_cm)} cm across, ${fmtCm(at.y_cm)} cm up. Arrow keys move it.`}
@@ -619,12 +630,16 @@ function Handle({ name, at, hit, X, Y, onDrag, onNudge }: HandleProps) {
   );
 }
 
-function ScaleState({ axis }: { axis: OhmsLawGraph["x"] }) {
+function ScaleState({ axis, mode }: { axis: OhmsLawGraph["x"]; mode: LessonMode }) {
   if (axis.scale_as_written === null) return null;
   const ok = axis.units_per_cm !== null;
   return (
     <span className={`gs-scale-state ${ok ? "gs-ok" : "gs-bad"}`} role="status">
-      {ok ? "✓ Scale read" : "✕ Not read: write it like 2 cm to 0.1 A"}
+      {ok
+        ? "✓ Scale read"
+        : mode === "practice"
+          ? `✕ Not read: write it like ${SCALE_FORM}`
+          : "✕ Not read"}
     </span>
   );
 }
@@ -634,12 +649,14 @@ function AxisFields({
   graph,
   idBase,
   hint,
+  mode,
   onChange,
 }: {
   axis: Axis;
   graph: OhmsLawGraph;
   idBase: string;
   hint(text: string): string | undefined;
+  mode: LessonMode;
   onChange(next: OhmsLawGraph): void;
 }) {
   const a = graph[axis];
@@ -681,10 +698,10 @@ function AxisFields({
             type="text"
             autoComplete="off"
             value={a.scale_as_written ?? ""}
-            placeholder={hint("e.g. 2 cm to 0.1 A")}
+            placeholder={hint(`e.g. ${SCALE_FORM}`)}
             onChange={(e) => onChange(setAxisScale(graph, axis, e.target.value))}
           />
-          <ScaleState axis={a} />
+          <ScaleState axis={a} mode={mode} />
         </div>
       </div>
     </fieldset>
@@ -788,11 +805,12 @@ function TypeIn({
       />
     </div>
   );
+  const pointTool = tool === "plot" || tool === "erase";
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const a = parseTypedPoint(f.x1, f.y1, graph.sheet);
     if (!a.ok) return setNote(a.reason);
-    if (tool === "plot") {
+    if (pointTool) {
       onChange(addPoint(graph, a.point));
       setNote(null);
       setF({ x1: "", y1: "", x2: "", y2: "" });
@@ -816,8 +834,8 @@ function TypeIn({
           Positions are in cm from the bottom-left corner of the grid, to the nearest millimetre.
         </p>
         <div className="gs-row">
-          {field("x1", tool === "plot" ? "Across (cm)" : "First end, across (cm)")}
-          {field("y1", tool === "plot" ? "Up (cm)" : "First end, up (cm)")}
+          {field("x1", pointTool ? "Across (cm)" : "First end, across (cm)")}
+          {field("y1", pointTool ? "Up (cm)" : "First end, up (cm)")}
         </div>
         {tool !== "plot" && (
           <div className="gs-row">
@@ -826,7 +844,7 @@ function TypeIn({
           </div>
         )}
         <button type="submit" className="gs-btn">
-          {tool === "plot" ? "Add point" : tool === "line" ? "Set line" : "Set triangle"}
+          {pointTool ? "Add point" : tool === "line" ? "Set line" : "Set triangle"}
         </button>
         {note && (
           <p className="gs-note" role="alert">
@@ -834,7 +852,7 @@ function TypeIn({
           </p>
         )}
       </form>
-      {tool === "plot" && graph.points.length > 0 && (
+      {pointTool && graph.points.length > 0 && (
         <ul className="gs-points" aria-label="Points on the paper">
           {graph.points.map((p, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: points have no identity but their place

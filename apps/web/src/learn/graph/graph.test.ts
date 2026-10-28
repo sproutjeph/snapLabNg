@@ -139,6 +139,31 @@ describe("the scale chooser", () => {
     expect(parseScale("2 cm to 0 A")).toBeNull();
   });
 
+  it("reads a milli unit against the unit on her axis label", () => {
+    // 100 mA over 2 cm is 0.05 A per cm on an "I/A" axis.
+    expect(parseScale("2 cm to 100 mA", "I/A")?.unitsPerCm).toBeCloseTo(0.05, 12);
+    // 0.1 A over 2 cm is 50 mA per cm on an "I/mA" axis; 100 mA stays 50.
+    expect(parseScale("2 cm to 0.1 A", "I/mA")?.unitsPerCm).toBeCloseTo(50, 9);
+    expect(parseScale("2 cm to 100 mA", "I (mA)")?.unitsPerCm).toBeCloseTo(50, 9);
+    expect(parseScale("1 cm to 50 mV", "V/V")?.unitsPerCm).toBeCloseTo(0.05, 12);
+  });
+
+  it("refuses a unit that cannot be reconciled with the axis", () => {
+    expect(parseScale("2 cm to 0.1 V", "I/A")).toBeNull();
+    expect(parseScale("2 cm to 0.1 Ω", "I/A")).toBeNull();
+    expect(parseScale("2 cm to 0.1 V", "V/V")?.unitsPerCm).toBeCloseTo(0.05, 12);
+  });
+
+  it("stores the scale in the label's unit and re-reads it when the label changes", () => {
+    let g = setAxisLabel(emptyGraph(), "x", "I/A");
+    g = setAxisScale(g, "x", "2 cm to 100 mA");
+    expect(g.x.units_per_cm).toBeCloseTo(0.05, 12);
+    g = setAxisLabel(g, "x", "I/mA");
+    expect(g.x.units_per_cm).toBeCloseTo(50, 9);
+    g = setAxisLabel(g, "x", "V/V");
+    expect(g.x.units_per_cm).toBeNull();
+  });
+
   it("records her text as typed and the number beside it", () => {
     const g = setAxisScale(emptyGraph(), "x", "2 cm to 0.1 A");
     expect(g.x.scale_as_written).toBe("2 cm to 0.1 A");
@@ -177,10 +202,19 @@ describe("the component", () => {
   });
 
   it("shows the form of a scale in practice mode and nothing in exam mode", () => {
-    expect(render("practice")).toContain("e.g. 2 cm to 0.1 A");
+    const practice = render("practice");
+    expect(practice).toContain("e.g. 1 cm to 0.5 V");
+    // Never the scale that suits this table.
+    expect(practice).not.toContain("2 cm to 0.1 A");
     const exam = render("exam");
     expect(exam).not.toContain("e.g.");
     expect(exam).not.toContain("placeholder");
+  });
+
+  it("rubs out only in its own tool: Mark points carries no erase targets", () => {
+    const html = render("practice", sampleGraph());
+    expect(html).toContain("Rub out a point");
+    expect(html).not.toContain("point-0");
   });
 
   it("shows her table as typed, and no slope or expected value", () => {

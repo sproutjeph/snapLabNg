@@ -119,13 +119,19 @@
   font: inherit;
   font-size: 17px;
   color: var(--ink);
-  background: color-mix(in srgb, var(--card) 70%, transparent);
+  background: var(--card);
   border: 0;
   border-bottom: 1.5px solid var(--ink-2);
   border-radius: 0;
   min-height: var(--tap);
   padding: 6px 8px;
   width: 100%;
+}
+/* color-mix needs iOS Safari 16.2+; older browsers keep the plain card colour above. */
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .gs-input {
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+  }
 }
 .gs-input:focus {
   outline: 2px solid var(--ink);
@@ -215,7 +221,10 @@
   border: var(--rule);
   background: var(--paper-2);
 }
+/* A drag on the paper scrolls the page or the zoomed sheet as usual (no double-tap zoom delay);
+   only the handles take the finger over, so dragging one never pans. */
 .gs-svg {
+  touch-action: pan-x pan-y pinch-zoom;
   display: block;
   margin: 0 auto;
   height: auto;
@@ -322,7 +331,8 @@
 .gs-ruler {
   pointer-events: none;
 }
-.gs-handle {
+.gs-handle,
+.gs-handle * {
   touch-action: none;
   cursor: grab;
 }

@@ -98,11 +98,32 @@ const VALUE_PER_CM = new RegExp(`^\\s*${NUM}\\s*${UNIT}\\s*(?:per|/)\\s*(?:1\\s*
 // "0.1 A to 2 cm" (value first)
 const VALUE_TO_CM = new RegExp(`^\\s*${NUM}\\s*${UNIT}\\s*(?:to|=|:)\\s*${NUM}\\s*cm\\s*$`, "i");
 
+// The unit she wrote, and the one on her axis label, read the way packages/rules reads them
+// (rules/ohmsLaw.ts: AMPERE, VOLT, isMilli, milliFactor).
+const AMPERE = /^(m?A|amps?|amperes?|milliamps?|milliamperes?)$/i;
+const VOLT = /^(m?V|volts?|millivolts?)$/i;
+const isMilli = (unit: string) => /^(m[AV]|milli)/.test(unit);
+const milliFactor = (unit: string | null) => (unit !== null && isMilli(unit) ? 1e-3 : 1);
+const baseOf = (unit: string | null): "A" | "V" | null =>
+  unit === null ? null : AMPERE.test(unit) ? "A" : VOLT.test(unit) ? "V" : null;
+
+/** The unit part of an axis label: "I (A)" gives "A", "V/mV" gives "mV". */
+export function labelUnit(label: string | null): string | null {
+  if (!label) return null;
+  const bracket = label.match(/\(([^)]*)\)/)?.[1];
+  if (bracket !== undefined) return bracket.trim() || null;
+  const afterSlash = label.match(/\/\s*(.+)$/)?.[1];
+  return afterSlash !== undefined ? afterSlash.trim() : null;
+}
+
 /**
- * Reads "2 cm to 0.1 A" as 0.05 A per cm. Returns null when it can't be read or isn't a
- * positive, finite scale. The text she typed is kept as it is; this only fills `units_per_cm`.
+ * Reads "2 cm to 0.1 A" as 0.05 A per cm, in the unit of her axis label (the unit the marker
+ * reads `units_per_cm` in): "2 cm to 100 mA" on an "I/A" axis is 0.05 A per cm. Returns null
+ * when it can't be read, isn't a positive finite scale, or its unit can't be reconciled with
+ * the axis (a volt scale on an ampere axis, or a unit that is neither). The text she typed is
+ * kept as it is; this only fills `units_per_cm`.
  */
-export function parseScale(text: string): ParsedScale | null {
+export function parseScale(text: string, axisLabel: string | null = null): ParsedScale | null {
   const clean = (unit: string | undefined) => {
     const u = unit?.trim();
     return u ? u : null;
@@ -129,20 +150,34 @@ export function parseScale(text: string): ParsedScale | null {
     return null;
   }
   if (!(cm > 0) || !(value > 0)) return null;
-  const unitsPerCm = value / cm;
-  return Number.isFinite(unitsPerCm) ? { unitsPerCm, unit } : null;
+  let perCm = value / cm;
+  if (unit !== null) {
+    const base = baseOf(unit);
+    if (base === null) return null;
+    const axisBase = baseOf(labelUnit(axisLabel));
+    if (axisBase !== null && axisBase !== base) return null;
+    perCm = (perCm * milliFactor(unit)) / milliFactor(labelUnit(axisLabel));
+  }
+  return Number.isFinite(perCm) ? { unitsPerCm: Number(perCm.toPrecision(12)), unit } : null;
 }
 
 // ---- Edits (each returns the whole next graph) ----
 
 export const orNull = (text: string): string | null => (text === "" ? null : text);
 
+/** Her scale is read against her label's unit, so a new label re-reads the scale she wrote. */
 export function setAxisLabel(g: OhmsLawGraph, axis: Axis, text: string): OhmsLawGraph {
-  return { ...g, [axis]: { ...g[axis], label_as_written: orNull(text) } };
+  const label = orNull(text);
+  const scale = g[axis].scale_as_written;
+  const parsed = scale === null ? null : parseScale(scale, label);
+  return {
+    ...g,
+    [axis]: { ...g[axis], label_as_written: label, units_per_cm: parsed?.unitsPerCm ?? null },
+  };
 }
 
 export function setAxisScale(g: OhmsLawGraph, axis: Axis, text: string): OhmsLawGraph {
-  const parsed = text === "" ? null : parseScale(text);
+  const parsed = text === "" ? null : parseScale(text, g[axis].label_as_written);
   return {
     ...g,
     [axis]: {
