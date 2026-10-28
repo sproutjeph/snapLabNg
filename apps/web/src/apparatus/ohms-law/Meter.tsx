@@ -11,8 +11,10 @@ import {
   canvasTexture,
   disposeAll,
   hitMaterial,
+  jitterColour,
   makeCanvas,
   matte,
+  mergeStatic,
   seeded,
 } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -38,7 +40,7 @@ export interface MeterProps extends PartProps {
 // Black − on the left, red + on the right, as on the usual school meters.
 const PLUS_X = 0.035;
 
-// Case, in metres: about 12 x 11 x 5 cm, with a low ledge in front that carries the terminals.
+// Case, in metres: about 12 x 12 x 5 cm, with a low ledge in front that carries the terminals.
 const CASE = { w: 0.12, h: 0.118, d: 0.05 } as const;
 const LEDGE = { h: 0.012, d: 0.04 } as const;
 const FACE_Z = CASE.d / 2; // front of the case
@@ -47,24 +49,24 @@ const DIAL_Z = FACE_Z + 0.0002;
 const NEEDLE_LIFT = 0.0045; // the needle floats this far above the dial: real parallax
 const PIVOT_Y = DIAL_Y + DIAL.pivotUp;
 const NEEDLE_LEN = DIAL.arcRadius + 0.003;
+const SCREW_Y = 0.0195;
 const DEG = Math.PI / 180;
 const SHAKE_S = 0.4;
+const LABEL_Z = 0.0575; // the + and − are printed this far forward on the ledge
 
-function ledgeLabelTexture() {
-  const { canvas, ctx } = makeCanvas(512, 170);
+function ledgeLabelTexture(bg: string) {
+  const { canvas, ctx } = makeCanvas(512, 48);
   if (ctx) {
-    ctx.fillStyle = "#262320";
-    ctx.fillRect(0, 0, 512, 170);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, 512, 48);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "bold 40px Georgia, serif";
-    // Top-face uv: canvas top is the back of the ledge, so the front edge is the bottom.
-    const x = (v: number) => ((v + CASE.w / 2) / CASE.w) * 512;
-    const y = ((0.0575 - FACE_Z) / LEDGE.d) * 170;
+    const x = (v: number) => ((v + 0.045) / 0.09) * 512;
     ctx.fillStyle = "#d9463c";
-    ctx.fillText("+", x(PLUS_X), y);
+    ctx.fillText("+", x(PLUS_X), 26);
     ctx.fillStyle = "#f1e8cf";
-    ctx.fillText("−", x(-PLUS_X), y);
+    ctx.fillText("−", x(-PLUS_X), 26);
   }
   return canvasTexture(canvas, 2);
 }
@@ -120,6 +122,7 @@ export function Meter({
   const prevSlams = useRef(-1);
   const shake = useRef(0);
   const low = quality === "low";
+  const cast = !low;
 
   const res = useMemo(() => {
     const rnd = seeded(kind === "ammeter" ? 31 : 47);
@@ -130,14 +133,12 @@ export function Meter({
       letter: kind === "ammeter" ? "A" : "V",
       px: low ? 512 : 1024,
     });
-    const ledgeTex = ledgeLabelTexture();
+    const bakelite = jitterColour(COLOURS.bakelite, rnd);
+    const ledgeTex = ledgeLabelTexture(`#${bakelite.getHexString()}`);
     const caseMat = matte(COLOURS.bakelite, rnd, { roughness: 0.75 });
-    const ledgeTopMat = matte("#ffffff", rnd, { roughness: 0.8, amount: 0.005, map: ledgeTex });
-    const ledgeMats = [caseMat, caseMat, ledgeTopMat, caseMat, caseMat, caseMat];
-    const needleMat = matte("#111111", rnd, { roughness: 0.7 });
-    const stopGeo = new THREE.CylinderGeometry(0.0016, 0.0016, 0.0075, 8);
-    stopGeo.rotateX(Math.PI / 2);
-    const slotGeo = new THREE.BoxGeometry(0.0072, 0.0013, 0.0008);
+    caseMat.color.copy(bakelite);
+    const ledgeLabelGeo = new THREE.PlaneGeometry(0.09, 0.008);
+    ledgeLabelGeo.rotateX(-Math.PI / 2);
     const mirrorGeo = new THREE.RingGeometry(
       DIAL.mirrorInner,
       DIAL.mirrorOuter,
@@ -148,50 +149,87 @@ export function Meter({
     );
     const hubGeo = new THREE.CylinderGeometry(0.0034, 0.0034, 0.0022, seg);
     hubGeo.rotateX(Math.PI / 2);
+    hubGeo.translate(0, 0, 0.0004);
     const postGeo = new THREE.CylinderGeometry(0.0011, 0.0011, NEEDLE_LIFT, 8);
     postGeo.rotateX(Math.PI / 2);
-    const screwGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.0024, seg);
-    screwGeo.rotateX(Math.PI / 2);
+    postGeo.translate(0, 0, -NEEDLE_LIFT / 2);
     const needleGeo = new THREE.ExtrudeGeometry(needleShape(), {
       depth: 0.0014,
       bevelEnabled: false,
     });
+    needleGeo.translate(0, 0, -0.0007);
+    const stop = (METER_STOP_DEG + 1.2) * DEG;
+    const stopR = 0.04;
+    const stopPiece = (side: number) => {
+      const geo = new THREE.CylinderGeometry(0.0016, 0.0016, 0.0075, 8);
+      geo.rotateX(Math.PI / 2);
+      return {
+        geo,
+        place: (g: THREE.BufferGeometry) =>
+          g.translate(
+            Math.sin(side * stop) * stopR,
+            PIVOT_Y + Math.cos(stop) * stopR,
+            DIAL_Z + 0.0036,
+          ),
+      };
+    };
+    const screwGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.0024, seg);
+    screwGeo.rotateX(Math.PI / 2);
+    const slotGeo = new THREE.BoxGeometry(0.0072, 0.0013, 0.0008);
+    slotGeo.rotateZ(0.5);
     const bezelGeo = new THREE.ExtrudeGeometry(bezelShape(), {
       depth: 0.0028,
       bevelEnabled: false,
     });
+    const hitScrewGeo = new THREE.SphereGeometry(0.009, 8, 6);
+    hitScrewGeo.translate(0, SCREW_Y, FACE_Z + 0.003);
     return {
-      caseGeo: new THREE.BoxGeometry(CASE.w, CASE.h, CASE.d),
-      ledgeGeo: new THREE.BoxGeometry(CASE.w, LEDGE.h, LEDGE.d),
-      dialGeo: new THREE.PlaneGeometry(DIAL.width, DIAL.height),
-      bezelGeo,
-      needleGeo,
-      mirrorGeo,
-      hubGeo,
-      postGeo,
-      screwGeo,
-      slotGeo,
-      stopGeo,
-      hitScrewGeo: new THREE.SphereGeometry(0.009, 8, 6),
       dialTex,
       ledgeTex,
       caseMat,
-      ledgeTopMat,
-      ledgeMats,
+      // The case and its ledge: one geometry, one draw call.
+      caseGeo: mergeStatic([
+        {
+          geo: new THREE.BoxGeometry(CASE.w, CASE.h, CASE.d),
+          place: (g) => g.translate(0, CASE.h / 2, 0),
+        },
+        {
+          geo: new THREE.BoxGeometry(CASE.w, LEDGE.h, LEDGE.d),
+          place: (g) => g.translate(0, LEDGE.h / 2, FACE_Z + LEDGE.d / 2),
+        },
+      ]),
+      ledgeLabelGeo,
+      ledgeLabelMat: matte("#ffffff", rnd, { roughness: 0.8, amount: 0.002, map: ledgeTex }),
+      dialGeo: new THREE.PlaneGeometry(DIAL.width, DIAL.height),
       dialMat: matte("#ffffff", rnd, { roughness: 0.85, amount: 0.008, map: dialTex }),
+      // The bezel frame and the screw's slot share the dark material.
+      bezelGeo: mergeStatic([
+        {
+          geo: bezelGeo,
+          place: (g) => g.translate(0, DIAL_Y + DIAL.height / 2, FACE_Z),
+        },
+        { geo: slotGeo, place: (g) => g.translate(0, SCREW_Y, FACE_Z + 0.0025) },
+      ]),
       bezelMat: matte("#34302b", rnd, { roughness: 0.7 }),
-      needleMat,
+      // The two stop pins and the screw head: static brass in one draw call.
+      brassStaticGeo: mergeStatic([
+        stopPiece(-1),
+        stopPiece(1),
+        { geo: screwGeo, place: (g) => g.translate(0, SCREW_Y, FACE_Z + 0.001) },
+      ]),
+      // The hub and post turn with the needle.
+      needleBrassGeo: mergeStatic([{ geo: hubGeo }, { geo: postGeo }]),
+      needleGeo,
+      needleMat: matte("#111111", rnd, { roughness: 0.7 }),
+      mirrorGeo,
       mirrorMat: matte("#cfd5da", rnd, { roughness: 0.6, metalness: 0.15, amount: 0.01 }),
       brassMat: brassMaterial(rnd),
-      slotMat: matte("#2a2118", rnd, { roughness: 0.9 }),
+      hitScrewGeo,
       hitMat: hitMaterial(),
     };
   }, [kind, fullScale, division, low]);
 
-  useEffect(() => {
-    // ledgeMats repeats caseMat and ledgeTopMat; disposing a material twice is harmless.
-    return () => disposeAll(res);
-  }, [res]);
+  useEffect(() => () => disposeAll(res), [res]);
 
   useFrame((st, dt) => {
     const needle = needleRef.current;
@@ -200,18 +238,16 @@ export function Meter({
     const ammeter = kind === "ammeter";
     const deg = ammeter ? r.ammeterDeg : r.voltmeterDeg;
     const slams = ammeter ? r.ammeterSlams : r.voltmeterSlams;
+    // A counter that goes up means a slam. If it goes down (a bench reset) just follow it.
     if (prevSlams.current < 0) prevSlams.current = slams;
-    else if (slams > prevSlams.current) {
+    else if (slams !== prevSlams.current) {
+      if (slams > prevSlams.current) shake.current = 1;
       prevSlams.current = slams;
-      shake.current = 1;
     }
     shake.current = Math.max(0, shake.current - dt / SHAKE_S);
     const jitter = Math.sin(st.clock.elapsedTime * 80) * 2.2 * DEG * shake.current * shake.current;
     needle.rotation.z = -deg * DEG + jitter;
   });
-
-  const stop = (METER_STOP_DEG + 1.2) * DEG;
-  const stopR = 0.04;
 
   return (
     <group position={[position[0], position[1], position[2]]} rotation-y={rotationY}>
@@ -220,16 +256,13 @@ export function Meter({
           <mesh
             geometry={res.caseGeo}
             material={res.caseMat}
-            position={[0, CASE.h / 2, 0]}
-            castShadow
-            receiveShadow
+            castShadow={cast}
+            receiveShadow={cast}
           />
           <mesh
-            geometry={res.ledgeGeo}
-            material={res.ledgeMats}
-            position={[0, LEDGE.h / 2, FACE_Z + LEDGE.d / 2]}
-            castShadow
-            receiveShadow
+            geometry={res.ledgeLabelGeo}
+            material={res.ledgeLabelMat}
+            position={[0, LEDGE.h + 0.0003, LABEL_Z]}
           />
         </InkGroup>
         <InkGroup id={ink + 1}>
@@ -237,28 +270,13 @@ export function Meter({
             geometry={res.dialGeo}
             material={res.dialMat}
             position={[0, DIAL_Y + DIAL.height / 2, DIAL_Z]}
-            receiveShadow
           />
         </InkGroup>
         <InkGroup id={ink + 5} thin>
-          <mesh
-            geometry={res.bezelGeo}
-            material={res.bezelMat}
-            position={[0, DIAL_Y + DIAL.height / 2, FACE_Z]}
-            castShadow
-          />
-          {[-1, 1].map((side) => (
-            <mesh
-              key={side}
-              geometry={res.stopGeo}
-              material={res.brassMat}
-              position={[
-                Math.sin(side * stop) * stopR,
-                PIVOT_Y + Math.cos(stop) * stopR,
-                DIAL_Z + 0.0036,
-              ]}
-            />
-          ))}
+          <mesh geometry={res.bezelGeo} material={res.bezelMat} castShadow={cast} />
+        </InkGroup>
+        <InkGroup id={ink + 3} thin>
+          <mesh geometry={res.brassStaticGeo} material={res.brassMat} />
         </InkGroup>
         <InkGroup id={ink + 4} thin>
           <mesh
@@ -269,39 +287,17 @@ export function Meter({
         </InkGroup>
         <InkGroup id={ink + 2} thin>
           <group ref={needleRef} position={[0, PIVOT_Y, DIAL_Z + NEEDLE_LIFT]}>
-            <mesh
-              geometry={res.needleGeo}
-              material={res.needleMat}
-              position={[0, 0, -0.0007]}
-              castShadow
-            />
-            <mesh geometry={res.hubGeo} material={res.brassMat} position={[0, 0, 0.0004]} />
-            <mesh
-              geometry={res.postGeo}
-              material={res.brassMat}
-              position={[0, 0, -NEEDLE_LIFT / 2]}
-            />
+            <mesh geometry={res.needleGeo} material={res.needleMat} castShadow={cast} />
+            <mesh geometry={res.needleBrassGeo} material={res.brassMat} />
           </group>
         </InkGroup>
       </group>
-      {/* Zero-adjust screw, below the pivot. Its own tap target, bigger than the head. */}
-      <group position={[0, 0.0195, FACE_Z + 0.001]}>
-        <InkGroup id={ink + 3} thin>
-          <mesh geometry={res.screwGeo} material={res.brassMat} castShadow />
-          <mesh
-            geometry={res.slotGeo}
-            material={res.slotMat}
-            position={[0, 0, 0.0014]}
-            rotation-z={0.5}
-          />
-        </InkGroup>
-        <mesh
-          geometry={res.hitScrewGeo}
-          material={res.hitMat}
-          position={[0, 0, 0.002]}
-          onPointerDown={tapOnly(onZeroScrewTap)}
-        />
-      </group>
+      {/* Zero-adjust screw tap target, bigger than the head; it never reaches the face tap. */}
+      <mesh
+        geometry={res.hitScrewGeo}
+        material={res.hitMat}
+        onPointerDown={tapOnly(onZeroScrewTap)}
+      />
       <TerminalNut
         id={plus}
         part={kind}

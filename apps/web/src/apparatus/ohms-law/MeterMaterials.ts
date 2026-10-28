@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 // Shared helpers for the V–I cell holder, key, meters and resistance box: a seeded random
 // source, small colour jitter, matte materials, and a tidy dispose. Slice-owned (apparatus 1).
@@ -63,6 +64,29 @@ export function brassMaterial(rnd: () => number) {
 /** The invisible tap target: never drawn, still hit by the raycaster. */
 export function hitMaterial() {
   return new THREE.MeshBasicMaterial({ visible: false });
+}
+
+/**
+ * Merges static pieces that share a material into one geometry (one draw call). Each piece is
+ * moved first by `place`; pieces are made non-indexed and keep only position, normal and uv, so
+ * boxes, cylinders and extrusions can mix. The inputs are disposed.
+ */
+export function mergeStatic(
+  pieces: ReadonlyArray<{ geo: THREE.BufferGeometry; place?: (g: THREE.BufferGeometry) => void }>,
+): THREE.BufferGeometry {
+  const prepared = pieces.map(({ geo, place }) => {
+    place?.(geo);
+    const flat = geo.index ? geo.toNonIndexed() : geo.clone();
+    for (const name of Object.keys(flat.attributes)) {
+      if (name !== "position" && name !== "normal" && name !== "uv") flat.deleteAttribute(name);
+    }
+    flat.clearGroups();
+    geo.dispose();
+    return flat;
+  });
+  const merged = mergeGeometries(prepared, false);
+  for (const g of prepared) g.dispose();
+  return merged;
 }
 
 /** A 2D canvas of the given size, with its context. */

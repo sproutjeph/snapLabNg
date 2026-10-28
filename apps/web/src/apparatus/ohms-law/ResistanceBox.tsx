@@ -1,4 +1,4 @@
-import { useFrame } from "@react-three/fiber";
+import { type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
@@ -13,6 +13,7 @@ import {
   jitterColour,
   makeCanvas,
   matte,
+  mergeStatic,
   seeded,
 } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -33,7 +34,8 @@ export interface ResistanceBoxProps extends PartProps {
  */
 
 const D = PLUG_BOX_DIMS;
-const WIDTH = 0.26;
+const WIDTH = 0.3;
+const PLUG_MARGIN = 0.056; // end slots sit well clear of the terminal nuts, so their taps never overlap
 const TOP_Y = D.height; // top of the ebonite plate
 const BODY_H = D.height - D.topThickness;
 const GAP = 0.006; // the slot between two brass blocks, which the plug closes
@@ -45,7 +47,7 @@ const HEAD_R = D.plugHeadRadius;
 const HEAD_H = D.plugHeadHeight;
 const SEAT_Y = TOP_Y + 0.001;
 const OUT_Z = D.depth / 2 + 0.012;
-const NUT_X = WIDTH / 2 - 0.02;
+const NUT_X = WIDTH / 2 - 0.02; // on the end blocks; 0.036 m from the nearest slot
 
 function woodTexture(rnd: () => number, w: number, h: number) {
   const { canvas, ctx } = makeCanvas(w, h);
@@ -123,11 +125,12 @@ export function ResistanceBox({
   onPlugToggle,
 }: ResistanceBoxProps) {
   const low = quality === "low";
+  const cast = !low;
   const ids = INK_IDS.box;
-  const plugRefs = useRef<Array<THREE.Group | null>>([]);
-  const ease = useRef<Float32Array>(new Float32Array(0));
+  const shaftsRef = useRef<THREE.InstancedMesh>(null);
+  const headsRef = useRef<THREE.InstancedMesh>(null);
   const n = coilsOhm.length;
-  const xs = useMemo(() => plugPositions(n, WIDTH, 0.035), [n]);
+  const xs = useMemo(() => plugPositions(n, WIDTH, PLUG_MARGIN), [n]);
   const coilsKey = coilsOhm.join(",");
 
   const res = useMemo(() => {
@@ -143,65 +146,95 @@ export function ResistanceBox({
     );
     const eboniteMat = matte(COLOURS.ebonite, rnd, { roughness: 0.7 });
     eboniteMat.color.copy(ebonite);
-    // The plate's top is painted ebonite-dark in the texture, so the material stays white.
-    const topMat = matte("#ffffff", rnd, { roughness: 0.7, map: topTex, amount: 0.002 });
+    // The engraving is a plate lying on the ebonite top, painted the same dark colour.
+    const labelMat = matte("#ffffff", rnd, { roughness: 0.7, map: topTex, amount: 0.002 });
+    const labelGeo = new THREE.PlaneGeometry(WIDTH - 0.004, D.depth - 0.004);
+    labelGeo.rotateX(-Math.PI / 2);
     // Blocks run between slots; the first and last carry the terminals.
     const halfW = WIDTH / 2 - 0.008;
-    const edges: Array<{ x: number; w: number }> = [];
+    const blocks: Array<{ x: number; w: number }> = [];
     for (let i = 0; i <= xs.length; i++) {
       const left = i === 0 ? -halfW : (xs[i - 1] ?? 0) + GAP / 2;
       const right = i === xs.length ? halfW : (xs[i] ?? 0) - GAP / 2;
-      edges.push({ x: (left + right) / 2, w: Math.max(0.006, right - left) });
+      blocks.push({ x: (left + right) / 2, w: Math.max(0.006, right - left) });
     }
+    // Plugs are drawn as two instanced meshes (brass shafts, ebonite heads), one matrix each.
+    const shaftGeo = new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg);
+    shaftGeo.translate(0, SHAFT_H / 2, 0);
+    const headGeo = new THREE.CylinderGeometry(HEAD_R, HEAD_R * 0.9, HEAD_H, seg);
+    headGeo.translate(0, SHAFT_H + HEAD_H / 2, 0);
+    const hitGeo = new THREE.SphereGeometry(0.0125, 8, 6);
     return {
       woodTex,
       topTex,
       woodMat: matte("#7a4326", rnd, { roughness: 0.7, map: woodTex, amount: 0.04 }),
       eboniteMat,
-      topMat,
-      topMats: [eboniteMat, eboniteMat, topMat, eboniteMat, eboniteMat, eboniteMat],
+      labelMat,
+      labelGeo,
       brassMat: brassMaterial(rnd),
       headMat: matte("#111111", rnd, { roughness: 0.7 }),
       hitMat: hitMaterial(),
-      edges,
       bodyGeo: new THREE.BoxGeometry(WIDTH - 0.004, BODY_H, D.depth - 0.004),
       topGeo: new THREE.BoxGeometry(WIDTH, D.topThickness, D.depth),
-      blockGeo: new THREE.BoxGeometry(1, D.blockHeight, D.blockDepth),
-      shaftGeo: new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg),
-      headGeo: new THREE.CylinderGeometry(HEAD_R, HEAD_R * 0.9, HEAD_H, seg),
-      hitGeo: new THREE.SphereGeometry(0.0125, 8, 6),
+      blocksGeo: mergeStatic(
+        blocks.map((b) => ({
+          geo: new THREE.BoxGeometry(b.w, D.blockHeight, D.blockDepth),
+          place: (g: THREE.BufferGeometry) => g.translate(b.x, TOP_Y + D.blockHeight / 2, BLOCK_Z),
+        })),
+      ),
+      shaftGeo,
+      headGeo,
+      hitGeo,
+      dummy: new THREE.Object3D(),
+      // Plug positions, 0 = out, 1 = in, eased; -1 until the first frame sets it.
+      ease: new Float32Array(n).fill(-1),
     };
-  }, [low, xs, coilsKey]);
+  }, [low, xs, coilsKey, n]);
 
-  useEffect(() => {
-    return () => disposeAll({ ...res, edges: null });
-  }, [res]);
-
-  useEffect(() => {
-    ease.current = new Float32Array(n).fill(-1);
-  }, [n]);
+  useEffect(() => () => disposeAll({ ...res, dummy: null, ease: null }), [res]);
 
   useFrame((_, dt) => {
+    const shafts = shaftsRef.current;
+    const heads = headsRef.current;
+    if (!shafts || !heads) return;
     const plugsIn = state.current.plugsIn;
     const k = Math.min(1, dt * 16);
-    const t = ease.current;
+    const dummy = res.dummy;
+    let changed = false;
     for (let i = 0; i < xs.length; i++) {
-      const g = plugRefs.current[i];
-      if (!g) continue;
       const target = plugsIn[i] === false ? 0 : 1;
-      const cur = t[i] ?? -1;
-      const v = cur < 0 ? target : cur + (target - cur) * k;
-      t[i] = v;
-      g.position.set(
+      const cur = res.ease[i] ?? -1;
+      let v = target;
+      if (cur >= 0) {
+        if (cur === target) continue;
+        v = Math.abs(target - cur) < 0.001 ? target : cur + (target - cur) * k;
+      }
+      res.ease[i] = v;
+      // In the slot: upright. Out: lying on the bench in front of the box.
+      dummy.position.set(
         xs[i] ?? 0,
         HEAD_R + (SEAT_Y - HEAD_R) * v,
         BLOCK_Z + (OUT_Z - BLOCK_Z) * (1 - v),
       );
-      g.rotation.set((Math.PI / 2) * (1 - v), 0, 0.2 * (1 - v));
+      dummy.rotation.set((Math.PI / 2) * (1 - v), 0, 0.2 * (1 - v));
+      dummy.updateMatrix();
+      shafts.setMatrixAt(i, dummy.matrix);
+      heads.setMatrixAt(i, dummy.matrix);
+      changed = true;
+    }
+    if (changed) {
+      shafts.instanceMatrix.needsUpdate = true;
+      heads.instanceMatrix.needsUpdate = true;
+      // Taps use the bounding sphere, so keep it on the plugs where they are now.
+      shafts.computeBoundingSphere();
+      heads.computeBoundingSphere();
     }
   });
 
-  const blockY = TOP_Y + D.blockHeight / 2;
+  const tapPlug = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (e.instanceId !== undefined) onPlugToggle?.(e.instanceId);
+  };
 
   return (
     <group position={[position[0], position[1], position[2]]} rotation-y={rotationY}>
@@ -210,64 +243,53 @@ export function ResistanceBox({
           geometry={res.bodyGeo}
           material={res.woodMat}
           position={[0, BODY_H / 2, 0]}
-          castShadow
-          receiveShadow
+          castShadow={cast}
+          receiveShadow={cast}
         />
       </InkGroup>
       <InkGroup id={ids + 1}>
         <mesh
           geometry={res.topGeo}
-          material={res.topMats}
+          material={res.eboniteMat}
           position={[0, BODY_H + D.topThickness / 2, 0]}
-          castShadow
-          receiveShadow
+          castShadow={cast}
+          receiveShadow={cast}
         />
+        <mesh geometry={res.labelGeo} material={res.labelMat} position={[0, TOP_Y + 0.0003, 0]} />
       </InkGroup>
       <InkGroup id={ids + 2}>
-        {res.edges.map((b) => (
-          <mesh
-            key={b.x}
-            geometry={res.blockGeo}
-            material={res.brassMat}
-            position={[b.x, blockY, BLOCK_Z]}
-            scale={[b.w, 1, 1]}
-            castShadow
-            receiveShadow
-          />
-        ))}
+        <mesh
+          geometry={res.blocksGeo}
+          material={res.brassMat}
+          castShadow={cast}
+          receiveShadow={cast}
+        />
       </InkGroup>
+      <InkGroup id={ids + 3} thin>
+        <instancedMesh
+          ref={shaftsRef}
+          args={[res.shaftGeo, res.brassMat, n]}
+          castShadow={cast}
+          frustumCulled={false}
+          onPointerDown={tapPlug}
+        />
+        <instancedMesh
+          ref={headsRef}
+          args={[res.headGeo, res.headMat, n]}
+          castShadow={cast}
+          frustumCulled={false}
+          onPointerDown={tapPlug}
+        />
+      </InkGroup>
+      {/* The empty slot is a tap target too, so a plug can be pushed back in. */}
       {xs.map((x, i) => (
-        <group key={x}>
-          <InkGroup id={ids + 3} thin>
-            <group
-              ref={(el) => {
-                plugRefs.current[i] = el;
-              }}
-              position={[x, SEAT_Y, BLOCK_Z]}
-              onPointerDown={tapOnly(() => onPlugToggle?.(i))}
-            >
-              <mesh
-                geometry={res.shaftGeo}
-                material={res.brassMat}
-                position={[0, SHAFT_H / 2, 0]}
-                castShadow
-              />
-              <mesh
-                geometry={res.headGeo}
-                material={res.headMat}
-                position={[0, SHAFT_H + HEAD_H / 2, 0]}
-                castShadow
-              />
-            </group>
-          </InkGroup>
-          {/* The empty slot is a tap target too, so a plug can be pushed back in. */}
-          <mesh
-            geometry={res.hitGeo}
-            material={res.hitMat}
-            position={[x, TOP_Y + 0.008, BLOCK_Z]}
-            onPointerDown={tapOnly(() => onPlugToggle?.(i))}
-          />
-        </group>
+        <mesh
+          key={x}
+          geometry={res.hitGeo}
+          material={res.hitMat}
+          position={[x, TOP_Y + 0.008, BLOCK_Z]}
+          onPointerDown={tapOnly(() => onPlugToggle?.(i))}
+        />
       ))}
       <TerminalNut
         id="R1"

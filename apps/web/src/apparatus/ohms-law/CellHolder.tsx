@@ -11,6 +11,7 @@ import {
   jitterColour,
   makeCanvas,
   matte,
+  mergeStatic,
   seeded,
 } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -86,8 +87,9 @@ function springGeometry(low: boolean) {
 
 export function CellHolder({ state, quality, position, rotationY = 0 }: PartProps) {
   const low = quality === "low";
+  const cast = !low;
   const ids = INK_IDS.cells;
-  const wrapperMatRefs = useRef<THREE.MeshStandardMaterial[]>([]);
+  const wrapperMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const capMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const lastDrain = useRef(-1);
 
@@ -95,46 +97,67 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     const rnd = seeded(7);
     const seg = low ? 14 : 32;
     const tex = wrapperTexture();
-    const makeWrapper = () => {
-      const m = matte("#ffffff", rnd, { roughness: 0.85, amount: 0.01, map: tex });
-      // Each cell's printed wrapper is a little different in tone.
-      m.color.copy(jitterColour("#a9c2d1", rnd, 0.06));
-      return m;
+    const wrapperMat = matte("#ffffff", rnd, { roughness: 0.85, amount: 0.01, map: tex });
+    wrapperMat.color.copy(jitterColour("#a9c2d1", rnd, 0.06));
+    const cellAx = -INNER_X + CAP_L + CELL_L / 2; // centre of the left-hand can
+    const cellBx = CAP_L + CELL_L / 2;
+    // Each can is a bare cylinder side; the printed face turns toward the front and a little up.
+    const can = (cx: number) => {
+      const geo = new THREE.CylinderGeometry(CELL_R, CELL_R, CELL_L, seg, 1, true);
+      geo.rotateZ(Math.PI / 2); // axis along x
+      geo.rotateX(-0.6);
+      return { geo, place: (g: THREE.BufferGeometry) => g.translate(cx, CELL_Y, 0) };
     };
-    const wrapperA = makeWrapper();
-    const wrapperB = makeWrapper();
-    // Cylinder sides use the wrapper; the two ends are bare metal.
-    const zincMat = matte(COLOURS.zinc, rnd, { roughness: 0.7, metalness: 0.3 });
-    const brassMat = brassMaterial(rnd);
-    const can = () => {
-      const g = new THREE.CylinderGeometry(CELL_R, CELL_R, CELL_L, seg);
-      g.rotateZ(Math.PI / 2); // axis along x
-      g.rotateX(-0.6); // printed face toward the front and a little up
-      return g;
+    // The zinc ends: one disc at each end of each can.
+    const disc = (x: number, facing: 1 | -1) => {
+      const geo = new THREE.CircleGeometry(CELL_R * 0.985, seg);
+      geo.rotateY((facing * Math.PI) / 2);
+      return { geo, place: (g: THREE.BufferGeometry) => g.translate(x, CELL_Y, 0) };
     };
-    const capGeo = new THREE.CylinderGeometry(CAP_R, CAP_R, CAP_L, 14);
-    capGeo.rotateZ(Math.PI / 2);
+    const cap = (x: number) => {
+      const geo = new THREE.CylinderGeometry(CAP_R, CAP_R, CAP_L, 14);
+      geo.rotateZ(Math.PI / 2);
+      return { geo, place: (g: THREE.BufferGeometry) => g.translate(x, CELL_Y, 0) };
+    };
+    const spring = springGeometry(low);
     return {
       tex,
-      wrapperA,
-      wrapperB,
-      zincMat,
-      brassMat,
-      canA: can(),
-      canB: can(),
-      capGeo,
-      spring: springGeometry(low),
-      baseGeo: new THREE.BoxGeometry(BASE_L, BASE_T, BASE_D),
-      wallGeo: new THREE.BoxGeometry(WALL, WALL_H, BASE_D),
+      wrapperMat,
+      zincMat: matte(COLOURS.zinc, rnd, { roughness: 0.7, metalness: 0.3 }),
+      brassMat: brassMaterial(rnd),
       woodMat: matte("#4a2f20", rnd, { roughness: 0.78 }),
+      // Both cells, both sets of ends, both caps and the spring: one draw call each.
+      cansGeo: mergeStatic([can(cellAx), can(cellBx)]),
+      discsGeo: mergeStatic([
+        disc(-INNER_X + CAP_L, -1),
+        disc(0, 1),
+        disc(CAP_L, -1),
+        disc(CAP_L + CELL_L, 1),
+      ]),
+      brassGeo: mergeStatic([
+        cap(-INNER_X + CAP_L / 2),
+        cap(CAP_L / 2),
+        { geo: spring, place: (g: THREE.BufferGeometry) => g.translate(INNER_X, CELL_Y, 0) },
+      ]),
+      // The base and both end walls: one geometry.
+      holderGeo: mergeStatic([
+        {
+          geo: new THREE.BoxGeometry(BASE_L, BASE_T, BASE_D),
+          place: (g) => g.translate(0, BASE_T / 2, 0),
+        },
+        ...[-1, 1].map((side) => ({
+          geo: new THREE.BoxGeometry(WALL, WALL_H, BASE_D),
+          place: (g: THREE.BufferGeometry) => g.translate(side * WALL_X, WALL_H / 2, 0),
+        })),
+      ]),
     };
   }, [low]);
 
   useEffect(() => {
-    wrapperMatRefs.current = [res.wrapperA, res.wrapperB];
+    wrapperMatRef.current = res.wrapperMat;
     capMatRef.current = res.brassMat;
     BRASS_FRESH.copy(res.brassMat.color);
-    FRESH.copy(res.wrapperA.color);
+    FRESH.copy(res.wrapperMat.color);
     SPENT.copy(FRESH).lerp(SPENT_TINT, 0.55);
     lastDrain.current = -1;
     return () => disposeAll(res);
@@ -144,63 +167,35 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     const drain = state.current.readout.cellDrain01;
     if (Math.abs(drain - lastDrain.current) < 0.003) return;
     lastDrain.current = drain;
-    const mats = wrapperMatRefs.current;
     // The wrapper greys a little and the cap tarnishes; the label stays readable.
-    for (const m of mats) m.color.copy(FRESH).lerp(SPENT, drain);
+    wrapperMatRef.current?.color.copy(FRESH).lerp(SPENT, drain);
     capMatRef.current?.color.copy(BRASS_FRESH).lerp(BRASS_SPENT, drain * 0.7);
   });
-
-  const cellAx = -INNER_X + CAP_L + CELL_L / 2; // centre of the left-hand can
-  const cellBx = CAP_L + CELL_L / 2;
 
   return (
     <group position={[position[0], position[1], position[2]]} rotation-y={rotationY}>
       <InkGroup id={ids}>
         <mesh
-          geometry={res.baseGeo}
+          geometry={res.holderGeo}
           material={res.woodMat}
-          position={[0, BASE_T / 2, 0]}
-          castShadow
-          receiveShadow
+          castShadow={cast}
+          receiveShadow={cast}
         />
-        {[-1, 1].map((side) => (
-          <mesh
-            key={side}
-            geometry={res.wallGeo}
-            material={res.woodMat}
-            position={[side * WALL_X, WALL_H / 2, 0]}
-            castShadow
-            receiveShadow
-          />
-        ))}
       </InkGroup>
       <InkGroup id={ids + 1}>
         <mesh
-          geometry={res.canA}
-          material={[res.wrapperA, res.zincMat, res.zincMat]}
-          position={[cellAx, CELL_Y, 0]}
-          castShadow
-          receiveShadow
+          geometry={res.cansGeo}
+          material={res.wrapperMat}
+          castShadow={cast}
+          receiveShadow={cast}
         />
       </InkGroup>
-      <InkGroup id={ids + 2}>
-        <mesh
-          geometry={res.canB}
-          material={[res.wrapperB, res.zincMat, res.zincMat]}
-          position={[cellBx, CELL_Y, 0]}
-          castShadow
-          receiveShadow
-        />
+      <InkGroup id={ids + 2} thin>
+        <mesh geometry={res.discsGeo} material={res.zincMat} />
       </InkGroup>
       {/* Brass caps (+) at the left end of each cell, and the coil spring on the − end. */}
       <InkGroup id={ids + 3} thin>
-        <mesh
-          geometry={res.capGeo}
-          material={res.brassMat}
-          position={[-INNER_X + CAP_L / 2, CELL_Y, 0]}
-        />
-        <mesh geometry={res.capGeo} material={res.brassMat} position={[CAP_L / 2, CELL_Y, 0]} />
-        <mesh geometry={res.spring} material={res.brassMat} position={[INNER_X, CELL_Y, 0]} />
+        <mesh geometry={res.brassGeo} material={res.brassMat} />
       </InkGroup>
       <TerminalNut
         id="E+"
