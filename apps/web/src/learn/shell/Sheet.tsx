@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef } from "react";
 import { IconClose } from "./icons";
 
 interface SheetProps {
@@ -6,6 +6,8 @@ interface SheetProps {
   label: string;
   closeLabel: string;
   onClose(): void;
+  /** Where focus goes on close if the element that opened the sheet has unmounted (the phone menu). */
+  fallbackFocus?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -13,36 +15,53 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
 
 /**
  * A modal sheet: a centred card on a laptop, a bottom sheet on a phone. Escape or a tap on the
- * paper outside closes it; Tab stays inside; focus returns to where it was.
+ * paper outside closes it; Tab stays inside; focus returns to where it was. The key handler sits
+ * on `document`, so Escape and the Tab trap still work after a click on plain text.
  */
-export default function Sheet({ label, closeLabel, onClose, children }: SheetProps) {
+export default function Sheet({ label, closeLabel, onClose, fallbackFocus, children }: SheetProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const fallbackRef = useRef(fallbackFocus);
+  fallbackRef.current = fallbackFocus;
 
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
-    return () => before?.focus?.();
-  }, []);
 
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-    if (e.key !== "Tab" || !ref.current) return;
-    const items = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (!first || !last) return;
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeRef.current();
+        return;
+      }
+      const root = ref.current;
+      if (e.key !== "Tab" || !root) return;
+      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+      if (!root.contains(active) || active === root) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      // An opener that unmounted (the phone menu item) leaves focus on <body>.
+      if (before && before !== document.body && before.isConnected) before.focus();
+      else fallbackRef.current?.current?.focus();
+    };
+  }, []);
 
   return (
     <div
@@ -57,7 +76,7 @@ export default function Sheet({ label, closeLabel, onClose, children }: SheetPro
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        onKeyDown={onKeyDown}
+        tabIndex={-1}
       >
         <div className="sh-card-head">
           <h2 className="sh-label">{label}</h2>

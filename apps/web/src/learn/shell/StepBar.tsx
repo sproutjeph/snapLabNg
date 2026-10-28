@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { Step } from "../types";
 import { MarkCross, MarkTick } from "./icons";
 
@@ -19,15 +19,21 @@ const STATUS_WORD: Record<StepStatus, string> = {
 
 /**
  * The bottom step bar. One numbered icon per step: dashed pencil ring = not done, solid ink ring
- * with a ✓ = done, solid red ring with a ✕ = lost, filled ink = the current step. Left/Right/Home/
- * End move to a step (and select it); only the current step is in the Tab order.
+ * with a ✓ = done, solid red ring with a ✕ = lost, filled ink = the current step.
+ *
+ * It is a toolbar with a roving tab stop. Left/Right/Home/End only move focus; Enter or Space
+ * selects the step. (Selecting runs a camera move and the step's reveal, so arrowing across the
+ * bar must not do that.)
  */
 export default function StepBar({ steps, stepIndex, stepStatus, onStepChange }: StepBarProps) {
   const scroller = useRef<HTMLOListElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const [focusIndex, setFocusIndex] = useState(stepIndex);
 
-  // Keep the current step in view on phones, where the bar scrolls sideways.
+  // Keep the current step in view on phones, where the bar scrolls sideways, and put the tab stop
+  // back on it whenever the step changes.
   useEffect(() => {
+    setFocusIndex(stepIndex);
     const box = scroller.current;
     const el = buttons.current[stepIndex];
     if (!box || !el) return;
@@ -35,35 +41,40 @@ export default function StepBar({ steps, stepIndex, stepStatus, onStepChange }: 
     box.scrollTo({ left: Math.max(0, left) });
   }, [stepIndex]);
 
-  const go = (i: number) => {
+  const move = (i: number) => {
     const next = Math.min(steps.length - 1, Math.max(0, i));
-    onStepChange(next);
+    setFocusIndex(next);
     buttons.current[next]?.focus();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLOListElement>) => {
     const keys: Record<string, number> = {
-      ArrowRight: stepIndex + 1,
-      ArrowDown: stepIndex + 1,
-      ArrowLeft: stepIndex - 1,
-      ArrowUp: stepIndex - 1,
+      ArrowRight: focusIndex + 1,
+      ArrowLeft: focusIndex - 1,
       Home: 0,
       End: steps.length - 1,
     };
     const target = keys[e.key];
     if (target === undefined) return;
     e.preventDefault();
-    go(target);
+    move(target);
   };
 
   return (
     <nav className="sh-stepbar" aria-label="Steps">
-      <ol className="sh-steps" ref={scroller} onKeyDown={onKeyDown}>
+      <ol
+        className="sh-steps"
+        ref={scroller}
+        role="toolbar"
+        aria-label="Lesson steps"
+        aria-orientation="horizontal"
+        onKeyDown={onKeyDown}
+      >
         {steps.map((s, i) => {
           const status = stepStatus[i] ?? "todo";
           const current = i === stepIndex;
           return (
-            <li key={s.key} className={`sh-step-item is-${status}`}>
+            <li key={s.key} className={`sh-step-item is-${status}`} role="presentation">
               <button
                 type="button"
                 ref={(el) => {
@@ -73,7 +84,8 @@ export default function StepBar({ steps, stepIndex, stepStatus, onStepChange }: 
                 data-status={status}
                 aria-current={current ? "step" : undefined}
                 aria-label={`Step ${i + 1}, ${s.title}, ${STATUS_WORD[status]}`}
-                tabIndex={current ? 0 : -1}
+                tabIndex={i === focusIndex ? 0 : -1}
+                onFocus={() => setFocusIndex(i)}
                 onClick={() => onStepChange(i)}
               >
                 <span className="sh-step-icon" aria-hidden="true">

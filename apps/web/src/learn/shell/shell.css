@@ -111,18 +111,18 @@
 }
 
 .sh-nav-item:hover {
-  background: rgb(244 236 220 / 0.1);
+  background: color-mix(in srgb, var(--paper) 10%, transparent);
 }
 
 .sh-nav-item[aria-current="page"] {
-  background: rgb(244 236 220 / 0.16);
+  background: color-mix(in srgb, var(--paper) 16%, transparent);
   box-shadow: inset 4px 0 0 var(--accent);
 }
 
 .sh-nav-sep {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgb(244 236 220 / 0.22);
+  border-top: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
 }
 
 /* Header */
@@ -152,6 +152,13 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
+  flex: none;
+}
+
+.sh-chip,
+.sh-badge,
+.sh-compare {
+  flex: none;
 }
 
 .sh-head-title {
@@ -610,7 +617,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(29 36 48 / 0.4);
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
 }
 
 .sh-sheet {
@@ -635,6 +642,42 @@
   display: none;
 }
 
+/* Between phone and laptop: Compare becomes an icon (it keeps its aria-label), the title truncates
+   and the side cards are narrower so the diagram card and the panel never overlap. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .sh-head {
+    gap: 10px;
+  }
+
+  .sh-compare {
+    width: var(--tap);
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sh-compare span {
+    display: none;
+  }
+
+  .sh-panel {
+    width: 340px;
+  }
+
+  .sh-float {
+    width: 248px;
+  }
+
+  /* Four tabs in 340 px: let the labels wrap onto two lines instead of clipping. */
+  .sh-tab {
+    flex: 1 1 0;
+    min-width: min-content;
+    padding: 0 6px;
+    font-size: 12px;
+    line-height: 1.1;
+    white-space: normal;
+  }
+}
+
 /* Phone */
 @media (max-width: 640px) {
   .sh-root {
@@ -654,6 +697,9 @@
     row-gap: 0;
     align-items: center;
     padding: 2px 16px 8px 6px;
+    /* Above the stack (z 4) so the open menu covers an expanded panel, and above the
+       outside-tap layer (z 5) so the menu itself stays tappable. */
+    z-index: 6;
   }
 
   .sh-head .sh-menu-btn {
@@ -705,7 +751,6 @@
     width: min(300px, 100%);
     background: var(--rail);
     color: var(--paper);
-    z-index: 6;
     padding: 6px 0;
   }
 
@@ -713,7 +758,7 @@
     display: block;
     position: absolute;
     inset: 0;
-    z-index: 3;
+    z-index: 5;
   }
 
   .sh-nav-menu .sh-nav-item {
@@ -841,6 +886,7 @@
     border-right: 0;
     border-bottom: 0;
     border-radius: 10px 10px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

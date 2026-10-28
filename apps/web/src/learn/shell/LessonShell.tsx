@@ -3,6 +3,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -29,11 +30,12 @@ export type { StepStatus };
 
 export type ShellTab = "instructions" | "why" | "precautions" | "examiner";
 
-const TABS: { id: ShellTab; label: string }[] = [
-  { id: "instructions", label: "Instructions" },
-  { id: "why", label: "Why it works" },
-  { id: "precautions", label: "Precautions" },
-  { id: "examiner", label: "Examiner asks" },
+const TABS: { id: ShellTab; label: string; inExam: boolean }[] = [
+  { id: "instructions", label: "Instructions", inExam: true },
+  { id: "why", label: "Why it works", inExam: false },
+  // Precautions are a marked item, so exam mode keeps them hidden.
+  { id: "precautions", label: "Precautions", inExam: false },
+  { id: "examiner", label: "Examiner asks", inExam: true },
 ];
 
 export interface LessonShellProps {
@@ -146,8 +148,8 @@ function NavList({
   );
 }
 
-function InstructionsBody({ step }: { step: Step }) {
-  const callouts = step.callouts ?? [];
+function InstructionsBody({ step, exam }: { step: Step; exam: boolean }) {
+  const callouts = exam ? [] : (step.callouts ?? []);
   return (
     <>
       <h2 className="sh-step-title">{step.title}</h2>
@@ -155,7 +157,7 @@ function InstructionsBody({ step }: { step: Step }) {
         <figcaption className="sh-label">The question says</figcaption>
         <blockquote>“{step.instruction}”</blockquote>
       </figure>
-      {step.plain && (
+      {!exam && step.plain && (
         <div className="sh-next">
           <span className="sh-label">Do this next</span>
           <p>{step.plain}</p>
@@ -189,10 +191,10 @@ function ListBody({ items, empty }: { items: string[] | undefined; empty: string
   );
 }
 
-function defaultBody(tab: ShellTab, step: Step): ReactNode {
+function defaultBody(tab: ShellTab, step: Step, exam: boolean): ReactNode {
   switch (tab) {
     case "instructions":
-      return <InstructionsBody step={step} />;
+      return <InstructionsBody step={step} exam={exam} />;
     case "why":
       return <ListBody items={step.whyItWorks} empty="Nothing to explain for this step yet." />;
     case "precautions":
@@ -210,6 +212,10 @@ function defaultBody(tab: ShellTab, step: Step): ReactNode {
  * Laptop: dark rail on the left, header across the top, the tabbed panel floating on the right,
  * the step bar along the bottom, the canvas behind all of it. Phone (≤ 640 px): the rail becomes a
  * top bar with a menu, the panel a bottom sheet with a drag handle above the step bar.
+ *
+ * Exam mode turns every hint off: no "Do this next" line, callouts or Identify card, and no
+ * "Why it works" or "Precautions" tabs. The question's own words, the diagram toggle and
+ * "Examiner asks" stay.
  */
 export default function LessonShell({
   lesson,
@@ -240,10 +246,27 @@ export default function LessonShell({
     onDiagramOpenChange?.(open);
   };
   const doneCount = stepStatus.filter((s) => s === "done").length;
-  const card = identify?.card ?? null;
+  const exam = mode === "exam";
+  const card = exam ? null : (identify?.card ?? null);
+  const visibleTabs = exam ? TABS.filter((t) => t.inExam) : TABS;
+  // A tab hidden by exam mode falls back to Instructions without touching the caller's state.
+  const activeTab: ShellTab = visibleTabs.some((t) => t.id === tab) ? tab : "instructions";
 
   const drag = useRef<number | null>(null);
   const dragged = useRef(false);
+  const menuBtn = useRef<HTMLButtonElement>(null);
+
+  // Escape closes the menu from anywhere and hands focus back to the menu button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      menuBtn.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   if (!step) return null;
 
@@ -251,7 +274,7 @@ export default function LessonShell({
   const panelId = `${uid}-panel`;
 
   const onTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const at = TABS.findIndex((t) => t.id === tab);
+    const at = visibleTabs.findIndex((t) => t.id === activeTab);
     const next =
       e.key === "ArrowRight"
         ? at + 1
@@ -260,11 +283,11 @@ export default function LessonShell({
           : e.key === "Home"
             ? 0
             : e.key === "End"
-              ? TABS.length - 1
+              ? visibleTabs.length - 1
               : null;
     if (next === null) return;
     e.preventDefault();
-    const target = TABS[(next + TABS.length) % TABS.length];
+    const target = visibleTabs[(next + visibleTabs.length) % visibleTabs.length];
     if (!target) return;
     onTabChange(target.id);
     document.getElementById(tabId(target.id))?.focus();
@@ -289,7 +312,7 @@ export default function LessonShell({
     }
   };
 
-  const body = tabContent?.[tab] ?? defaultBody(tab, step);
+  const body = tabContent?.[activeTab] ?? defaultBody(activeTab, step, exam);
 
   return (
     <div className="sh-root">
@@ -301,6 +324,7 @@ export default function LessonShell({
 
       <header className="sh-head">
         <button
+          ref={menuBtn}
           type="button"
           className="sh-icon-btn sh-menu-btn"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -339,12 +363,8 @@ export default function LessonShell({
         )}
       </header>
       {menuOpen && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: outside-tap dismiss; Escape and the menu button also close it
-        <div
-          className="sh-menu-scrim"
-          onPointerDown={() => setMenuOpen(false)}
-          onKeyDown={(e) => e.key === "Escape" && setMenuOpen(false)}
-        />
+        // Pointer-only outside-tap layer; the keyboard closes the menu with Escape.
+        <div className="sh-menu-scrim" onPointerDown={() => setMenuOpen(false)} />
       )}
 
       <div className="sh-stack">
@@ -400,7 +420,7 @@ export default function LessonShell({
           </button>
           <div className="sh-peek">
             <p className="sh-peek-title">{step.title}</p>
-            {step.plain && <p className="sh-peek-plain">{step.plain}</p>}
+            {!exam && step.plain && <p className="sh-peek-plain">{step.plain}</p>}
           </div>
           <div
             className="sh-tabs"
@@ -409,16 +429,16 @@ export default function LessonShell({
             tabIndex={-1}
             onKeyDown={onTabKeyDown}
           >
-            {TABS.map((t) => (
+            {visibleTabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 role="tab"
                 id={tabId(t.id)}
                 className="sh-tab"
-                aria-selected={tab === t.id}
+                aria-selected={activeTab === t.id}
                 aria-controls={panelId}
-                tabIndex={tab === t.id ? 0 : -1}
+                tabIndex={activeTab === t.id ? 0 : -1}
                 onClick={() => onTabChange(t.id)}
               >
                 {t.label}
@@ -429,7 +449,7 @@ export default function LessonShell({
             id={panelId}
             className="sh-panel-body"
             role="tabpanel"
-            aria-labelledby={tabId(tab)}
+            aria-labelledby={tabId(activeTab)}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable tab panel must be keyboard-focusable (WAI-ARIA tabs pattern)
             tabIndex={0}
           >
@@ -446,12 +466,22 @@ export default function LessonShell({
       </div>
 
       {notebookOpen && (
-        <Sheet label="Notebook" closeLabel="Close notebook" onClose={() => setNotebookOpen(false)}>
+        <Sheet
+          label="Notebook"
+          closeLabel="Close notebook"
+          onClose={() => setNotebookOpen(false)}
+          fallbackFocus={menuBtn}
+        >
           {notebookSlot ?? <p className="sh-empty">The notebook is not open in this view.</p>}
         </Sheet>
       )}
       {diagramShown && phone && (
-        <Sheet label="Diagram" closeLabel="Close diagram" onClose={() => setDiagram(false)}>
+        <Sheet
+          label="Diagram"
+          closeLabel="Close diagram"
+          onClose={() => setDiagram(false)}
+          fallbackFocus={menuBtn}
+        >
           <div className="sh-diagram-art">{diagramSlot}</div>
           <p className="sh-caption">{lesson.diagram.caption}</p>
         </Sheet>
