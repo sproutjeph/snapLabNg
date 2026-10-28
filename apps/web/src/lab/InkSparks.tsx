@@ -2,6 +2,8 @@ import { useFrame } from "@react-three/fiber";
 import type { Box, ComponentKind } from "@snaplab/contracts";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { NO_INK } from "../scene/ink/inkPass";
+import { INK_HEX } from "../scene/ink/palette";
 import { KIT_ANCHORS, type pageLayout, pageToWorld } from "./layout";
 import { ease, type RevealPhases } from "./reveal";
 
@@ -23,7 +25,8 @@ export interface DrawnPart {
 }
 
 /**
- * Sparks of ink lift off each part she drew and fly to where that part stands on the bench.
+ * Motes of pen ink lift off each part she drew and arc to where that part stands on the bench,
+ * where its outline is drawing on. Flat ink, opaque and unlit, kept out of the ink pass.
  * Every path is laid out once; the render loop only writes instance matrices.
  */
 export function InkSparks({
@@ -75,13 +78,8 @@ export function InkSparks({
   const { geometry, material } = useMemo(
     () => ({
       geometry: new THREE.IcosahedronGeometry(1, 0),
-      material: new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0.4, 1.6, 2.4),
-        toneMapped: false,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
+      // Flat pen ink, opaque: a drop of ink, not a light.
+      material: new THREE.MeshBasicMaterial({ color: new THREE.Color(INK_HEX) }),
     }),
     [],
   );
@@ -136,6 +134,7 @@ export function InkSparks({
       ref={meshRef}
       args={[geometry, material, paths.count]}
       frustumCulled={false}
+      userData={{ [NO_INK]: true }}
     />
   );
 }
