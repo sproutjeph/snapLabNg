@@ -1,6 +1,6 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer, EffectPass, RenderPass } from "postprocessing";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { outlineFor } from "../../quality/tier";
@@ -25,7 +25,8 @@ interface Stack {
  * The post-processing stack for every canvas (docs/plans/ink-look.md). No bloom.
  *   - High and mid: the scene, then the ink outline effect (depth, normal and ink-ID edges; the
  *     ID target at full and 0.75× size). It takes over the render loop (useFrame priority 1).
- *   - Low: no post pass at all; inverted-hull lines on the parts (inkHull.ts), and r3f renders.
+ *   - Low (and any device that cannot render to half-float targets): no post pass at all;
+ *     inverted-hull lines on the parts (inkHull.ts), and r3f renders.
  * Tone mapping is off on every tier, so the paper is exactly --paper. The props are frozen.
  */
 export function InkComposer({ quality, reveal }: InkComposerProps) {
@@ -33,7 +34,16 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const stack = useRef<Stack | null>(null);
-  const { mode, scale, multisampling } = outlineFor(quality);
+  const outline = outlineFor(quality);
+  const { scale, multisampling } = outline;
+  // The ID target is half float; without float colour-buffer targets, fall back to the hulls.
+  const floatTargets = useMemo(
+    () =>
+      gl.extensions.has("EXT_color_buffer_float") ||
+      gl.extensions.has("EXT_color_buffer_half_float"),
+    [gl],
+  );
+  const mode = floatTargets ? outline.mode : "hull";
   const post = mode === "ink";
 
   useInkHulls(mode === "hull");
@@ -52,7 +62,8 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
     const autoClear = gl.autoClear;
     const composer = new EffectComposer(gl, {
       multisampling: Math.min(multisampling, gl.capabilities.maxSamples),
-      frameBufferType: THREE.HalfFloatType,
+      // No bloom and no tone mapping, so no HDR to keep: 8-bit (sRGB-encoded) scene buffers.
+      frameBufferType: THREE.UnsignedByteType,
     });
     const effect = new InkEffect(scene, camera, scale);
     composer.addPass(new RenderPass(scene, camera));
