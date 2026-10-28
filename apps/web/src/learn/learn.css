@@ -41,7 +41,8 @@
 .ol-tools {
   position: absolute;
   top: calc(var(--sh-head, 56px) + 12px);
-  left: calc(var(--sh-rail, 76px) + 12px);
+  right: 428px;
+  justify-content: flex-end;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -84,7 +85,7 @@
 
 .ol-note {
   position: absolute;
-  left: calc(var(--sh-rail, 76px) + 12px);
+  right: 428px;
   top: calc(var(--sh-head, 56px) + 68px);
   max-width: min(460px, calc(100% - var(--sh-rail, 76px) - 440px));
   margin: 0;
@@ -201,6 +202,7 @@
 @media (min-width: 641px) and (max-width: 900px) {
   .ol-tools,
   .ol-note {
+    right: 368px;
     max-width: calc(100% - var(--sh-rail, 76px) - 380px);
   }
 
@@ -214,7 +216,9 @@
   .ol-tools {
     top: 96px;
     left: 12px;
-    max-width: calc(100% - 24px);
+    right: 12px;
+    justify-content: flex-start;
+    max-width: none;
   }
 
   .ol-note {
@@ -230,4 +234,10 @@
     left: 12px;
     right: 12px;
   }
+}
+
+.ol-handed {
+  margin: 0;
+  font-family: var(--f-body);
+  color: var(--ink);
 }

@@ -47,21 +47,23 @@ function useBenchVersion(bench: OhmsLawBench): number {
  * Where the shell's panels cover the canvas (shell.css: rail 76 px, panel 400 px or 340 px on a
  * tablet, a bottom sheet on phones), so the bench is framed in the part she can see.
  */
-function coveredPx(width: number): { left: number; right: number; bottom: number } {
-  if (width <= 640) return { left: 0, right: 0, bottom: 200 };
-  if (width <= 900) return { left: 76, right: 356, bottom: 80 };
-  return { left: 76, right: 416, bottom: 80 };
+function coveredPx(width: number): { left: number; right: number; top: number; bottom: number } {
+  if (width <= 640) return { left: 0, right: 0, top: 96, bottom: 200 };
+  if (width <= 900) return { left: 76, right: 356, top: 56, bottom: 80 };
+  return { left: 76, right: 416, top: 56, bottom: 80 };
 }
 
 /**
  * Keeps the whole bench in view: farther back on a tall phone screen (as the V–I kit preview
  * does), and shifted with a view offset so it sits in the uncovered part of the canvas.
  */
-function FrameBench() {
+function FrameBench({ paused }: { paused: boolean }) {
   const camera = useThree((st) => st.camera);
   const width = useThree((st) => st.size.width);
   const height = useThree((st) => st.size.height);
   useEffect(() => {
+    // While a close-up owns the camera, leave it alone (it returns to where it started).
+    if (paused) return;
     const aspect = width / Math.max(height, 1);
     const c = coveredPx(width);
     // Back off so the bench (about 1.5 m with the tray) spans the uncovered width.
@@ -76,12 +78,19 @@ function FrameBench() {
     );
     camera.lookAt(BENCH_TARGET[0], BENCH_TARGET[1], BENCH_TARGET[2]);
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.setViewOffset(width, height, (c.right - c.left) / 2, c.bottom / 2, width, height);
+      camera.setViewOffset(
+        width,
+        height,
+        (c.right - c.left) / 2,
+        (c.bottom - c.top) / 2,
+        width,
+        height,
+      );
     }
     return () => {
       if (camera instanceof THREE.PerspectiveCamera) camera.clearViewOffset();
     };
-  }, [camera, width, height]);
+  }, [camera, width, height, paused]);
   return null;
 }
 
@@ -133,11 +142,13 @@ function LearnView() {
   const openLoupe = useCallback((target: LoupeTarget) => {
     setLoupe({ target, ruleEnd: "X" });
     setEye(0);
+    setDiagramOpen(false);
   }, []);
   const closeLoupe = useCallback(() => {
     setLoupe(null);
     setReturning(true);
   }, []);
+  const loupeReturned = useCallback(() => setReturning(false), []);
 
   const [audio] = useState(createLabAudio);
   useEffect(() => {
@@ -157,6 +168,8 @@ function LearnView() {
     setSheet(markOhmsLaw(record));
     setStale(false);
   }, [record]);
+  // Exam mode: one hand-in, then the notebook is closed, so the feedback can't become hints.
+  const handedIn = mode === "exam" && sheet !== null;
 
   const identify = useCallback((part: PartId) => {
     setIdentified((prev) => (prev.has(part) ? prev : new Set(prev).add(part)));
@@ -168,11 +181,10 @@ function LearnView() {
   useEffect(() => {
     const v = bench.visual.current;
     v.ring = mode === "practice" ? ringFor(stepKey, bench) : null;
-    // The pencil-grey ghost leads guide the Connect step only; elsewhere they are noise.
-    if (stepKey !== "connect") {
-      v.hintMissing = [];
-      v.hintExtra = [];
-    }
+    // The pencil-grey ghost leads guide the Connect step only (practice); elsewhere they are noise.
+    const guide = mode === "practice" && stepKey === "connect";
+    v.hintMissing = guide ? bench.comparison.missing : [];
+    v.hintExtra = guide ? bench.comparison.extra : [];
   }, [bench, stepKey, mode, version]);
 
   const state: BenchState = {
@@ -194,19 +206,28 @@ function LearnView() {
       stepStatus={status}
       tab={tab}
       onTabChange={setTab}
-      tabContent={{ examiner: <MarkPanel sheet={sheet} stale={stale} onHandIn={handIn} /> }}
+      tabContent={{
+        examiner: <MarkPanel sheet={sheet} stale={stale} onHandIn={handIn} mode={mode} />,
+      }}
       notebookSlot={
-        <OhmsLawNotebook
-          value={record}
-          onChange={setRecord}
-          mode={mode}
-          onReadingEdit={(cell) => parallax.reading(`${cell.row}:${cell.col}`)}
-        />
+        handedIn ? (
+          <p className="ol-handed">
+            Your notebook has been handed in. Your marks are under Examiner asks.
+          </p>
+        ) : (
+          <OhmsLawNotebook
+            value={record}
+            onChange={setRecord}
+            mode={mode}
+            onReadingEdit={(cell) => parallax.reading(`${cell.row}:${cell.col}`)}
+          />
+        )
       }
       notebookOpen={notebookOpen}
       onNotebookOpenChange={setNotebookOpen}
       diagramSlot={
         <CircuitDiagram
+          caption={false}
           comparison={mode === "exam" ? null : bench.comparison}
           onPart={(part, how) => how === "tap" && identify(part)}
         />
@@ -222,7 +243,7 @@ function LearnView() {
           camera={{ fov: 40, position: BENCH_CAMERA, near: 0.02, far: 20 }}
         >
           <InkLights quality={tier} />
-          <FrameBench />
+          <FrameBench paused={loupe !== null || returning} />
           {!loupe && !returning && (
             <OrbitControls
               target={BENCH_TARGET}
@@ -256,7 +277,7 @@ function LearnView() {
             eyeDeg={eye}
             ruleEnd={loupe?.ruleEnd ?? "X"}
             wire={bench.params.wire}
-            onReturned={() => setReturning(false)}
+            onReturned={loupeReturned}
           />
           <InkComposer quality={tier} />
           <ReadySignal />

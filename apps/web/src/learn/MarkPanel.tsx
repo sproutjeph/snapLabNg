@@ -1,6 +1,7 @@
 import type { MarkItem, MarkSheet } from "@snaplab/contracts";
 import { examinerQuestions } from "@snaplab/rules";
 import { halves, RULE_LABEL } from "./marking";
+import type { LessonMode } from "./types";
 
 interface RuleGroup {
   rule: MarkItem["rule"];
@@ -27,6 +28,8 @@ export interface MarkPanelProps {
   /** True when she has changed her notebook since this sheet was marked. */
   stale: boolean;
   onHandIn(): void;
+  /** Exam mode allows one hand-in: no "Mark again". */
+  mode: LessonMode;
 }
 
 /**
@@ -34,13 +37,14 @@ export interface MarkPanelProps {
  * picked from the marks she lost. Marks come only from packages/rules (a DRAFT scheme for now).
  * Corrections show how a correct entry looks; nothing here is ever an engine value.
  */
-export function MarkPanel({ sheet, stale, onHandIn }: MarkPanelProps) {
+export function MarkPanel({ sheet, stale, onHandIn, mode }: MarkPanelProps) {
   if (!sheet) {
     return (
       <div className="ol-mark">
         <p>
           When your table, precautions and part (b) are written, hand in your notebook. The examiner
           marks only what you wrote.
+          {mode === "exam" && " In exam mode you can hand in once."}
         </p>
         <button type="button" className="ol-btn ol-btn-primary" onClick={onHandIn}>
           Hand in for marking
@@ -93,9 +97,11 @@ export function MarkPanel({ sheet, stale, onHandIn }: MarkPanelProps) {
           ))}
         </section>
       )}
-      <button type="button" className="ol-btn" onClick={onHandIn}>
-        Mark again
-      </button>
+      {mode === "practice" && (
+        <button type="button" className="ol-btn" onClick={onHandIn}>
+          Mark again
+        </button>
+      )}
     </div>
   );
 }

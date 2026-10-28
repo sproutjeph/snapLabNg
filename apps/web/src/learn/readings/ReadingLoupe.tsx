@@ -48,6 +48,10 @@ export function ReadingLoupe({
     [],
   );
 
+  // Closed before any frame saw the target: the camera never left home, so it is back already.
+  useEffect(() => {
+    if (target === null && phase.current === "idle") onReturned?.();
+  }, [target, onReturned]);
   useEffect(() => {
     reduced.current = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   }, []);
