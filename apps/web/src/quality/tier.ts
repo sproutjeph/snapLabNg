@@ -88,3 +88,35 @@ export function parseOverride(search: string): QualityTier | null {
   if (value === "low" || value === "mid" || value === "high") return value;
   return null;
 }
+
+/**
+ * The ink outline per tier (docs/plans/ink-look.md). Kept apart from QualitySettings so the
+ * existing settings stay exactly as they were.
+ *   - "ink": a post pass with depth, normal and ink-ID edges; `scale` is the ID target's size.
+ *   - "hull": no post pass; inverted-hull lines on the parts (`scale` unused).
+ * Low was chosen by measuring `?kit=ohms-law&quality=low` in the headless shot (Oct 28, four
+ * interleaved rounds): no outline at all 41–47 fps on the laptop viewport, depth-only edges at
+ * 0.5× 27–31, inverted hulls 42–45; the phone viewport held 60 with each.
+ */
+export type OutlineMode = "ink" | "hull";
+
+export interface OutlineSettings {
+  mode: OutlineMode;
+  scale: number;
+  /**
+   * MSAA samples for the composer's scene buffer. 0 on every tier: each geometric edge carries
+   * an ink line, so 4× MSAA changed nothing visible and cost about a third of the frame in the
+   * headless shot (high: 30 → 45 fps phone, 10 → 15 laptop).
+   */
+  multisampling: number;
+}
+
+const OUTLINE: Record<QualityTier, OutlineSettings> = {
+  low: { mode: "hull", scale: 1, multisampling: 0 },
+  mid: { mode: "ink", scale: 0.75, multisampling: 0 },
+  high: { mode: "ink", scale: 1, multisampling: 0 },
+};
+
+export function outlineFor(tier: QualityTier): OutlineSettings {
+  return { ...OUTLINE[tier] };
+}
