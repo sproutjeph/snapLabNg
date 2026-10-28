@@ -6,8 +6,8 @@
 //     other, so the even turn of a lead or a rod is not mistaken for an edge).
 // Silhouette and part lines go on the far side of the edge only, a full line width out, so a
 // lead a few pixels wide keeps its colour inside its outline. Creases sit centred on the fold,
-// sampled at half the width. Inputs: the scene depth and the ink-ID target
-// (rgb = normal, a = id * 2 + thin).
+// sampled at half the width along the two axes. 21 fetches a pixel. Inputs: the scene depth
+// and the ink-ID target (rgb = normal, a = id * 2 + thin).
 precision highp float;
 
 uniform vec3 inkColour;
@@ -61,18 +61,18 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
 
   float ink = 0.0;
   for (int i = 0; i < 4; i++) {
-    vec2 da = INK_DIRS[i * 2];
-    vec2 db = INK_DIRS[i * 2 + 1];
-    vec2 sa = uv + da * outer;
-    vec2 sb = uv + db * outer;
+    vec2 sa = uv + INK_DIRS[i * 2] * outer;
+    vec2 sb = uv + INK_DIRS[i * 2 + 1] * outer;
     ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sa), inkViewDepth(readDepth(sa))));
     ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sb), inkViewDepth(readDepth(sb))));
+  }
 
-    // Crease: the normal turns on one side and not the other. An even curve (a lead, a rod)
-    // turns the same both ways and draws nothing. Only inside inked surfaces; silhouettes are
-    // the depth test's job.
-    vec4 na = texture2D(inkBuffer, uv + da * inner);
-    vec4 nb = texture2D(inkBuffer, uv + db * inner);
+  // Crease: the normal turns on one side and not the other. An even curve (a lead, a rod) turns
+  // the same both ways and draws nothing. Only inside inked surfaces; silhouettes are the depth
+  // test's job. The two axis pairs are enough: any fold line crosses one of them.
+  for (int i = 0; i < 2; i++) {
+    vec4 na = texture2D(inkBuffer, uv + INK_DIRS[i * 2] * inner);
+    vec4 nb = texture2D(inkBuffer, uv + INK_DIRS[i * 2 + 1] * inner);
     float bend = abs(distance(na.rgb, c.rgb) - distance(nb.rgb, c.rgb));
     float cov = covC * inkCovered(na) * inkCovered(nb);
     float eCrease = cov * smoothstep(creaseThreshold * 0.7, creaseThreshold, bend);
