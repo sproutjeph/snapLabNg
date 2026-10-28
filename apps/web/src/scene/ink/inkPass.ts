@@ -126,8 +126,8 @@ export class InkIdPass {
   /** Indexed by instanced * 2 + clipped. */
   private readonly materials: readonly THREE.ShaderMaterial[];
   private readonly hidden = new THREE.MeshBasicMaterial({ visible: false });
-  private readonly objects: THREE.Object3D[] = [];
-  private readonly originals: MaterialSlot[] = [];
+  private readonly objects: (THREE.Object3D | null)[] = [];
+  private readonly originals: (MaterialSlot | null)[] = [];
   private count = 0;
   private readonly swap: (o: THREE.Object3D) => void;
 
@@ -181,9 +181,15 @@ export class InkIdPass {
       renderer.render(scene, camera);
     } finally {
       for (let i = 0; i < this.count; i++) {
-        const o = this.objects[i] as THREE.Mesh;
-        o.material = this.originals[i] as MaterialSlot;
-        o.userData[SOURCE] = null;
+        const o = this.objects[i] as THREE.Mesh | null;
+        const original = this.originals[i];
+        if (o && original) {
+          o.material = original;
+          o.userData[SOURCE] = null;
+        }
+        // Drop the references, so an unmounted part is not kept alive by a spare slot.
+        this.objects[i] = null;
+        this.originals[i] = null;
       }
       scene.background = background;
       renderer.shadowMap.enabled = shadows;
