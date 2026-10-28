@@ -1,9 +1,20 @@
 import { type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useTerminalRegistry } from "../../learn/terminals";
 import type { LeadColour, OhmsLawVisualState, TerminalId } from "../../learn/types";
+import { InkGroup } from "../../scene/ink/ink";
 import type { QualityTier } from "../meter-bridge/types";
+import {
+  hashString,
+  jitterColour,
+  LEAD_BASE_COLOURS,
+  LEAD_RADIUS_M,
+  makePlugGeometries,
+  PLUG_HEIGHT_M,
+  seeded,
+} from "./LeadParts";
+import { INK_IDS } from "./layout";
 
 export interface LeadProps {
   from: TerminalId;
@@ -16,43 +27,269 @@ export interface LeadProps {
   onTap?: () => void;
 }
 
-const COLOURS: Record<LeadColour, string> = { red: "#b3261e", black: "#1d1d1f", yellow: "#d9a400" };
+/** Where along the lead the control points sit (0 = first plug, 1 = second). */
+const CTRL_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
+/** The lowest the cable's centre goes: it lies on the desk. */
+const FLOOR_Y = LEAD_RADIUS_M + 0.0004;
+/** How far the pointer's plug floats above the bench point while she carries it. */
+const CARRY_LIFT_M = 0.022;
+const HIT_RADIUS_M = 0.007;
+
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
+const _pt = new THREE.Vector3();
+const _tan = new THREE.Vector3();
+const _prev = new THREE.Vector3();
+const _nrm = new THREE.Vector3();
+const _bin = new THREE.Vector3();
+const _axis = new THREE.Vector3();
+const _upY = new THREE.Vector3(0, 1, 0);
+const _upX = new THREE.Vector3(1, 0, 0);
 
 /**
- * An insulated flexible lead with plugs at both ends, sagging between two terminals (a tube on
- * a Catmull-Rom curve). Reads both ends' world positions every frame. STUB (Wave 0): a straight
- * line; apparatus slice 2 models it. Props frozen.
+ * Writes a tube of `radius` around the polyline `c` (n + 1 points, xyz packed) into a
+ * TubeGeometry's own buffers, with a parallel-transported frame (the same idea as the metre
+ * bridge's TubeWire). Allocation-free, so it runs on the frame the ends move.
  */
-export function Lead({ from, to, colour, state, onTap }: LeadProps) {
+function writeTube(
+  geo: THREE.TubeGeometry,
+  c: Float32Array,
+  n: number,
+  radial: number,
+  radius: number,
+): void {
+  const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+  const nor = geo.getAttribute("normal") as THREE.BufferAttribute;
+  const stride = radial + 1;
+  for (let i = 0; i <= n; i++) {
+    const i0 = Math.max(0, i - 1) * 3;
+    const i1 = Math.min(n, i + 1) * 3;
+    _tan
+      .set(
+        (c[i1] ?? 0) - (c[i0] ?? 0),
+        (c[i1 + 1] ?? 0) - (c[i0 + 1] ?? 0),
+        (c[i1 + 2] ?? 0) - (c[i0 + 2] ?? 0),
+      )
+      .normalize();
+    if (i === 0) {
+      const ref = Math.abs(_tan.y) < 0.9 ? _upY : _upX;
+      _bin.crossVectors(_tan, ref).normalize();
+      _nrm.crossVectors(_bin, _tan).normalize();
+    } else {
+      _axis.crossVectors(_prev, _tan);
+      if (_axis.lengthSq() > 1e-10) {
+        _axis.normalize();
+        _nrm.applyAxisAngle(_axis, Math.acos(Math.max(-1, Math.min(1, _prev.dot(_tan)))));
+      }
+      _nrm.addScaledVector(_tan, -_nrm.dot(_tan)).normalize();
+      _bin.crossVectors(_tan, _nrm).normalize();
+    }
+    _prev.copy(_tan);
+    const cx = c[i * 3] ?? 0;
+    const cy = c[i * 3 + 1] ?? 0;
+    const cz = c[i * 3 + 2] ?? 0;
+    for (let j = 0; j <= radial; j++) {
+      const ang = (j / radial) * Math.PI * 2;
+      const u = -Math.cos(ang);
+      const v = Math.sin(ang);
+      const nx = u * _nrm.x + v * _bin.x;
+      const ny = u * _nrm.y + v * _bin.y;
+      const nz = u * _nrm.z + v * _bin.z;
+      const k = i * stride + j;
+      pos.setXYZ(k, cx + radius * nx, cy + radius * ny, cz + radius * nz);
+      nor.setXYZ(k, nx, ny, nz);
+    }
+  }
+  pos.needsUpdate = true;
+  nor.needsUpdate = true;
+  geo.computeBoundingSphere();
+}
+
+/** Sets the curve's control points: a drooping cable from plug top `s` to plug top `e`. */
+function shapeCable(pts: THREE.Vector3[], s: THREE.Vector3, e: THREE.Vector3, bulge: number): void {
+  const dx = e.x - s.x;
+  const dz = e.z - s.z;
+  const d = Math.hypot(dx, dz);
+  const nx = d > 1e-5 ? -dz / d : 0;
+  const nz = d > 1e-5 ? dx / d : 1;
+  // A flexible cable hangs by about a third of its span, but never below the desk.
+  const droop = 0.012 + 0.3 * d;
+  const side = bulge * Math.min(d, 0.5) * 0.22;
+  for (let i = 0; i < CTRL_T.length; i++) {
+    const t = CTRL_T[i] ?? 0;
+    const belly = 4 * t * (1 - t);
+    // The ends leave the plugs a little stiffly before they droop.
+    // (zero at the plug itself, so the cable meets it, rising to about a centimetre by t = 0.04).
+    const u = Math.min(t, 1 - t) * 26;
+    const stiff = 0.03 * u * Math.exp(-u);
+    const p = pts[i];
+    if (!p) continue;
+    p.set(
+      s.x + dx * t + nx * side * belly,
+      Math.max(FLOOR_Y, s.y + (e.y - s.y) * t - droop * belly + stiff),
+      s.z + dz * t + nz * side * belly,
+    );
+  }
+}
+
+/**
+ * An insulated flexible lead with a banana plug at each end, sagging between two terminals
+ * (a tube on a Catmull-Rom curve). Both ends' world positions are read from the registry
+ * every frame; the tube is rebuilt in place only on a frame where an end moved. With
+ * `to = "pointer"` the free end follows `state.current.pointer`. Put it at the scene root, since
+ * its points are world positions. A fatter invisible tube along the middle takes the tap.
+ */
+export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
   const registry = useTerminalRegistry();
-  const line = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
-    return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: COLOURS[colour] }));
-  }, [colour]);
+  const root = useRef<THREE.Group>(null);
+  const plugA = useRef<THREE.Group>(null);
+  const plugB = useRef<THREE.Group>(null);
+  const inkId = INK_IDS.leadBase + (hashString(`${from}|${to}`) % 20);
+
+  const res = useMemo(() => {
+    const low = quality === "low";
+    const rng = seeded(hashString(`lead-${from}-${to}-${colour}`));
+    const mainN = low ? 28 : 56;
+    const radial = low ? 6 : 10;
+    const hitN = low ? 10 : 18;
+    const pts = CTRL_T.map((t) => new THREE.Vector3(t, 0, 0));
+    const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+    const tube = new THREE.TubeGeometry(curve, mainN, LEAD_RADIUS_M, radial, false);
+    const hit = new THREE.TubeGeometry(curve, hitN, HIT_RADIUS_M, 5, false);
+    const plug = makePlugGeometries(quality);
+    const cableMat = new THREE.MeshStandardMaterial({
+      color: jitterColour(LEAD_BASE_COLOURS[colour], rng, 0.04),
+      roughness: 0.78,
+    });
+    const plugMat = new THREE.MeshStandardMaterial({
+      color: jitterColour(LEAD_BASE_COLOURS[colour], rng, 0.04),
+      roughness: 0.7,
+    });
+    const pinMat = new THREE.MeshStandardMaterial({
+      color: jitterColour("#b08d3c", rng),
+      roughness: 0.6,
+      metalness: 0.2,
+    });
+    const hitMat = new THREE.MeshBasicMaterial();
+    // A stable, hash-chosen sideways bulge, so two leads between the same neighbours part.
+    const bulge = (rng() - 0.5) * 2;
+    return {
+      curve,
+      pts,
+      tube,
+      hit,
+      mainN,
+      hitN,
+      radial,
+      plug,
+      cableMat,
+      plugMat,
+      pinMat,
+      hitMat,
+      bulge,
+      main: new Float32Array((mainN + 1) * 3),
+      mid: new Float32Array((hitN + 1) * 3),
+      last: new Float32Array(6).fill(Number.NaN),
+      s: new THREE.Vector3(),
+      e: new THREE.Vector3(),
+    };
+  }, [from, to, colour, quality]);
   useEffect(
     () => () => {
-      line.geometry.dispose();
-      (line.material as THREE.Material).dispose();
+      res.tube.dispose();
+      res.hit.dispose();
+      res.plug.body.dispose();
+      res.plug.pin.dispose();
+      res.cableMat.dispose();
+      res.plugMat.dispose();
+      res.pinMat.dispose();
+      res.hitMat.dispose();
     },
-    [line],
+    [res],
   );
+
   useFrame(() => {
+    const g = root.current;
+    if (!g) return;
     const okA = registry.worldPosition(from, _a);
     let okB = true;
-    if (to === "pointer") _b.copy(state.current.pointer);
-    else okB = registry.worldPosition(to, _b);
-    line.visible = okA && okB;
-    const pos = line.geometry.getAttribute("position") as THREE.BufferAttribute;
-    pos.setXYZ(0, _a.x, _a.y, _a.z);
-    pos.setXYZ(1, _b.x, _b.y, _b.z);
-    pos.needsUpdate = true;
+    if (to === "pointer") {
+      _b.copy(state.current.pointer);
+      _b.y += CARRY_LIFT_M;
+    } else okB = registry.worldPosition(to, _b);
+    g.visible = okA && okB;
+    if (!(okA && okB)) return;
+    plugA.current?.position.copy(_a);
+    plugB.current?.position.copy(_b);
+    const l = res.last;
+    if (
+      l[0] === _a.x &&
+      l[1] === _a.y &&
+      l[2] === _a.z &&
+      l[3] === _b.x &&
+      l[4] === _b.y &&
+      l[5] === _b.z
+    ) {
+      return;
+    }
+    l[0] = _a.x;
+    l[1] = _a.y;
+    l[2] = _a.z;
+    l[3] = _b.x;
+    l[4] = _b.y;
+    l[5] = _b.z;
+    res.s.set(_a.x, _a.y + PLUG_HEIGHT_M, _a.z);
+    res.e.set(_b.x, _b.y + PLUG_HEIGHT_M, _b.z);
+    shapeCable(res.pts, res.s, res.e, res.bulge);
+    for (let i = 0; i <= res.mainN; i++) {
+      res.curve.getPoint(i / res.mainN, _pt);
+      res.main[i * 3] = _pt.x;
+      res.main[i * 3 + 1] = _pt.y;
+      res.main[i * 3 + 2] = _pt.z;
+    }
+    writeTube(res.tube, res.main, res.mainN, res.radial, LEAD_RADIUS_M);
+    if (to !== "pointer") {
+      // The tap target covers the middle only, so the ends stay free for tapping the nuts.
+      const span = Math.hypot(_b.x - _a.x, _b.z - _a.z);
+      const t0 = Math.min(0.4, Math.max(0.14, 0.05 / Math.max(span, 0.05)));
+      for (let i = 0; i <= res.hitN; i++) {
+        res.curve.getPoint(t0 + ((1 - 2 * t0) * i) / res.hitN, _pt);
+        res.mid[i * 3] = _pt.x;
+        res.mid[i * 3 + 1] = _pt.y;
+        res.mid[i * 3 + 2] = _pt.z;
+      }
+      writeTube(res.hit, res.mid, res.hitN, 5, HIT_RADIUS_M);
+    }
   });
+
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     onTap?.();
   };
-  return <primitive object={line} onPointerDown={onDown} />;
+  return (
+    <group ref={root} visible={false}>
+      <InkGroup id={inkId}>
+        <mesh geometry={res.tube} material={res.cableMat} frustumCulled={false} castShadow />
+        <InkGroup id={inkId} thin>
+          <group ref={plugA}>
+            <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
+            <mesh geometry={res.plug.pin} material={res.pinMat} />
+          </group>
+          <group ref={plugB}>
+            <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
+            <mesh geometry={res.plug.pin} material={res.pinMat} />
+          </group>
+        </InkGroup>
+      </InkGroup>
+      {to !== "pointer" ? (
+        <mesh
+          geometry={res.hit}
+          material={res.hitMat}
+          frustumCulled={false}
+          onPointerDown={onDown}
+          visible={false}
+        />
+      ) : null}
+    </group>
+  );
 }
