@@ -20,6 +20,7 @@ const AboutPreview = lazy(() => import("./about/AboutPreview"));
 const LitePreview = lazy(() => import("./lite/LitePreview"));
 const OhmsLawKitPreview = lazy(() => import("./apparatus/ohms-law/KitPreview"));
 const LearnPage = lazy(() => import("./learn/LearnPage"));
+const WiringPreview = lazy(() => import("./learn/wiring/WiringPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -29,6 +30,7 @@ export function App() {
   const isTitrationKit = params.get("kit") === "titration";
   const isOhmsLawKit = params.get("kit") === "ohms-law";
   const isLearnOhmsLaw = params.get("learn") === "ohms-law";
+  const isWiringPreview = params.get("wiring") === "1";
   const isCapturePreview = params.get("capture") === "1";
   const isDrawerPreview = params.get("drawer") === "1";
   const isAudioPreview = params.get("audio") === "1";
@@ -48,6 +50,8 @@ export function App() {
       <Suspense fallback={null}>
         {isLearnOhmsLaw ? (
           <LearnPage />
+        ) : isWiringPreview ? (
+          <WiringPreview />
         ) : isLitePreview ? (
           <LitePreview />
         ) : isPwaPreview ? (
