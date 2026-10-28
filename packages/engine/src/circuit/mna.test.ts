@@ -46,6 +46,29 @@ describe("nodal analysis solver", () => {
     expect(c.currentA[island]).toBeCloseTo(0, 15);
   });
 
+  it("treats an infinite, NaN or ≥ 1e12 Ω resistance as open, never as a short", () => {
+    // An open circuit carries no current (Anyakoha, New School Physics, the simple circuit):
+    // 3 V, r = 1 Ω across an open element gives I = 0 and a terminal p.d. equal to the emf.
+    for (const ohm of [Number.POSITIVE_INFINITY, Number.NaN, 1e12, 5e15]) {
+      const c = createMnaCircuit(2, 0);
+      const cell = addSource(c, 1, 0, 3, 1);
+      const open = addResistor(c, 1, 0, ohm);
+      solveMna(c);
+      expect(c.currentA[open]).toBe(0);
+      expect(c.currentA[cell]).toBeCloseTo(0, 12);
+      expect(c.nodeV[1]).toBeCloseTo(3, 9);
+    }
+    // An open element does not join its nodes: node 2 hangs off an open branch and floats.
+    const c = createMnaCircuit(3, 0);
+    addSource(c, 1, 0, 3, 1);
+    addResistor(c, 1, 0, 6);
+    addResistor(c, 1, 2, Number.POSITIVE_INFINITY);
+    solveMna(c);
+    expect(Array.from(c.floating)).toEqual([0, 0, 1]);
+    // 3 V across 1 Ω + 6 Ω: I = 3/7 A, unaffected by the open branch (Nelkon & Parker, Ohm's law).
+    expect(c.nodeV[1]).toBeCloseTo((3 * 6) / 7, 12);
+  });
+
   it("grows past its element capacity and reuses its matrix after a reset", () => {
     // Ten 10 Ω resistors in parallel across 1 V (r ≈ 0) draw 1.0 A in total
     // (Nelkon & Parker, resistors in parallel).

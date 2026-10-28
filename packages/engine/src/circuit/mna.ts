@@ -2,7 +2,9 @@
  * A small nodal-analysis solver for d.c. networks of up to a dozen or so nodes (docs/07 §4.4).
  *
  * Elements are two-terminal branches from node `a` to node `b`: a resistance in series with an
- * optional emf that raises the potential from b to a (so a is the + terminal). A source with
+ * optional emf that raises the potential from b to a (so a is the + terminal). A resistance that
+ * is not finite, NaN or ≥ MNA_OPEN_OHM is an open element: it keeps its index, carries no current
+ * and is left out of the stamp (never turned into a short). A source with
  * internal resistance is stamped as its Norton equivalent, which keeps the system n × n in the
  * node potentials. A switch that is open is simply not added.
  *
@@ -17,6 +19,8 @@
 
 /** Below this a resistance is treated as this (keeps 1/R finite). */
 export const MNA_MIN_OHM = 1e-6;
+/** At or above this (or not finite, or NaN) a resistance is an open circuit: not stamped. */
+export const MNA_OPEN_OHM = 1e12;
 /** Leak conductance that references a floating island to ground. */
 export const MNA_LEAK_S = 1e-9;
 
@@ -91,7 +95,8 @@ function grow(c: MnaCircuit): void {
 
 /**
  * Adds a branch from a to b: resistance `ohm` in series with an emf `emfV` that raises the
- * potential from b to a. Returns the element's index (for reading its current).
+ * potential from b to a. Returns the element's index (for reading its current). An open
+ * resistance (see MNA_OPEN_OHM) gives an element that carries no current.
  */
 export function addBranch(c: MnaCircuit, a: number, b: number, ohm: number, emfV = 0): number {
   if (a < 0 || a >= c.nodeCount || b < 0 || b >= c.nodeCount) {
@@ -101,7 +106,10 @@ export function addBranch(c: MnaCircuit, a: number, b: number, ohm: number, emfV
   const i = c.count++;
   c.a[i] = a;
   c.b[i] = b;
-  c.ohm[i] = Number.isFinite(ohm) ? Math.max(MNA_MIN_OHM, ohm) : MNA_MIN_OHM;
+  c.ohm[i] =
+    Number.isFinite(ohm) && ohm < MNA_OPEN_OHM
+      ? Math.max(MNA_MIN_OHM, ohm)
+      : Number.POSITIVE_INFINITY;
   c.emfV[i] = Number.isFinite(emfV) ? emfV : 0;
   return i;
 }
@@ -131,10 +139,13 @@ function find(parent: Int32Array, x: number): number {
   return r;
 }
 
+const isOpen = (c: MnaCircuit, e: number) => !((c.ohm[e] ?? 0) < Number.POSITIVE_INFINITY);
+
 function markFloating(c: MnaCircuit): void {
   const { parent, floating, nodeCount } = c;
   for (let i = 0; i < nodeCount; i++) parent[i] = i;
   for (let e = 0; e < c.count; e++) {
+    if (isOpen(c, e)) continue;
     const ra = find(parent, c.a[e] ?? 0);
     const rb = find(parent, c.b[e] ?? 0);
     if (ra !== rb) parent[ra] = rb;
@@ -163,7 +174,7 @@ export function solveMna(c: MnaCircuit): void {
   for (let e = 0; e < c.count; e++) {
     const a = c.a[e] ?? 0;
     const b = c.b[e] ?? 0;
-    if (a === b) continue;
+    if (a === b || isOpen(c, e)) continue;
     const g = 1 / (c.ohm[e] ?? MNA_MIN_OHM);
     const inj = g * (c.emfV[e] ?? 0);
     G[a * n + a] = (G[a * n + a] ?? 0) + g;
@@ -232,6 +243,8 @@ export function solveMna(c: MnaCircuit): void {
     const a = c.a[e] ?? 0;
     const b = c.b[e] ?? 0;
     c.currentA[e] =
-      a === b ? 0 : ((V[a] ?? 0) - (V[b] ?? 0) - (c.emfV[e] ?? 0)) / (c.ohm[e] ?? MNA_MIN_OHM);
+      a === b || isOpen(c, e)
+        ? 0
+        : ((V[a] ?? 0) - (V[b] ?? 0) - (c.emfV[e] ?? 0)) / (c.ohm[e] ?? MNA_MIN_OHM);
   }
 }
