@@ -55,6 +55,9 @@ export interface LessonShellProps {
   tabContent?: Partial<Record<ShellTab, ReactNode>>;
   /** Shown in the Notebook sheet (rail > Notebook). */
   notebookSlot?: ReactNode;
+  /** Controlled state of the Notebook sheet. Leave both unset and the shell keeps it itself. */
+  notebookOpen?: boolean;
+  onNotebookOpenChange?(open: boolean): void;
   /** The circuit diagram. Without it, the "Compare with diagram" toggle is hidden. */
   diagramSlot?: ReactNode;
   /** Controlled state of the diagram toggle. Leave both unset and the shell keeps it itself. */
@@ -227,6 +230,8 @@ export default function LessonShell({
   onTabChange,
   tabContent,
   notebookSlot,
+  notebookOpen: notebookOpenProp,
+  onNotebookOpenChange,
   diagramSlot,
   diagramOpen,
   onDiagramOpenChange,
@@ -237,7 +242,12 @@ export default function LessonShell({
   const uid = useId();
   const step = lesson.steps[Math.min(stepIndex, lesson.steps.length - 1)];
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notebookOpen, setNotebookOpen] = useState(false);
+  const [ownNotebookOpen, setOwnNotebookOpen] = useState(false);
+  const notebookOpen = notebookOpenProp ?? ownNotebookOpen;
+  const setNotebookOpen = (open: boolean) => {
+    setOwnNotebookOpen(open);
+    onNotebookOpenChange?.(open);
+  };
   const [expanded, setExpanded] = useState(false);
   const [ownDiagramOpen, setOwnDiagramOpen] = useState(false);
   const diagramShown = diagramSlot !== undefined && (diagramOpen ?? ownDiagramOpen);

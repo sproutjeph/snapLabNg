@@ -1,0 +1,233 @@
+/* The V–I lesson page (LearnPage, MarkPanel). Tokens only; scoped under ol-. */
+
+.ol-stage {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+}
+
+.ol-stage canvas {
+  touch-action: none;
+}
+
+.ol-btn {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: var(--rule);
+  border-color: var(--ink-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--f-cond);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ol-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ol-btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* Overlays sit in the part of the canvas the shell leaves uncovered (its --sh-* sizes). */
+.ol-tools {
+  position: absolute;
+  top: calc(var(--sh-head, 56px) + 12px);
+  left: calc(var(--sh-rail, 76px) + 12px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - var(--sh-rail, 76px) - 440px);
+}
+
+.ol-loupe {
+  position: absolute;
+  left: calc(var(--sh-rail, 76px) + 16px);
+  right: 432px;
+  bottom: calc(var(--sh-bar, 80px) + 16px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border: var(--rule);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-sizing: border-box;
+}
+
+.ol-eye {
+  display: flex;
+  flex: 1 1 180px;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  font-family: var(--f-cond);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.ol-eye input {
+  flex: 1;
+  accent-color: var(--ink);
+}
+
+.ol-note {
+  position: absolute;
+  left: calc(var(--sh-rail, 76px) + 12px);
+  top: calc(var(--sh-head, 56px) + 68px);
+  max-width: min(460px, calc(100% - var(--sh-rail, 76px) - 440px));
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.ol-mark {
+  display: grid;
+  gap: 12px;
+  font-family: var(--f-body);
+  color: var(--ink);
+}
+
+.ol-score {
+  margin: 0;
+  font-family: var(--f-cond);
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--red-ink);
+}
+
+.ol-draft,
+.ol-stale {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ol-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ol-item {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: var(--rule);
+}
+
+.ol-item-mark {
+  font-weight: 700;
+  color: var(--green);
+}
+
+.ol-item[data-outcome="lost"] .ol-item-mark {
+  color: var(--red-ink);
+}
+
+.ol-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.ol-item-marks {
+  font-family: var(--f-cond);
+  white-space: nowrap;
+}
+
+.ol-item-fix {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--red-ink);
+}
+
+.ol-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.ol-asks {
+  display: grid;
+  gap: 8px;
+}
+
+.ol-asks h3 {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.ol-ask summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.ol-ask p {
+  margin: 4px 0 8px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.ol-ask-yours {
+  color: var(--red-ink);
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .ol-tools,
+  .ol-note {
+    max-width: calc(100% - var(--sh-rail, 76px) - 380px);
+  }
+
+  .ol-loupe {
+    right: 372px;
+  }
+}
+
+/* Phone: no rail; a two-row header on top and the bottom sheet over the lower canvas. */
+@media (max-width: 640px) {
+  .ol-tools {
+    top: 96px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .ol-note {
+    top: 152px;
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+
+  .ol-loupe {
+    top: 96px;
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+  }
+}

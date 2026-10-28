@@ -1,5 +1,9 @@
 # Build log
 
+## Oct 29 (Day 4)
+- Wave 2 merged (the ink look is still in review): #63 lesson shell (rail, tabs, step bar, phone bottom sheet, exam mode hides every hint), #64 wiring (renderer-free bench controller, tap-to-wire leads with undo, flow dots from the engine's lead currents, our own corrected diagram whose lines turn from pencil to ink, guided ghosts and procedure notes that never carry a value), #65 readings (meter and rule loupes, the needle's mirror image so parallax is real, her typed notebook that keeps every entry exactly as written), #66 the DRAFT V–I marking scheme (20 marks; three science-check rounds caught a law statement zeroed by any "inversely", a slope triangle drawn anywhere, and unit-conversion gaps).
+- Integration A (lead): `?learn=ohms-law` composes the bench, wiring, loupes, notebook and shell; hand-in marks her notebook with the rules engine and shows the sheet and the examiner's questions. End-to-end check: a full table, precautions and part (b) score 12½/20 (the graph sheet is Wave 3), no console errors.
+
 ## Oct 28 (Day 3)
 - New direction (user's choice): an ink-and-paper look for the whole app and a hands-on **Ohm's law (V–I)** practical before the titration engine (`docs/plans/ink-look.md`, `docs/plans/ohms-law-vi.md`). Built in waves by up to four Claude writer subagents in parallel, each in its own git worktree on disjoint paths.
 - Wave 0 (lead): frozen contracts (`ohms_law_vi`, V–I rule codes, `OhmsLawRecord`; the Spark schema unchanged), engine types and stubs, the terminal registry, timeline, ink tags, a stub bench at `?kit=ohms-law`, tokens and self-hosted fonts. The science check caught a wire gauge/length range that didn't match its resistance; the code review caught nested ink tags being overwritten, chained tweens and slams lost between frames.
