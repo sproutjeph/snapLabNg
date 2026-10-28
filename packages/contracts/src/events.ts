@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BlueprintSchema } from "./blueprint";
-import { Box, Confidence, Experiment } from "./common";
+import { Box, Confidence, SnapExperiment } from "./common";
 import { ReadingsSchema } from "./readings";
 
 /** Which model lane a call belongs to; matches the "Show the AI" drawer's lanes. */
@@ -23,7 +23,7 @@ export type Fallback = z.infer<typeof Fallback>;
 export const SnapEvent = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("accepted"), request_id: z.string(), image_sha256: z.string() }),
   z.strictObject({ type: z.literal("cache_hit"), source: z.enum(["memory", "golden"]) }),
-  z.strictObject({ type: z.literal("mode"), experiment: Experiment, confidence: Confidence }),
+  z.strictObject({ type: z.literal("mode"), experiment: SnapExperiment, confidence: Confidence }),
   z.strictObject({
     type: z.literal("component"),
     component: BlueprintSchema.shape.components.element,

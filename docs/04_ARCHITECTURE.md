@@ -75,7 +75,7 @@ The spec ran SAM first and fed its masks into the LLM. That made them **serial**
 
 ### ④ RUN: the Science Engine (client, deterministic, offline)
 
-- Pure TypeScript functions with no side effects, one module per experiment (metre bridge as the hero, titration second, glass block as stretch), each covered by unit tests against textbook values. Full models in `07_SCIENCE_ENGINE.md`.
+- Pure TypeScript functions with no side effects, one module per experiment (metre bridge as the hero, titration second, glass block as stretch; since Oct 28 also the hands-on Ohm's law V–I bench on a small modified-nodal-analysis solver, `packages/engine/src/circuit`), each covered by unit tests against textbook values. Full models in `07_SCIENCE_ENGINE.md`.
 - **Fixed 120 Hz physics steps** inside the render loop (several small steps per displayed frame), so physics is identical on a 60 Hz iPhone and a 120 Hz Android. Honest claim: *"physics at 120 Hz, rendering at your screen's refresh rate."*
 - Engine outputs drive **shader uniforms** (branch currents → current-flow particle speed, pH → indicator colour blend), **particles** (current flow, drops, swirl), **springs** (galvanometer needle, stopcock) and **sound** (null click, needle slam, drip, glass ting) from one shared state object read every frame, never React state.
 - Every reading the student takes (balance length, burette initial/final) is logged to a **lab notebook** in the app.
@@ -126,6 +126,7 @@ final transcript ─► muse-spark-1.3 examiner turn (knows her deductions; asks
 | `audio` | Procedural sound from standard Web Audio nodes (drip, glass ting, crackle, hum) |
 | `store` | One state store; transient reads inside the render loop |
 | `lite` | 2D fallback renderer using the same engine, rules and examiner |
+| `learn` | Hands-on lessons (`?learn=ohms-law`): terminal registry, tap-to-wire leads, step bar and panels, typed notebook, graph sheet; guided and exam modes (`docs/plans/ohms-law-vi.md`) |
 
 ### API service (Bun + Hono, TypeScript, one instance always on)
 

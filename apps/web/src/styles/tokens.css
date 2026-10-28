@@ -1,0 +1,48 @@
+/* SnapLab NG design tokens: warm paper, blue-black pen ink, red ink only for examiner marks
+   (docs/plans/ink-look.md). Imported once in main.tsx. Fonts are self-hosted so the PWA works
+   offline. Barlow has no Greek, so Ω falls back to the system font. */
+@import "@fontsource/barlow/latin-400.css";
+@import "@fontsource/barlow/latin-500.css";
+@import "@fontsource/barlow/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-500.css";
+@import "@fontsource/barlow-condensed/latin-600.css";
+
+:root {
+  --paper: #f4ecdc;
+  --paper-2: #efe5d1;
+  --card: #f8f2e6;
+  --line: #ddd2bd;
+  --ink: #1d2430;
+  --ink-2: #3a4250;
+  --muted: #8a8478;
+  --red-ink: #c8372d;
+  --green: #1f6b45;
+  --rail: #22312a;
+  --accent: #e0752e;
+  /* Pencil grey for what is not done yet (diagram lines, missing leads). Paired with a
+     dashed stroke, so colour is never the only cue. */
+  --pencil: #9a958a;
+
+  --f-cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Barlow", system-ui, sans-serif;
+
+  --rule: 1px solid var(--line);
+  --radius: 6px;
+  /* Minimum tap target (docs/plans/ohms-law-vi.md, 4A). */
+  --tap: 44px;
+}
+
+/* Opt-in utility classes; existing screens keep their own styles until the restyle slice. */
+.snap-paper {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+}
+
+.snap-label {
+  font-family: var(--f-cond);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}

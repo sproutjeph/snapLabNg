@@ -5,7 +5,7 @@ import { GALVANOMETER_DIMS, TERMINAL_SCREW } from "./dimensions";
 import type { MeterBridgeVisualState, QualityTier } from "./types";
 
 export interface GalvanometerProps {
-  state: { current: MeterBridgeVisualState };
+  state: { current: Pick<MeterBridgeVisualState, "needleDeg"> };
   quality: QualityTier;
   position?: readonly [number, number, number];
 }
