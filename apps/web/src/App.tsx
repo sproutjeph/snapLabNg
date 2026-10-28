@@ -19,6 +19,7 @@ const HomePreview = lazy(() => import("./home/HomePreview"));
 const AboutPreview = lazy(() => import("./about/AboutPreview"));
 const LitePreview = lazy(() => import("./lite/LitePreview"));
 const OhmsLawKitPreview = lazy(() => import("./apparatus/ohms-law/KitPreview"));
+const ReadingsPreview = lazy(() => import("./learn/readings/ReadingsPreview"));
 const LearnPage = lazy(() => import("./learn/LearnPage"));
 const WiringPreview = lazy(() => import("./learn/wiring/WiringPreview"));
 const ShellPreview = lazy(() => import("./learn/shell/ShellPreview"));
@@ -30,6 +31,7 @@ export function App() {
   const isMeterBridgeKit = params.get("kit") === "meter-bridge";
   const isTitrationKit = params.get("kit") === "titration";
   const isOhmsLawKit = params.get("kit") === "ohms-law";
+  const isReadingsPreview = params.get("readings") === "1";
   const isLearnOhmsLaw = params.get("learn") === "ohms-law";
   const isWiringPreview = params.get("wiring") === "1";
   const isShellPreview = params.get("shell") === "1";
@@ -54,6 +56,8 @@ export function App() {
           <ShellPreview />
         ) : isLearnOhmsLaw ? (
           <LearnPage />
+        ) : isReadingsPreview ? (
+          <ReadingsPreview />
         ) : isWiringPreview ? (
           <WiringPreview />
         ) : isLitePreview ? (
