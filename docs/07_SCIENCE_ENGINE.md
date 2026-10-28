@@ -101,6 +101,11 @@ Connect a Leclanché cell and key across the ends A and C of the 100 cm wire; pu
 ### 4.3 Potentiometer mode (COULD)
 The same wire and solver with a driver cell across AC and a test cell through the galvanometer to the jockey: E₁/E₂ = l₁/l₂ at balance; internal resistance r = R(l₀/l − 1) with a shunt R. No new physics, only a different template.
 
+### 4.4 Ohm's law, V against I (hands-on, added Oct 28; plan `docs/plans/ohms-law-vi.md`)
+**What she does:** measures XY; wires E → K → A → R → X–Y → E with V across XY (the corrected diagram); for R = 0, 1, 5, 10, 20, 40, 60 Ω closes K, reads I and V off analogue meters and types them; plots V (vertical) against I; finds the slope s; states two precautions; part (b): states Ohm's law and computes L = RA/ρ.
+**Model:** a small modified-nodal-analysis solver (≤ 12 nodes) over the terminal graph her leads make: two dry cells with internal resistance (`stepCell` polarisation), plug key, ammeter (≈ 0.1 Ω, 0–1 A, 0.02 A divisions), voltmeter (≈ 1 kΩ/V, 0–3 V, 0.05 V divisions), plug box (coils 1, 2, 2, 5, 10, 20, 20, 50 Ω), constantan XY (2.8–4.5 Ω seeded so I(R=0) ≤ 0.92 A), contact resistance per lead end (loose or dirty joints flicker deterministically). Needles are damped oscillators at 120 Hz with stops; a reversed meter kicks below zero, over-range slams. Any wiring is solved, so mistakes show themselves: ammeter across XY with R = 0 (over-range, cells drain), voltmeter in series (≈ 1 mA), open loop (nothing), reversed meters. Heating uses constantan's α (≈ 10⁻⁵ K⁻¹, below meter resolution); leaving K closed shows up as cell polarisation instead. V/I = R_XY ∥ R_V ≈ R_XY, so the slope ≈ R_XY and the line passes near the origin. **Never shown:** I, V, R_XY or the slope.
+**Part (b):** (i) Ohm's law: the current through a metallic conductor is directly proportional to the potential difference across its ends, provided temperature and other physical conditions remain constant. (ii) A = πd²/4 = (22/7)(0.2×10⁻³)²/4 = 3.143×10⁻⁸ m², L = RA/ρ = 7 × 3.143×10⁻⁸ / 8.8×10⁻⁷ = **0.25 m**.
+
 ---
 
 ## 5. WAEC Rule Engine
@@ -137,6 +142,19 @@ The same wire and solver with a driver cell across AC and a test cell through th
 | GRAPH-SLOPE | Slope from a **large** right-angled triangle | Real. The spec's "≥ 2/3 of the line" is invented | WAEC Phys P3 reports |
 | PRECAUTIONS | Any two valid precautions, **in acceptable tense** (stated as things done: "the key was opened between readings"), awarded positively. Metre bridge list: key opened between readings; jockey not dragged along the wire; tight connections, clean terminals; parallax avoided at the metre rule; zero error noted or corrected; repeated readings shown | Real | WAEC Phys P3 2008, 2014, 2018, 2023 expected answers |
 | ~~VIVA~~ | Oral viva | **Does not exist in WASSCE.** Our "examiner questions" mirror written part (b) questions | WASSCE scheme of examination |
+
+**Ohm's law (V–I) rows. DRAFT: needs a physics teacher's check** (the user will supply the official scheme; only `packages/rules/src/ohmsLaw*.ts` and its golden tests change then):
+
+| Code | Rule | Status | Source |
+|---|---|---|---|
+| PHYS-1DP | XY recorded in cm to at least 1 d.p. | DRAFT | as the metre bridge row |
+| PHYS-2DP | I and V recorded to at least 2 d.p., units in the column headers; earned when at least five rows pass (all rows she writes are checked) | DRAFT | WAEC Phys P3 meter-reading pattern; to confirm |
+| PHYS-TREND | I and V both fall as R rises | DRAFT | to confirm |
+| PHYS-TABLE | Composite table of R, I and V | DRAFT | as the metre bridge row |
+| GRAPH-AXES / SCALE / POINTS / LINE / SLOPE | V vertical, I horizontal, labelled with units; points cover at least ⅓ of the sheet each way; points match her own table; best-fit line; large triangle and s with its unit (Ω) | DRAFT | as the metre bridge rows |
+| PRECAUTIONS | Two valid precautions in the reported tense (key opened between readings, tight and clean connections, parallax avoided at the mirror, zero error noted, meters connected correctly, wire kept straight) | DRAFT | WAEC Phys P3 expected answers |
+| PHYS-LAW | (b)(i) Ohm's law named and stated, with the condition (temperature constant) | DRAFT | textbook statement |
+| PHYS-CALC | (b)(ii) correct working and L = 0.25 m | DRAFT | worked above |
 
 ### 5.3 Rubric data file (shape, not code)
 Each rule: code, subject, question type, description, how it is checked (which extracted fields), marks as in the scheme, the fix text in English and Pidgin, the WAEC source URL, and a status flag (verified / configurable / teacher-set). Stored as one versioned JSON file shared by client and server.

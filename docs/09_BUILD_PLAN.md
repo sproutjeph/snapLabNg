@@ -1,6 +1,6 @@
 # 09 · Build Plan: Pre-Hackathon Prep and the 10 Days
 
-*Replaces section 8 of the original spec. Times are WAT. Scope as decided on Oct 22: **metre bridge hero, titration second, glass block stretch** (design in `15_METRE_BRIDGE_HERO.md`). Our submission target is **18:00 WAT on Wed Nov 4**; the official cutoff is 03:00 WAT on Thu Nov 5.*
+*Replaces section 8 of the original spec. Times are WAT. Scope as decided on Oct 22: **metre bridge hero, titration second, glass block stretch** (design in `15_METRE_BRIDGE_HERO.md`). **Changed Oct 28 (user's choice):** a hands-on **Ohm's law (V–I)** practical comes before the titration engine, and the whole app moves to an ink-and-paper look (`docs/plans/ohms-law-vi.md`, `docs/plans/ink-look.md`). Our submission target is **18:00 WAT on Wed Nov 4**; the official cutoff is 03:00 WAT on Thu Nov 5.*
 
 ---
 
@@ -16,14 +16,19 @@
 - Deployed URL with rate limits, spend cap and `DEMO_MODE`
 - The 2:30 video
 
+**MUST (added Oct 28, by Fri Oct 30):** the ink-and-paper look on every canvas (outline pass, paper desk, no bloom, low-tier fallback); the Ohm's-law bench (`?learn=ohms-law`): MNA engine with the modelled mistakes, apparatus, tap-to-wire leads, the corrected diagram, meters and loupes, her typed table, DRAFT marking of the table, precautions and part (b), guided mode end to end.
+
 **SHOULD:**
-- Titration second act: engine (charge-balance pH, indicators), kit, hold-to-drip, swirl, colour, overshoot; marking (2 d.p., concordance, rough titre, units, mole ratio); golden page G3
+- Ohm's law, the rest: graph and slope sheet, Identify mode, the Why / Precautions / Examiner tabs, exam mode, callouts, tightening and sandpaper, zero error, the hero's draw-on reveal; restyle of the existing screens (Muse Code)
+- Titration second act (kit preview exists; engine and marking moved to COULD on Oct 28): engine (charge-balance pH, indicators), kit, hold-to-drip, swirl, colour, overshoot; marking (2 d.p., concordance, rough titre, units, mole ratio); golden page G3
 - Examiner questions (push-to-talk voice + typed fallback + browser voice)
 - SAM outlines, including the graph mask for GRAPH-SCALE (fallback: Spark's approximate box)
 - Quality tiers, Lite mode, PWA offline
 - Teacher mode (teacher's value for PHYS-ACCURACY and titration accuracy)
 
 **COULD:**
+- Titration engine and marking (moved from SHOULD on Oct 28)
+- Ohm's law extras: baked step thumbnails, drag-from-tray leads, rheostat and micrometer detail, no-WebGL learn fallback, live examiner judging
 - Titration indicator trap (phenolphthalein with carbonate) and burette parallax
 - Glass block (pins rising, beam refraction, trace marking)
 - Potentiometer mode (same wire and solver, doc 07 §4.3)
@@ -59,9 +64,9 @@
 | **3** | Wed Oct 28 | `/api/snap` SSE pipeline (Spark compile ∥ SAM ∥ Wonder table + graph), validation and clamps, blueprint → template bench. **Reveal choreography** (ink glow, lift, particles, dissolve). Hash cache; **golden recording and replay**. | A real snap → animated bench on the deployed URL; golden replay works offline. |
 | **4** | Thu Oct 29 | Interaction: tap-to-contact jockey, needle swing and slam, **current-flow particles** with the galvanometer branch going still at balance, plug box, key and polarisation, scrape on drag, metre-rule parallax with a loupe. Lab notebook of readings. Sounds (click at null). | Finding the null feels real on a laptop and a phone. |
 | **5** | **Fri Oct 30** | **MILESTONE.** Rule Engine (PHYS-1DP, PHYS-3SF, PHYS-TABLE, GRAPH-AXES/SCALE/POINTS/LINE/SLOPE/INTERCEPT, PHYS-EVAL, PRECAUTIONS with the tense check) + readings and graph confirmation + **red-ink overlay on her table and graph** + score by scheme items. "Show the AI" drawer. Quality tiers. Test on the iPhone and the low-end Android. **Record a rough backup video today.** | **A stranger uses the URL on their phone, unaided, reaches the red ink, and says "wow".** If not, Day 6 fixes this instead of starting titration. |
-| **6** | Sat Oct 31 | Titration second act: engine (charge-balance pH, indicators) + tests, kit (burette, flask, stand, tile), hold-to-drip, swirl, indicator colour, overshoot. Golden titration page G3. | Snap G3 → working titration bench. |
-| **7** | Sun Nov 1 | Morning: titration marking rules (2 d.p., concordance, rough titre, units, mole ratio) on the existing red-ink overlay. Afternoon and evening: examiner questions (mic AudioWorklet → WS relay → Voice Transcribe; Spark turns with the WAEC persona and question bank; captions + browser voice; typed fallback; Pidgin/English/Mixed). | G3 is marked; a three-question exchange works on desktop Chrome and iPhone Safari, and by typing everywhere. |
-| **8** | Mon Nov 2 | **Beauty pass** (lighting, glass, UI glass panels, transitions). PWA offline. Lite mode. Teacher mode. COULD items only if everything is green (indicator trap, glass block, potentiometer mode, reality preview). A Nigerian **physics and chemistry** teacher reviews the golden runs. **Feature freeze at 23:59.** | Nothing new after this. |
+| **6** | Sat Oct 31 | **Changed Oct 28:** Ohm's law Wave 3 (graph and slope sheet, lesson content and Identify cards, the hero's draw-on reveal) and the Muse Code restyle. *Was:* Titration second act: engine (charge-balance pH, indicators) + tests, kit (burette, flask, stand, tile), hold-to-drip, swirl, indicator colour, overshoot. Golden titration page G3. | Snap G3 → working titration bench. |
+| **7** | Sun Nov 1 | **Changed Oct 28:** Ohm's law integration B (exam mode, Identify, graph in the flow, Examiner tab, no-leak check, visual QA). *Was:* Morning: titration marking rules (2 d.p., concordance, rough titre, units, mole ratio) on the existing red-ink overlay. Afternoon and evening: examiner questions (mic AudioWorklet → WS relay → Voice Transcribe; Spark turns with the WAEC persona and question bank; captions + browser voice; typed fallback; Pidgin/English/Mixed). | G3 is marked; a three-question exchange works on desktop Chrome and iPhone Safari, and by typing everywhere. |
+| **8** | Mon Nov 2 | **Beauty pass** (lighting, ink lines, ink-and-paper UI, transitions). PWA offline. Lite mode. Teacher mode. COULD items only if everything is green (indicator trap, glass block, potentiometer mode, reality preview). A Nigerian **physics and chemistry** teacher reviews the golden runs. **Feature freeze at 23:59.** | Nothing new after this. |
 | **9** | Tue Nov 3 | Bug bash across devices (desktop Chrome/Safari, iPhone, low-end Android, in-app browsers) and networks (MTN, Airtel, a US VPN). Rate limits, spend cap, kill switch tested. gitleaks; README; architecture diagram. **Final screen captures, voiceover and edit of the 2:30 video**; social cuts. | Final video exported; repo public and clean. |
 | **10** | Wed Nov 4 | Buffer only. Final deploy; verify golden mode; **submit by 18:00 WAT**. Launch posts ~15:00 WAT after submitting. Keep `DEMO_MODE=auto` and monitor credits through Nov 9. | Submitted with 9+ hours of margin. |
 
