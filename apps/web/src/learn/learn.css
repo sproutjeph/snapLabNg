@@ -40,6 +40,7 @@
 /* Overlays sit in the part of the canvas the shell leaves uncovered (its --sh-* sizes). */
 .ol-tools {
   position: absolute;
+  z-index: 2;
   top: calc(var(--sh-head, 56px) + 12px);
   left: calc(var(--sh-rail, 76px) + 12px);
   display: flex;
@@ -212,6 +213,7 @@
 /* The graph paper covers the bench's uncovered area, under the toolbar. */
 .ol-graph {
   position: absolute;
+  z-index: 1;
   top: calc(var(--sh-head, 56px) + 68px);
   left: calc(var(--sh-rail, 76px) + 12px);
   right: 428px;

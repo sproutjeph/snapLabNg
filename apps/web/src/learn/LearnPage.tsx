@@ -133,6 +133,14 @@ function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
     }),
     [],
   );
+  // PoseRig owns the orbit target. When OrbitControls mount (first, or again after a close-up),
+  // point them where the camera already looks, so nothing turns on its own.
+  useEffect(() => {
+    if (!controls) return;
+    if (anim.first) controls.target.set(pose.target[0], pose.target[1], pose.target[2]);
+    else controls.target.copy(anim.look);
+    controls.update();
+  }, [controls, anim, pose]);
   const poseKey = `${pose.azimuthDeg}|${pose.elevationDeg}|${pose.target.join(",")}|${pose.distanceM}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new pose or size is what marks it dirty.
   useEffect(() => {
@@ -284,6 +292,10 @@ function LearnView() {
   useEffect(() => setCard(null), [stepIndex]);
   // The graph paper comes out for Plot and Slope, and goes away for the bench steps.
   useEffect(() => setGraphOpen(stepKey === "plot" || stepKey === "slope"), [stepKey]);
+  // The diagram card would cover the graph paper: one at a time.
+  useEffect(() => {
+    if (graphOpen) setDiagramOpen(false);
+  }, [graphOpen]);
   // The ring is written into the visual state; parts read it in useFrame.
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs it after every bench change.
   useEffect(() => {
@@ -341,10 +353,13 @@ function LearnView() {
         />
       }
       diagramOpen={diagramOpen}
-      onDiagramOpenChange={setDiagramOpen}
+      onDiagramOpenChange={(open) => {
+        setDiagramOpen(open);
+        if (open) setGraphOpen(false);
+      }}
       identify={{ card, onClose: () => setCard(null) }}
     >
-      <div className={diagramOpen || card ? "ol-stage ol-float-open" : "ol-stage"}>
+      <div className={(diagramOpen || card) && !graphOpen ? "ol-stage ol-float-open" : "ol-stage"}>
         <Canvas
           shadows={settings.shadows}
           dpr={settings.dpr}
@@ -355,7 +370,6 @@ function LearnView() {
           <PoseRig pose={pose} paused={loupe !== null || returning} />
           {!loupe && !returning && (
             <OrbitControls
-              target={pose.target}
               makeDefault
               enablePan={false}
               minDistance={0.45}
@@ -469,7 +483,7 @@ function LearnView() {
           </fieldset>
         )}
 
-        {latestNote && !loupe && (
+        {latestNote && !loupe && !graphOpen && (
           <p className="ol-note" role="status">
             {latestNote.text}
           </p>
