@@ -5,7 +5,7 @@ import { PLUG_BOX_DIMS, PLUG_KEY_DIMS, TERMINAL_SCREW } from "./dimensions";
 import type { MeterBridgeVisualState, QualityTier } from "./types";
 
 export interface PlugKeyProps {
-  state: { current: MeterBridgeVisualState };
+  state: { current: Pick<MeterBridgeVisualState, "keyClosed"> };
   quality: QualityTier;
   position?: readonly [number, number, number];
   onKeyToggle?: (() => void) | undefined;

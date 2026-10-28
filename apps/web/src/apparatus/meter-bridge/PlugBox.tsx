@@ -5,10 +5,12 @@ import { PLUG_BOX_DIMS, plugPositions, TERMINAL_SCREW } from "./dimensions";
 import type { MeterBridgeVisualState, QualityTier } from "./types";
 
 export interface PlugBoxProps {
-  state: { current: MeterBridgeVisualState };
+  state: { current: Pick<MeterBridgeVisualState, "plugsIn"> };
   plugLabels: string[];
   quality: QualityTier;
   position?: readonly [number, number, number];
+  /** Box width in metres; wider boxes hold more coils. */
+  width?: number;
   onPlugToggle?: ((index: number) => void) | undefined;
 }
 
@@ -47,13 +49,14 @@ export function PlugBox({
   plugLabels,
   quality,
   position = [0, 0, 0],
+  width = PLUG_BOX_DIMS.width,
   onPlugToggle,
 }: PlugBoxProps) {
   const plugGroupRefs = useRef<Array<THREE.Group | null>>([]);
-  const xs = useMemo(() => plugPositions(plugLabels.length), [plugLabels.length]);
+  const xs = useMemo(() => plugPositions(plugLabels.length, width), [plugLabels.length, width]);
 
   const blocksLayout = useMemo(() => {
-    const halfW = PLUG_BOX_DIMS.width / 2 - 0.008;
+    const halfW = width / 2 - 0.008;
     const gap = PLUG_BOX_DIMS.blockGap;
     if (xs.length === 0) {
       return [{ centerX: 0, width: halfW * 2 }];
@@ -66,19 +69,19 @@ export function PlugBox({
       items.push({ centerX: (leftEdge + rightEdge) / 2, width: w });
     }
     return items;
-  }, [xs]);
+  }, [xs, width]);
 
   const res = useMemo(() => {
     const radialSegments = quality === "low" ? 10 : 18;
     const bodyHeight = PLUG_BOX_DIMS.height - PLUG_BOX_DIMS.topThickness;
 
     const woodBodyGeo = new THREE.BoxGeometry(
-      PLUG_BOX_DIMS.width - 0.004,
+      width - 0.004,
       bodyHeight,
       PLUG_BOX_DIMS.depth - 0.004,
     );
     const eboniteTopGeo = new THREE.BoxGeometry(
-      PLUG_BOX_DIMS.width,
+      width,
       PLUG_BOX_DIMS.topThickness,
       PLUG_BOX_DIMS.depth,
     );
@@ -87,7 +90,7 @@ export function PlugBox({
       PLUG_BOX_DIMS.blockHeight,
       PLUG_BOX_DIMS.blockDepth,
     );
-    const labelPlaneGeo = new THREE.PlaneGeometry(PLUG_BOX_DIMS.width, 0.022);
+    const labelPlaneGeo = new THREE.PlaneGeometry(width, 0.022);
 
     const plugShaftGeo = new THREE.CylinderGeometry(
       PLUG_BOX_DIMS.plugShaftRadiusTop,
@@ -158,17 +161,17 @@ export function PlugBox({
       brassMat,
       hitMat,
     };
-  }, [quality]);
+  }, [quality, width]);
 
   const labelRes = useMemo(() => {
-    const tex = createPlugLabelsTexture(plugLabels, xs, PLUG_BOX_DIMS.width);
+    const tex = createPlugLabelsTexture(plugLabels, xs, width);
     const mat = new THREE.MeshBasicMaterial({
       map: tex,
       transparent: true,
       depthWrite: false,
     });
     return { tex, mat };
-  }, [plugLabels, xs]);
+  }, [plugLabels, xs, width]);
 
   useEffect(() => {
     return () => {
@@ -222,8 +225,8 @@ export function PlugBox({
     onPlugToggle?.(index);
   };
 
-  const leftTermX = -PLUG_BOX_DIMS.width / 2 + 0.014;
-  const rightTermX = PLUG_BOX_DIMS.width / 2 - 0.014;
+  const leftTermX = -width / 2 + 0.014;
+  const rightTermX = width / 2 - 0.014;
 
   return (
     <group position={[position[0], position[1], position[2]]}>
