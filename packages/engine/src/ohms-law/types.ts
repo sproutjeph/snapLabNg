@@ -138,9 +138,12 @@ export interface OhmsLawReadout {
   /** Needle angles: a zero reading at METER_ZERO_DEG, full scale at METER_FULL_DEG, stops at ±METER_STOP_DEG. */
   ammeterDeg: number;
   voltmeterDeg: number;
-  /** True on a step in which that needle hit a stop hard (sound and shake). */
-  ammeterSlammed: boolean;
-  voltmeterSlammed: boolean;
+  /**
+   * How many times each needle has hit a stop hard since the bench was created. A counter, not
+   * a flag, so a frame that runs several 120 Hz steps never misses a slam (sound and shake).
+   */
+  ammeterSlams: number;
+  voltmeterSlams: number;
   /** Conventional current through each lead (A), keyed by lead id, positive from lead.a to lead.b. */
   leadCurrentsA: Readonly<Record<string, number>>;
   /** Current through each part's body (A), positive from its first terminal to its second. */

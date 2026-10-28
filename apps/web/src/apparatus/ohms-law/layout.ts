@@ -43,6 +43,26 @@ export const TERMINAL_PART = Object.fromEntries(
   Object.entries(PART_TERMINALS).flatMap(([part, ids]) => ids.map((id) => [id, part])),
 ) as Readonly<Record<TerminalId, CircuitPartId>>;
 
+/**
+ * Fixed ink ids for the V–I bench (scene/ink/ink.tsx), so touching parts always differ and
+ * keep the line between them. Each part owns a block of ten for its sub-parts: use the block's
+ * first id for the body and the next ones for needles, plugs, screws and labels. Nuts and
+ * leads get one id each, by index.
+ */
+export const INK_IDS = {
+  cells: 10,
+  key: 20,
+  ammeter: 30,
+  voltmeter: 40,
+  box: 50,
+  wire: 60,
+  tray: 80,
+  /** + TERMINAL_IDS index (0–11). */
+  nutBase: 100,
+  /** + lead index (0–19, wrapping). */
+  leadBase: 140,
+} as const;
+
 /** Props every bench part takes. Parts read the visual state in useFrame, never as React state. */
 export interface PartProps {
   state: { current: OhmsLawVisualState };

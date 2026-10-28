@@ -22,6 +22,33 @@ describe("timeline", () => {
     expect(seen).toEqual([0, 1]);
   });
 
+  it("ends with the playing tween when two tweens drive one property in a chain", () => {
+    let x = -1;
+    const tl = createTimeline()
+      .add(
+        0.4,
+        0.4,
+        (k) => {
+          x = 1 + k;
+        },
+        { ease: ease.linear },
+      )
+      .add(
+        0,
+        0.4,
+        (k) => {
+          x = k;
+        },
+        { ease: ease.linear },
+      );
+    tl.seek(0.2);
+    expect(x).toBeCloseTo(0.5, 10);
+    tl.seek(0.6);
+    expect(x).toBeCloseTo(1.5, 10);
+    tl.seek(0);
+    expect(x).toBeCloseTo(0, 10);
+  });
+
   it("overshoots with outBack and settles at 1", () => {
     expect(ease.outBack(0.7)).toBeGreaterThan(1);
     expect(ease.outBack(1)).toBeCloseTo(1, 10);

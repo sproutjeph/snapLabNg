@@ -1,11 +1,12 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { createOhmsLaw, DIAGRAM_LEADS, paramsFromSeed } from "@snaplab/engine";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { TerminalProvider } from "../../learn/terminals";
 import type { BenchLead, LeadColour, OhmsLawVisualState } from "../../learn/types";
 import { InkComposer } from "../../scene/ink/InkComposer";
+import { InkLights } from "../../scene/ink/InkLights";
 import { PaperDesk } from "../../scene/ink/PaperDesk";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { QualityTier } from "../meter-bridge/types";
@@ -60,6 +61,30 @@ function previewState(search: URLSearchParams): OhmsLawVisualState {
     hintMissing: [],
     hintExtra: [],
   };
+}
+
+/** Keeps the whole bench (or the framed part) in view on a tall phone screen. */
+function FrameRig({
+  camera: base,
+  target,
+}: {
+  camera: readonly [number, number, number];
+  target: readonly [number, number, number];
+}) {
+  const camera = useThree((st) => st.camera);
+  const width = useThree((st) => st.size.width);
+  const height = useThree((st) => st.size.height);
+  useEffect(() => {
+    const aspect = width / Math.max(height, 1);
+    const k = aspect < 1 ? Math.min(2.2, 0.85 / aspect) : 1;
+    camera.position.set(
+      target[0] + (base[0] - target[0]) * k,
+      target[1] + (base[1] - target[1]) * k,
+      target[2] + (base[2] - target[2]) * k,
+    );
+    camera.lookAt(target[0], target[1], target[2]);
+  }, [camera, base, target, width, height]);
+  return null;
 }
 
 function Bench({ quality, search }: { quality: QualityTier; search: URLSearchParams }) {
@@ -136,14 +161,8 @@ export default function KitPreview() {
       gl={{ antialias: true }}
       camera={{ fov: 40, position: camera, near: 0.02, far: 20 }}
     >
-      <color attach="background" args={["#f4ecdc"]} />
-      <hemisphereLight args={["#fffaf0", "#b9ab90", 0.9]} />
-      <directionalLight
-        position={[1.2, 2.2, 1.4]}
-        intensity={2}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-      />
+      <InkLights quality={quality} />
+      <FrameRig camera={camera} target={target} />
       <OrbitControls target={target} makeDefault />
       <TerminalProvider>
         <Bench quality={quality} search={search} />

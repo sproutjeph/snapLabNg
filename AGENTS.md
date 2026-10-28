@@ -84,8 +84,8 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
 | `packages/engine/src/circuit/**`, `packages/engine/src/ohms-law/**` except `types.ts` (plan: `docs/plans/ohms-law-vi.md`, Wave 1 slot 1) | Claude subagent `circuit-engineer`, while `claude/ohms-engine` is open |
 | `apps/web/src/scene/ink/**`, `scene/{Desk,Page,Scene}.tsx`, the composer/lights of `lab/LabBench.tsx` and of the two existing `KitPreview.tsx`, additive `quality/tier.ts` (plan: `docs/plans/ink-look.md`, Wave 1 slot 2) | Claude subagent `shader-artist`, while `claude/ink-look` is open |
-| `apps/web/src/apparatus/ohms-law/{CellHolder,Key,Meter,ResistanceBox}*.tsx` (Wave 1 slot 3) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-1` is open |
-| `apps/web/src/apparatus/ohms-law/{WireBoard,Lead,TerminalNut,Tray}*.tsx` (Wave 1 slot 4) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-2` is open |
+| `apps/web/src/apparatus/ohms-law/{CellHolder,Key,Meter,ResistanceBox}*.{ts,tsx}` (Wave 1 slot 3) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-1` is open |
+| `apps/web/src/apparatus/ohms-law/{WireBoard,Lead,TerminalNut,Tray}*.{ts,tsx}` (Wave 1 slot 4) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-2` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 The lead updates this table when it hands out a new slice. **All 3D work (scene, kits, reveal, particles, shaders) stays with the lead**: from Oct 27, Gemini runs as Gemini Flash and gets UI and logic slices only, and Muse Code gets non-3D slices only.

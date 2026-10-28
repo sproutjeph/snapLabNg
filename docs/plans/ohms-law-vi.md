@@ -40,8 +40,8 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 - The titration engine and marking (COULD; the user chose Ohm's law first).
 
 ## Physics decisions (science-verifier checks each)
-- **Ammeter range.** R_XY is seeded at **2.8–4.5 Ω** (60–100 cm of SWG 28–30 constantan, ρ = 4.9×10⁻⁷ Ω m, the engine's existing constant). With fresh cells (E ≤ 3.2 V) and r ≥ 0.6 Ω for the pair, I(R=0) stays ≤ 0.92 A on the 0–1 A meter (0.02 A divisions), and V stays ≤ 2.8 V on the 0–3 V meter (0.05 V divisions). The brief's 1.5–3 Ω range would reach 1.36 A.
-- **Heating.** Constantan's α is about 10⁻⁵ K⁻¹, so heating is modelled honestly and stays below meter resolution. The visible cost of leaving K closed is cell polarisation (`stepCell`, with cited dry-cell values).
+- **Ammeter range.** R_XY is seeded at **2.8–4.5 Ω** of constantan (ρ = 4.9×10⁻⁷ Ω m, the engine's existing constant). **Pick the gauge first, then the length**, so the resistance and the length she measures agree: SWG 28 (4.41 Ω/m) at 63.5–100 cm; SWG 29 (≈5.24 Ω/m) at 53–86 cm; SWG 30 (6.29 Ω/m) at 45–72 cm. With fresh cells (E ≤ 3.2 V) and r ≥ 0.6 Ω for the pair, I(R=0) stays ≤ 0.92 A on the 0–1 A meter (0.02 A divisions), and V stays ≤ 2.8 V on the 0–3 V meter (0.05 V divisions). The brief's 1.5–3 Ω range would reach 1.46 A. At R = 60 Ω, I ≈ 0.046–0.050 A (about 2.4 divisions) and V ≈ 0.13–0.22 V. Both read to 2 d.p. by half-division estimate, which matches the dials.
+- **Heating.** Constantan's α is 8×10⁻⁶ K⁻¹ (the value docs/07 already uses). At R = 0 the wire warms by tens of kelvin, but ΔR/R stays ≤ 0.1 % (about 0.003 V, far below a half-division), so heating is modelled honestly and stays invisible. The visible cost of leaving K closed is cell polarisation (`stepCell`, with cited dry-cell values). The precaution "key opened between readings (to avoid heating)" is still credited: WAEC credits the action.
 - **Rows.** All seven rows the student writes are checked. The "at least five rows" items are earned when five or more rows pass. Note that the metre bridge marks the *first* five (`packages/rules/src/meterBridge.ts:137`).
 - **Physics of the bench.** V/I = R_XY ∥ R_V ≈ R_XY for every R, so the slope s is about the resistance of XY and the line passes near the origin.
 - **(b)(ii).** A = πd²/4 = (22/7)(0.2×10⁻³)²/4 = 3.143×10⁻⁸ m², so L = RA/ρ = 7 × 3.143×10⁻⁸ / 8.8×10⁻⁷ = **0.25 m**.
@@ -57,6 +57,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
   - `TerminalId`, `PartId`, `PART_TERMINALS`, `MAX_LEADS_PER_TERMINAL`, `Lead`, `JointState` and `DIAGRAM_LEADS`.
   - `METER_ZERO_DEG = -40`, `METER_FULL_DEG = 40` and `METER_STOP_DEG = 45`.
   - `OhmsLawParams`, `OhmsLawInputs`, `OhmsLawReadout`, `OhmsLawState`, `DiagramIssue` and `DiagramComparison`.
+  - Slams are monotonic counters (`ammeterSlams`, `voltmeterSlams`), so a frame that runs several 120 Hz steps never misses one; parts compare with the count they last saw.
   - The engine may add internal fields to its params and state, but never removes or renames one.
 - **`packages/engine/src/ohms-law/api.ts`:** frozen signatures `paramsFromSeed`, `createOhmsLaw`, `stepOhmsLaw` and `compareWithDiagram`. The current bodies are stubs.
 - **`apps/web/src/learn/types.ts`**
@@ -65,7 +66,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
   - `Terminal`, `TerminalRegistry`, `CameraPose`, `Callout`, `IdentifyCard`, `ProcedureNote`, `BenchState`, `Step`, `Lesson` and `LessonMode`.
 - **`apps/web/src/learn/terminals.tsx` and `terminalRegistry.ts`:** `TerminalProvider`, `useTerminalRegistry` and `useTerminal(id, part, label, ref)`.
 - **`apps/web/src/learn/timeline.ts`:** `createTimeline().add(at, dur, update, {ease}).seek(t)` and `ease.{linear,inOut,outCubic,outBack}`.
-- **`apps/web/src/apparatus/ohms-law/layout.ts`:** `OHMS_LAW_LAYOUT`, `TERMINAL_LABELS`, `TERMINAL_PART`, `PartProps` and `tapOnly`. The loop runs leftward along the back (cells → K → A → R), then X (front left) → Y (front right) → cells. K1, A+ and R1 are on each part's right.
+- **`apps/web/src/apparatus/ohms-law/layout.ts`:** `OHMS_LAW_LAYOUT`, `TERMINAL_LABELS`, `TERMINAL_PART`, `INK_IDS` (fixed ink ids per part, nut and lead), `PartProps` and `tapOnly`. The loop runs leftward along the back (cells → K → A → R), then X (front left) → Y (front right) → cells. K1, A+ and R1 are on each part's right.
 - **Stub components with frozen props:** `CellHolder`, `KeyK`, `Meter`, `ResistanceBox`, `WireBoard`, `Lead`, `TerminalNut` and `Tray`. `KitPreview` (`?kit=ohms-law`, with `&part=`, `&leads=1`, `&deg=` and `&quality=`) is lead-owned.
 - **`apps/web/src/scene/ink/`:** `inkTag`, `readInk`, `nextInkId`, `<InkGroup id thin>`, the `<InkComposer quality reveal>` stub and the `<PaperDesk>` stub (see ink-look.md).
 - **Shared metre-bridge parts:** `PlugBox`, `PlugKey` and `Galvanometer` take `Pick<MeterBridgeVisualState, …>`, and `PlugBox` takes an optional `width`.
@@ -91,8 +92,8 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 |---|---|---|---|
 | 1 | Circuit engine | `circuit-engineer` (Opus) | `packages/engine/src/circuit/**`; `packages/engine/src/ohms-law/**` except `types.ts` |
 | 2 | Ink look | `shader-artist` (Opus) | see ink-look.md |
-| 3 | Apparatus 1 | `apparatus-modeller` | `apps/web/src/apparatus/ohms-law/{CellHolder,Key,Meter,ResistanceBox}*.tsx` |
-| 4 | Apparatus 2 | `apparatus-modeller` | `apps/web/src/apparatus/ohms-law/{WireBoard,Lead,TerminalNut,Tray}*.tsx` |
+| 3 | Apparatus 1 | `apparatus-modeller` | `apps/web/src/apparatus/ohms-law/{CellHolder,Key,Meter,ResistanceBox}*.{ts,tsx}` |
+| 4 | Apparatus 2 | `apparatus-modeller` | `apps/web/src/apparatus/ohms-law/{WireBoard,Lead,TerminalNut,Tray}*.{ts,tsx}` |
 
 ### Slot 1: circuit engine
 - **`circuit/mna.ts`:** general modified nodal analysis. Resistors, EMFs with internal resistance, and switches (open = no element). Dense Gaussian elimination with partial pivoting for ≤ 12 nodes. Guard floating nodes with a tiny leak conductance to ground and report them. Reuse buffers: no allocation in the step path.
@@ -106,11 +107,11 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 - **`ohms-law/bench.ts`:**
   - 120 Hz fixed step: re-solve when the inputs or cells change.
   - `stepCell` for each cell.
-  - `stepMeter`: the `stepNeedle` dynamics mapped to dial degrees (zero at −40°, full scale at +40°, stops at ±45°, and slam reported). A reversed meter kicks past zero to the −45° stop; over-range slams at +45°.
+  - `stepMeter`: the `stepNeedle` dynamics mapped to dial degrees (zero at −40°, full scale at +40°, stops at ±45°), adding 1 to the slam counter on each hard hit. A reversed meter deflects below zero, reaching the −45° stop only above 1/16 of full scale (leave it to the physics; never script it). Over-range slams at +45°.
   - The seeded zero error offsets the rest angle; `zeroTrimDeg` cancels it.
   - Wire heating: I²R in, Newton cooling out, constantan α cited.
   - `cellDrain01` and `shortCircuit` come from the cell state and the external resistance.
-- **`paramsFromSeed`:** a pure PRNG (mulberry32) within the cited ranges: dry cell EMF 1.5–1.6 V, r 0.3–0.6 Ω each, R_XY 2.8–4.5 Ω from length and SWG, `startCm` so the wire sits on the rule, and an ammeter zero error of 0 or ±1 division.
+- **`paramsFromSeed`:** a pure PRNG (mulberry32) within the cited ranges: dry cell EMF 1.5–1.6 V, r 0.3–0.6 Ω each, R_XY 2.8–4.5 Ω by choosing the SWG (28, 29 or 30) and then a length in that gauge's range above, `startCm` so the wire sits on the rule, and an ammeter zero error of 0 or ±1 division.
 - **`compareWithDiagram`:** electrical equivalence, not exact pairs.
   - Series order is free. The key and box are non-polar. A+ must face E+ along the loop, and V+ must be on X's side.
   - Fill `issues`. Return `missing` and `extra` against `DIAGRAM_LEADS` only when it does not match.
@@ -118,7 +119,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
   - Series circuit and Ohm's law values (Nelkon & Parker, *Advanced Level Physics*; Anyakoha, *New School Physics*).
   - Polarity sign.
   - Ammeter across XY with the loop closed by a lead at R = 0: over range, short-circuit flag, and the cells drain faster.
-  - Voltmeter in series: I ≈ 1 mA.
+  - Voltmeter in series: I ≈ 1.07 mA, and the voltmeter itself reads at or past full scale (pinned at the top).
   - Open loop: zero everywhere.
   - Loose joint: the reading flickers but stays deterministic for one seed.
   - V/I equals R_XY ∥ R_V within 1 % for all 7 R values, and the intercept is ≈ 0.
@@ -129,7 +130,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 
 ### Slots 3–4: apparatus (both slices)
 - **Look.** Procedural three.js only, with no model files. Merge static geometry with `mergeGeometries`, use `InstancedMesh` for repeats, and add a small seeded colour jitter. Materials are matte (roughness ≥ 0.6) and suit the ink look.
-- **Ink tags.** Tag every mesh with `<InkGroup>` or `inkTag`. Give small parts (needle, screws, plugs) `thin`.
+- **Ink tags.** Tag every mesh with `<InkGroup>` or `inkTag`, using the part's block in `INK_IDS` (body = the block's first id, sub-parts the next ones; nuts `nutBase + TERMINAL_IDS index`, leads `leadBase + index`). Nested groups keep their own tag. Give small parts (needle, screws, plugs) `thin`.
 - **Terminals.** Each terminal is a `<TerminalNut>` with the frozen ids. Read `state.current` only inside `useFrame`.
 - **Frame rules.** No `new` in `useFrame`. Dispose what you create. Textures ≤ 1024 px (canvas dials are fine).
 - **Low tier.** Fewer segments, and no per-frame canvas redraws.
@@ -192,14 +193,14 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
     - `PHYS-TREND`: I and V both fall as R rises.
     - `PHYS-TABLE`: a composite table.
     - `GRAPH-AXES`: V vertical, I horizontal, labelled with units.
-    - `GRAPH-SCALE`: points cover ≥ ⅓ of the sheet each way.
+    - `GRAPH-SCALE`: points cover ≥ ⅓ of the sheet each way (our interpretation; a config value).
     - `GRAPH-POINTS`: checked against her own table, within half a small square.
     - `GRAPH-LINE`: best fit.
-    - `GRAPH-SLOPE`: triangle ≥ ½ of the line's span, and s evaluated with the unit Ω.
+    - `GRAPH-SLOPE`: triangle ≥ ½ of the line's span (our interpretation; a config value), and s evaluated with the unit Ω.
     - `PRECAUTIONS`: two in the reported tense.
     - `PHYS-LAW`: named, stated, with the condition.
     - `PHYS-CALC`: working and 0.25 m.
-  - **Precaution topics** (additive; the metre-bridge list and G1/G2 marks are unchanged): meters connected correctly (series and parallel), wire kept straight, and plugs pushed in firmly. Clarify P2/P7, which share one topic (see the lesson-draft CHECK list).
+  - **Precaution topics** (additive; the metre-bridge list and G1/G2 marks are unchanged): wire kept straight, and plugs pushed in firmly. "Meters connected correctly" is procedure, not a WAEC precaution, so it isn't scored. Clarify P2/P7, which share one topic (see the lesson-draft CHECK list).
   - **Examiner bank:** V–I questions picked from her lost marks.
   - **Golden tables (tests):** good, a 1 d.p. slip, axes swapped, small triangle, wrong tense, fewer than 5 rows, s without a unit.
   - The UI and docs/07 §4.4 and §5.2 label it **DRAFT: needs a physics teacher's check**.

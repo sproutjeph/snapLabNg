@@ -27,6 +27,8 @@ The reference is Backcountry 101 (backcountry-101.vercel.app). We copy technique
   - `<InkGroup id? thin?>`, which tags its children on mount.
 - `apps/web/src/scene/ink/InkComposer.tsx`: `<InkComposer quality reveal?>`, where `reveal` is a ref from 0 to 1 and omitted means fully drawn. It is the one post stack for every canvas and is currently a stub.
 - `apps/web/src/scene/ink/PaperDesk.tsx`: `<PaperDesk quality size? y?>`, currently a stub plane.
+- `apps/web/src/scene/ink/InkLights.tsx`: `<InkLights quality>`, the shared sun, environment, fill and paper background, currently a stub. The V–I kit preview already uses it.
+- Ink ids: 1–199 come from a scene's fixed table (the V–I bench uses `INK_IDS` in `apparatus/ohms-law/layout.ts`); `nextInkId()` hands out 200–255. Nested `<InkGroup>`s keep their own tag: `inkTag` stops at a nested root.
 - `apps/web/src/styles/tokens.css`:
   - the user's palette, plus `--pencil`, `--rule`, `--radius` and `--tap: 44px`;
   - self-hosted Barlow and Barlow Condensed (`@fontsource`, latin subset);
@@ -48,7 +50,7 @@ The reference is Backcountry 101 (backcountry-101.vercel.app). We copy technique
 2. **Build `InkComposer`.** Implement the high and mid tier: depth, normals and the ID edges at full resolution on high and at 0.75× on mid.
 3. **Low tier:** measure first. Option (a) depth-only edges at 0.5×, with no normal or ID pass. Option (b) no post at all, with inverted-hull outlines on parts tagged with large ink ids. Pick the one that holds ≥ 30 fps on `?quality=low` in the headless shot, report both numbers, and keep the other out of the code.
 4. **Build `PaperDesk`.** Paper colour, faint ruled lines from a canvas texture ≤ 1024 px, and matte.
-5. **Replace Bloom** in `Scene.tsx`, `LabBench.tsx` and both existing kit previews with `<InkComposer>`. Set the lighting: soft sun, the RoomEnvironment PMREM at 0.04, and the hemisphere fill toned to paper. The canvas background becomes `--paper`.
+5. **Replace Bloom** in `Scene.tsx`, `LabBench.tsx` and both existing kit previews with `<InkComposer>`, and fill in `<InkLights>`, using it in those canvases too. Set the lighting: soft sun, the RoomEnvironment PMREM at 0.04, and the hemisphere fill toned to paper. The canvas background becomes `--paper`.
 6. **Keep the hero working.** Its current reveal still plays; only the post stack changes. Nothing glows from heat, and current-flow dots stay visible (if dots need to stand out, give them a solid ink-blue fill, not bloom).
 7. **Dispose** every render target, material and texture. Create uniforms once. No `new` in `useFrame`.
 

@@ -53,8 +53,8 @@ function idleReadout(): OhmsLawReadout {
   return {
     ammeterDeg: METER_ZERO_DEG,
     voltmeterDeg: METER_ZERO_DEG,
-    ammeterSlammed: false,
-    voltmeterSlammed: false,
+    ammeterSlams: 0,
+    voltmeterSlams: 0,
     leadCurrentsA: {},
     partCurrentsA: { cells: 0, key: 0, ammeter: 0, voltmeter: 0, box: 0, wire: 0 },
     cellDrain01: 0,

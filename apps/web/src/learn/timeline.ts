@@ -18,7 +18,11 @@ export const ease = {
 export interface Timeline {
   /** Adds a tween from atS to atS + durS. `update` gets the eased progress, 0 to 1. */
   add(atS: number, durS: number, update: (k: number) => void, opts?: { ease?: Ease }): Timeline;
-  /** Moves to time tS and calls every tween with its progress at that time. */
+  /**
+   * Moves to time tS and calls every tween with its progress at that time. Tweens that have
+   * not started are applied first (latest start first), then the started ones in start order,
+   * so tweens chained on one property end with the one that is playing.
+   */
   seek(tS: number): void;
   readonly durationS: number;
 }
@@ -30,20 +34,31 @@ interface Tween {
   ease: Ease;
 }
 
+const progress = (t: Tween, tS: number) => {
+  const raw = t.durS === 0 ? (tS >= t.atS ? 1 : 0) : (tS - t.atS) / t.durS;
+  return Math.min(1, Math.max(0, raw));
+};
+
 export function createTimeline(): Timeline {
+  // Kept sorted by start time (stable for equal starts).
   const tweens: Tween[] = [];
   let durationS = 0;
   const tl: Timeline = {
     add(atS, durS, update, opts) {
-      tweens.push({ atS, durS: Math.max(durS, 0), update, ease: opts?.ease ?? ease.inOut });
-      durationS = Math.max(durationS, atS + Math.max(durS, 0));
+      const tween = { atS, durS: Math.max(durS, 0), update, ease: opts?.ease ?? ease.inOut };
+      let i = tweens.length;
+      while (i > 0 && (tweens[i - 1]?.atS ?? 0) > atS) i--;
+      tweens.splice(i, 0, tween);
+      durationS = Math.max(durationS, atS + tween.durS);
       return tl;
     },
     seek(tS) {
+      for (let i = tweens.length - 1; i >= 0; i--) {
+        const t = tweens[i];
+        if (t && tS < t.atS) t.update(t.ease(0));
+      }
       for (const t of tweens) {
-        const raw = t.durS === 0 ? (tS >= t.atS ? 1 : 0) : (tS - t.atS) / t.durS;
-        const k = Math.min(1, Math.max(0, raw));
-        t.update(t.ease(k));
+        if (tS >= t.atS) t.update(t.ease(progress(t, tS)));
       }
     },
     get durationS() {
