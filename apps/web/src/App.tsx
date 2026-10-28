@@ -23,6 +23,7 @@ const ReadingsPreview = lazy(() => import("./learn/readings/ReadingsPreview"));
 const LearnPage = lazy(() => import("./learn/LearnPage"));
 const WiringPreview = lazy(() => import("./learn/wiring/WiringPreview"));
 const ShellPreview = lazy(() => import("./learn/shell/ShellPreview"));
+const GraphPreview = lazy(() => import("./learn/graph/GraphPreview"));
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -35,6 +36,7 @@ export function App() {
   const isLearnOhmsLaw = params.get("learn") === "ohms-law";
   const isWiringPreview = params.get("wiring") === "1";
   const isShellPreview = params.get("shell") === "1";
+  const isGraphPreview = params.get("graph") === "1";
   const isCapturePreview = params.get("capture") === "1";
   const isDrawerPreview = params.get("drawer") === "1";
   const isAudioPreview = params.get("audio") === "1";
@@ -54,6 +56,8 @@ export function App() {
       <Suspense fallback={null}>
         {isShellPreview ? (
           <ShellPreview />
+        ) : isGraphPreview ? (
+          <GraphPreview />
         ) : isLearnOhmsLaw ? (
           <LearnPage />
         ) : isReadingsPreview ? (
