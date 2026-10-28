@@ -3,12 +3,15 @@ import { readInk } from "./ink";
 import fragmentShader from "./ink-id.frag.glsl?raw";
 import vertexShader from "./ink-id.vert.glsl?raw";
 
-// The ink-ID pass (docs/plans/ink-look.md): the scene drawn once more with one override
-// material into a small target, writing each mesh's view-space normal and ink tag. The outline
-// effect finds creases and part boundaries in it. The material reads `userData.ink` per object
-// in `onBeforeRender`, so the apparatus needs no ink-specific materials.
+// The ink-ID pass (docs/plans/ink-look.md): the scene drawn once more into a small target,
+// writing each mesh's view-space normal and ink tag. The outline effect finds creases and part
+// boundaries in it. The ID materials read `userData.ink` per object in `onBeforeRender`, so the
+// apparatus needs no ink-specific materials.
 
-/** Set `userData.noInk = true` on a mesh to keep it out of the ink pass (the paper desk). */
+/**
+ * Set `userData.noInk = true` on a mesh to keep it out of the ink pass and the low-tier hulls
+ * (the paper desk, the current-flow dots).
+ */
 export const NO_INK = "noInk";
 
 type AnyMaterial = THREE.Material & {
@@ -16,9 +19,9 @@ type AnyMaterial = THREE.Material & {
 };
 
 /**
- * Meshes that must not draw ink: non-meshes (lines, points, sprites), troika text, additive
- * sparks and glows, invisible hit boxes (opacity 0), and alpha-mapped decals that do not write
- * depth (labels lying on a part would otherwise draw their quad).
+ * Meshes that must not draw ink: non-meshes (lines, points, sprites), `noInk` meshes, troika
+ * text, additive sparks and glows, invisible hit boxes (material hidden or opacity 0), and alpha-mapped decals that
+ * do not write depth (labels lying on a part would otherwise draw their quad).
  */
 export function skipsInk(object: THREE.Object3D, material: THREE.Material | undefined): boolean {
   if (!(object as THREE.Mesh).isMesh) return true;
@@ -26,7 +29,8 @@ export function skipsInk(object: THREE.Object3D, material: THREE.Material | unde
   if ((object as { isTroikaText?: boolean }).isTroikaText) return true;
   if (!material) return false;
   const m = material as AnyMaterial;
-  if (!m.colorWrite) return true;
+  // Hit targets hidden through their material (the ID materials themselves are visible).
+  if (!m.visible || !m.colorWrite) return true;
   if (m.blending === THREE.AdditiveBlending) return true;
   if (m.transparent && m.opacity < 0.05) return true;
   if (m.transparent && !m.depthWrite && m.map) return true;
@@ -41,63 +45,22 @@ export function inkCode(object: THREE.Object3D): number {
   return id * 2 + (tag.thin ? 1 : 0);
 }
 
-function materialOf(object: THREE.Object3D, group: THREE.Group | null): THREE.Material | undefined {
-  const m = (object as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-  if (!Array.isArray(m)) return m;
-  const index = (group as unknown as { materialIndex?: number } | null)?.materialIndex ?? 0;
-  return m[index];
-}
-
 type Clippable = THREE.Material & {
   clippingPlanes: THREE.Plane[] | null;
   clipIntersection: boolean;
 };
 
-export function createInkIdMaterial(): THREE.ShaderMaterial {
-  const material = new THREE.ShaderMaterial({
-    name: "InkIdMaterial",
-    vertexShader,
-    fragmentShader,
-    uniforms: {
-      inkCode: { value: 0 },
-      inkSkip: { value: 0 },
-    },
-    blending: THREE.NoBlending,
-    clipping: true,
-  });
-  const uniforms = material.uniforms as {
-    inkCode: { value: number };
-    inkSkip: { value: number };
-  };
-  material.onBeforeRender = (renderer, _scene, camera, _geometry, object, group) => {
-    const source = materialOf(object, group as unknown as THREE.Group | null) as
-      | Clippable
-      | undefined;
-    uniforms.inkSkip.value = skipsInk(object, source) ? 1 : 0;
-    uniforms.inkCode.value = inkCode(object);
-    // Cull like the object does, so faces the scene never shows (the underside of a part
-    // that is still below its clip line) draw no ink either.
-    material.side = source?.side ?? THREE.FrontSide;
-    // Follow the object's clipping planes, so a kit that is still rising draws no ink above
-    // its clip line.
-    const planes = source?.clippingPlanes ?? null;
-    if (material.clippingPlanes !== planes) material.clippingPlanes = planes;
-    material.clipIntersection = source?.clipIntersection ?? false;
-    if (planes && planes.length > 0) writeViewPlanes(renderer, material, camera, planes);
-    material.uniformsNeedUpdate = true;
-  };
-  return material;
-}
+type MaterialSlot = THREE.Material | THREE.Material[];
 
 const viewPlane = new THREE.Plane();
 const viewNormal = new THREE.Matrix3();
 
 /**
  * Three caches a material's view-space clipping planes and, when the same material draws twice
- * in a row (always, for an override material), reuses them without re-projecting. Here every
- * object brings its own planes and the camera and clip line move, so the cached array is
- * rewritten in place per object. Once three has made the array (the first clipped draw), this
- * allocates nothing. No global renderer.clippingPlanes are used in these scenes (offset 0).
+ * in a row, reuses them without re-projecting. Here every object brings its own planes and the
+ * camera and clip line move, so the cached array is rewritten in place per object. Once three
+ * has made the array (the first clipped draw), this allocates nothing. No global
+ * renderer.clippingPlanes are used in these scenes (offset 0).
  */
 function writeViewPlanes(
   renderer: THREE.WebGLRenderer,
@@ -120,38 +83,119 @@ function writeViewPlanes(
   }
 }
 
+/** The object's own (first) material while the ink pass has swapped it out. */
+const SOURCE = "inkSource";
+
+function createInkIdMaterial(name: string): THREE.ShaderMaterial {
+  const material = new THREE.ShaderMaterial({
+    name,
+    vertexShader,
+    fragmentShader,
+    uniforms: { inkCode: { value: 0 } },
+    blending: THREE.NoBlending,
+    clipping: true,
+  });
+  const code = material.uniforms.inkCode as { value: number };
+  material.onBeforeRender = (renderer, _scene, camera, _geometry, object) => {
+    const source = object.userData[SOURCE] as Clippable | null | undefined;
+    code.value = inkCode(object);
+    // Cull like the object does, so faces the scene never shows (the underside of a part that
+    // is still below its clip line) draw no ink either. A side change needs no new program.
+    material.side = source?.side ?? THREE.FrontSide;
+    // Follow the object's clipping planes, so a kit that is still rising draws no ink above
+    // its clip line.
+    const planes = source?.clippingPlanes ?? null;
+    if (material.clippingPlanes !== planes) material.clippingPlanes = planes;
+    material.clipIntersection = source?.clipIntersection ?? false;
+    if (planes && planes.length > 0) writeViewPlanes(renderer, material, camera, planes);
+    material.uniformsNeedUpdate = true;
+  };
+  return material;
+}
+
 const prevClear = new THREE.Color();
 
 /**
- * Draws the ink-ID pass of `scene` into `target`: no background, no shadow-map update, cleared
- * to zero. Restores everything it touches. Allocates nothing.
+ * The ink-ID pass. For the draw it swaps each object's material for one of four ID materials,
+ * one per program three needs (plain or instanced × unclipped or clipped), so consecutive draws
+ * never force a program change, and three's opaque sort groups the draws by material. Objects
+ * that draw no ink get an invisible material and leave the render list. Everything is put back
+ * after the draw; once the arrays have grown, it allocates nothing.
  */
-export function renderInkPass(
-  renderer: THREE.WebGLRenderer,
-  scene: THREE.Scene,
-  camera: THREE.Camera,
-  material: THREE.Material,
-  target: THREE.WebGLRenderTarget,
-): void {
-  const background = scene.background;
-  const override = scene.overrideMaterial;
-  const shadows = renderer.shadowMap.enabled;
-  const autoClear = renderer.autoClear;
-  renderer.getClearColor(prevClear);
-  const prevAlpha = renderer.getClearAlpha();
+export class InkIdPass {
+  /** Indexed by instanced * 2 + clipped. */
+  private readonly materials: readonly THREE.ShaderMaterial[];
+  private readonly hidden = new THREE.MeshBasicMaterial({ visible: false });
+  private readonly objects: THREE.Object3D[] = [];
+  private readonly originals: MaterialSlot[] = [];
+  private count = 0;
+  private readonly swap: (o: THREE.Object3D) => void;
 
-  scene.background = null;
-  scene.overrideMaterial = material;
-  renderer.shadowMap.enabled = false;
-  renderer.autoClear = false;
-  renderer.setClearColor(0x000000, 0);
-  renderer.setRenderTarget(target);
-  renderer.clear(true, true, false);
-  renderer.render(scene, camera);
+  constructor() {
+    this.materials = [
+      createInkIdMaterial("InkId"),
+      createInkIdMaterial("InkId.Clipped"),
+      createInkIdMaterial("InkId.Instanced"),
+      createInkIdMaterial("InkId.InstancedClipped"),
+    ];
+    this.swap = (o: THREE.Object3D) => {
+      const slot = (o as THREE.Mesh).material as MaterialSlot | undefined;
+      if (!slot) return;
+      const source = (Array.isArray(slot) ? slot[0] : slot) as Clippable | undefined;
+      this.objects[this.count] = o;
+      this.originals[this.count] = slot;
+      this.count += 1;
+      o.userData[SOURCE] = source ?? null;
+      if (skipsInk(o, source)) {
+        (o as THREE.Mesh).material = this.hidden;
+        return;
+      }
+      const clipped = (source?.clippingPlanes?.length ?? 0) > 0 ? 1 : 0;
+      const instanced = (o as THREE.InstancedMesh).isInstancedMesh ? 2 : 0;
+      (o as THREE.Mesh).material = this.materials[instanced + clipped] ?? this.hidden;
+    };
+  }
 
-  scene.background = background;
-  scene.overrideMaterial = override;
-  renderer.shadowMap.enabled = shadows;
-  renderer.autoClear = autoClear;
-  renderer.setClearColor(prevClear, prevAlpha);
+  /** Draws `scene` into `target`: no background, no shadow map, cleared to zero. */
+  render(
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.Camera,
+    target: THREE.WebGLRenderTarget,
+  ): void {
+    const background = scene.background;
+    const shadows = renderer.shadowMap.enabled;
+    const autoClear = renderer.autoClear;
+    renderer.getClearColor(prevClear);
+    const prevAlpha = renderer.getClearAlpha();
+
+    this.count = 0;
+    scene.traverse(this.swap);
+    scene.background = null;
+    renderer.shadowMap.enabled = false;
+    renderer.autoClear = false;
+    try {
+      renderer.setClearColor(0x000000, 0);
+      renderer.setRenderTarget(target);
+      renderer.clear(true, true, false);
+      renderer.render(scene, camera);
+    } finally {
+      for (let i = 0; i < this.count; i++) {
+        const o = this.objects[i] as THREE.Mesh;
+        o.material = this.originals[i] as MaterialSlot;
+        o.userData[SOURCE] = null;
+      }
+      scene.background = background;
+      renderer.shadowMap.enabled = shadows;
+      renderer.autoClear = autoClear;
+      renderer.setClearColor(prevClear, prevAlpha);
+    }
+  }
+
+  dispose(): void {
+    for (const m of this.materials) m.dispose();
+    this.hidden.dispose();
+    this.objects.length = 0;
+    this.originals.length = 0;
+  }
 }

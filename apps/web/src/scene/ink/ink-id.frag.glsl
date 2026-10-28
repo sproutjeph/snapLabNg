@@ -5,13 +5,12 @@ precision highp float;
 #include <clipping_planes_pars_fragment>
 
 uniform float inkCode;
-uniform float inkSkip;
 
 varying vec3 vInkNormal;
 
 void main() {
   #include <clipping_planes_fragment>
-  if (inkSkip > 0.5) discard;
-  vec3 n = normalize(vInkNormal) * (gl_FrontFacing ? 1.0 : -1.0);
+  float l = length(vInkNormal);
+  vec3 n = (l > 1e-6 ? vInkNormal / l : vec3(0.0, 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : -1.0);
   gl_FragColor = vec4(n, inkCode);
 }
