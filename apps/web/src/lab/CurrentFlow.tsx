@@ -9,7 +9,12 @@ import {
   GALVANOMETER_DIMS,
 } from "../apparatus/meter-bridge/dimensions";
 import type { BranchCurrents, MeterBridgeVisualState } from "../apparatus/meter-bridge/types";
+import { NO_INK } from "../scene/ink/inkPass";
 import { flowRate } from "./flow";
+
+/** A slightly bluer pen ink than --ink, so moving dots stand apart from the outlines. */
+const DOT_INK_HEX = "#1f3566";
+const DOT_USER_DATA = { [NO_INK]: true };
 
 /** Height of the dots above the copper strips and the wire, so they read on top of them. */
 const LIFT_M = 0.006;
@@ -113,7 +118,8 @@ export function CurrentFlow({
   const { geometry, material } = useMemo(
     () => ({
       geometry: new THREE.SphereGeometry(1, 8, 6),
-      material: new THREE.MeshBasicMaterial({ color: new THREE.Color("#7dd3fc") }),
+      // Solid ink-blue, so the dots read on paper and copper without any glow.
+      material: new THREE.MeshBasicMaterial({ color: new THREE.Color(DOT_INK_HEX) }),
     }),
     [],
   );
@@ -179,6 +185,8 @@ export function CurrentFlow({
       args={[geometry, material, count]}
       frustumCulled={false}
       visible={false}
+      // Dots are too small for pen outlines: the ink pass and the low-tier hulls skip them.
+      userData={DOT_USER_DATA}
     />
   );
 }
