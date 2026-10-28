@@ -62,6 +62,10 @@ const LINE_ANGLE_TOLERANCE_DEG = 3;
 const LINE_CENTROID_TOLERANCE_CM = 0.4;
 /** "Large" triangle: each leg spans at least this share of her line's extent that way. */
 const LARGE_TRIANGLE_SHARE = 0.5;
+/** A triangle leg counts as horizontal (or vertical) within half a small square. */
+const TRIANGLE_AXIS_TOLERANCE_CM = 0.1;
+/** Each hypotenuse corner must lie within one small square of her drawn line. */
+const TRIANGLE_ON_LINE_TOLERANCE_CM = 0.2;
 /** Her ΔV and ΔI may differ from her triangle's legs, read on her scales, by one small square. */
 const SLOPE_READ_TOLERANCE_CM = 0.2;
 /** s must equal her own ΔV ÷ ΔI within this share (rounding to 2–3 s.f.). */
@@ -141,6 +145,8 @@ const AMPERE = /^(m?A|amps?|amperes?|milliamps?|milliamperes?)$/i;
 const VOLT = /^(m?V|volts?|millivolts?)$/i;
 const hasAmpere = (label: string | null) => AMPERE.test(unitPart(label) ?? "");
 const hasVolt = (label: string | null) => VOLT.test(unitPart(label) ?? "");
+/** A milli- unit in her heading (mA, mV, milliamps…): 3 more decimal places in A or V. */
+const isMilli = (label: string | null) => /^(m[AV]|milli)/.test(unitPart(label) ?? "");
 
 /** The quantity on a label, without its unit: "V/V" → V, "Current (A)" → I. */
 function quantityOf(label: string | null): "I" | "V" | null {
@@ -190,10 +196,82 @@ function lineAngleDiffDeg(aRad: number, bRad: number): number {
   return (d * 180) / Math.PI;
 }
 
-/** Where a value falls on her axis, in sheet cm, or null when she chose no scale. */
+/** Her scale in units per cm, when she chose a usable one (finite and positive), else null. */
+function scaleOf(axis: OhmsLawAxis | undefined): number | null {
+  const u = axis?.units_per_cm ?? null;
+  return u !== null && Number.isFinite(u) && u > 0 ? u : null;
+}
+
+/** Where a value falls on her axis, in sheet cm, or null when she chose no usable scale. */
 function onAxis(value: number, axis: OhmsLawAxis): number | null {
-  if (axis.units_per_cm === null || axis.units_per_cm === 0) return null;
-  return (value - axis.origin_value) / axis.units_per_cm;
+  const u = scaleOf(axis);
+  return u === null ? null : (value - axis.origin_value) / u;
+}
+
+/**
+ * The most rows that can each be given their own plotted point (maximum bipartite matching,
+ * by augmenting paths). Deterministic: rows and points are tried in the order she wrote them.
+ */
+function maxMatching(fits: boolean[][], pointCount: number): number {
+  const owner: Array<number | null> = Array.from({ length: pointCount }, () => null);
+  const tryRow = (row: number, seen: boolean[]): boolean => {
+    for (let p = 0; p < pointCount; p++) {
+      if (!fits[row]?.[p] || seen[p]) continue;
+      seen[p] = true;
+      const prev = owner[p] ?? null;
+      if (prev === null || tryRow(prev, seen)) {
+        owner[p] = row;
+        return true;
+      }
+    }
+    return false;
+  };
+  let n = 0;
+  for (let row = 0; row < fits.length; row++) {
+    if (
+      tryRow(
+        row,
+        Array.from({ length: pointCount }, () => false),
+      )
+    )
+      n += 1;
+  }
+  return n;
+}
+
+/**
+ * Her triangle as a right-angled triangle with one horizontal and one vertical leg (each
+ * within TRIANGLE_AXIS_TOLERANCE_CM), or null. Returns the legs and the two hypotenuse corners.
+ */
+function rightTriangle(corners: Pt[]): { legX: number; legY: number; hyp: [Pt, Pt] } | null {
+  const tol = TRIANGLE_AXIS_TOLERANCE_CM + 1e-9;
+  for (let c = 0; c < 3; c++) {
+    const C = corners[c];
+    const others = corners.filter((_, i) => i !== c);
+    const [P, Q] = others;
+    if (!C || !P || !Q) continue;
+    for (const [A, B] of [
+      [P, Q],
+      [Q, P],
+    ] as const) {
+      // A along the horizontal leg from C, B along the vertical leg.
+      if (Math.abs(A.y - C.y) <= tol && Math.abs(B.x - C.x) <= tol) {
+        const legX = Math.abs(A.x - C.x);
+        const legY = Math.abs(B.y - C.y);
+        if (legX > tol && legY > tol) return { legX, legY, hyp: [A, B] };
+      }
+    }
+  }
+  return null;
+}
+
+/** Perpendicular distance from a point to the infinite line through p1 and p2 (sheet cm). */
+function distanceToLine(p: Pt, p1: Pt, p2: Pt): number {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return Number.POSITIVE_INFINITY;
+  return Math.abs(dx * (p1.y - p.y) - dy * (p1.x - p.x)) / len;
 }
 
 /** Marks her Ohm's-law record (DRAFT scheme). Pure: the same record always gives the same sheet. */
@@ -271,8 +349,14 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
   );
 
   // ---- PHYS-2DP: I and V each to at least 2 d.p. in at least five rows (1 each). ----
+  // The d.p. are counted in A and V: with an mA (or mV) heading, "710" is 0.710 A, so the
+  // d.p. in A are the d.p. she wrote plus 3. Her units stay as she wrote them.
   for (const q of ["I", "V"] as const) {
-    const fails = record.rows.filter((r) => (decimalPlaces(r[q].text_as_written) ?? 0) < 2);
+    const extraDp = isMilli(h[q]) ? 3 : 0;
+    const fails = record.rows.filter((r) => {
+      const dp = decimalPlaces(r[q].text_as_written);
+      return dp === null || dp + extraDp < 2;
+    });
     const passes = record.rows.length - fails.length;
     const ok = passes >= MIN_ROWS;
     const firstFail = fails[0];
@@ -361,17 +445,33 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
     "I (A)",
     SRC.y2023,
   );
-  const labelHasUnit = (label: string | null) => hasAmpere(label) || hasVolt(label);
-  const axisUnits = g !== null && labelHasUnit(xLabel) && labelHasUnit(yLabel);
+  // Each unit belongs to its own quantity: the I axis needs an ampere unit, the V axis a volt
+  // unit, and the two axes must be different quantities. An unlabelled quantity is taken as
+  // the question's for that axis (I across, V up). "V/V" on both axes does not earn it.
+  const qx = quantityOf(xLabel) ?? "I";
+  const qy = quantityOf(yLabel) ?? "V";
+  const unitFits = (label: string | null, q: "I" | "V") =>
+    q === "I" ? hasAmpere(label) : hasVolt(label);
+  const yUnitOk = unitFits(yLabel, qy);
+  const xUnitOk = unitFits(xLabel, qx);
+  const axisUnits = g !== null && qx !== qy && xUnitOk && yUnitOk;
   s.add(
     "GRAPH-AXES:units",
     "GRAPH-AXES",
     axisUnits ? 0.5 : 0,
     0.5,
-    [ev(!labelHasUnit(yLabel) ? yLabel : xLabel)],
+    [ev(!yUnitOk ? yLabel : xLabel)],
     "underline",
-    "Both axis labels need their units: V (V) and I (A).",
-    !labelHasUnit(yLabel) ? "V (V)" : !labelHasUnit(xLabel) ? "I (A)" : null,
+    "Each axis label needs its own quantity's unit: V (V) and I (A).",
+    !yUnitOk
+      ? qy === "I"
+        ? "I (A)"
+        : "V (V)"
+      : !xUnitOk
+        ? qx === "V"
+          ? "V (V)"
+          : "I (A)"
+        : null,
     SRC.y2023,
   );
 
@@ -382,7 +482,7 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
   const spanX = span(pts.map((p) => p.x));
   const spanY = span(pts.map((p) => p.y));
   const scaleOk = (axis: OhmsLawAxis | undefined, used: number, size: number) =>
-    axis !== undefined && axis.units_per_cm !== null && used + 1e-9 >= GRAPH_SHEET_SHARE * size;
+    scaleOf(axis) !== null && used + 1e-9 >= GRAPH_SHEET_SHARE * size;
   s.add(
     "GRAPH-SCALE:x",
     "GRAPH-SCALE",
@@ -408,25 +508,24 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   // GRAPH-POINTS (1½): each of her rows, placed on her own scales, has a plotted point within
   // half a small square. The axes she labelled decide which column goes where; unlabelled
-  // axes are taken as the question's (I across, V up). Each point stands for one row only.
+  // axes are taken as the question's (I across, V up). Each point stands for one row only,
+  // and rows are paired with points to match as many as possible (two close rows cannot
+  // steal each other's point).
   const swapped = quantityOf(xLabel) === "V" && quantityOf(yLabel) === "I";
-  const unused = [...pts];
   let matched = 0;
   if (g) {
-    for (const row of complete) {
+    const fits = complete.map((row) => {
       const ex = onAxis(swapped ? row.V : row.I, g.x);
       const ey = onAxis(swapped ? row.I : row.V, g.y);
-      if (ex === null || ey === null) continue;
-      const k = unused.findIndex(
+      return pts.map(
         (p) =>
+          ex !== null &&
+          ey !== null &&
           Math.abs(p.x - ex) <= POINT_TOLERANCE_CM + 1e-9 &&
           Math.abs(p.y - ey) <= POINT_TOLERANCE_CM + 1e-9,
       );
-      if (k !== -1) {
-        unused.splice(k, 1);
-        matched += 1;
-      }
-    }
+    });
+    matched = maxMatching(fits, pts.length);
   }
   const pointMarks = matched >= MIN_ROWS ? 1.5 : matched === 4 ? 1 : matched === 3 ? 0.5 : 0;
   s.add(
@@ -472,15 +571,28 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   // GRAPH-SLOPE (2½): a large triangle (1); her ΔV and ΔI agree with its legs on her scales
   // (½); s = her ΔV ÷ her ΔI (½); s carries the unit Ω (½).
+  // "Large" needs a real right-angled triangle (one horizontal and one vertical leg, not
+  // degenerate) whose two hypotenuse corners sit on her drawn line, and legs at least half
+  // the line's extent each way. Reading and value are judged against the triangle she drew
+  // wherever it is (error carried forward).
   const tri = g?.triangle ?? null;
-  const triXs = tri ? [tri.p1.x_cm, tri.p2.x_cm, tri.p3.x_cm] : [];
-  const triYs = tri ? [tri.p1.y_cm, tri.p2.y_cm, tri.p3.y_cm] : [];
-  const legX = span(triXs);
-  const legY = span(triYs);
-  const lineSpanX = line ? Math.abs(line.p2.x_cm - line.p1.x_cm) : spanX;
-  const lineSpanY = line ? Math.abs(line.p2.y_cm - line.p1.y_cm) : spanY;
+  const corners: Pt[] = tri ? [tri.p1, tri.p2, tri.p3].map((p) => ({ x: p.x_cm, y: p.y_cm })) : [];
+  const right = tri ? rightTriangle(corners) : null;
+  const legX = right ? right.legX : span(corners.map((p) => p.x));
+  const legY = right ? right.legY : span(corners.map((p) => p.y));
+  const lineP1 = line ? { x: line.p1.x_cm, y: line.p1.y_cm } : null;
+  const lineP2 = line ? { x: line.p2.x_cm, y: line.p2.y_cm } : null;
+  const onLine =
+    right !== null &&
+    lineP1 !== null &&
+    lineP2 !== null &&
+    right.hyp.every(
+      (p) => distanceToLine(p, lineP1, lineP2) <= TRIANGLE_ON_LINE_TOLERANCE_CM + 1e-9,
+    );
+  const lineSpanX = line ? Math.abs(line.p2.x_cm - line.p1.x_cm) : 0;
+  const lineSpanY = line ? Math.abs(line.p2.y_cm - line.p1.y_cm) : 0;
   const large =
-    tri !== null &&
+    onLine &&
     lineSpanX > 0 &&
     lineSpanY > 0 &&
     legX + 1e-9 >= LARGE_TRIANGLE_SHARE * lineSpanX &&
@@ -499,14 +611,24 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   const dyWritten = g ? lastNumber(g.delta_y_as_written) : null;
   const dxWritten = g ? lastNumber(g.delta_x_as_written) : null;
-  const readOk = (written: number | null, legCm: number, axis: OhmsLawAxis | undefined) =>
-    written !== null &&
-    axis !== undefined &&
-    axis.units_per_cm !== null &&
-    Math.abs(Math.abs(written) - legCm * Math.abs(axis.units_per_cm)) <=
-      SLOPE_READ_TOLERANCE_CM * Math.abs(axis.units_per_cm) + 1e-9;
+  // Her Δ in her axis's own unit: "ΔI = 600 mA" on an axis in A is 0.600.
+  const readOk = (
+    written: number | null,
+    deltaText: string | null,
+    legCm: number,
+    axis: OhmsLawAxis | undefined,
+  ) => {
+    const u = scaleOf(axis);
+    if (written === null || u === null) return false;
+    const axisFactor = isMilli(axis?.label_as_written ?? null) ? 1e-3 : 1;
+    const inAxisUnits = (written * prefixFactor(deltaText)) / axisFactor;
+    return Math.abs(Math.abs(inAxisUnits) - legCm * u) <= SLOPE_READ_TOLERANCE_CM * u + 1e-9;
+  };
   const deltasOk =
-    tri !== null && g !== null && readOk(dyWritten, legY, g.y) && readOk(dxWritten, legX, g.x);
+    tri !== null &&
+    g !== null &&
+    readOk(dyWritten, g.delta_y_as_written, legY, g.y) &&
+    readOk(dxWritten, g.delta_x_as_written, legX, g.x);
   s.add(
     "GRAPH-SLOPE:read",
     "GRAPH-SLOPE",
@@ -521,12 +643,16 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   const slopeText = g?.slope_as_written ?? null;
   const sWritten = lastNumber(slopeText);
+  // In SI units: "3.0 kΩ" is 3000 Ω; "ΔI = 600 mA" is 0.600 A.
+  const sSi = sWritten !== null ? sWritten * prefixFactor(slopeText) : null;
+  const dySi = dyWritten !== null ? dyWritten * prefixFactor(g?.delta_y_as_written ?? null) : null;
+  const dxSi = dxWritten !== null ? dxWritten * prefixFactor(g?.delta_x_as_written ?? null) : null;
   const slopeOk =
-    sWritten !== null &&
-    dyWritten !== null &&
-    dxWritten !== null &&
-    dxWritten !== 0 &&
-    rel(Math.abs(sWritten), Math.abs(dyWritten / dxWritten)) <= SLOPE_MATCH;
+    sSi !== null &&
+    dySi !== null &&
+    dxSi !== null &&
+    dxSi !== 0 &&
+    rel(Math.abs(sSi), Math.abs(dySi / dxSi)) <= SLOPE_MATCH;
   s.add(
     "GRAPH-SLOPE:value",
     "GRAPH-SLOPE",
@@ -538,23 +664,33 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
     null,
     SRC.y2023,
   );
+  // With swapped axes her slope is ΔI/ΔV, so its unit is A/V or Ω⁻¹ (error carried forward:
+  // the swap already cost the two GRAPH-AXES half marks).
   const slopeHasOhm = sWritten !== null && slopeHasOhmUnit(slopeText);
+  const slopeUnitOk =
+    sWritten !== null && (swapped ? slopeHasReciprocalOhmUnit(slopeText) : slopeHasOhm);
+  const slopeTrim = (slopeText ?? "").trim();
   s.add(
     "GRAPH-SLOPE:unit",
     "GRAPH-SLOPE",
-    slopeHasOhm ? 0.5 : 0,
+    slopeUnitOk ? 0.5 : 0,
     0.5,
     [ev(slopeText)],
     "underline",
-    "The slope of V against I is a resistance: give s with its unit, Ω.",
-    sWritten !== null && !slopeHasOhm ? `${(slopeText ?? "").trim()} Ω` : null,
+    swapped
+      ? "Your slope is ΔI ÷ ΔV, so give it with its unit, A/V."
+      : "The slope of V against I is a resistance: give s with its unit, Ω.",
+    // Only a bare number gets a unit added; a wrong unit she wrote is hers to rewrite.
+    sWritten !== null && !slopeUnitOk && /\d\s*$/.test(slopeTrim)
+      ? `${slopeTrim} ${swapped ? "A/V" : "Ω"}`
+      : null,
     SRC.y2023,
   );
 
-  // PHYS-ACCURACY (1), teacher mode only: her s within ±10% of the teacher's R_XY.
+  // PHYS-ACCURACY (1), teacher mode only: her s (in Ω) within ±10% of the teacher's R_XY.
   const teacherXyOhm = opts.teacherXyOhm ?? null;
   if (teacherMode && teacherXyOhm !== null && Number.isFinite(teacherXyOhm) && teacherXyOhm > 0) {
-    const ok = sWritten !== null && slopeHasOhm && rel(sWritten, teacherXyOhm) <= ACCURACY_BAND;
+    const ok = sSi !== null && slopeHasOhm && rel(sSi, teacherXyOhm) <= ACCURACY_BAND;
     s.add(
       "PHYS-ACCURACY",
       "PHYS-ACCURACY",
@@ -570,9 +706,10 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   // ---- PRECAUTIONS (2): any two from the V–I list, in the reported tense, 1 each. ----
   // Tight, clean connections and firmly pushed-in plugs are one idea (good contact), so the
-  // two together earn one mark (Oct 28 lesson review, P2/P7).
+  // two together earn one mark (Oct 28 lesson review, P2/P7). Likewise "current was not
+  // allowed to flow for long" is the purpose of opening the key, so it shares its mark.
   const idea = (id: PrecautionId): PrecautionId =>
-    id === "plugs_firm" ? "tight_clean_connections" : id;
+    id === "plugs_firm" ? "tight_clean_connections" : id === "current_brief" ? "key_opened" : id;
   const judged: Array<{ text: string; j: PrecautionJudgement }> = record.precautions.map(
     (text) => ({ text, j: judgePrecaution(text, "ohms_law_vi") }),
   );
@@ -613,8 +750,15 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
   const named = /\bohm'?s?\s+law\b/.test(lawT);
   const mentionsCurrent = /\bcurrent\b|\bi\b/.test(lawT);
   const mentionsPd = /\b(potential difference|p\.?\s*d\.?|voltage)\b|\bv\b/.test(lawT);
-  const proportional = /\b(directly\s+)?proportional\b|∝/.test(lawT) && !/\binversely\b/.test(lawT);
-  const stated = mentionsCurrent && mentionsPd && proportional;
+  // A direct proportion somewhere, and current and p.d. not said to be inversely proportional.
+  // "…and inversely proportional to its resistance" is a true addition, not an error.
+  const direct = /(?<!\binversely\s+)\bproportional\b|∝/.test(lawT);
+  const CUR = "(?:current|i)";
+  const PD = String.raw`(?:potential difference|p\.?\s*d\.?|voltage|v)`;
+  const inverseIV = new RegExp(
+    String.raw`\b${CUR}\b[^,;]*?\binversely\s+proportional\s+to\s+(?:the\s+)?${PD}(?![a-z])|\b${PD}(?![a-z])[^,;]*?\binversely\s+proportional\s+to\s+(?:the\s+)?${CUR}\b`,
+  ).test(lawT);
+  const stated = mentionsCurrent && mentionsPd && direct && !inverseIV;
   const condition =
     /\b(temperature|physical conditions?)\b/.test(lawT) &&
     /\b(constant|unchanged|the same|remains?|kept|fixed|steady)\b/.test(lawT);
@@ -684,7 +828,17 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
     "Work out the cross-sectional area first: A = πd²/4, with d in metres.",
     "A = πd²/4",
   );
-  const finalSeg = (calc ?? "").split(/[=\n]/).at(-1)?.trim() ?? "";
+  // Her answer: the last non-empty "=" or line segment, without a trailing note in brackets
+  // ("= 0.25 m (2 s.f.)") or a trailing line break.
+  const finalSeg =
+    (calc ?? "")
+      .trimEnd()
+      .split(/[=\n]/)
+      .map((seg) => seg.trim())
+      .filter((seg) => seg.length > 0)
+      .at(-1)
+      ?.replace(/\s*\([^()]*\)\s*$/, "")
+      .trim() ?? "";
   const finalValue = lastNumber(finalSeg);
   const unitMatch = finalSeg.match(
     /(?<![a-zA-Z])(cm|mm|m|metres?|meters?|centimetres?|centimeters?|millimetres?|millimeters?)\.?\s*$/i,
@@ -739,6 +893,7 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 /** The reported-tense rewrite the red ink offers for an instruction, per topic. */
 const REPORTED: Record<string, string> = {
   key_opened: "The key was opened between readings.",
+  current_brief: "Current was not allowed to flow for long.",
   tight_clean_connections: "The connections were tight and the terminals clean.",
   plugs_firm: "The plugs of the resistance box were pushed in firmly.",
   wire_straight: "The wire XY was kept straight.",
@@ -755,6 +910,27 @@ export function slopeHasOhmUnit(text: string | null): boolean {
   if (!text) return false;
   const t = text.trim();
   if (/(Ω|ohms?)\s*(⁻¹|\^?\s*-\s*1)/i.test(t)) return false;
-  if (/(?<![a-z])(Ω|ohms?)(?![a-z])/i.test(t)) return true;
+  if (/(?<![a-z])k?(Ω|ohms?)(?![a-z])/i.test(t)) return true;
   return /(?<![a-z])V\s*(\/\s*A|A\s*(⁻¹|\^?\s*-\s*1))(?![a-z])/.test(t);
+}
+
+/** The reciprocal of a resistance, for a slope of I against V: "0.33 A/V", "0.33 Ω⁻¹". */
+export function slopeHasReciprocalOhmUnit(text: string | null): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  return (
+    /(Ω|ohms?)\s*(⁻¹|\^?\s*-\s*1)/i.test(t) ||
+    /(?<![a-z])A\s*(\/\s*V|V\s*(⁻¹|\^?\s*-\s*1))(?![a-z])/.test(t)
+  );
+}
+
+/**
+ * The SI factor of the unit written after her last number: "kΩ" → 1000, "mA"/"mV" → 0.001,
+ * anything else → 1.
+ */
+function prefixFactor(text: string | null): number {
+  const t = (text ?? "").trim();
+  if (/(?<![a-zA-Z])k(Ω|ohms?)\s*$/i.test(t)) return 1e3;
+  if (/(?<![a-zA-Z])m[AV]\s*$/.test(t)) return 1e-3;
+  return 1;
 }

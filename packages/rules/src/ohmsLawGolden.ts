@@ -9,7 +9,7 @@
 import type { Measured, OhmsLawGraph, OhmsLawRecord } from "@snaplab/contracts";
 
 const m = (text: string): Measured => ({
-  value: Number.isFinite(Number(text)) ? Number(text) : null,
+  value: text.trim() !== "" && Number.isFinite(Number(text)) ? Number(text) : null,
   unit_as_written: null,
   text_as_written: text,
 });
@@ -168,4 +168,22 @@ export const OHMS_CALC_NO_UNIT: OhmsLawRecord = {
   ...OHMS_GOOD,
   length_calc_as_written:
     "A = πd²/4 = (22/7 × (0.2 × 10⁻³)²)/4 = 3.143 × 10⁻⁸ m²\nL = RA/ρ = (7 × 3.143 × 10⁻⁸)/(8.8 × 10⁻⁷) = 0.25",
+};
+
+/**
+ * The good triangle moved 3 cm up, off her line (its hypotenuse corners are 1.7 cm from it).
+ * Its legs are still 12 cm and 18 cm, read correctly as 0.60 A and 1.80 V.
+ */
+export const OHMS_TRIANGLE_OFF_LINE: OhmsLawRecord = withGraph({
+  triangle: {
+    p1: { x_cm: 2, y_cm: 6 },
+    p2: { x_cm: 14, y_cm: 6 },
+    p3: { x_cm: 14, y_cm: 24 },
+  },
+});
+
+/** Five complete rows (R = 0 to 20 Ω) and two rows with R written but I and V left blank. */
+export const OHMS_FIVE_PLUS_BLANK: OhmsLawRecord = {
+  ...withGraph({ points: pointsFor(GOOD_ROWS.slice(0, 5)) }),
+  rows: rows([...GOOD_ROWS.slice(0, 5), ["40", "", ""], ["60", "", ""]]),
 };

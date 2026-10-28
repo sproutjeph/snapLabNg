@@ -305,8 +305,11 @@ function ohmsLawExaminerQuestions(sheet: MarkSheet, max: number): PickedQuestion
   const mistakes: Array<[BankQuestion, string | null | undefined]> = [
     [OHMS_LAW_QUESTIONS.tense, wrongTense && written(wrongTense)],
     [OHMS_LAW_QUESTIONS.twoDp, mapLost(byId("PHYS-2DP:I", "PHYS-2DP:V"), written)],
-    [OHMS_LAW_QUESTIONS.oneDp, mapLost(byRule("PHYS-1DP"), written)],
-    [OHMS_LAW_QUESTIONS.units, mapLost(byId("PHYS-TABLE:units-R", "PHYS-2DP:units"), written)],
+    [OHMS_LAW_QUESTIONS.oneDp, mapLost(byId("PHYS-1DP:xy"), written)],
+    [
+      OHMS_LAW_QUESTIONS.units,
+      mapLost(byId("PHYS-1DP:xy-unit", "PHYS-TABLE:units-R", "PHYS-2DP:units"), written),
+    ],
     [OHMS_LAW_QUESTIONS.axes, mapLost(byId("GRAPH-AXES:x", "GRAPH-AXES:y"), written)],
     [OHMS_LAW_QUESTIONS.slope, mapLost(byRule("GRAPH-SLOPE"), written)],
     [OHMS_LAW_QUESTIONS.trend, mapLost(byRule("PHYS-TREND"), written)],
