@@ -119,7 +119,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
   - Series circuit and Ohm's law values (Nelkon & Parker, *Advanced Level Physics*; Anyakoha, *New School Physics*).
   - Polarity sign.
   - Ammeter across XY with the loop closed by a lead at R = 0: over range, short-circuit flag, and the cells drain faster.
-  - Voltmeter in series: I ≈ 1.07 mA, and the voltmeter itself reads at or past full scale (pinned at the top).
+  - Voltmeter in series: I ≈ 1.07 mA, and the voltmeter reads ≈ the emf, at or past full scale.
   - Open loop: zero everywhere.
   - Loose joint: the reading flickers but stays deterministic for one seed.
   - V/I equals R_XY ∥ R_V within 1 % for all 7 R values, and the intercept is ≈ 0.
@@ -143,7 +143,7 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
   - The dial is painted from `fullScale` and `division`, with major numbers, so 0–1 A in 0.02 A divisions and 0–3 V in 0.05 V divisions.
   - A mirror strip under the scale, a black knife-edge needle *above* the dial (so parallax is real), a zero-adjust screw, red + on the right and black − on the left, and "A" or "V" on the face.
   - The needle angle is read from the readout; the slam gives a small shake.
-- **Resistance box:** wraps `PlugBox` (`width` for 8 coils) with labels 1, 2, 2, 5, 10, 20, 20, 50 Ω and R1/R2 nuts. It shows plugs out only; it never shows an "R =" readout.
+- **Resistance box:** rebuilt from the metre bridge's `PlugBox` dimensions (matte, ink-tagged, instanced plugs; 0.30 m wide for 8 coils) with labels 1, 2, 2, 5, 10, 20, 20, 50 Ω and R1/R2 nuts. It shows plugs out only; it never shows an "R =" readout.
 
 **Slot 4: apparatus 2**
 - **Wire board:**
