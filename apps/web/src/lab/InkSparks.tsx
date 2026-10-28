@@ -2,13 +2,19 @@ import { useFrame } from "@react-three/fiber";
 import type { Box, ComponentKind } from "@snaplab/contracts";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { NO_INK } from "../scene/ink/inkPass";
+import { INK_HEX } from "../scene/ink/palette";
 import { KIT_ANCHORS, type pageLayout, pageToWorld } from "./layout";
 import { ease, type RevealPhases } from "./reveal";
 
-const SPARK_SIZE_M = 0.0028;
+/** A pen stroke in flight: its longest length and its width, in metres. */
+const STROKE_LENGTH_M = 0.016;
+const STROKE_WIDTH_M = 0.0011;
 const ARC_HEIGHT_M = 0.22;
+/** A few strokes per part read as pen work; many read as spatter. */
+const MAX_PER_PART = 9;
 
-/** A fixed pseudo-random sequence: the same page always gets the same sparks. */
+/** A fixed pseudo-random sequence: the same page always gets the same strokes. */
 function seeded(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -22,8 +28,12 @@ export interface DrawnPart {
   box: Box;
 }
 
+const UP = new THREE.Vector3(0, 1, 0);
+
 /**
- * Sparks of ink lift off each part she drew and fly to where that part stands on the bench.
+ * Short pen strokes lift off each part she drew and arc to where that part stands on the
+ * bench, where its outline is drawing on: each one lies along its path, stretches out in
+ * flight and shrinks into the part. Flat ink, opaque and unlit, kept out of the ink pass.
  * Every path is laid out once; the render loop only writes instance matrices.
  */
 export function InkSparks({
@@ -41,9 +51,11 @@ export function InkSparks({
 
   const paths = useMemo(() => {
     const flying = parts.filter((p) => KIT_ANCHORS[p.kind]);
-    const per = flying.length ? Math.max(4, Math.floor(maxSparks / flying.length)) : 0;
+    const per = flying.length
+      ? Math.min(MAX_PER_PART, Math.max(3, Math.floor(maxSparks / flying.length)))
+      : 0;
     const count = per * flying.length;
-    // Per spark: start xyz, control xyz, end xyz, delay.
+    // Per stroke: start xyz, control xyz, end xyz, delay.
     const data = new Float32Array(count * 10);
     const rand = seeded(7);
     let k = 0;
@@ -74,14 +86,9 @@ export function InkSparks({
 
   const { geometry, material } = useMemo(
     () => ({
-      geometry: new THREE.IcosahedronGeometry(1, 0),
-      material: new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0.4, 1.6, 2.4),
-        toneMapped: false,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
+      geometry: new THREE.BoxGeometry(1, 1, 1),
+      // Flat pen ink, opaque: a stroke of ink, not a light.
+      material: new THREE.MeshBasicMaterial({ color: new THREE.Color(INK_HEX) }),
     }),
     [],
   );
@@ -93,7 +100,16 @@ export function InkSparks({
     [geometry, material],
   );
 
-  const tmp = useMemo(() => ({ m: new THREE.Matrix4() }), []);
+  const tmp = useMemo(
+    () => ({
+      m: new THREE.Matrix4(),
+      pos: new THREE.Vector3(),
+      dir: new THREE.Vector3(),
+      scale: new THREE.Vector3(),
+      q: new THREE.Quaternion(),
+    }),
+    [],
+  );
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -117,13 +133,29 @@ export function InkSparks({
       const a = (1 - t) * (1 - t);
       const b = 2 * (1 - t) * t;
       const c = t * t;
-      const size = SPARK_SIZE_M * Math.sin(Math.PI * local);
-      tmp.m.makeScale(size, size, size);
-      tmp.m.setPosition(
-        a * (d[o] ?? 0) + b * (d[o + 3] ?? 0) + c * (d[o + 6] ?? 0),
-        a * (d[o + 1] ?? 0) + b * (d[o + 4] ?? 0) + c * (d[o + 7] ?? 0),
-        a * (d[o + 2] ?? 0) + b * (d[o + 5] ?? 0) + c * (d[o + 8] ?? 0),
+      const x0 = d[o] ?? 0;
+      const y0 = d[o + 1] ?? 0;
+      const z0 = d[o + 2] ?? 0;
+      const x1 = d[o + 3] ?? 0;
+      const y1 = d[o + 4] ?? 0;
+      const z1 = d[o + 5] ?? 0;
+      const x2 = d[o + 6] ?? 0;
+      const y2 = d[o + 7] ?? 0;
+      const z2 = d[o + 8] ?? 0;
+      tmp.pos.set(a * x0 + b * x1 + c * x2, a * y0 + b * y1 + c * y2, a * z0 + b * z1 + c * z2);
+      // The path's tangent: the stroke lies along its flight.
+      tmp.dir.set(
+        (1 - t) * (x1 - x0) + t * (x2 - x1),
+        (1 - t) * (y1 - y0) + t * (y2 - y1),
+        (1 - t) * (z1 - z0) + t * (z2 - z1),
       );
+      if (tmp.dir.lengthSq() < 1e-12) tmp.dir.copy(UP);
+      else tmp.dir.normalize();
+      tmp.q.setFromUnitVectors(UP, tmp.dir);
+      const env = Math.sin(Math.PI * local);
+      const w = STROKE_WIDTH_M * Math.min(1, env * 3);
+      tmp.scale.set(w, STROKE_LENGTH_M * env, w);
+      tmp.m.compose(tmp.pos, tmp.q, tmp.scale);
       mesh.setMatrixAt(i, tmp.m);
     }
     mesh.instanceMatrix.needsUpdate = true;
@@ -136,6 +168,7 @@ export function InkSparks({
       ref={meshRef}
       args={[geometry, material, paths.count]}
       frustumCulled={false}
+      userData={{ [NO_INK]: true }}
     />
   );
 }

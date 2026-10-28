@@ -9,8 +9,11 @@ import { INK_THICKNESS_PX } from "./InkEffect";
 /** How often new meshes (a kit that mounts late, a lead the student adds) are picked up. */
 const SCAN_S = 0.5;
 
-/** Adds and keeps ink hulls on every inkable mesh of the scene while `enabled`. */
-export function useInkHulls(enabled: boolean): void {
+/**
+ * Adds and keeps ink hulls on every inkable mesh of the scene while `enabled`. `reveal` (0 → 1)
+ * draws them on with the outline effect's sweep; omitted means fully drawn.
+ */
+export function useInkHulls(enabled: boolean, reveal?: { current: number }): void {
   const scene = useThree((s) => s.scene);
   const hulls = useMemo(() => createHullRegistry(INK_THICKNESS_PX), []);
 
@@ -26,6 +29,7 @@ export function useInkHulls(enabled: boolean): void {
     if (!enabled) return;
     frame.gl.getDrawingBufferSize(hulls.shared.inkResolution.value);
     hulls.shared.inkWidth.value = INK_THICKNESS_PX * frame.gl.getPixelRatio();
+    hulls.shared.inkReveal.value = reveal ? Math.min(1, Math.max(0, reveal.current)) : 1;
     hulls.timer -= delta;
     if (hulls.timer <= 0) {
       hulls.timer = SCAN_S;

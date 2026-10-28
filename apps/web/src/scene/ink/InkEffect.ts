@@ -1,7 +1,9 @@
 import { Effect, EffectAttribute } from "postprocessing";
 import * as THREE from "three";
 import inkEdgesFrag from "./ink-edges.frag.glsl?raw";
+import inkSweepGlsl from "./ink-sweep.glsl?raw";
 import { InkIdPass } from "./inkPass";
+import { inkSweepUniforms } from "./inkSweep";
 import { INK_HEX } from "./palette";
 
 /** Line width in CSS pixels, scaled by the device pixel ratio. */
@@ -19,12 +21,16 @@ export const INK_OPACITY = 0.92;
  * The ink outline as a postprocessing Effect (high and mid tiers). It reads the composer's
  * depth texture (EffectAttribute.DEPTH) and, in `update()`, draws its own ink-ID target at
  * `scale` × the drawing-buffer size with the ID materials of inkPass.ts. The fragment
- * shader samples both in 8 directions. Uniforms are made once; `update()` allocates nothing.
+ * shader samples both in 8 directions. While `reveal` < 1 the lines show only where the
+ * draw-on sweep (ink-sweep.glsl) has passed, found from each pixel's world position.
+ * Uniforms are made once; `update()` allocates nothing.
  */
 export class InkEffect extends Effect {
   /** 0 → 1: how much of the ink is drawn. Written per frame by InkComposer. */
   readonly reveal: THREE.Uniform<number>;
   private readonly radius: THREE.Uniform<number>;
+  private readonly projInverse: THREE.Uniform<THREE.Matrix4>;
+  private readonly cameraWorld: THREE.Uniform<THREE.Matrix4>;
   private readonly scale: number;
   private readonly scene: THREE.Scene;
   private camera: THREE.Camera;
@@ -34,6 +40,9 @@ export class InkEffect extends Effect {
   constructor(scene: THREE.Scene, camera: THREE.Camera, scale: number) {
     const reveal = new THREE.Uniform(1);
     const radius = new THREE.Uniform(INK_THICKNESS_PX);
+    // For the draw-on sweep: a pixel's world position from its depth.
+    const projInverse = new THREE.Uniform(new THREE.Matrix4());
+    const cameraWorld = new THREE.Uniform(new THREE.Matrix4());
     const inkTarget = new THREE.WebGLRenderTarget(1, 1, {
       type: THREE.HalfFloatType,
       // Linear: at 0.75× (mid) nearest texels made the normals blocky and creases speckle on
@@ -45,7 +54,7 @@ export class InkEffect extends Effect {
       generateMipmaps: false,
     });
     inkTarget.texture.name = "Ink.ID";
-    super("InkEffect", inkEdgesFrag, {
+    super("InkEffect", `${inkSweepGlsl}\n${inkEdgesFrag}`, {
       attributes: EffectAttribute.DEPTH,
       uniforms: new Map<string, THREE.Uniform>([
         ["inkColour", new THREE.Uniform(new THREE.Color(INK_HEX))],
@@ -56,10 +65,16 @@ export class InkEffect extends Effect {
         ["depthThreshold", new THREE.Uniform(INK_DEPTH_THRESHOLD)],
         ["creaseThreshold", new THREE.Uniform(INK_CREASE_THRESHOLD)],
         ["thinAlpha", new THREE.Uniform(INK_THIN_ALPHA)],
+        ["inkProjInverse", projInverse],
+        ["inkCameraWorld", cameraWorld],
+        ["inkSweepOrigin", inkSweepUniforms.inkSweepOrigin],
+        ["inkSweepReach", inkSweepUniforms.inkSweepReach],
       ]),
     });
     this.reveal = reveal;
     this.radius = radius;
+    this.projInverse = projInverse;
+    this.cameraWorld = cameraWorld;
     this.scale = scale;
     this.scene = scene;
     this.camera = camera;
@@ -74,6 +89,9 @@ export class InkEffect extends Effect {
   override update(renderer: THREE.WebGLRenderer): void {
     // One full line width, on the far side of an edge; device pixels, so lines keep their CSS width.
     this.radius.value = INK_THICKNESS_PX * renderer.getPixelRatio();
+    // The scene pass has just rendered, so the camera's matrices are this frame's.
+    this.projInverse.value.copy(this.camera.projectionMatrixInverse);
+    this.cameraWorld.value.copy(this.camera.matrixWorld);
     this.idPass.render(renderer, this.scene, this.camera, this.inkTarget);
   }
 

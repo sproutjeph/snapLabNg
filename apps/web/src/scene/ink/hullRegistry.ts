@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { readInk } from "./ink";
 import fragmentShader from "./ink-hull.frag.glsl?raw";
 import vertexShader from "./ink-hull.vert.glsl?raw";
+import inkSweepGlsl from "./ink-sweep.glsl?raw";
 import { skipsInk } from "./inkPass";
+import { inkSweepUniforms } from "./inkSweep";
 import { INK_HEX, PAPER_HEX } from "./palette";
 
 // Low-tier ink (docs/plans/ink-look.md): no post pass. Every inkable mesh gets a child "hull"
@@ -18,17 +20,24 @@ export interface HullUniforms {
   [name: string]: THREE.IUniform;
   inkResolution: THREE.IUniform<THREE.Vector2>;
   inkWidth: THREE.IUniform<number>;
+  /** 0 → 1: the draw-on sweep (ink-sweep.glsl); 1 is fully drawn. */
+  inkReveal: THREE.IUniform<number>;
 }
+
+const hullFragment = `${inkSweepGlsl}\n${fragmentShader}`;
 
 function hullMaterial(name: string, colour: THREE.Color, shared: HullUniforms) {
   return new THREE.ShaderMaterial({
     name,
     vertexShader,
-    fragmentShader,
+    fragmentShader: hullFragment,
     uniforms: {
       inkColour: { value: colour },
       inkResolution: shared.inkResolution,
       inkWidth: shared.inkWidth,
+      inkReveal: shared.inkReveal,
+      inkSweepOrigin: inkSweepUniforms.inkSweepOrigin,
+      inkSweepReach: inkSweepUniforms.inkSweepReach,
     },
     side: THREE.BackSide,
     clipping: true,
@@ -181,6 +190,7 @@ export function createHullRegistry(widthPx: number): HullRegistry {
   const shared: HullUniforms = {
     inkResolution: { value: new THREE.Vector2(1, 1) },
     inkWidth: { value: widthPx },
+    inkReveal: { value: 1 },
   };
   const ink = new THREE.Color(INK_HEX);
   const thinInk = new THREE.Color(INK_HEX).lerp(new THREE.Color(PAPER_HEX), 0.5);
