@@ -10,9 +10,9 @@ function drawPage(): CanvasTexture {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    ctx.fillStyle = "#f6f2e6";
+    ctx.fillStyle = "#f8f2e6";
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "rgba(70, 110, 190, 0.35)";
+    ctx.strokeStyle = "rgba(74, 98, 140, 0.32)";
     ctx.lineWidth = 2;
     for (let y = 160; y < H - 40; y += 56) {
       ctx.beginPath();
@@ -20,7 +20,8 @@ function drawPage(): CanvasTexture {
       ctx.lineTo(W, y);
       ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(200, 40, 40, 0.7)";
+    // The margin is pencil grey: red ink is kept for examiner marks.
+    ctx.strokeStyle = "rgba(154, 149, 138, 0.8)";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(130, 0);
@@ -36,9 +37,10 @@ export function Page() {
   const map = useMemo(drawPage, []);
   useEffect(() => () => map.dispose(), [map]);
   return (
-    <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[2.1, 2.97]} />
-      <meshStandardMaterial map={map} roughness={0.9} />
+      {/* Unlit, like the paper desk, so the page keeps its own paper colour. */}
+      <meshBasicMaterial map={map} />
     </mesh>
   );
 }

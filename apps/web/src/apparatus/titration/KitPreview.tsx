@@ -2,7 +2,12 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { parseOverride } from "../../quality/tier";
+import { InkComposer } from "../../scene/ink/InkComposer";
+import { InkLights } from "../../scene/ink/InkLights";
+import { PaperDesk } from "../../scene/ink/PaperDesk";
 import { ReadySignal } from "../../scene/ReadySignal";
+import type { QualityTier } from "../meter-bridge/types";
 import { volumeToY } from "./dimensions";
 import TitrationKit from "./TitrationKit";
 import type { TitrationVisualState } from "./types";
@@ -65,35 +70,8 @@ function PreviewCameraRig({ zoomBurette }: { zoomBurette: boolean }) {
   return null;
 }
 
-function PreviewBench() {
-  const benchRes = useMemo(() => {
-    const geo = new THREE.BoxGeometry(1.4, 0.04, 0.9);
-    const mat = new THREE.MeshStandardMaterial({
-      color: "#2b2118",
-      roughness: 0.78,
-      metalness: 0.04,
-    });
-    return { geo, mat };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      benchRes.geo.dispose();
-      benchRes.mat.dispose();
-    };
-  }, [benchRes]);
-
-  return (
-    <mesh
-      geometry={benchRes.geo}
-      material={benchRes.mat}
-      position={[0, -0.02, -0.02]}
-      receiveShadow
-    />
-  );
-}
-
 interface DemoSceneProps {
+  quality: QualityTier;
   visualRef: { current: TitrationVisualState };
   swirlTimerRef: { current: number };
   zoomBurette: boolean;
@@ -104,6 +82,7 @@ interface DemoSceneProps {
 }
 
 function DemoScene({
+  quality,
   visualRef,
   swirlTimerRef,
   zoomBurette,
@@ -163,22 +142,10 @@ function DemoScene({
 
   return (
     <>
-      <color attach="background" args={["#0f172a"]} />
-      <hemisphereLight args={["#f8fafc", "#3f2e21", 0.95]} />
-      <directionalLight
-        position={[1.1, 2.0, 1.5]}
-        intensity={2.1}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-0.8}
-        shadow-camera-right={0.8}
-        shadow-camera-top={1.2}
-        shadow-camera-bottom={-0.2}
-      />
-      <directionalLight position={[-1.0, 1.3, -0.9]} intensity={0.85} />
+      <InkLights quality={quality} />
       <PreviewCameraRig zoomBurette={zoomBurette} />
       <OrbitControls target={[0, zoomBurette ? ZOOM_BURETTE_TARGET_Y : TARGET_Y, 0]} makeDefault />
-      <PreviewBench />
+      <PaperDesk quality={quality} size={[1.4, 0.9]} y={0} />
       <TitrationKit
         state={visualRef}
         quality="high"
@@ -186,12 +153,14 @@ function DemoScene({
         onSwirl={onSwirl}
         onFunnelToggle={onFunnelToggle}
       />
+      <InkComposer quality={quality} />
       <ReadySignal />
     </>
   );
 }
 
 export default function KitPreview() {
+  const quality: QualityTier = parseOverride(location.search) ?? "high";
   const zoomBurette = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("zoom") === "burette";
@@ -250,11 +219,12 @@ export default function KitPreview() {
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <Canvas
         shadows="percentage"
-        dpr={[1, 2]}
+        dpr={quality === "low" ? 1 : [1, 2]}
         gl={{ antialias: true }}
         camera={{ fov: 38, position: [0.14, TARGET_Y + 0.12, BASE_DIST], near: 0.02, far: 20 }}
       >
         <DemoScene
+          quality={quality}
           visualRef={visualRef}
           swirlTimerRef={swirlTimerRef}
           zoomBurette={zoomBurette}
