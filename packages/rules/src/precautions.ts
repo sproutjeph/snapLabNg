@@ -8,7 +8,13 @@ export type PrecautionId =
   | "tight_clean_connections"
   | "parallax_avoided"
   | "zero_error"
-  | "repeated_readings";
+  | "repeated_readings"
+  // Ohm's law (V–I) only, docs/07 §5.2. DRAFT: needs a physics teacher's check.
+  | "plugs_firm"
+  | "wire_straight";
+
+/** Which practical's precaution list to judge against. The metre bridge list is the default. */
+export type PrecautionExperiment = "meter_bridge" | "ohms_law_vi";
 
 /** Dragging words: WAEC penalises sliding the jockey along the wire (2018 Q3A, 2014, 2008). */
 const DRAG =
@@ -34,9 +40,51 @@ const TOPICS: Array<{ id: PrecautionId; test: (t: string) => boolean }> = [
       /\b(tight|tightened|clean|cleaned)\b/.test(t),
   },
   { id: "parallax_avoided", test: (t) => /\bparallax\b/.test(t) || /\beye level\b/.test(t) },
-  { id: "zero_error", test: (t) => /\bzero error\b/.test(t) },
+  // "The zero errors of the meters were corrected" names the same precaution (Oct 28 review).
+  { id: "zero_error", test: (t) => /\bzero errors?\b/.test(t) },
   { id: "repeated_readings", test: (t) => /\b(repeat|repeated)\b/.test(t) },
 ];
+
+function topicById(id: PrecautionId): { id: PrecautionId; test: (t: string) => boolean } {
+  const found = TOPICS.find((x) => x.id === id);
+  if (!found) throw new Error(`unknown precaution topic ${id}`);
+  return found;
+}
+
+/**
+ * The Ohm's-law (V–I) list. DRAFT: needs a physics teacher's check (docs/07 §5.2,
+ * docs/plans/ohms-law-vi.md). No jockey here. "The meters were connected correctly" is
+ * procedure, not a precaution: nothing matches it, so it is not scored. The key topic comes
+ * before the plug topic, so "the plug key was opened" stays the key precaution.
+ */
+const OHMS_LAW_TOPICS: Array<{ id: PrecautionId; test: (t: string) => boolean }> = [
+  topicById("key_opened"),
+  topicById("tight_clean_connections"),
+  {
+    id: "plugs_firm",
+    test: (t) =>
+      /\bplugs?\b/.test(t) &&
+      /\b(firm|firmly|tight|tightly|pushed in|pressed in|secure|securely)\b/.test(t),
+  },
+  {
+    id: "wire_straight",
+    test: (t) => /\bwires?\b/.test(t) && /\b(straight|taut|stretched)\b/.test(t),
+  },
+  {
+    // Parallax at the meter's mirror strip: the pointer read over its own image.
+    id: "parallax_avoided",
+    test: (t) =>
+      topicById("parallax_avoided").test(t) ||
+      (/\bmirror\b/.test(t) && /\b(image|pointer|needle)\b/.test(t)),
+  },
+  topicById("zero_error"),
+  topicById("repeated_readings"),
+];
+
+const TOPICS_FOR: Record<PrecautionExperiment, typeof TOPICS> = {
+  meter_bridge: TOPICS,
+  ohms_law_vi: OHMS_LAW_TOPICS,
+};
 
 /** Starts like an instruction: WAEC wants what was done, not what to do. */
 const IMPERATIVE =
@@ -79,10 +127,16 @@ export function describesDragging(written: string): boolean {
   );
 }
 
-/** Judges one precaution, exactly as written. */
-export function judgePrecaution(written: string): PrecautionJudgement {
+/**
+ * Judges one precaution, exactly as written, against one practical's list (the metre bridge
+ * by default, so its marks are unchanged).
+ */
+export function judgePrecaution(
+  written: string,
+  experiment: PrecautionExperiment = "meter_bridge",
+): PrecautionJudgement {
   const t = normalise(written);
-  const topic = TOPICS.find((x) => x.test(t))?.id ?? null;
+  const topic = TOPICS_FOR[experiment].find((x) => x.test(t))?.id ?? null;
 
   if (IMPERATIVE.test(t)) return { accepted: false, matched: topic, reason: "instruction" };
 
