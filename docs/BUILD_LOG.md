@@ -1,5 +1,9 @@
 # Build log
 
+## Oct 28 (Day 3)
+- New direction (user's choice): an ink-and-paper look for the whole app and a hands-on **Ohm's law (V–I)** practical before the titration engine (`docs/plans/ink-look.md`, `docs/plans/ohms-law-vi.md`). Built in waves by up to four Claude writer subagents in parallel, each in its own git worktree on disjoint paths.
+- Wave 0 (lead): frozen contracts (`ohms_law_vi`, V–I rule codes, `OhmsLawRecord`; the Spark schema unchanged), engine types and stubs, the terminal registry, timeline, ink tags, a stub bench at `?kit=ohms-law`, tokens and self-hosted fonts. The science check caught a wire gauge/length range that didn't match its resistance; the code review caught nested ink tags being overwritten, chained tweens and slams lost between frames.
+
 ## Oct 27 (Day 2)
 - `MarkSheet` contract in `packages/contracts` (the rules engine's output: half-mark items, evidence boxes, annotations, totals that must add up, accuracy only in teacher mode).
 - `/api/snap` (lead): Spark, Wonder and 7 SAM calls in parallel, every answer validated against the contracts, streamed as `SnapEvent`s; offline replay from `fixtures/`; hard spend cap ($20 total, $5/day, $0.18 reserved per snap, aborted or failed stages charged at the reserve); per-IP limit; name/school scrubbed from readings; output-token caps on Spark and Wonder.
