@@ -67,7 +67,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
   - Gemini: `~/Desktop/SnapLabNG-gemini`, a git worktree. The lead creates it with `git worktree add ../SnapLabNG-gemini -b gemini/<feature> origin/main`. Run `bun install` inside it. It has no `.env`, and needs none for client work.
   - Muse Code: `~/Desktop/SnapLabNG-muse`, a git worktree created the same way (`git worktree add ../SnapLabNG-muse -b muse/<feature> origin/main`). Nothing runs Claude's hooks for Muse Code, so the shared git hooks are its guard: check `git config core.hooksPath` prints `.githooks`, and run the four checks yourself before every commit.
   - Claude's parallel writer subagents: worktrees under `.claude/worktrees/`, created by the lead's Agent tool, one `claude/<slice>` branch each. The lead pushes, opens and merges their PRs.
-  - Dev servers must not collide: the lead uses the default port 5173, Gemini 5174, Muse Code 5176 (the lead's reviews use 5175), and the lead's parallel writer slots 5177, 5178, 5179 and 5180. Run `bun run dev --port <yours> --strictPort` inside `apps/web` and screenshot with `bun run shot -- --route "<route>" --base http://localhost:<yours>`.
+  - Dev servers must not collide: the lead uses the default port 5173, Gemini 5174, Muse Code 5176 (the lead's reviews use 5175), and the lead's parallel writer slots 5177, 5178, 5179, 5180 and 5181. Run `bun run dev --port <yours> --strictPort` inside `apps/web` and screenshot with `bun run shot -- --route "<route>" --base http://localhost:<yours>`.
   - Lead reviews: `~/Desktop/SnapLabNG-review`, a throwaway detached worktree of the PR branch, used only to run checks and screenshots, then removed.
   - Never edit files in another agent's folder and never check out its branch.
 - Stay inside the paths your task owns (see "Who owns what"). If you need a change outside them (a dependency, a contract, a shared config), don't make it. Write it in the PR description under "Needs from lead".
@@ -82,10 +82,11 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `packages/engine/src/circuit/**`, `packages/engine/src/ohms-law/**` except `types.ts` (plan: `docs/plans/ohms-law-vi.md`, Wave 1 slot 1) | Claude subagent `circuit-engineer`, while `claude/ohms-engine` is open |
-| `apps/web/src/scene/ink/**`, `scene/{Desk,Page,Scene}.tsx`, the composer/lights of `lab/LabBench.tsx` and of the two existing `KitPreview.tsx`, additive `quality/tier.ts` (plan: `docs/plans/ink-look.md`, Wave 1 slot 2) | Claude subagent `shader-artist`, while `claude/ink-look` is open |
-| `apps/web/src/apparatus/ohms-law/{CellHolder,Key,Meter,ResistanceBox}*.{ts,tsx}` (Wave 1 slot 3) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-1` is open |
-| `apps/web/src/apparatus/ohms-law/{WireBoard,Lead,TerminalNut,Tray}*.{ts,tsx}` (Wave 1 slot 4) | Claude subagent `apparatus-modeller`, while `claude/ohms-apparatus-2` is open |
+| `apps/web/src/learn/wiring/**`, plus additive exports in `apps/web/src/apparatus/ohms-law/Lead*.{ts,tsx}` (plan: `docs/plans/ohms-law-vi.md`, Wave 2) | Claude subagent `circuit-engineer`, while `claude/ohms-wiring` is open |
+| `apps/web/src/learn/readings/**` (Wave 2) | Claude subagent `implementer`, while `claude/ohms-readings` is open |
+| `apps/web/src/learn/shell/**` (Wave 2) | Claude subagent `ui-builder`, while `claude/ohms-shell` is open |
+| `packages/rules/src/ohmsLaw*.ts`, additive edits to `packages/rules/src/{precautions,examiner,index}.ts` (Wave 2) | Claude subagent `circuit-engineer`, while `claude/ohms-rules` is open |
+| `apps/web/src/scene/ink/**`, `scene/{Desk,Page,Scene}.tsx`, the composer/lights of `lab/LabBench.tsx` and of the two existing `KitPreview.tsx`, additive `quality/tier.ts` (plan: `docs/plans/ink-look.md`, Wave 1) | Claude subagent `shader-artist`, while `claude/ink-look` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 The lead updates this table when it hands out a new slice. **All 3D work (scene, kits, reveal, particles, shaders) stays with the lead**: from Oct 27, Gemini runs as Gemini Flash and gets UI and logic slices only, and Muse Code gets non-3D slices only.
