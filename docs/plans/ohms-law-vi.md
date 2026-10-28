@@ -158,6 +158,8 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 - **Tray:** spare leads, the sandpaper strip, a rheostat (Identify only) and a micrometer screw gauge (Identify only, COULD detail).
 
 ## Wave 2 (Day 5, Oct 30)
+Started Oct 28 night, while the ink slice was still open. Ports: wiring 5177, shell 5179, readings 5180 and rules 5181 (the ink slice keeps 5178). The shared controller interface is `OhmsLawBench` in `apps/web/src/learn/types.ts`: the wiring slice builds it, and readings, shell and the lesson page code against it. In its own preview, each UI slice drives a fake that satisfies the interface.
+
 | Slot | Slice | Agent | Owns |
 |---|---|---|---|
 | 1 | Wiring | `circuit-engineer` (Opus) | `apps/web/src/learn/wiring/**` |
