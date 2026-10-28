@@ -18,6 +18,8 @@ uniform float inkRadius;
 uniform float depthThreshold;
 uniform float creaseThreshold;
 uniform float thinAlpha;
+uniform mat4 inkProjInverse;
+uniform mat4 inkCameraWorld;
 
 // Opposite directions sit next to each other: (0, 1), (2, 3), (4, 5), (6, 7).
 const vec2 INK_DIRS[8] = vec2[8](
@@ -60,11 +62,19 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   vec2 inner = outer * 0.5;
 
   float ink = 0.0;
+  // The nearest of the samples: a silhouette line sits on the far side of its edge, often on
+  // the empty background, so the sweep is judged at the part that owns the line.
+  vec2 nearUv = uv;
+  float nearDepth = depth;
   for (int i = 0; i < 4; i++) {
     vec2 sa = uv + INK_DIRS[i * 2] * outer;
     vec2 sb = uv + INK_DIRS[i * 2 + 1] * outer;
-    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sa), inkViewDepth(readDepth(sa))));
-    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sb), inkViewDepth(readDepth(sb))));
+    float da = readDepth(sa);
+    float db = readDepth(sb);
+    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sa), inkViewDepth(da)));
+    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sb), inkViewDepth(db)));
+    if (da < nearDepth) { nearDepth = da; nearUv = sa; }
+    if (db < nearDepth) { nearDepth = db; nearUv = sb; }
   }
 
   // Crease: the normal turns on one side and not the other. An even curve (a lead, a rod) turns
@@ -79,6 +89,13 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
     ink = max(ink, eCrease * mix(1.0, thinAlpha, thinC));
   }
 
-  float a = clamp(ink * inkOpacity * inkReveal, 0.0, 1.0);
+  // Draw-on: the line shows only where the sweep has passed. Skipped once fully drawn.
+  float drawn = 1.0;
+  if (inkReveal < 1.0 && ink > 0.0) {
+    vec4 view = inkProjInverse * vec4(nearUv * 2.0 - 1.0, nearDepth * 2.0 - 1.0, 1.0);
+    vec3 viewPos = view.xyz / (abs(view.w) > 1e-5 ? view.w : 1e-5);
+    drawn = inkSweep((inkCameraWorld * vec4(viewPos, 1.0)).xyz, inkReveal);
+  }
+  float a = clamp(ink * inkOpacity * drawn, 0.0, 1.0);
   outputColor = vec4(mix(inputColor.rgb, inkColour, a), inputColor.a);
 }
