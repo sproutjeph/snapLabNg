@@ -1,0 +1,810 @@
+// Tests for the DRAFT Ohm's-law (V–I) scheme (docs/07 §5.2, "Ohm's law (V–I) rows. DRAFT").
+// The mark split is ours until the user supplies the official scheme, so the expected marks
+// below are the DRAFT allocation in ohmsLaw.ts, not a published WAEC number. Where a WAEC
+// source backs the behaviour it is cited; otherwise the comment says it is DRAFT.
+import { MarkSheet, type OhmsLawRecord } from "@snaplab/contracts";
+import { describe, expect, it } from "vitest";
+import { examinerQuestionById, examinerQuestions, OHMS_LAW_QUESTIONS } from "./examiner";
+import { G1_READINGS, G2_READINGS } from "./golden";
+import { markMeterBridge } from "./meterBridge";
+import {
+  CALC_AREA_M2,
+  CALC_LENGTH_M,
+  markOhmsLaw,
+  OHMS_LAW_QUESTION_LABEL,
+  slopeHasOhmUnit,
+} from "./ohmsLaw";
+import {
+  OHMS_AXES_SWAPPED,
+  OHMS_CALC_NO_UNIT,
+  OHMS_FIVE_PLUS_BLANK,
+  OHMS_FOUR_ROWS,
+  OHMS_GOOD,
+  OHMS_LAW_NO_CONDITION,
+  OHMS_POINTS_OFF,
+  OHMS_SLIP_1DP,
+  OHMS_SLIP_3X1DP,
+  OHMS_SLOPE_NO_UNIT,
+  OHMS_SMALL_TRIANGLE,
+  OHMS_TRIANGLE_OFF_LINE,
+  OHMS_WRONG_TENSE,
+} from "./ohmsLawGolden";
+import { judgePrecaution } from "./precautions";
+
+const mark = (r: OhmsLawRecord, opts?: Parameters<typeof markOhmsLaw>[1]) => {
+  const sheet = markOhmsLaw(r, opts);
+  // Every sheet satisfies the frozen contract: half marks, totals that add up.
+  expect(MarkSheet.parse(sheet)).toBeTruthy();
+  return sheet;
+};
+
+/** [item id, marks lost] for every lost item, in sheet order. */
+const lostItems = (r: OhmsLawRecord) =>
+  mark(r)
+    .items.filter((i) => i.outcome === "lost")
+    .map((i) => [i.id, i.marks_available - i.marks_earned]);
+
+const item = (r: OhmsLawRecord, id: string) => mark(r).items.find((i) => i.id === id);
+
+describe("(b)(ii) worked from the question's data", () => {
+  it("gives A = 3.143×10⁻⁸ m² and L = 0.25 m", () => {
+    // docs/07 §4.4: A = πd²/4 = (22/7)(0.2×10⁻³)²/4 = 3.143×10⁻⁸ m²; L = RA/ρ = 0.25 m.
+    expect(CALC_AREA_M2).toBeCloseTo(3.143e-8, 11);
+    expect(CALC_LENGTH_M).toBeCloseTo(0.25, 6);
+  });
+});
+
+describe("markOhmsLaw on the golden tables (DRAFT scheme)", () => {
+  it("gives the good table 20 / 20, labelled DRAFT", () => {
+    // DRAFT allocation in ohmsLaw.ts: 20 marks in student mode, nothing lost.
+    const sheet = mark(OHMS_GOOD);
+    expect(sheet.experiment).toBe("ohms_law_vi");
+    expect(sheet.question_label).toBe(OHMS_LAW_QUESTION_LABEL);
+    expect(sheet.question_label).toContain("DRAFT");
+    expect([sheet.earned, sheet.available]).toEqual([20, 20]);
+    expect(sheet.teacher_mode).toBe(false);
+    expect(sheet.items.some((i) => i.rule === "PHYS-ACCURACY")).toBe(false);
+    for (const i of sheet.items) {
+      expect(i.annotation).toBe("tick");
+      expect(i.correction).toBeNull();
+      for (const e of i.evidence) expect(e.box).toBeNull();
+    }
+  });
+
+  it("uses only docs/07 rule ids and unique item ids", () => {
+    // docs/07 §5.2 Ohm's law rows: PHYS-1DP, PHYS-2DP, PHYS-TREND, PHYS-TABLE, GRAPH-*,
+    // PRECAUTIONS, PHYS-LAW, PHYS-CALC (+ PHYS-ACCURACY in teacher mode).
+    const sheet = mark(OHMS_GOOD, { teacherXyOhm: 3.0 });
+    expect(new Set(sheet.items.map((i) => i.rule))).toEqual(
+      new Set([
+        "PHYS-1DP",
+        "PHYS-TABLE",
+        "PHYS-2DP",
+        "PHYS-TREND",
+        "GRAPH-AXES",
+        "GRAPH-SCALE",
+        "GRAPH-POINTS",
+        "GRAPH-LINE",
+        "GRAPH-SLOPE",
+        "PHYS-ACCURACY",
+        "PRECAUTIONS",
+        "PHYS-LAW",
+        "PHYS-CALC",
+      ]),
+    );
+    expect(new Set(sheet.items.map((i) => i.id)).size).toBe(sheet.items.length);
+  });
+
+  it("keeps PHYS-2DP for a single 1 d.p. slip, since six of seven rows still pass", () => {
+    // DRAFT PHYS-2DP (docs/07 §5.2): earned when at least five rows pass; all rows checked.
+    // "0.3" for I at R = 5 Ω leaves six passing rows, so the sheet is still 20 / 20.
+    const sheet = mark(OHMS_SLIP_1DP);
+    expect(sheet.items.find((i) => i.id === "PHYS-2DP:I")?.outcome).toBe("earned");
+    expect(sheet.earned).toBe(20);
+  });
+
+  it("loses PHYS-2DP:I (1) when three I readings are to 1 d.p., and corrects her own value", () => {
+    // DRAFT PHYS-2DP: four of seven pass < 5. Correction from her own "0.3" to 2 d.p.: "0.30".
+    expect(lostItems(OHMS_SLIP_3X1DP)).toEqual([["PHYS-2DP:I", 1]]);
+    const i = item(OHMS_SLIP_3X1DP, "PHYS-2DP:I");
+    expect(i?.correction).toBe("0.30");
+    expect(i?.evidence.map((e) => e.text_as_written)).toEqual(["0.3", "0.2", "0.1"]);
+    expect(i?.annotation).toBe("circle");
+  });
+
+  it("loses only GRAPH-AXES x and y (1) when the axes are swapped: 19 (error carried forward)", () => {
+    // The question asks for V (vertical) against I (horizontal) (plan, step 6). Lead's science
+    // decision (Oct 28 review, item 9): the swap costs the two axes half marks only; her
+    // points, line, triangle, ΔI/ΔV and its unit A/V are marked on her own graph (ECF).
+    // DRAFT: 20 − 1 = 19.
+    expect(lostItems(OHMS_AXES_SWAPPED)).toEqual([
+      ["GRAPH-AXES:y", 0.5],
+      ["GRAPH-AXES:x", 0.5],
+    ]);
+    expect(mark(OHMS_AXES_SWAPPED).earned).toBe(19);
+    // Ω⁻¹ is the same unit as A/V, so it is accepted too.
+    const g = OHMS_AXES_SWAPPED.graph;
+    if (!g) throw new Error("the swapped table has a graph");
+    const ohmInv = { ...OHMS_AXES_SWAPPED, graph: { ...g, slope_as_written: "s = 0.33 Ω⁻¹" } };
+    expect(item(ohmInv, "GRAPH-SLOPE:unit")?.outcome).toBe("earned");
+    // Teacher mode: a slope of I against V is not R_XY, so accuracy stays lost.
+    expect(
+      mark(OHMS_AXES_SWAPPED, { teacherXyOhm: 3.0 }).items.find((i) => i.rule === "PHYS-ACCURACY")
+        ?.outcome,
+    ).toBe("lost");
+    // A swapped slope with no unit gets A/V added, never Ω; a wrong unit gets no correction.
+    const bare = {
+      ...OHMS_AXES_SWAPPED,
+      graph: { ...g, slope_as_written: "s = 0.60/1.80 = 0.33" },
+    };
+    expect(item(bare, "GRAPH-SLOPE:unit")?.correction).toBe("s = 0.60/1.80 = 0.33 A/V");
+    const wrongUnit = {
+      ...OHMS_GOOD,
+      graph: OHMS_GOOD.graph && { ...OHMS_GOOD.graph, slope_as_written: "s = 3.0 A/V" },
+    };
+    expect(item(wrongUnit, "GRAPH-SLOPE:unit")?.outcome).toBe("lost");
+    expect(item(wrongUnit, "GRAPH-SLOPE:unit")?.correction).toBeNull();
+  });
+
+  it("loses GRAPH-SLOPE:large (1) for a small triangle: 19", () => {
+    // WAEC Phys P3 reports: slope from a large triangle (docs/07 §5.2 GRAPH-SLOPE); DRAFT
+    // "large" = each leg at least ½ of the line's extent. Her ΔV and ΔI are read correctly.
+    expect(lostItems(OHMS_SMALL_TRIANGLE)).toEqual([["GRAPH-SLOPE:large", 1]]);
+  });
+
+  it("loses both precautions (2) when they are instructions: 18", () => {
+    // WAEC Phys P3 2023 Q3B: precautions in acceptable (reported) tense.
+    expect(lostItems(OHMS_WRONG_TENSE)).toEqual([
+      ["PRECAUTIONS:1", 1],
+      ["PRECAUTIONS:2", 1],
+    ]);
+    const p = item(OHMS_WRONG_TENSE, "PRECAUTIONS:1");
+    expect(p?.evidence[0]?.text_as_written).toBe("Avoid parallax error when reading the meters.");
+    expect(p?.correction).toBe("Parallax was avoided when reading the meters.");
+    expect(item(OHMS_WRONG_TENSE, "PRECAUTIONS:2")?.correction).toBe(
+      "The key was opened between readings.",
+    );
+  });
+
+  it("loses the table (1), both PHYS-2DP items (2) and ½ of GRAPH-POINTS with four rows: 16½", () => {
+    // DRAFT "at least five rows" items (plan, "Rows"); GRAPH-POINTS 4 matched → 1 of 1½,
+    // as the metre bridge's partial points (docs/15 §4). The trend still shows in 4 rows.
+    expect(lostItems(OHMS_FOUR_ROWS)).toEqual([
+      ["PHYS-TABLE:composite", 1],
+      ["PHYS-2DP:I", 1],
+      ["PHYS-2DP:V", 1],
+      ["GRAPH-POINTS", 0.5],
+    ]);
+    expect(mark(OHMS_FOUR_ROWS).earned).toBe(16.5);
+  });
+
+  it("loses GRAPH-SLOPE:unit (½) when s has no unit, and adds Ω to her own s", () => {
+    // DRAFT GRAPH-SLOPE: s evaluated with the unit Ω (docs/07 §5.2). 19½.
+    expect(lostItems(OHMS_SLOPE_NO_UNIT)).toEqual([["GRAPH-SLOPE:unit", 0.5]]);
+    expect(item(OHMS_SLOPE_NO_UNIT, "GRAPH-SLOPE:unit")?.correction).toBe(
+      "s = ΔV/ΔI = 1.80/0.60 = 3.0 Ω",
+    );
+  });
+
+  it("loses ½ of GRAPH-POINTS when three points are off her own table by 1½ small squares", () => {
+    // WAEC Phys P3 2023 Q3B: points checked against her own table; DRAFT tolerance half a
+    // small square (0.1 cm). 4 of 7 within it → 1 of 1½. 19½.
+    expect(lostItems(OHMS_POINTS_OFF)).toEqual([["GRAPH-POINTS", 0.5]]);
+  });
+
+  it("loses 1 of PHYS-LAW:statement when the law has no condition, and offers it", () => {
+    // Textbook statement (docs/07 §4.4 (b)(i)): "...provided the temperature and other
+    // physical conditions remain constant." DRAFT split: name ½, statement 1 + condition 1.
+    expect(lostItems(OHMS_LAW_NO_CONDITION)).toEqual([["PHYS-LAW:statement", 1]]);
+    expect(item(OHMS_LAW_NO_CONDITION, "PHYS-LAW:statement")?.correction).toContain("temperature");
+  });
+
+  it("loses ½ of PHYS-CALC:answer when 0.25 has no unit, and writes the unit in", () => {
+    // docs/07 §4.4 (b)(ii): L = 0.25 m. DRAFT: value ½ + unit ½. 19½.
+    expect(lostItems(OHMS_CALC_NO_UNIT)).toEqual([["PHYS-CALC:answer", 0.5]]);
+    expect(item(OHMS_CALC_NO_UNIT, "PHYS-CALC:answer")?.correction).toBe("0.25 m");
+  });
+
+  it("gives the same sheet for the same record", () => {
+    // docs/07 §1: deterministic, same page → same score.
+    expect(markOhmsLaw(OHMS_GOOD)).toEqual(markOhmsLaw(structuredClone(OHMS_GOOD)));
+  });
+});
+
+describe("PHYS-1DP and table units", () => {
+  const withXy = (text: string, unit: string | null = null): OhmsLawRecord => ({
+    ...OHMS_GOOD,
+    length_xy: { value: null, unit_as_written: unit, text_as_written: text },
+  });
+
+  it("fails XY written as a whole number and corrects it from her value", () => {
+    // WAEC Phys P3 2018 Q3A: lengths in cm to at least 1 d.p. ("68" fails, "68.0" passes).
+    const i = item(withXy("68", "cm"), "PHYS-1DP:xy");
+    expect(i?.outcome).toBe("lost");
+    expect(i?.correction).toBe("68.0");
+    expect(item(withXy("68.0 cm"), "PHYS-1DP:xy")?.outcome).toBe("earned");
+    expect(item(withXy("XY = 68.0 cm"), "PHYS-1DP:xy-unit")?.outcome).toBe("earned");
+  });
+
+  it("loses the XY unit when no cm is written", () => {
+    // DRAFT PHYS-1DP (docs/07 §5.2): XY recorded in cm.
+    const i = item(withXy("68.0"), "PHYS-1DP:xy-unit");
+    expect(i?.outcome).toBe("lost");
+    expect(i?.correction).toBe("68.0 cm");
+  });
+
+  it("needs Ω on R and A and V on the I and V headings", () => {
+    // WAEC Phys P3 2018 Q3A: units in the column headings (docs/07 §5.2 PHYS-TABLE).
+    const h = (R: string | null, I: string | null, V: string | null): OhmsLawRecord => ({
+      ...OHMS_GOOD,
+      headers: { R, I, V },
+    });
+    expect(item(h("R", "I/A", "V/V"), "PHYS-TABLE:units-R")?.outcome).toBe("lost");
+    expect(item(h("R (ohms)", "I (A)", "V (V)"), "PHYS-TABLE:units-R")?.outcome).toBe("earned");
+    expect(item(h("R/Ω", "I", "V/V"), "PHYS-2DP:units")?.correction).toBe("I (A)");
+    expect(item(h("R/Ω", "I/A", "V"), "PHYS-2DP:units")?.correction).toBe("V (V)");
+    expect(item(h("R/Ω", "I/mA", "V (volts)"), "PHYS-2DP:units")?.outcome).toBe("earned");
+  });
+
+  it("loses the table, the 2 d.p. items and the graph when there are no rows", () => {
+    // DRAFT: every "at least five rows" item needs rows; the sheet still parses.
+    const sheet = mark({ ...OHMS_GOOD, rows: [] });
+    expect(sheet.items.find((i) => i.id === "PHYS-TABLE:composite")?.outcome).toBe("lost");
+    expect(sheet.items.find((i) => i.id === "GRAPH-POINTS")?.marks_earned).toBe(0);
+  });
+});
+
+describe("PHYS-TREND, on her own rows", () => {
+  it("loses I's trend when a current rises with R, citing her entry", () => {
+    // DRAFT PHYS-TREND (docs/07 §5.2): I and V both fall as R rises. No textbook value;
+    // behaviour only. Her R = 20 Ω current written larger than at R = 10 Ω.
+    const rows = OHMS_GOOD.rows.map((r) =>
+      r.R.text_as_written === "20" ? { ...r, I: { ...r.I, text_as_written: "0.25" } } : r,
+    );
+    const sheet = mark({ ...OHMS_GOOD, rows });
+    const i = sheet.items.find((x) => x.id === "PHYS-TREND:I");
+    expect(i?.outcome).toBe("lost");
+    expect(i?.evidence[0]?.text_as_written).toBe("0.25");
+    expect(sheet.items.find((x) => x.id === "PHYS-TREND:V")?.outcome).toBe("earned");
+  });
+
+  it("reads the trend in R order even when her rows are not in order", () => {
+    // Behaviour only (no source): the trend is about R, not the order she wrote the rows.
+    expect(
+      item({ ...OHMS_GOOD, rows: [...OHMS_GOOD.rows].reverse() }, "PHYS-TREND:V")?.outcome,
+    ).toBe("earned");
+  });
+});
+
+describe("graph items against her own scales", () => {
+  const g = OHMS_GOOD.graph;
+  if (!g) throw new Error("the good table has a graph");
+
+  it("loses every graph mark when there is no graph", () => {
+    // docs/15 §4 pattern: graph, slope and points marks all need a graph. DRAFT graph marks:
+    // axes 1½ + scale 1 + points 1½ + line 1 + slope 2½ = 7½.
+    const sheet = mark({ ...OHMS_GOOD, graph: null });
+    const graph = sheet.items.filter((i) => i.rule.startsWith("GRAPH"));
+    expect(graph.reduce((t, i) => t + i.marks_earned, 0)).toBe(0);
+    expect(graph.reduce((t, i) => t + i.marks_available, 0)).toBe(7.5);
+  });
+
+  it("loses GRAPH-SCALE when the points cover less than a third of the sheet", () => {
+    // WAEC Phys P3 Nov/Dec 2013: the graph occupies at least 1/3 of the page (docs/07 §5.2).
+    // Her points span 13.4 cm across on an 18 cm sheet; on a 45 cm sheet that is under ⅓.
+    const big = { ...OHMS_GOOD, graph: { ...g, sheet: { width_cm: 45, height_cm: 25 } } };
+    expect(item(big, "GRAPH-SCALE:x")?.outcome).toBe("lost");
+    expect(item(big, "GRAPH-SCALE:y")?.outcome).toBe("earned");
+    const noScale = { ...OHMS_GOOD, graph: { ...g, y: { ...g.y, units_per_cm: null } } };
+    expect(item(noScale, "GRAPH-SCALE:y")?.outcome).toBe("lost");
+    expect(item(noScale, "GRAPH-POINTS")?.marks_earned).toBe(0);
+  });
+
+  it("counts a point within half a small square (0.1 cm) and not one 0.15 cm off", () => {
+    // DRAFT GRAPH-POINTS tolerance: half a small square of 2 mm paper.
+    const shift = (dy: number) => ({
+      ...OHMS_GOOD,
+      graph: { ...g, points: g.points.map((p, i) => (i < 3 ? { ...p, y_cm: p.y_cm + dy } : p)) },
+    });
+    expect(item(shift(0.09), "GRAPH-POINTS")?.marks_earned).toBe(1.5);
+    // Three of seven moved 0.15 cm: four still match → 1.
+    expect(item(shift(0.15), "GRAPH-POINTS")?.marks_earned).toBe(1);
+  });
+
+  it("checks points against her table, not against a true value", () => {
+    // docs/07 §5.2 GRAPH-POINTS: "checked against her own table". If her table says 0.40 A
+    // at R = 5 Ω and she plots 0.40 A, the point is correct.
+    const rows = OHMS_GOOD.rows.map((r) =>
+      r.R.text_as_written === "5" ? { ...r, I: { ...r.I, text_as_written: "0.40" } } : r,
+    );
+    const points = g.points.map((p, i) => (i === 2 ? { ...p, x_cm: 8 } : p));
+    expect(item({ ...OHMS_GOOD, rows, graph: { ...g, points } }, "GRAPH-POINTS")?.outcome).toBe(
+      "earned",
+    );
+  });
+
+  it("loses GRAPH-LINE when no line is drawn or the line is far off her points", () => {
+    // WAEC Phys P3 2011, 2018, 2023: line of best fit. DRAFT: within 3° of the fit to her
+    // points and 0.4 cm of their centroid.
+    expect(item({ ...OHMS_GOOD, graph: { ...g, line: null } }, "GRAPH-LINE")?.outcome).toBe("lost");
+    const steep = { ...g, line: { p1: { x_cm: 0, y_cm: 0 }, p2: { x_cm: 12, y_cm: 22.5 } } };
+    expect(item({ ...OHMS_GOOD, graph: steep }, "GRAPH-LINE")?.outcome).toBe("lost");
+    const shifted = { ...g, line: { p1: { x_cm: 0, y_cm: 1 }, p2: { x_cm: 15, y_cm: 23.5 } } };
+    expect(item({ ...OHMS_GOOD, graph: shifted }, "GRAPH-LINE")?.outcome).toBe("lost");
+  });
+
+  it("loses GRAPH-SLOPE:read when her ΔV disagrees with her triangle on her scale", () => {
+    // DRAFT: ΔV and ΔI read from her triangle within one small square (0.2 cm). Her triangle
+    // is 18 cm up at 0.1 V/cm = 1.80 V; she wrote 1.50 V, and so s = 2.5 follows from it.
+    const sheet = mark({
+      ...OHMS_GOOD,
+      graph: { ...g, delta_y_as_written: "ΔV = 1.50 V", slope_as_written: "s = 1.50/0.60 = 2.5 Ω" },
+    });
+    expect(sheet.items.find((i) => i.id === "GRAPH-SLOPE:read")?.outcome).toBe("lost");
+    // Her s follows from her own ΔV and ΔI, so the value is still earned.
+    expect(sheet.items.find((i) => i.id === "GRAPH-SLOPE:value")?.outcome).toBe("earned");
+  });
+
+  it("loses GRAPH-SLOPE:value when s does not follow from her own ΔV ÷ ΔI", () => {
+    // DRAFT: s consistent with her own ΔV/ΔI within 2%. 1.80/0.60 = 3.0, not 3.5.
+    const r = { ...OHMS_GOOD, graph: { ...g, slope_as_written: "s = 3.5 Ω" } };
+    expect(item(r, "GRAPH-SLOPE:value")?.outcome).toBe("lost");
+    expect(item(r, "GRAPH-SLOPE:unit")?.outcome).toBe("earned");
+  });
+
+  it("reads Ω, ohms and V/A as the slope's unit, but not Ω⁻¹ or A/V", () => {
+    // V/I is a resistance: 1 Ω = 1 V A⁻¹ (SI). Behaviour of the unit check.
+    expect(slopeHasOhmUnit("s = 3.0 Ω")).toBe(true);
+    expect(slopeHasOhmUnit("s = 3.0 ohms")).toBe(true);
+    expect(slopeHasOhmUnit("s = 3.0 V/A")).toBe(true);
+    expect(slopeHasOhmUnit("s = 3.0 VA⁻¹")).toBe(true);
+    expect(slopeHasOhmUnit("s = ΔV/ΔI = 3.0")).toBe(false);
+    expect(slopeHasOhmUnit("s = 0.33 A/V")).toBe(false);
+    expect(slopeHasOhmUnit("s = 0.33 Ω⁻¹")).toBe(false);
+  });
+});
+
+describe("teacher mode", () => {
+  it("marks PHYS-ACCURACY only in teacher mode: 21 / 21 with 3.0 Ω", () => {
+    // WAEC Phys P3 2023 Q3B: accuracy within ±10% of the teacher's value (docs/07 §5.2).
+    const sheet = mark(OHMS_GOOD, { teacherMode: true, teacherXyOhm: 3.0 });
+    expect(sheet.teacher_mode).toBe(true);
+    expect([sheet.earned, sheet.available]).toEqual([21, 21]);
+    // A value alone turns teacher mode on, as the metre bridge's teacherXOhm does.
+    expect(mark(OHMS_GOOD, { teacherXyOhm: 3.0 }).available).toBe(21);
+  });
+
+  it("loses PHYS-ACCURACY when s is 20% from the teacher's 2.5 Ω", () => {
+    // ±10% band (WAEC Phys P3 2023 Q3B): 3.0 vs 2.5 is 20% off.
+    const sheet = mark(OHMS_GOOD, { teacherXyOhm: 2.5 });
+    expect(sheet.items.find((i) => i.rule === "PHYS-ACCURACY")?.outcome).toBe("lost");
+    expect(sheet.earned).toBe(20);
+  });
+
+  it("never marks accuracy outside teacher mode, even with a value", () => {
+    // docs/07 §5.2 PHYS-ACCURACY: teacher mode only; MarkSheet refuses it otherwise.
+    const sheet = mark(OHMS_GOOD, { teacherMode: false, teacherXyOhm: 3.0 });
+    expect(sheet.teacher_mode).toBe(false);
+    expect(sheet.items.some((i) => i.rule === "PHYS-ACCURACY")).toBe(false);
+  });
+});
+
+describe("V–I precautions (DRAFT list)", () => {
+  const vi = (p: string) => judgePrecaution(p, "ohms_law_vi");
+  const marks = (precautions: string[]) =>
+    mark({ ...OHMS_GOOD, precautions })
+      .items.filter((i) => i.rule === "PRECAUTIONS")
+      .map((i) => i.marks_earned);
+
+  it.each([
+    ["The key was opened between readings.", "key_opened"],
+    ["The plugs of the resistance box were pushed in firmly.", "plugs_firm"],
+    ["The wire XY was kept straight.", "wire_straight"],
+    ["The zero errors of the meters were corrected.", "zero_error"],
+    ["Readings were repeated.", "repeated_readings"],
+    ["The connections were tight and the terminals clean.", "tight_clean_connections"],
+    ["Parallax was avoided when reading the meters.", "parallax_avoided"],
+  ])("accepts %s", (p, id) => {
+    // docs/07 §5.2 V–I precautions row (DRAFT) and the Oct 28 lesson review (P1–P8).
+    expect(vi(p)).toMatchObject({ accepted: true, matched: id });
+  });
+
+  it("does not score 'the meters were connected correctly' (procedure)", () => {
+    // Oct 28 lesson review: meter connections are procedure, not a WAEC precaution.
+    expect(vi("The meters were connected correctly.")).toMatchObject({
+      accepted: false,
+      reason: "not_a_listed_precaution",
+    });
+    expect(
+      marks(["The meters were connected correctly.", "The key was opened between readings."]),
+    ).toEqual([1, 0]);
+  });
+
+  it("counts tight connections and firm plugs once (one idea: good contact)", () => {
+    // Oct 28 lesson review: P2 and P7 must not count as two. DRAFT decision.
+    expect(
+      marks([
+        "The connections were tight and the terminals clean.",
+        "The plugs of the resistance box were pushed in firmly.",
+      ]),
+    ).toEqual([1, 0]);
+    expect(marks(["The plugs were pushed in firmly.", "The wire XY was kept straight."])).toEqual([
+      1, 1,
+    ]);
+  });
+
+  it("keeps the plug key as the key precaution, and refuses instructions", () => {
+    // WAEC Phys P3 2023 Q3B: precautions in the reported tense.
+    expect(vi("The plug key was removed between readings.").matched).toBe("key_opened");
+    expect(vi("Keep the wire straight.").reason).toBe("instruction");
+    expect(vi("The plugs should be pushed in firmly.").reason).toBe("not_past_tense");
+  });
+
+  it("keeps the metre bridge list unchanged by default", () => {
+    // docs/15 §4: the metre bridge list has no plug or wire-straight topic; G1 15½/21 and
+    // G2 21/21 (docs/11) are unchanged.
+    expect(judgePrecaution("The wire XY was kept straight.").accepted).toBe(false);
+    expect(judgePrecaution("The plugs were pushed in firmly.").accepted).toBe(false);
+    expect(markMeterBridge(G1_READINGS, { teacherXOhm: null }).earned).toBe(15.5);
+    expect(markMeterBridge(G2_READINGS, { teacherXOhm: null }).earned).toBe(21);
+  });
+});
+
+describe("PHYS-LAW and PHYS-CALC wording", () => {
+  const law = (text: string | null) => ({ ...OHMS_GOOD, law_as_written: text });
+  const calc = (text: string | null) => ({ ...OHMS_GOOD, length_calc_as_written: text });
+
+  it("separates the name from the statement", () => {
+    // DRAFT split: name ½; statement 1; condition 1 (textbook statement, docs/07 §4.4).
+    const noName = law(
+      "The current through a metallic conductor is directly proportional to the p.d. across it, provided the temperature remains constant.",
+    );
+    expect(item(noName, "PHYS-LAW:name")?.outcome).toBe("lost");
+    expect(item(noName, "PHYS-LAW:statement")?.marks_earned).toBe(2);
+    expect(item(law("Ohm's law"), "PHYS-LAW:statement")?.marks_earned).toBe(0);
+    expect(item(law("Ohm's law: V = IR."), "PHYS-LAW:statement")?.marks_earned).toBe(0);
+    expect(
+      item(law("Ohm's law: current is inversely proportional to voltage."), "PHYS-LAW:statement")
+        ?.marks_earned,
+    ).toBe(0);
+    expect(item(law(null), "PHYS-LAW:name")?.outcome).toBe("lost");
+  });
+
+  it("accepts 25 cm and R = ρL/A, and loses the answer for a wrong number", () => {
+    // docs/07 §4.4 (b)(ii): L = 0.25 m = 25 cm; R = ρL/A is the same relation as L = RA/ρ.
+    const cm = calc("R = ρL/A, A = πr² = 3.14 × 10⁻⁸ m²\nL = 7 × 3.14 × 10⁻⁸ / 8.8 × 10⁻⁷ = 25 cm");
+    expect(
+      mark(cm)
+        .items.filter((i) => i.rule === "PHYS-CALC")
+        .every((i) => i.outcome === "earned"),
+    ).toBe(true);
+    const wrong = calc("L = RA/ρ = 7 × 0.2 / 8.8 × 10⁻⁷ = 1.6 × 10⁶ m");
+    expect(item(wrong, "PHYS-CALC:formula")?.outcome).toBe("earned");
+    expect(item(wrong, "PHYS-CALC:area")?.outcome).toBe("lost");
+    expect(item(wrong, "PHYS-CALC:answer")?.marks_earned).toBe(0);
+    expect(item(wrong, "PHYS-CALC:answer")?.correction).toBeNull();
+    expect(item(calc(null), "PHYS-CALC:answer")?.marks_earned).toBe(0);
+  });
+});
+
+describe("examiner questions for V–I", () => {
+  const ids = (r: OhmsLawRecord, max?: number) =>
+    examinerQuestions(markOhmsLaw(r), max).map((p) => p.question.id);
+
+  it("asks about her wrong-tense precaution first, with her own words", () => {
+    // docs/07 §6: ask about her specific mistake first.
+    const picked = examinerQuestions(markOhmsLaw(OHMS_WRONG_TENSE));
+    expect(picked[0]?.question.id).toBe("vi-precaution-tense");
+    expect(picked[0]?.her_mistake).toBe("Avoid parallax error when reading the meters.");
+  });
+
+  it("asks about the slope, the axes and the law when those are lost", () => {
+    // docs/07 §6: questions come from her lost items.
+    expect(ids(OHMS_SMALL_TRIANGLE)[0]).toBe("vi-slope-triangle");
+    // Swapped axes now lose only GRAPH-AXES (ECF, item 9), so the axes question comes first
+    // and the general bank follows.
+    expect(ids(OHMS_AXES_SWAPPED).slice(0, 2)).toEqual(["vi-graph-axes", "vi-key-open"]);
+    expect(ids(OHMS_LAW_NO_CONDITION)[0]).toBe("vi-ohms-law");
+    expect(ids(OHMS_SLIP_3X1DP)[0]).toBe("vi-meter-2dp");
+  });
+
+  it("gives the good table three general V–I questions, never metre bridge ones", () => {
+    // DRAFT: nothing lost, so the general V–I bank fills up in order.
+    expect(ids(OHMS_GOOD)).toEqual(["vi-key-open", "vi-meter-connections", "vi-constantan"]);
+  });
+
+  it("finds every V–I question by id, with a model answer and a source", () => {
+    for (const q of Object.values(OHMS_LAW_QUESTIONS)) {
+      expect(q.model_answer.length).toBeGreaterThan(40);
+      expect(q.source.length).toBeGreaterThan(0);
+      expect(examinerQuestionById(q.id)).toBe(q);
+    }
+  });
+
+  it("never puts a reading, R_XY or slope value in a model answer", () => {
+    // Plan: the engine decides; nothing shows I, V, R_XY or the slope. No decimal numbers.
+    for (const q of Object.values(OHMS_LAW_QUESTIONS)) {
+      expect(q.model_answer).not.toMatch(/\d\.\d/);
+    }
+  });
+
+  it("asks the 1 d.p. question for XY's d.p. and the units question for XY's missing cm", () => {
+    // docs/07 §6: the question matches her own mistake (review item 10).
+    const noDp = {
+      ...OHMS_GOOD,
+      length_xy: { value: 68, unit_as_written: "cm", text_as_written: "68" },
+    };
+    expect(ids(noDp)[0]).toBe("vi-length-1dp");
+    const noCm = {
+      ...OHMS_GOOD,
+      length_xy: { value: 68, unit_as_written: null, text_as_written: "68.0" },
+    };
+    expect(ids(noCm)[0]).toBe("vi-table-units");
+  });
+});
+
+describe("review fixes (Oct 28 code and science review)", () => {
+  const g = OHMS_GOOD.graph;
+  if (!g) throw new Error("the good table has a graph");
+  const withG = (patch: Partial<NonNullable<OhmsLawRecord["graph"]>>): OhmsLawRecord => ({
+    ...OHMS_GOOD,
+    graph: { ...g, ...patch },
+  });
+
+  it("gives full statement marks to '…and inversely proportional to its resistance'", () => {
+    // Item 1. Textbook statement (docs/07 §4.4 (b)(i)); adding I ∝ 1/R is true, not an error.
+    // Expected: name ½ + statement 2 = 2½ of 2½.
+    const r = {
+      ...OHMS_GOOD,
+      law_as_written:
+        "Ohm's law: the current through a metallic conductor is directly proportional to the p.d. across its ends and inversely proportional to its resistance, provided the temperature is constant.",
+    };
+    expect(item(r, "PHYS-LAW:statement")?.marks_earned).toBe(2);
+    expect(item(r, "PHYS-LAW:name")?.marks_earned).toBe(0.5);
+    // Current and p.d. said to be inversely proportional is still wrong: 0 of 2.
+    const wrong = {
+      ...OHMS_GOOD,
+      law_as_written: "Ohm's law: the voltage is inversely proportional to the current.",
+    };
+    expect(item(wrong, "PHYS-LAW:statement")?.marks_earned).toBe(0);
+  });
+
+  it("loses GRAPH-SLOPE:large (1) for a triangle drawn off her line, keeping reading and value: 19", () => {
+    // Item 2. WAEC Phys P3 2023 Q3B: the slope triangle is drawn on the line. DRAFT: both
+    // hypotenuse corners within one small square (0.2 cm) of her line. ECF on reading and value.
+    expect(lostItems(OHMS_TRIANGLE_OFF_LINE)).toEqual([["GRAPH-SLOPE:large", 1]]);
+    expect(mark(OHMS_TRIANGLE_OFF_LINE).earned).toBe(19);
+  });
+
+  it("loses GRAPH-SLOPE:large for collinear corners, a tilted leg, or no line drawn", () => {
+    // Item 2. A triangle needs one horizontal and one vertical leg (within 0.1 cm) and area.
+    const collinear = withG({
+      triangle: { p1: { x_cm: 2, y_cm: 3 }, p2: { x_cm: 8, y_cm: 12 }, p3: { x_cm: 14, y_cm: 21 } },
+    });
+    expect(item(collinear, "GRAPH-SLOPE:large")?.outcome).toBe("lost");
+    const tilted = withG({
+      triangle: { p1: { x_cm: 2, y_cm: 3 }, p2: { x_cm: 14, y_cm: 4 }, p3: { x_cm: 14, y_cm: 21 } },
+    });
+    expect(item(tilted, "GRAPH-SLOPE:large")?.outcome).toBe("lost");
+    expect(item(withG({ line: null }), "GRAPH-SLOPE:large")?.outcome).toBe("lost");
+  });
+
+  it("reads the (b)(ii) answer past a trailing line break or a bracketed note", () => {
+    // Item 3. docs/07 §4.4 (b)(ii): 0.25 m. Expected: PHYS-CALC:answer 1 of 1 in both.
+    const base = OHMS_GOOD.length_calc_as_written ?? "";
+    for (const text of [`${base}\n`, `${base} (2 s.f.)`, `${base} (2 s.f.)\n\n`]) {
+      expect(
+        item({ ...OHMS_GOOD, length_calc_as_written: text }, "PHYS-CALC:answer")?.marks_earned,
+      ).toBe(1);
+    }
+  });
+
+  it("ties each axis unit to its quantity", () => {
+    // Item 4. WAEC Phys P3 2023 Q3B: axes labelled with quantity and unit. "V/V" on both axes,
+    // or "V/A" up with "I/V" across, lose GRAPH-AXES:units (½).
+    const both = withG({ x: { ...g.x, label_as_written: "V/V" } });
+    expect(item(both, "GRAPH-AXES:units")?.outcome).toBe("lost");
+    const crossed = withG({
+      x: { ...g.x, label_as_written: "I/V" },
+      y: { ...g.y, label_as_written: "V/A" },
+    });
+    expect(item(crossed, "GRAPH-AXES:units")?.outcome).toBe("lost");
+    expect(item(OHMS_GOOD, "GRAPH-AXES:units")?.outcome).toBe("earned");
+  });
+
+  it("never earns GRAPH-SCALE, points or reading with a zero, negative or infinite scale", () => {
+    // Item 5. A scale must be a positive number of units per cm (behaviour; no source).
+    for (const u of [0, -0.05, Number.POSITIVE_INFINITY]) {
+      const r = withG({ x: { ...g.x, units_per_cm: u } });
+      expect(item(r, "GRAPH-SCALE:x")?.outcome).toBe("lost");
+      expect(item(r, "GRAPH-POINTS")?.marks_earned).toBe(0);
+      expect(item(r, "GRAPH-SLOPE:read")?.outcome).toBe("lost");
+    }
+  });
+
+  it("counts d.p. in A and V when her headings are mA or mV", () => {
+    // Item 6. DRAFT PHYS-2DP: 710 mA = 0.710 A (3 d.p.), 71 mA = 0.071 A (3 d.p.): both pass.
+    const milli = (I: string[]): OhmsLawRecord => ({
+      ...OHMS_GOOD,
+      headers: { R: "R/Ω", I: "I/mA", V: "V/mV" },
+      rows: OHMS_GOOD.rows.map((r, k) => ({
+        ...r,
+        I: { ...r.I, text_as_written: I[k] ?? "" },
+        V: { ...r.V, text_as_written: "2120" },
+      })),
+    });
+    const sheet = mark(milli(["710", "560", "300", "190", "110", "60", "41"]));
+    expect(sheet.items.find((i) => i.id === "PHYS-2DP:I")?.outcome).toBe("earned");
+    expect(sheet.items.find((i) => i.id === "PHYS-2DP:V")?.outcome).toBe("earned");
+    expect(sheet.items.find((i) => i.id === "PHYS-2DP:units")?.outcome).toBe("earned");
+    expect(item(milli(["71", "56", "30", "19", "11", "6", "4"]), "PHYS-2DP:I")?.outcome).toBe(
+      "earned",
+    );
+  });
+
+  it("passes a 0.30 A cell (the unit written in the cell)", () => {
+    // DRAFT PHYS-2DP: "0.30 A" is 2 d.p.; the point still matches her table.
+    const rows = OHMS_GOOD.rows.map((r) =>
+      r.R.text_as_written === "5" ? { ...r, I: { ...r.I, text_as_written: "0.30 A" } } : r,
+    );
+    const sheet = mark({ ...OHMS_GOOD, rows });
+    expect([sheet.earned, sheet.available]).toEqual([20, 20]);
+  });
+
+  it("scopes V–I negations to the precaution's own verb", () => {
+    // Item 7. WAEC Phys P3 2023 Q3B: precautions as things done. V–I path only.
+    const vi = (p: string) => judgePrecaution(p, "ohms_law_vi");
+    expect(vi("The key was opened when readings were not being taken.")).toMatchObject({
+      accepted: true,
+      matched: "key_opened",
+    });
+    expect(vi("Current was not allowed to flow for long.")).toMatchObject({
+      accepted: true,
+      matched: "current_brief",
+    });
+    expect(vi("The key was not opened between readings.").reason).toBe("not_done");
+    expect(vi("Parallax was not avoided.").reason).toBe("not_done");
+    expect(vi("The meters were not read at an angle, so parallax was avoided.").accepted).toBe(
+      true,
+    );
+    // The metre bridge path is unchanged: any negation there still means "not done".
+    expect(judgePrecaution("The key was opened when readings were not being taken.").reason).toBe(
+      "not_done",
+    );
+  });
+
+  it("counts 'current not allowed to flow for long' with 'key opened' once (one idea)", () => {
+    // DRAFT: both say the current was kept brief. Expected PRECAUTIONS 1 + 0.
+    const sheet = mark({
+      ...OHMS_GOOD,
+      precautions: [
+        "The key was opened between readings.",
+        "Current was not allowed to flow for long.",
+      ],
+    });
+    expect(sheet.items.filter((i) => i.rule === "PRECAUTIONS").map((i) => i.marks_earned)).toEqual([
+      1, 0,
+    ]);
+  });
+
+  it.each([
+    "The eye was directly above the pointer.",
+    "The eye was in line with the pointer when each meter was read.",
+    "The pointer covered its image in the mirror.",
+  ])("takes %s as the V–I parallax precaution", (p) => {
+    // Item 8. Parallax at the meter's mirror scale (docs/07 §5.2 V–I precautions row).
+    expect(judgePrecaution(p, "ohms_law_vi")).toMatchObject({
+      accepted: true,
+      matched: "parallax_avoided",
+    });
+  });
+
+  it("pairs close rows with points optimally, not greedily", () => {
+    // Item 11. DRAFT GRAPH-POINTS: rows R = 20 Ω at (2.2, 3.3) cm and R = 40 Ω at (2.0, 3.1)
+    // cm; point P1 (2.1, 3.2) fits both, P2 (2.3, 3.4) fits only R = 20 Ω. Greedy gives R = 20
+    // P1 and leaves R = 40 without a point (4 → 1); the best pairing gives 5 → 1½.
+    const rows = OHMS_GOOD.rows.map((r) =>
+      r.R.text_as_written === "40"
+        ? { ...r, I: { ...r.I, text_as_written: "0.10" }, V: { ...r.V, text_as_written: "0.31" } }
+        : r,
+    );
+    const points = [...g.points.slice(0, 3), { x_cm: 2.1, y_cm: 3.2 }, { x_cm: 2.3, y_cm: 3.4 }];
+    expect(
+      item({ ...OHMS_GOOD, rows, graph: { ...g, points } }, "GRAPH-POINTS")?.marks_earned,
+    ).toBe(1.5);
+  });
+
+  it("takes kΩ as the slope's unit and converts it to Ω", () => {
+    // Item 12. 1 kΩ = 1000 Ω (SI). "3.0 kΩ" has a unit (½), but 3000 Ω is not her
+    // ΔV/ΔI = 1.80/0.60 = 3.0 Ω, so the value is lost.
+    const r = withG({ slope_as_written: "s = 3.0 kΩ" });
+    expect(item(r, "GRAPH-SLOPE:unit")?.outcome).toBe("earned");
+    expect(item(r, "GRAPH-SLOPE:value")?.outcome).toBe("lost");
+    // ΔI written in mA is converted: 600 mA = 0.600 A, so reading and value both hold.
+    const mA = withG({ delta_x_as_written: "ΔI = 700 − 100 = 600 mA" });
+    expect(item(mA, "GRAPH-SLOPE:read")?.outcome).toBe("earned");
+    expect(item(mA, "GRAPH-SLOPE:value")?.outcome).toBe("earned");
+  });
+
+  it("puts the ±10% accuracy edges in the right place (9.9% passes, 10.1% fails)", () => {
+    // WAEC Phys P3 2023 Q3B: within ±10% of the teacher's value. s = 3.0 Ω.
+    const acc = (t: number) =>
+      mark(OHMS_GOOD, { teacherXyOhm: t }).items.find((i) => i.rule === "PHYS-ACCURACY")?.outcome;
+    expect(acc(3.0 / 1.099)).toBe("earned"); // |3.0 − t| / t = 9.9%
+    expect(acc(3.0 / 1.101)).toBe("lost"); // 10.1%
+  });
+
+  it("adds no PHYS-ACCURACY item in teacher mode without a usable value", () => {
+    // docs/07 §5.2: accuracy needs the teacher's value. Teacher mode stays on; no crash.
+    for (const t of [null, Number.NaN]) {
+      const sheet = mark(OHMS_GOOD, { teacherMode: true, teacherXyOhm: t });
+      expect(sheet.teacher_mode).toBe(true);
+      expect(sheet.items.some((i) => i.rule === "PHYS-ACCURACY")).toBe(false);
+      expect([sheet.earned, sheet.available]).toEqual([20, 20]);
+    }
+  });
+
+  it("gives five complete rows plus two blank rows 20 / 20 (best five, not first five)", () => {
+    // DRAFT "at least five rows" (plan, "Rows"): every row she writes is checked and the item
+    // is earned when any five pass. This differs from the metre bridge, which marks the first
+    // five rows (packages/rules/src/meterBridge.ts). Blank rows earn nothing and cost nothing.
+    const sheet = mark(OHMS_FIVE_PLUS_BLANK);
+    expect([sheet.earned, sheet.available]).toEqual([20, 20]);
+  });
+});
+
+describe("unit conversions between her table, her axes and her Δ (science re-check)", () => {
+  const g = OHMS_GOOD.graph;
+  if (!g) throw new Error("the good table has a graph");
+  // Her table in A, her current axis in mA: 2 cm to 100 mA, so 50 mA per cm. Points sit in
+  // the same sheet places as the good graph (0.71 A = 710 mA → 14.2 cm).
+  const mAxis = {
+    ...g.x,
+    label_as_written: "I/mA",
+    scale_as_written: "2 cm to 100 mA",
+    units_per_cm: 50,
+  };
+
+  it("reads a bare ΔI in the axis's own unit (I/mA axis, 'ΔI = 600')", () => {
+    // Re-check item 1. 1 mA = 0.001 A (SI). Her triangle's 12 cm leg at 50 mA/cm is 600 mA;
+    // "ΔI = 600" on that axis means 600 mA, so read (½) and value (½: 1.80 V ÷ 0.600 A = 3.0 Ω)
+    // both hold. Expected 20 / 20, the same as with "600 mA".
+    const bare = {
+      ...OHMS_GOOD,
+      graph: { ...g, x: mAxis, delta_x_as_written: "ΔI = 700 − 100 = 600" },
+    };
+    const withUnit = { ...OHMS_GOOD, graph: { ...g, x: mAxis, delta_x_as_written: "ΔI = 600 mA" } };
+    expect(mark(bare).earned).toBe(20);
+    expect(mark(withUnit).earned).toBe(20);
+  });
+
+  it("converts her table's A to the axis's mA before checking the points", () => {
+    // Re-check item 2. Table heading I/A, axis I/mA: 0.71 A plotted at 710 mA (14.2 cm) is
+    // correct. Expected GRAPH-POINTS 1½ of 1½.
+    expect(item({ ...OHMS_GOOD, graph: { ...g, x: mAxis } }, "GRAPH-POINTS")?.marks_earned).toBe(
+      1.5,
+    );
+    // The same for V: heading V/V, axis V/mV at 100 mV per cm.
+    const mvAxis = { ...g.y, label_as_written: "V/mV", units_per_cm: 100 };
+    expect(item({ ...OHMS_GOOD, graph: { ...g, y: mvAxis } }, "GRAPH-POINTS")?.marks_earned).toBe(
+      1.5,
+    );
+  });
+
+  it("takes 'the key was never left closed' as the key precaution, counted once", () => {
+    // Re-check item 3 (DRAFT): the same practice as opening the key between readings.
+    for (const p of ["The key was never left closed.", "The key was not closed for long."]) {
+      expect(judgePrecaution(p, "ohms_law_vi")).toMatchObject({
+        accepted: true,
+        matched: "current_brief",
+      });
+    }
+    const sheet = mark({
+      ...OHMS_GOOD,
+      precautions: ["The key was opened between readings.", "The key was never left closed."],
+    });
+    expect(sheet.items.filter((i) => i.rule === "PRECAUTIONS").map((i) => i.marks_earned)).toEqual([
+      1, 0,
+    ]);
+  });
+});

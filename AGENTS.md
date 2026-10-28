@@ -82,10 +82,9 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `apps/web/src/learn/wiring/**`, plus additive exports in `apps/web/src/apparatus/ohms-law/Lead*.{ts,tsx}` (plan: `docs/plans/ohms-law-vi.md`, Wave 2) | Claude subagent `circuit-engineer`, while `claude/ohms-wiring` is open |
-| `apps/web/src/learn/readings/**` (Wave 2) | Claude subagent `implementer`, while `claude/ohms-readings` is open |
-| `apps/web/src/learn/shell/**` (Wave 2) | Claude subagent `ui-builder`, while `claude/ohms-shell` is open |
-| `packages/rules/src/ohmsLaw*.ts`, additive edits to `packages/rules/src/{precautions,examiner,index}.ts` (Wave 2) | Claude subagent `circuit-engineer`, while `claude/ohms-rules` is open |
+| `apps/web/src/learn/graph/**`, plus one `?graph=1` preview switch in `App.tsx` (plan: `docs/plans/ohms-law-vi.md`, Wave 3) | Claude subagent `ui-builder`, while `claude/ohms-graph` is open |
+| `apps/web/src/learn/lessons/ohms-law/**` (Wave 3) | Claude subagent `lesson-writer`, while `claude/ohms-lesson` is open |
+| The files listed in `docs/plans/ink-restyle.md` (DOM and CSS only) | Muse Code, while `muse/ink-restyle` is open (starts after `claude/ink-look` merges) |
 | `apps/web/src/scene/ink/**`, `scene/{Desk,Page,Scene}.tsx`, the composer/lights of `lab/LabBench.tsx` and of the two existing `KitPreview.tsx`, additive `quality/tier.ts` (plan: `docs/plans/ink-look.md`, Wave 1) | Claude subagent `shader-artist`, while `claude/ink-look` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 

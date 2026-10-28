@@ -5,6 +5,7 @@ import { isL1L2Page, markMeterBridgeL1L2 } from "./meterBridgeL1L2";
 export * from "./examiner";
 export * from "./meterBridge";
 export * from "./meterBridgeL1L2";
+export * from "./ohmsLaw";
 export * from "./precautions";
 export * from "./text";
 

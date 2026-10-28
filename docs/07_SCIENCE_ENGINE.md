@@ -156,6 +156,30 @@ The same wire and solver with a driver cell across AC and a test cell through th
 | PHYS-LAW | (b)(i) Ohm's law named and stated, with the condition (temperature constant) | DRAFT | textbook statement |
 | PHYS-CALC | (b)(ii) correct working and L = 0.25 m | DRAFT | worked above |
 
+**DRAFT mark allocation (Oct 29, `packages/rules/src/ohmsLaw.ts`), 20 marks, or 21 in teacher mode:**
+- **Readings and table:**
+  - PHYS-1DP 1: ½ for 1 d.p., ½ for cm.
+  - PHYS-TABLE 1½.
+  - PHYS-2DP 2½: I 1, V 1, units in the headers ½.
+  - PHYS-TREND 1.
+- **Graph:**
+  - GRAPH-AXES 1½. GRAPH-SCALE 1. GRAPH-POINTS 1½. GRAPH-LINE 1.
+  - GRAPH-SLOPE 2½: a large triangle on her line 1, ΔV and ΔI read off it ½, s = ΔV/ΔI ½, the unit Ω ½.
+- **Precautions, law and calculation:**
+  - PRECAUTIONS 2.
+  - PHYS-LAW 2½: the name ½, the statement 1, the condition 1.
+  - PHYS-CALC 2: the formula ½, A = πd²/4 ½, the value ½, the unit ½.
+- **Accuracy:** PHYS-ACCURACY 1, teacher mode only, within ±10 %.
+
+**Decisions:**
+- All rows she writes are checked; the "five rows" items are earned by any five rows that pass. The metre bridge marks the first five.
+- Swapped axes lose the axes half-marks only. The error is carried forward to the triangle, the readings and s, and A/V is accepted as the unit.
+- A Δ written without a unit is read in the axis's own unit. mA and mV are converted before the 2 d.p. and point checks.
+- Two precautions with the same idea count once: tight connections with plugs firm, and the key opened with the current not left flowing. Repeated readings are accepted. "Meters connected correctly" is procedure and is not scored.
+- On the V–I path only, a "not" counts against a precaution only when it reaches the topic's own verb.
+- If the official scheme gives about 25 marks per question (§5.1), the readings are the likeliest place for the extra marks.
+
+
 ### 5.3 Rubric data file (shape, not code)
 Each rule: code, subject, question type, description, how it is checked (which extracted fields), marks as in the scheme, the fix text in English and Pidgin, the WAEC source URL, and a status flag (verified / configurable / teacher-set). Stored as one versioned JSON file shared by client and server.
 
