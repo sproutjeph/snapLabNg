@@ -25,8 +25,10 @@ export const NUT_TOP_M = 0.016;
 /** The least size of the tap target on screen, in CSS pixels. */
 const MIN_HIT_PX = 44;
 /** The tap target never grows past this, so nuts only 6 cm apart (the key's) do not overlap. */
-const HIT_MAX_M = 0.029;
+const HIT_MAX_M = 0.025;
 const HIT_MIN_M = 0.016;
+/** Vertical stretch of the target: 3.2 cm half-height, so it spans 0 to 6 cm above the foot. */
+const HIT_TALL = 2;
 
 const CAP_COLOURS = { red: "#a82a22", black: "#1f1f22", brass: "#b08d3c" } as const;
 
@@ -156,8 +158,10 @@ export function TerminalNut({
       const dist = Math.max(0.05, s.camera.getWorldPosition(_cam).distanceTo(_world));
       const metresPerPx = (2 * dist * Math.tan((s.camera.fov * Math.PI) / 360)) / s.size.height;
       const r = Math.min(HIT_MAX_M, Math.max(HIT_MIN_M, (MIN_HIT_PX / 2) * metresPerPx));
-      const k = r / HIT_MIN_M;
-      if (Math.abs(h.scale.x - k) > 0.02) h.scale.setScalar(k);
+      // The target is a tall ellipsoid, centred 3 cm up and reaching 6 cm, so an oblique tap on a
+      // seated plug still finds the nut; it is widened a fifth to keep the nut-height width.
+      const k = (r / HIT_MIN_M) * 1.2;
+      if (Math.abs(h.scale.x - k) > 0.02) h.scale.set(k, HIT_TALL, k);
     }
   });
 
@@ -179,7 +183,7 @@ export function TerminalNut({
         </group>
       </InkGroup>
       <object3D ref={attach} position-y={NUT_TOP_M} />
-      <mesh ref={hit} position-y={0.01} onPointerDown={onDown} visible={false}>
+      <mesh ref={hit} position-y={0.03} onPointerDown={onDown} visible={false}>
         <sphereGeometry args={[HIT_MIN_M, 8, 6]} />
         <meshBasicMaterial />
       </mesh>

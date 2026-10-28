@@ -11,6 +11,7 @@ import {
   makeWoodTexture,
   RULE_DEPTH_M,
   RULE_MARGIN_M,
+  repaintWhenFontReady,
 } from "./WireBoardTextures";
 
 export interface WireBoardProps extends PartProps {
@@ -54,7 +55,7 @@ export function WireBoard({
     const rng = seeded(0x5ee1);
     const seg = low ? 8 : 14;
     const woodTex = makeWoodTexture(rng, quality);
-    const ruleTex = makeRuleTexture(quality);
+    const ruleTex = makeRuleTexture();
     const letterX = makeLetterTexture("X");
     const letterY = makeLetterTexture("Y");
     const screws = mergeAll(
@@ -118,6 +119,7 @@ export function WireBoard({
       hitMat: new THREE.MeshBasicMaterial(),
     };
   }, [quality, low, xX, xY]);
+  useEffect(() => repaintWhenFontReady([res.ruleTex, res.letterX, res.letterY]), [res]);
   useEffect(
     () => () => {
       for (const v of Object.values(res)) v.dispose();

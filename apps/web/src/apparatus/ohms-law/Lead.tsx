@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useTerminalRegistry } from "../../learn/terminals";
 import type { LeadColour, OhmsLawVisualState, TerminalId } from "../../learn/types";
-import { InkGroup } from "../../scene/ink/ink";
+import { inkTag } from "../../scene/ink/ink";
 import type { QualityTier } from "../meter-bridge/types";
 import {
+  floorAt,
   hashString,
   jitterColour,
   LEAD_BASE_COLOURS,
@@ -38,6 +39,15 @@ const HIT_RADIUS_M = 0.007;
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
 const _pt = new THREE.Vector3();
+const _la = new THREE.Vector3();
+const _lb = new THREE.Vector3();
+const _inv = new THREE.Matrix4();
+
+/** Lifts a sampled world point onto whatever it would sink into (a part's top, or the desk). */
+function restOnBench(p: THREE.Vector3): void {
+  const y = floorAt(p.x, p.z) + LEAD_RADIUS_M;
+  if (p.y < y) p.y = y;
+}
 const _tan = new THREE.Vector3();
 const _prev = new THREE.Vector3();
 const _nrm = new THREE.Vector3();
@@ -136,15 +146,18 @@ function shapeCable(pts: THREE.Vector3[], s: THREE.Vector3, e: THREE.Vector3, bu
  * An insulated flexible lead with a banana plug at each end, sagging between two terminals
  * (a tube on a Catmull-Rom curve). Both ends' world positions are read from the registry
  * every frame; the tube is rebuilt in place only on a frame where an end moved. With
- * `to = "pointer"` the free end follows `state.current.pointer`. Put it at the scene root, since
- * its points are world positions. A fatter invisible tube along the middle takes the tap.
+ * `to = "pointer"` the free end follows `state.current.pointer`. The cable is worked out in
+ * world space, rests on the bench parts' footprints (`floorAt`), and stacks its plugs on any
+ * earlier leads at the same nut. A fatter invisible tube along the middle takes the tap.
  */
 export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
   const registry = useTerminalRegistry();
   const root = useRef<THREE.Group>(null);
   const plugA = useRef<THREE.Group>(null);
   const plugB = useRef<THREE.Group>(null);
-  const inkId = INK_IDS.leadBase + (hashString(`${from}|${to}`) % 20);
+  const tagged = useRef<THREE.Group>(null);
+  const plugs = useRef<THREE.Group>(null);
+  const hitMesh = useRef<THREE.Mesh>(null);
 
   const res = useMemo(() => {
     const low = quality === "low";
@@ -189,7 +202,8 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       bulge,
       main: new Float32Array((mainN + 1) * 3),
       mid: new Float32Array((hitN + 1) * 3),
-      last: new Float32Array(6).fill(Number.NaN),
+      last: new Float32Array(8).fill(Number.NaN),
+      ink: -1,
       s: new THREE.Vector3(),
       e: new THREE.Vector3(),
     };
@@ -211,16 +225,51 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
   useFrame(() => {
     const g = root.current;
     if (!g) return;
+    const hit = hitMesh.current;
     const okA = registry.worldPosition(from, _a);
     let okB = true;
     if (to === "pointer") {
       _b.copy(state.current.pointer);
       _b.y += CARRY_LIFT_M;
     } else okB = registry.worldPosition(to, _b);
-    g.visible = okA && okB;
-    if (!(okA && okB)) return;
-    plugA.current?.position.copy(_a);
-    plugB.current?.position.copy(_b);
+    const ok = okA && okB;
+    g.visible = ok;
+    // A missing end must not leave a stale tap tube behind.
+    if (hit) {
+      const k = ok ? 1 : 0;
+      if (hit.scale.x !== k) hit.scale.setScalar(k);
+    }
+    if (!ok) return;
+
+    // This lead's place among the bench's leads: its ink id, and how many earlier leads share
+    // each terminal (their plugs are already in the nut, so this one stacks on top).
+    const leads = state.current.leads;
+    let mine = -1;
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (l && ((l.a === from && l.b === to) || (l.a === to && l.b === from))) {
+        mine = i;
+        break;
+      }
+    }
+    const upto = mine >= 0 ? mine : leads.length;
+    let ka = 0;
+    let kb = 0;
+    for (let i = 0; i < upto; i++) {
+      const l = leads[i];
+      if (!l) continue;
+      if (l.a === from || l.b === from) ka++;
+      if (to !== "pointer" && (l.a === to || l.b === to)) kb++;
+    }
+    const ink = INK_IDS.leadBase + (upto % 20);
+    if (ink !== res.ink) {
+      res.ink = ink;
+      if (plugs.current) inkTag(plugs.current, { id: ink, thin: true });
+      if (tagged.current) inkTag(tagged.current, { id: ink, thin: false });
+    }
+
+    const liftA = ka * PLUG_HEIGHT_M * 0.85;
+    const liftB = kb * PLUG_HEIGHT_M * 0.85;
     const l = res.last;
     if (
       l[0] === _a.x &&
@@ -228,7 +277,9 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       l[2] === _a.z &&
       l[3] === _b.x &&
       l[4] === _b.y &&
-      l[5] === _b.z
+      l[5] === _b.z &&
+      l[6] === liftA &&
+      l[7] === liftB
     ) {
       return;
     }
@@ -238,11 +289,26 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     l[3] = _b.x;
     l[4] = _b.y;
     l[5] = _b.z;
-    res.s.set(_a.x, _a.y + PLUG_HEIGHT_M, _a.z);
-    res.e.set(_b.x, _b.y + PLUG_HEIGHT_M, _b.z);
+    l[6] = liftA;
+    l[7] = liftB;
+
+    // Everything is worked out in world space (the footprints are world boxes), then moved
+    // into the parent's space, so a transformed parent cannot break the lead.
+    const par = g.parent;
+    if (par) _inv.copy(par.matrixWorld).invert();
+    else _inv.identity();
+    _la.set(_a.x, _a.y + liftA, _a.z).applyMatrix4(_inv);
+    _lb.set(_b.x, _b.y + liftB, _b.z).applyMatrix4(_inv);
+    plugA.current?.position.copy(_la);
+    plugB.current?.position.copy(_lb);
+
+    res.s.set(_a.x, _a.y + liftA + PLUG_HEIGHT_M, _a.z);
+    res.e.set(_b.x, _b.y + liftB + PLUG_HEIGHT_M, _b.z);
     shapeCable(res.pts, res.s, res.e, res.bulge);
     for (let i = 0; i <= res.mainN; i++) {
       res.curve.getPoint(i / res.mainN, _pt);
+      restOnBench(_pt);
+      _pt.applyMatrix4(_inv);
       res.main[i * 3] = _pt.x;
       res.main[i * 3 + 1] = _pt.y;
       res.main[i * 3 + 2] = _pt.z;
@@ -254,6 +320,8 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       const t0 = Math.min(0.4, Math.max(0.14, 0.05 / Math.max(span, 0.05)));
       for (let i = 0; i <= res.hitN; i++) {
         res.curve.getPoint(t0 + ((1 - 2 * t0) * i) / res.hitN, _pt);
+        restOnBench(_pt);
+        _pt.applyMatrix4(_inv);
         res.mid[i * 3] = _pt.x;
         res.mid[i * 3 + 1] = _pt.y;
         res.mid[i * 3 + 2] = _pt.z;
@@ -268,9 +336,9 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
   };
   return (
     <group ref={root} visible={false}>
-      <InkGroup id={inkId}>
+      <group ref={tagged}>
         <mesh geometry={res.tube} material={res.cableMat} frustumCulled={false} castShadow />
-        <InkGroup id={inkId} thin>
+        <group ref={plugs}>
           <group ref={plugA}>
             <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
             <mesh geometry={res.plug.pin} material={res.pinMat} />
@@ -279,10 +347,11 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
             <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
             <mesh geometry={res.plug.pin} material={res.pinMat} />
           </group>
-        </InkGroup>
-      </InkGroup>
+        </group>
+      </group>
       {to !== "pointer" ? (
         <mesh
+          ref={hitMesh}
           geometry={res.hit}
           material={res.hitMat}
           frustumCulled={false}

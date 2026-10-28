@@ -71,10 +71,19 @@ export function makeWoodTexture(rng: () => number, quality: QualityTier): THREE.
  * number at every cm. u runs along x from 0 to 1 across 1.02 m (zero is 1 cm in); the top edge
  * of the canvas is the edge by the wire. It paints the scale only, never a reading.
  */
-export function makeRuleTexture(quality: QualityTier): THREE.CanvasTexture {
-  const w = quality === "low" ? RULE_PX / 2 : RULE_PX;
-  const h = quality === "low" ? RULE_ROWS / 2 : RULE_ROWS;
+export function makeRuleTexture(): THREE.CanvasTexture {
+  // Full size on every tier: at half size the mm ticks run together.
+  const w = RULE_PX;
+  const h = RULE_ROWS;
   const [c, ctx] = canvas(w, h);
+  const paint = () => paintRule(ctx, w, h);
+  paint();
+  const tex = finish(c, 8);
+  tex.userData.repaint = paint;
+  return tex;
+}
+
+function paintRule(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   const sx = w / (1.02 * 1000); // px per mm
   ctx.fillStyle = "#e6d3a2";
   ctx.fillRect(0, 0, w, h);
@@ -113,19 +122,46 @@ export function makeRuleTexture(quality: QualityTier): THREE.CanvasTexture {
   ctx.font = `bold ${Math.round(10 * k)}px "Barlow Condensed", "Arial Narrow", sans-serif`;
   ctx.textAlign = "left";
   ctx.fillText("cm", 14 * sx * 10 + 6, 43 * k);
-  return finish(c, quality === "low" ? 2 : 8);
 }
 
 /** A single stamped letter (X or Y) on a transparent ground. */
 export function makeLetterTexture(letter: string): THREE.CanvasTexture {
   const [c, ctx] = canvas(64, 64);
-  ctx.clearRect(0, 0, 64, 64);
-  ctx.fillStyle = "#2a1b0e";
-  ctx.font = 'bold 46px "Barlow Condensed", "Arial Narrow", sans-serif';
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(letter, 32, 34);
-  return finish(c, 2);
+  const paint = () => {
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.fillStyle = "#2a1b0e";
+    ctx.font = 'bold 46px "Barlow Condensed", "Arial Narrow", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(letter, 32, 34);
+  };
+  paint();
+  const tex = finish(c, 2);
+  tex.userData.repaint = paint;
+  return tex;
+}
+
+/**
+ * Repaints the textures once the Barlow Condensed face has loaded (they are first painted in a
+ * fallback if it has not). Returns a cancel function. Runs once, never per frame.
+ */
+export function repaintWhenFontReady(textures: THREE.CanvasTexture[]): () => void {
+  let live = true;
+  if (typeof document === "undefined" || !document.fonts) return () => {};
+  document.fonts
+    .load('bold 32px "Barlow Condensed"')
+    .then(() => {
+      if (!live) return;
+      for (const t of textures) {
+        const repaint = t.userData.repaint as (() => void) | undefined;
+        repaint?.();
+        t.needsUpdate = true;
+      }
+    })
+    .catch(() => {});
+  return () => {
+    live = false;
+  };
 }
 
 /** Fine grit for the sandpaper strip. */

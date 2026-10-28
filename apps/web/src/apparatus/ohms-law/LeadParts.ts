@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { LeadColour } from "../../learn/types";
 import type { QualityTier } from "../meter-bridge/types";
+import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
 
 // Shared pieces for the V–I bench's leads, nuts, board and tray: a seeded random source,
 // colour jitter, geometry helpers, and the banana plug and crocodile clip shapes. Sizes in metres.
@@ -182,4 +183,55 @@ export function makeCrocClipGeometries(): {
     }
   }
   return { boot, jaws: mergeAll(jawParts) };
+}
+
+// ---- Where the cable may not go ----------------------------------------------------------
+// Leads rest on top of whatever they cross. These boxes are the bench's parts as the Wave 0
+// stubs size them (width x height x depth, centred on the part's layout position, rotation 0):
+//   cells 0.14 x 0.04 x 0.07    key 0.08 x 0.02 x 0.05     ammeter and voltmeter 0.12 x 0.10 x 0.06
+//   resistance box 0.26 x 0.06 x 0.10   wire board 1.10 x 0.02 x 0.12   tray 0.26 x 0.014 x 0.34
+// The wire board's brass strips (3.2 cm) and the tray's rheostat are left out. If apparatus 1's
+// parts end up bigger, edit the sizes here.
+
+export interface BenchFootprint {
+  cx: number;
+  cz: number;
+  /** Half the width (x) and half the depth (z). */
+  hx: number;
+  hz: number;
+  /** Height of the top face above the desk. */
+  top: number;
+}
+
+const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number]> = [
+  ["cells", 0.14, 0.04, 0.07],
+  ["key", 0.08, 0.02, 0.05],
+  ["ammeter", 0.12, 0.1, 0.06],
+  ["voltmeter", 0.12, 0.1, 0.06],
+  ["box", 0.26, 0.06, 0.1],
+  ["wire", 1.1, 0.02, 0.12],
+  ["tray", 0.26, 0.014, 0.34],
+];
+
+export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(([slot, w, h, d]) => ({
+  cx: OHMS_LAW_LAYOUT[slot].position[0],
+  cz: OHMS_LAW_LAYOUT[slot].position[2],
+  hx: w / 2,
+  hz: d / 2,
+  top: h,
+}));
+
+/** A cable slopes from a box's top edge down to the desk over this distance. */
+const FOOT_RAMP_M = 0.015;
+
+/** The height at (x, z) a cable must stay above: a box's top, ramping to the desk beside it. */
+export function floorAt(x: number, z: number): number {
+  let y = 0;
+  for (const f of BENCH_FOOTPRINTS) {
+    const dx = Math.max(Math.abs(x - f.cx) - f.hx, 0);
+    const dz = Math.max(Math.abs(z - f.cz) - f.hz, 0);
+    const d = Math.hypot(dx, dz);
+    if (d < FOOT_RAMP_M) y = Math.max(y, f.top * (1 - d / FOOT_RAMP_M));
+  }
+  return y;
 }
