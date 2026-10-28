@@ -21,7 +21,8 @@ export interface Timeline {
   /**
    * Moves to time tS and calls every tween with its progress at that time. Tweens that have
    * not started are applied first (latest start first), then the started ones in start order,
-   * so tweens chained on one property end with the one that is playing.
+   * so tweens chained on one property end with the one that is playing. Two tweens on one
+   * property must not share a start time.
    */
   seek(tS: number): void;
   readonly durationS: number;

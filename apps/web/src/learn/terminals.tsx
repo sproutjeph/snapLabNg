@@ -33,6 +33,7 @@ export function useTerminalRegistry(): TerminalRegistry {
 /**
  * Registers the object in `ref` as terminal `id` while the component is mounted. Checks after
  * every render, so a remounted attach object (same id, new Object3D) replaces the old one.
+ * Keep the ref and this hook in the same component (as TerminalNut does).
  */
 export function useTerminal(
   id: TerminalId,
