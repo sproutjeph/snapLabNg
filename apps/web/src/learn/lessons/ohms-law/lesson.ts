@@ -107,7 +107,7 @@ export const OHMS_LAW_LESSON: Lesson = {
           { part: "wire", label: "Wire XY" },
         ],
         whyItWorks: [
-          "Keep the key open the whole time the leads are being fixed, so no current flows while the circuit is incomplete. [Nelkon & Parker]",
+          "Building with the key open means no current can flow through a half-made or wrongly made circuit, for example a stray lead across the cells. [Nelkon & Parker]",
           "The ammeter carries all the current, so it sits in the main line, in series. Current enters at its + terminal, and a reversed meter kicks backwards below zero. [Nelkon & Parker]",
           "The voltmeter joins at X and Y, in parallel with the wire alone, so it reads the potential difference across XY and not across the box. [Nelkon & Parker]",
           "A voltmeter has a very high resistance, so it takes almost no current from the wire. [Nelkon & Parker]",
@@ -139,7 +139,9 @@ export const OHMS_LAW_LESSON: Lesson = {
           "The key is closed only long enough to read both meters, so the cells are not run down. [Nelkon & Parker]",
           "Both meters are read at the same moment, so I and V belong to the same state of the circuit.",
           "Each meter is read with the pointer covering its image in the mirror strip, which removes parallax. [Nelkon & Parker]",
-          "Each reading is written to two decimal places, half a small division. CHECK: this follows the DRAFT PHYS-2DP row in docs/07, not a WAEC statement.",
+          // CHECK: two decimal places for both meters (half a small division) follows
+          // [DRAFT PHYS-2DP, docs/07 §5.2]; no WAEC claim is made.
+          "Each reading is written to the same number of decimal places, as the scale allows.",
         ],
         precautions: [P.zeroError, P.parallax, P.keyOpened],
       },
@@ -195,7 +197,7 @@ export const OHMS_LAW_LESSON: Lesson = {
       "From your own table, plot V up the page and I across it.",
       {
         whyItWorks: [
-          "V goes on the vertical axis and I on the horizontal axis because the question says so. [Nelkon & Parker]",
+          "V goes on the vertical axis and I on the horizontal axis because the question says so. [the question]",
           "Both axes need the quantity and the unit. [WAEC Phys P3 2023 Q3B; GRAPH-AXES]",
           "The graph fills more than a third of the page, with an easy scale. [WAEC Phys P3 reports; GRAPH-SCALE]",
           "A best-fit line has points scattered on both sides of it, so small reading errors cancel out. [Nelkon & Parker]",
@@ -209,10 +211,11 @@ export const OHMS_LAW_LESSON: Lesson = {
       "Draw a large triangle on your line and work out s = ΔV ÷ ΔI, with its unit.",
       {
         whyItWorks: [
-          "The slope is the change in V divided by the change in I, so its unit is volt per ampere, which is the ohm. [Nelkon & Parker]",
-          "From Ohm's law, the slope gives the resistance of the wire XY.",
+          "The slope is the change in V divided by the change in I, so work out its unit as well as its size. [Nelkon & Parker]",
+          "The slope gives the resistance of the wire XY.",
           "A large right-angled triangle makes small reading errors matter less. [WAEC Phys P3 reports; GRAPH-SLOPE]",
-          "Points are read off the line, not from the table, which is what makes it a best-fit slope. [WAEC Chief Examiner's report] CHECK: exact report wording.",
+          // CHECK: points off the line, not the table [WAEC Phys P3 Chief Examiner's reports; GRAPH-SLOPE]; no wording quoted.
+          "Points are read off the line, not from the table, which is what makes it a best-fit slope. [WAEC Phys P3 Chief Examiner's reports; GRAPH-SLOPE]",
         ],
       },
     ),
@@ -224,20 +227,19 @@ export const OHMS_LAW_LESSON: Lesson = {
       {
         whyItWorks: [
           "WAEC credits a precaution when it is written as something done, not as an order. [docs/07 5.2 PRECAUTIONS; WAEC Phys P3 2008, 2014, 2018, 2023 expected answers]",
-          "Any two valid precautions earn the marks, so pick the two you are surest you did. [docs/07 5.1]",
+          "Think back to what you did to keep your readings reliable. Any two valid precautions earn the marks, but the two must be different ideas: tight connections and plugs pushed in count as one. [docs/07 5.1]",
         ],
-        precautions: [P.keyOpened, P.connections, P.plugs, P.zeroError, P.parallax, P.repeated],
       },
     ),
     step(
       "law",
       "(b)(i)",
       "Mention and state the law on which the experiment is based.",
-      "Name the law the experiment is based on, then state it with its condition.",
+      "Name the law the experiment is based on, then state it in full.",
       {
         whyItWorks: [
-          "The experiment checks that the current and the voltage across the wire go up together in the same proportion. [Nelkon & Parker]",
-          "A complete answer names the law and gives its condition, because the law holds only while the temperature and other physical conditions stay constant. [WAEC Chief Examiner's report] CHECK: whether WAEC awards the condition as a separate mark; the mark split stays DRAFT until the official scheme.",
+          // CHECK: the condition is a separate DRAFT mark; the split stays DRAFT until the official scheme.
+          "One law links V and I for a metal wire. A full answer names it, states it and gives the condition it needs.",
         ],
       },
     ),
@@ -248,9 +250,8 @@ export const OHMS_LAW_LESSON: Lesson = {
       "Show your working from the formula to the answer, and give the unit.",
       {
         whyItWorks: [
-          "The resistance of a wire is its resistivity times its length divided by its cross-sectional area. [Nelkon & Parker]",
-          "The cross-section is a circle, so the area comes from the diameter. Resistivity is in Ω m, so the diameter must be changed to metres first. [Nelkon & Parker]",
-          "WAEC gives marks for the formula, the substitution and the answer with its unit. [WAEC marking style] CHECK: exact mark split; DRAFT until the official scheme.",
+          // CHECK: (b)(ii) mark split, DRAFT: formula, area, value, unit.
+          "Start from the resistivity formula, work in metres, and give the unit.",
         ],
       },
     ),
@@ -277,10 +278,11 @@ export const OHMS_LAW_LESSON: Lesson = {
         "Drawing the cell symbol with the long line as the negative terminal, or fitting a cell the wrong way round.",
     },
     {
+      // CHECK: plug key symbol (two terminal dots with a gap, plug bar when closed) is kept; WAEC convention to confirm.
       part: "key",
       name: "Plug key, K",
       symbol:
-        "Two terminal dots with a gap between them, labelled K. A plug bar is drawn across the gap when the key is closed. CHECK: WAEC drawing convention for the plug key.",
+        "Two terminal dots with a gap between them, labelled K. A plug bar is drawn across the gap when the key is closed.",
       whatItDoes:
         "It switches the circuit on and off. Current flows only while the brass plug sits between the two brass blocks.",
       howToUse:
@@ -312,10 +314,11 @@ export const OHMS_LAW_LESSON: Lesson = {
         "Connecting the voltmeter across the wire and the resistance box together, or in series with the wire.",
     },
     {
+      // CHECK: arrow-box variable resistor is kept, zigzag also accepted; WAEC form to confirm.
       part: "box",
       name: "Plug-type resistance box, R",
       symbol:
-        "A narrow rectangle in the line, labelled R. The variable-resistance symbol is the same rectangle with an arrow drawn diagonally across it. The arrow says the resistance can be changed. A zigzag is also accepted. CHECK: which form WAEC diagrams use.",
+        "A narrow rectangle in the line, labelled R. The variable-resistance symbol is the same rectangle with an arrow drawn diagonally across it. The arrow says the resistance can be changed. A zigzag is also accepted.",
       whatItDoes:
         "It gives a known resistance in steps. A plug that is pushed in bypasses its coil. When a plug is pulled out, that coil is added to the circuit, and R is the sum of the coils whose plugs are out. A rheostat is also a variable resistor: a long coil of resistance wire with a sliding contact, so its resistance changes smoothly but cannot be read exactly from the scale, which is why a plug box is used here. Both are drawn with the arrow symbol. [Nelkon & Parker]",
       howToUse:

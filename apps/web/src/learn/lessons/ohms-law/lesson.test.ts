@@ -78,4 +78,28 @@ describe("ohms-law lesson", () => {
       expect(t).not.toMatch(/\b(he|she|his|her|him)\b/i);
     }
   });
+
+  it("gives away no marked answer in the practice text", () => {
+    const banned = [
+      "Ohm's law",
+      "directly proportional",
+      "ρL/A",
+      "RA/ρ",
+      "πd²",
+      "temperature",
+      "the ohm",
+    ];
+    for (const s of L.steps) {
+      const strings = [
+        s.plain,
+        ...(s.whyItWorks ?? []),
+        ...(s.precautions ?? []),
+        ...(s.callouts ?? []).flatMap((c) => [c.label, c.sub ?? ""]),
+      ];
+      for (const t of strings) {
+        for (const b of banned)
+          expect(t.toLowerCase(), `${s.key}: ${b}`).not.toContain(b.toLowerCase());
+      }
+    }
+  });
 });
