@@ -107,14 +107,20 @@ export function createOhmsLawBench(
     nextColour: 0,
     nextNote: 1,
   };
-  /** Edge trackers, so each note fires once per occurrence. */
+  /** Edge trackers: a bench note can fire only when its condition rises. */
   const seen = {
     keyLeftClosed: false,
     slams: 0,
-    overRangeArmed: true,
     reversed: false,
     short: false,
   };
+  /**
+   * The circuit she has set up (leads by their ends, the key, the plugs), and the circuit each
+   * bench note kind was last written for. A kind is not written again for the same circuit, so
+   * opening and closing K on a shorted circuit does not repeat the note.
+   */
+  let circuit = "";
+  const notedFor: Partial<Record<ProcedureNote["kind"], string>> = {};
 
   const nowS = () => t.steps * DT_S;
   const notify = () => {
@@ -132,9 +138,14 @@ export function createOhmsLawBench(
     }
   }
 
-  /** After any change to what she controls: re-arm the over-range note, refresh the hints. */
+  function circuitKey(): string {
+    const ends = leads.map((l) => (l.a < l.b ? `${l.a}|${l.b}` : `${l.b}|${l.a}`)).sort();
+    return `${ends.join(",")};K${inputs.keyClosed ? 1 : 0};${plugsIn.map((p) => (p ? 1 : 0)).join("")}`;
+  }
+
+  /** After any change to what she controls: note the circuit, refresh the hints. */
   function inputsChanged(leadsChanged: boolean): void {
-    seen.overRangeArmed = true;
+    circuit = circuitKey();
     if (leadsChanged) {
       comparison = compareWithDiagram(leads);
       applyHints();
@@ -157,6 +168,13 @@ export function createOhmsLawBench(
     notify();
   }
 
+  /** A note the bench detected: written once per circuit (see `notedFor`), practice mode only. */
+  function benchNote(kind: ProcedureNote["kind"]): void {
+    if (mode !== "practice" || notedFor[kind] === circuit) return;
+    notedFor[kind] = circuit;
+    pushNote(kind, NOTE_TEXT[kind]);
+  }
+
   const hasReversedMeter = () =>
     comparison.issues.includes("ammeter_reversed") ||
     comparison.issues.includes("voltmeter_reversed");
@@ -165,21 +183,18 @@ export function createOhmsLawBench(
   function watch(): void {
     const r = engine.readout;
     const longClosed = t.keyClosedSteps * DT_S > KEY_LEFT_CLOSED_S;
-    if (longClosed && !seen.keyLeftClosed) pushNote("key_left_closed", NOTE_TEXT.key_left_closed);
+    if (longClosed && !seen.keyLeftClosed) benchNote("key_left_closed");
     seen.keyLeftClosed = longClosed;
 
     const slams = r.ammeterSlams + r.voltmeterSlams;
-    if (slams > seen.slams && seen.overRangeArmed) {
-      seen.overRangeArmed = false;
-      pushNote("over_range", NOTE_TEXT.over_range);
-    }
+    if (slams > seen.slams) benchNote("over_range");
     seen.slams = slams;
 
     const reversed = inputs.keyClosed && hasReversedMeter();
-    if (reversed && !seen.reversed) pushNote("reversed_meter", NOTE_TEXT.reversed_meter);
+    if (reversed && !seen.reversed) benchNote("reversed_meter");
     seen.reversed = reversed;
 
-    if (r.shortCircuit && !seen.short) pushNote("short_circuit", NOTE_TEXT.short_circuit);
+    if (r.shortCircuit && !seen.short) benchNote("short_circuit");
     seen.short = r.shortCircuit;
   }
 
@@ -335,6 +350,7 @@ export function createOhmsLawBench(
     },
   };
 
+  circuit = circuitKey();
   applyHints();
   return bench;
 }

@@ -223,7 +223,7 @@ describe("createOhmsLawBench: box, key and hints", () => {
 });
 
 describe("createOhmsLawBench: procedure notes", () => {
-  it(`notes a key left closed past ${KEY_LEFT_CLOSED_S} s once per closing`, () => {
+  it(`notes a key left closed past ${KEY_LEFT_CLOSED_S} s once per circuit`, () => {
     const b = createOhmsLawBench(1);
     wire(b, DIAGRAM_LEADS);
     b.toggleKey();
@@ -233,7 +233,14 @@ describe("createOhmsLawBench: procedure notes", () => {
     expect(count(b, "key_left_closed")).toBe(1);
     run(b, 20);
     expect(count(b, "key_left_closed")).toBe(1);
+    // Reopened and closed on the same circuit: not repeated (lead's review, item 4).
     b.toggleKey();
+    b.toggleKey();
+    run(b, KEY_LEFT_CLOSED_S + 1);
+    expect(count(b, "key_left_closed")).toBe(1);
+    // A new box setting is a new circuit: left closed again, noted again.
+    b.toggleKey();
+    b.togglePlug(0);
     b.toggleKey();
     run(b, KEY_LEFT_CLOSED_S + 1);
     expect(count(b, "key_left_closed")).toBe(2);
@@ -258,7 +265,7 @@ describe("createOhmsLawBench: procedure notes", () => {
     expect(count(b, "short_circuit")).toBe(1);
   });
 
-  it("notes a reversed meter once while the key is closed, again after it reopens and closes", () => {
+  it("notes a reversed meter once per circuit while the key is closed", () => {
     const b = createOhmsLawBench(1);
     wire(b, REVERSED_AMMETER);
     expect(b.comparison.issues).toContain("ammeter_reversed");
@@ -275,7 +282,51 @@ describe("createOhmsLawBench: procedure notes", () => {
     run(b, 0.5);
     b.toggleKey();
     run(b, 0.5);
-    expect(count(b, "reversed_meter")).toBe(2);
+    expect(count(b, "reversed_meter")).toBe(1); // same circuit: not repeated
+    b.toggleKey();
+    b.togglePlug(7);
+    run(b, 0.5);
+    b.toggleKey();
+    run(b, 0.5);
+    expect(count(b, "reversed_meter")).toBe(2); // the circuit changed, then K closed again
+  });
+
+  it("does not repeat notes when K is opened and closed three times on a shorted circuit", () => {
+    const b = createOhmsLawBench(1);
+    wire(b, AMMETER_ACROSS_XY);
+    for (let k = 0; k < 3; k++) {
+      b.toggleKey();
+      run(b, 2);
+      b.toggleKey();
+      run(b, 2);
+    }
+    expect(count(b, "short_circuit")).toBe(1);
+    expect(count(b, "over_range")).toBe(1);
+    expect(b.notes).toHaveLength(2);
+    // Removing a lead and undoing it gives back the same circuit: still no repeat.
+    const last = b.visual.current.leads.at(-1);
+    b.removeLead(last?.id ?? "");
+    b.undo();
+    b.toggleKey();
+    run(b, 2);
+    expect(b.notes).toHaveLength(2);
+  });
+
+  it("notes the short again once the circuit changed and the short came back", () => {
+    const b = createOhmsLawBench(1);
+    wire(b, AMMETER_ACROSS_XY);
+    b.toggleKey();
+    run(b, 2);
+    expect(count(b, "short_circuit")).toBe(1);
+    // Cleared: K opened. Changed: the voltmeter's leads taken off. Then K closed again.
+    b.toggleKey();
+    run(b, 0.5);
+    const v = b.visual.current.leads.filter((l) => l.a === "V+" || l.a === "V-");
+    for (const l of v) b.removeLead(l.id);
+    b.toggleKey();
+    run(b, 2);
+    expect(b.visual.current.readout.shortCircuit).toBe(true);
+    expect(count(b, "short_circuit")).toBe(2);
   });
 
   it("writes no notes in exam mode, from the bench or from addNote", () => {
