@@ -32,6 +32,8 @@ The engine decides every number; `packages/rules` marks what she wrote. Exam mod
 - **Both diagrams are our own SVG.** No WAEC scan appears anywhere, because the hackathon rules ban scans and logos.
 - **The source's "observation" scheme is not used.** It belongs to the R-against-I⁻¹ practical, a later Variant B.
 
+**Decided (user, Oct 29):** the lesson keeps the title "Ohm's law (V–I)" in the header and rail, although it names the law that (b)(i) asks for.
+
 ## Out of scope
 - Variant B, `r_vs_inverse_i`.
 - Part (b) with a micrometer measurement.
