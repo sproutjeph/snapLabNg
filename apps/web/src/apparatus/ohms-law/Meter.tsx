@@ -6,6 +6,14 @@ import { InkGroup } from "../../scene/ink/ink";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { createDialTexture, DIAL } from "./MeterDial";
 import {
+  createMirrorImage,
+  IMAGE_Z,
+  METER_DIAL_Y,
+  METER_FACE_Z,
+  MIRROR_LIFT,
+  NEEDLE_LIFT,
+} from "./MeterImage";
+import {
   brassMaterial,
   COLOURS,
   canvasTexture,
@@ -43,10 +51,9 @@ const PLUS_X = 0.035;
 // Case, in metres: about 12 x 12 x 5 cm, with a low ledge in front that carries the terminals.
 const CASE = { w: 0.12, h: 0.118, d: 0.05 } as const;
 const LEDGE = { h: 0.012, d: 0.04 } as const;
-const FACE_Z = CASE.d / 2; // front of the case
-const DIAL_Y = 0.032; // bottom edge of the dial paper
+const FACE_Z = METER_FACE_Z; // front of the case (CASE.d / 2)
+const DIAL_Y = METER_DIAL_Y; // bottom edge of the dial paper
 const DIAL_Z = FACE_Z + 0.0002;
-const NEEDLE_LIFT = 0.0045; // the needle floats this far above the dial: real parallax
 const PIVOT_Y = DIAL_Y + DIAL.pivotUp;
 const NEEDLE_LEN = DIAL.arcRadius + 0.003;
 const SCREW_Y = 0.0195;
@@ -119,6 +126,8 @@ export function Meter({
   const minus = kind === "ammeter" ? "A-" : "V-";
   const ink = INK_IDS[kind];
   const needleRef = useRef<THREE.Group>(null);
+  const imageRef = useRef<THREE.Group>(null);
+  const pivotRef = useRef<THREE.Group>(null);
   const prevSlams = useRef(-1);
   const shake = useRef(0);
   const low = quality === "low";
@@ -222,6 +231,8 @@ export function Meter({
       needleGeo,
       needleMat: matte("#111111", rnd, { roughness: 0.7 }),
       mirrorGeo,
+      // The needle seen in the mirror strip. None on the low tier: parallax alone there.
+      image: low ? null : createMirrorImage(),
       mirrorMat: matte("#cfd5da", rnd, { roughness: 0.6, metalness: 0.15, amount: 0.01 }),
       brassMat: brassMaterial(rnd),
       hitScrewGeo,
@@ -229,7 +240,13 @@ export function Meter({
     };
   }, [kind, fullScale, division, low]);
 
-  useEffect(() => () => disposeAll(res), [res]);
+  useEffect(
+    () => () => {
+      disposeAll(res);
+      res.image?.material.dispose();
+    },
+    [res],
+  );
 
   useFrame((st, dt) => {
     const needle = needleRef.current;
@@ -247,6 +264,7 @@ export function Meter({
     shake.current = Math.max(0, shake.current - dt / SHAKE_S);
     const jitter = Math.sin(st.clock.elapsedTime * 80) * 2.2 * DEG * shake.current * shake.current;
     needle.rotation.z = -deg * DEG + jitter;
+    if (imageRef.current) imageRef.current.rotation.z = needle.rotation.z;
   });
 
   return (
@@ -282,7 +300,7 @@ export function Meter({
           <mesh
             geometry={res.mirrorGeo}
             material={res.mirrorMat}
-            position={[0, PIVOT_Y, DIAL_Z + 0.0004]}
+            position={[0, PIVOT_Y, DIAL_Z + MIRROR_LIFT]}
           />
         </InkGroup>
         <InkGroup id={ink + 2} thin>
@@ -291,6 +309,20 @@ export function Meter({
             <mesh geometry={res.needleBrassGeo} material={res.brassMat} />
           </group>
         </InkGroup>
+        {res.image && (
+          <group ref={pivotRef} position={[0, PIVOT_Y, DIAL_Z]}>
+            <group ref={imageRef} position={[0, 0, IMAGE_Z]}>
+              <mesh
+                geometry={res.needleGeo}
+                material={res.image.material}
+                renderOrder={4}
+                onBeforeRender={() => {
+                  if (pivotRef.current) res.image?.syncPivot(pivotRef.current);
+                }}
+              />
+            </group>
+          </group>
+        )}
       </group>
       {/* Zero-adjust screw tap target, bigger than the head; it never reaches the face tap. */}
       <mesh
