@@ -316,8 +316,9 @@ export function Meter({
                 geometry={res.needleGeo}
                 material={res.image.material}
                 renderOrder={4}
-                onBeforeRender={() => {
-                  if (pivotRef.current) res.image?.syncPivot(pivotRef.current);
+                userData={{ noInk: true }}
+                onBeforeRender={(_r, _s, camera) => {
+                  if (pivotRef.current) res.image?.syncPivot(pivotRef.current, camera);
                 }}
               />
             </group>

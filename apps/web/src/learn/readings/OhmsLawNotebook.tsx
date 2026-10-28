@@ -1,4 +1,5 @@
 import type { OhmsLawRecord } from "@snaplab/contracts";
+import { useId } from "react";
 import type { LessonMode } from "../types";
 import "./readings.css";
 import {
@@ -25,6 +26,11 @@ export interface OhmsLawNotebookProps {
 }
 
 // Practice mode may show the form of an entry. Exam mode shows nothing.
+const COLUMN_NAME: Record<Column, string> = {
+  R: "resistance",
+  I: "current",
+  V: "voltage",
+};
 const FORM: Record<Column, string> = { R: "R/Ω", I: "I/A", V: "V/V" };
 
 /**
@@ -32,19 +38,19 @@ const FORM: Record<Column, string> = { R: "R/Ω", I: "I/A", V: "V/V" };
  * entry is kept exactly as typed; nothing is ever filled in for her.
  */
 export function OhmsLawNotebook({ value, onChange, mode, onReadingEdit }: OhmsLawNotebookProps) {
+  const uid = useId();
   const hint = (text: string) => (mode === "practice" ? text : undefined);
   const precautions = precautionSlots(value);
   return (
     <div className="olr-book">
       <section className="olr-sec">
-        <label className="olr-h" htmlFor="olr-length">
+        <label className="olr-h" htmlFor={`${uid}-length`}>
           1. Length XY of the wire
         </label>
         <input
-          id="olr-length"
+          id={`${uid}-length`}
           className="olr-input"
           type="text"
-          inputMode="decimal"
           autoComplete="off"
           value={value.length_xy?.text_as_written ?? ""}
           placeholder={hint("e.g. a length with its unit")}
@@ -83,9 +89,8 @@ export function OhmsLawNotebook({ value, onChange, mode, onReadingEdit }: OhmsLa
                       <input
                         className="olr-input olr-cell"
                         type="text"
-                        inputMode="decimal"
                         autoComplete="off"
-                        aria-label={`Row ${i + 1}, ${c}`}
+                        aria-label={`Row ${i + 1}, ${COLUMN_NAME[c]} ${c}`}
                         value={row[c].text_as_written}
                         onChange={(e) => {
                           onChange(setCell(value, i, c, e.target.value));
@@ -134,21 +139,21 @@ export function OhmsLawNotebook({ value, onChange, mode, onReadingEdit }: OhmsLa
       </section>
 
       <section className="olr-sec">
-        <label className="olr-h" htmlFor="olr-law">
+        <label className="olr-h" htmlFor={`${uid}-law`}>
           (b)(i) The law
         </label>
         <textarea
-          id="olr-law"
+          id={`${uid}-law`}
           className="olr-input olr-area"
           rows={3}
           value={value.law_as_written ?? ""}
           onChange={(e) => onChange(setLaw(value, e.target.value))}
         />
-        <label className="olr-h" htmlFor="olr-calc">
+        <label className="olr-h" htmlFor={`${uid}-calc`}>
           (b)(ii) Length of the wire, with working
         </label>
         <textarea
-          id="olr-calc"
+          id={`${uid}-calc`}
           className="olr-input olr-area"
           rows={5}
           value={value.length_calc_as_written ?? ""}

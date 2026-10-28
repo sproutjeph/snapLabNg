@@ -99,12 +99,9 @@ export default function ReadingsPreview() {
   const parallax = useParallaxNote(bench);
   const open = loupe ? LOUPES[loupe] : undefined;
 
-  const onEye = (deg: number) => {
-    setEye(deg);
-    parallax.setEye(deg);
-  };
-  // Honour &eye= for the note too.
-  useEffect(() => parallax.setEye(eye), [parallax, eye]);
+  // Only a meter loupe's eye angle counts for the mirror-line note; the rule has no mirror.
+  const meterOpen = open?.target === "ammeter" || open?.target === "voltmeter";
+  useEffect(() => parallax.setEye(meterOpen ? eye : 0), [parallax, eye, meterOpen]);
 
   const common = { state, quality };
   return (
@@ -175,7 +172,7 @@ export default function ReadingsPreview() {
               step={1}
               value={eye}
               aria-label="Eye position"
-              onChange={(e) => onEye(Number(e.target.value))}
+              onChange={(e) => setEye(Number(e.target.value))}
             />
           </label>
         </div>

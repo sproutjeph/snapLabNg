@@ -63,7 +63,7 @@ describe("notebook markup", () => {
 
   it("has 7 rows of three inputs, three headings and two precautions", () => {
     const html = render("practice");
-    expect(html.match(/aria-label="Row \d+, [RIV]"/g)).toHaveLength(21);
+    expect(html.match(/aria-label="Row \d+, (resistance R|current I|voltage V)"/g)).toHaveLength(21);
     expect(html.match(/aria-label="Column heading/g)).toHaveLength(3);
     expect(html.match(/aria-label="Precaution/g)).toHaveLength(2);
   });

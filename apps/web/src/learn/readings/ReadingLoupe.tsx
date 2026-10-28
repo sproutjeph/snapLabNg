@@ -21,7 +21,8 @@ export interface ReadingLoupeProps {
  * The close-up camera for reading a meter or the rule. It eases in straight in front of the dial
  * (or over the rule), and the eye angle swings it sideways about that point. The needle floats
  * above the dial, so the parallax is real 3D, not a trick. Nothing here reads a value.
- * Put it inside the Canvas. With prefers-reduced-motion the camera jumps instead of easing.
+ * Put it inside the Canvas. The host must unmount or disable its OrbitControls until
+ * `onReturned` (as LabBench does), or the controls fight the camera. With prefers-reduced-motion the camera jumps instead of easing.
  */
 export function ReadingLoupe({
   target,
