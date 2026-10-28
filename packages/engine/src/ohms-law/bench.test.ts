@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PLUG_CONTACT_OHM } from "../meter-bridge";
 import { createOhmsLaw, stepOhmsLaw } from "./bench";
-import { METER_SPAN_DEG } from "./meter";
+import { METER_SPAN_DEG, meterTargetDeg, stepMeter } from "./meter";
 import { JOINT_GOOD_OHM, KEY_CONTACT_OHM, LEAD_OHM } from "./netlist";
 import { paramsFromSeed } from "./params";
 import {
@@ -130,7 +130,7 @@ describe("the V–I circuit", () => {
     expect(across.readout.cellDrain01).toBeGreaterThan(proper.readout.cellDrain01);
   });
 
-  it("passes about 1.07 mA and pins the voltmeter at full scale when the meters are swapped", () => {
+  it("passes about 1.07 mA and the voltmeter reads ≈ the emf, at or past full scale, when the meters are swapped", () => {
     // The voltmeter (R_V = 1 kΩ/V × 3 V = 3 kΩ) in series limits I to E/R_V: 3.2 V / 3 kΩ ≈
     // 1.07 mA with two fresh 1.6 V cells, and it reads nearly the whole emf, 3.2 V > 3 V full
     // scale (docs/plans/ohms-law-vi.md, science check; Nelkon & Parker, voltmeter resistance).
@@ -266,14 +266,67 @@ describe("the V–I circuit", () => {
     expect(trimmed.readout.ammeterDeg).toBeCloseTo(METER_ZERO_DEG, 4);
   });
 
-  it("polarises the cells while K is closed and lets them recover when it is opened", () => {
-    // Leaving the key closed polarises dry cells; they recover on open circuit (docs/07 §4.2;
-    // Nelkon & Parker, the Leclanché cell). The time constants are illustrative: behaviour only.
-    const on = bench(P, inputs(diagramLeads()), 20);
-    expect(on.readout.cellDrain01).toBeGreaterThan(0.1);
+  it("drifts I(R=0) by about 0.010 A in 8 s and about 0.06 A in a minute with K left closed", () => {
+    // The polarisation constant (300 s at 0.5 A) is ILLUSTRATIVE: no WAEC or textbook figure
+    // exists; it is reasoned from zinc–carbon cells at heavy drain falling ~0.1 V over minutes
+    // (params.ts). The lead's science check gives, for seed 3 at R = 0, ≈ 0.010 A in 8 s (under
+    // one 0.02 A division while she reads) and ≈ 0.061 A in 58 s. Pinned to ±0.005 A.
+    const i = inputs(diagramLeads());
+    const first = stepOhmsLaw(createOhmsLaw(P), i);
+    const i0 = first.readout.partCurrentsA.ammeter;
+    const at8 = run(first, i, 8);
+    const at58 = run(at8, i, 50);
+    expect(i0 - at8.readout.partCurrentsA.ammeter).toBeCloseTo(0.0105, 2);
+    expect(i0 - at8.readout.partCurrentsA.ammeter).toBeLessThan(P.ammeter.division);
+    expect(i0 - at58.readout.partCurrentsA.ammeter).toBeCloseTo(0.062, 2);
+    expect(at58.readout.cellDrain01).toBeGreaterThan(0.15);
+  });
+
+  it("lets the cells recover once the key is opened", () => {
+    // Dry cells depolarise on open circuit (docs/07 §4.2; Nelkon & Parker, the Leclanché cell).
+    // Recovery time constant 20 s (illustrative, as for the metre bridge): behaviour only.
+    const on = bench(P, inputs(diagramLeads()), 60);
     expect(on.cells[0].emfV).toBeLessThan(P.cell.restEmfV);
     const off = run(on, inputs(diagramLeads(), { keyClosed: false }), 60);
-    expect(off.readout.cellDrain01).toBeLessThan(on.readout.cellDrain01 / 5);
+    expect(off.readout.cellDrain01).toBeLessThan(on.readout.cellDrain01 / 10);
+    expect(off.cells[0].emfV).toBeCloseTo(P.cell.restEmfV, 2);
+    expect(off.cells[1].internalOhm).toBeCloseTo(P.cell.restInternalOhm, 1);
+    // Closing K again gives nearly the first reading back.
+    const again = stepOhmsLaw(off, inputs(diagramLeads()));
+    const fresh = stepOhmsLaw(createOhmsLaw(P), inputs(diagramLeads()));
+    expect(again.readout.partCurrentsA.ammeter).toBeCloseTo(fresh.readout.partCurrentsA.ammeter, 2);
+  });
+
+  it("keeps a needle finite when the zero trim or the reading is not a number", () => {
+    // Guard, not physics: a bad trim counts as 0 and the needle settles on the true reading.
+    const bad = inputs(diagramLeads(), {
+      plugsIn: plugsFor(10),
+      zeroTrimDeg: { ammeter: Number.NaN, voltmeter: Number.POSITIVE_INFINITY },
+    });
+    const good = inputs(diagramLeads(), { plugsIn: plugsFor(10) });
+    const a = bench(P, bad, 2);
+    const b = bench(P, good, 2);
+    expect(Number.isFinite(a.readout.ammeterDeg)).toBe(true);
+    expect(Number.isFinite(a.readout.voltmeterDeg)).toBe(true);
+    expect(a.readout.ammeterDeg).toBeCloseTo(b.readout.ammeterDeg, 9);
+    expect(a.readout.voltmeterDeg).toBeCloseTo(b.readout.voltmeterDeg, 9);
+    // A non-finite target sends the needle to the zero reading, not to NaN.
+    let n = { thetaDeg: 10, omegaDegPerS: 0, slammed: false };
+    for (let k = 0; k < 600; k++) n = stepMeter(n, Number.NaN, P.ammeter.needle, 1 / 120);
+    expect(n.thetaDeg).toBeCloseTo(METER_ZERO_DEG, 6);
+    expect(meterTargetDeg(P.ammeter, Number.NaN, Number.NaN)).toBeCloseTo(METER_ZERO_DEG, 12);
+  });
+
+  it("uses the first lead when two leads share an id", () => {
+    // Lead ids are unique (types.ts); on a repeat the first wins in the netlist and the
+    // currents, so a duplicate never overwrites a real lead's current. Behaviour only.
+    const leads = [...diagramLeads(), lead("L1", "E+", "E-")];
+    const s = bench(P, inputs(leads, { plugsIn: plugsFor(10) }), 2);
+    const ref = bench(P, inputs(diagramLeads(), { plugsIn: plugsFor(10) }), 2);
+    expect(Object.keys(s.readout.leadCurrentsA)).toHaveLength(7);
+    expect(s.readout.leadCurrentsA.L1).toBeCloseTo(ref.readout.partCurrentsA.ammeter, 9);
+    expect(s.readout.partCurrentsA.ammeter).toBeCloseTo(ref.readout.partCurrentsA.ammeter, 9);
+    expect(s.readout.shortCircuit).toBe(false);
   });
 });
 

@@ -99,7 +99,10 @@ export interface BenchNetlist {
   part: Record<PartId, number>;
   /** Element index of the second cell (the first is part.cells). */
   cell2: number;
-  /** Element index of each lead, by position in the inputs; -1 for a lead from a terminal to itself. */
+  /**
+   * Element index of each lead, by position in the inputs; -1 for a lead from a terminal to
+   * itself, or for a lead whose id repeats an earlier lead's (the first with an id wins).
+   */
   lead: Int32Array;
 }
 
@@ -129,6 +132,13 @@ function addPart(net: BenchNetlist, id: PartId, ohm: number): void {
   net.part[id] = addBranch(net.circuit, node(a), node(b), ohm);
 }
 
+/** True if an earlier lead has the same id. Lead ids are unique; on a repeat the first wins. */
+export function repeatsAnEarlierId(leads: readonly Lead[], i: number): boolean {
+  const id = leads[i]?.id;
+  for (let k = 0; k < i; k++) if (leads[k]?.id === id) return true;
+  return false;
+}
+
 /** Writes the bench into the netlist's buffers (allocates only if there are more leads than ever). */
 export function buildBenchNetlist(net: BenchNetlist, e: BenchElements): void {
   const c = net.circuit;
@@ -148,7 +158,7 @@ export function buildBenchNetlist(net: BenchNetlist, e: BenchElements): void {
   if (net.lead.length < e.leads.length) net.lead = new Int32Array(e.leads.length * 2);
   for (let i = 0; i < e.leads.length; i++) {
     const l = e.leads[i];
-    if (!l || l.a === l.b) {
+    if (!l || l.a === l.b || repeatsAnEarlierId(e.leads, i)) {
       net.lead[i] = -1;
       continue;
     }

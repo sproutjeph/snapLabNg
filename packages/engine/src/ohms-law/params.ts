@@ -44,11 +44,17 @@ export const WIRE_COOLING_W_PER_M2_K = 80;
 // 1 Ω" for the Leclanché cell, and a dry cell is lower).
 export const CELL_EMF_RANGE_V = [1.5, 1.6] as const;
 export const CELL_INTERNAL_RANGE_OHM = [0.3, 0.6] as const;
-// Polarisation targets: illustrative, no textbook or WAEC figure (as for the metre bridge's
-// DEFAULT_CELL). The emf sags by 0.2 V and r doubles while current flows; time constants are
-// the metre bridge's (60 s at 0.5 A, 20 s recovery).
+// Polarisation: ILLUSTRATIVE. There is no WAEC or textbook figure for it. The values are reasoned
+// from zinc–carbon dry cells at heavy drain (several hundred mA), whose terminal voltage falls by
+// about 0.1 V over minutes, not seconds. The emf heads for 0.2 V below rest and r doubles, with a
+// time constant of 300 s at 0.5 A (faster at higher current, stepCell). At R = 0 on seed 3 that
+// is about 0.010 A in 8 s (under a division while she reads) and about 0.06 A in a minute (a key
+// left closed shows). Recovery on open circuit keeps the metre bridge's 20 s.
 export const CELL_POLARISED_SAG_V = 0.2;
 export const CELL_POLARISED_R_FACTOR = 2;
+export const CELL_POLARISE_TAU_S = 300;
+export const CELL_POLARISE_REF_CURRENT_A = 0.5;
+export const CELL_RECOVER_TAU_S = DEFAULT_CELL.recoverTauS;
 
 // Moving-coil needle: near-critically damped ("dead-beat", Nelkon & Parker, the moving-coil
 // galvanometer: eddy-current damping in the aluminium former). Frequency, restitution and slam
@@ -124,9 +130,9 @@ export function paramsFromSeed(seed: number): OhmsLawParams {
     restInternalOhm,
     polarisedEmfV: restEmfV - CELL_POLARISED_SAG_V,
     polarisedInternalOhm: restInternalOhm * CELL_POLARISED_R_FACTOR,
-    polariseTauS: DEFAULT_CELL.polariseTauS,
-    refCurrentA: DEFAULT_CELL.refCurrentA,
-    recoverTauS: DEFAULT_CELL.recoverTauS,
+    polariseTauS: CELL_POLARISE_TAU_S,
+    refCurrentA: CELL_POLARISE_REF_CURRENT_A,
+    recoverTauS: CELL_RECOVER_TAU_S,
   };
 
   // Ammeter zero error: none half the time, otherwise one division either way.

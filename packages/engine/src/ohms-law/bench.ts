@@ -117,12 +117,7 @@ const sameCell = (a: CellState, b: CellState) =>
 
 const floor = (iA: number) => (Math.abs(iA) < CURRENT_FLOOR_A ? 0 : iA);
 
-interface Solved {
-  partCurrentsA: Record<PartId, number>;
-  leadCurrentsA: Record<string, number>;
-  shortCircuit: boolean;
-}
-
+/** Builds the bench into the shared buffers and solves it. Results stay in net.circuit. */
 function solveBench(
   net: BenchNetlist,
   p: OhmsLawParams,
@@ -130,7 +125,7 @@ function solveBench(
   cells: readonly [CellState, CellState],
   wireOhm: number,
   timeS: number,
-): Solved {
+): void {
   buildBenchNetlist(net, {
     params: p,
     leads: inputs.leads,
@@ -140,28 +135,46 @@ function solveBench(
     wireOhm,
     timeS,
   });
-  const c = net.circuit;
-  solveMna(c);
-  const at = (i: number) => (i < 0 ? 0 : floor(c.currentA[i] ?? 0));
-  const partCurrentsA: Record<PartId, number> = {
-    cells: at(net.part.cells),
-    key: at(net.part.key),
-    ammeter: at(net.part.ammeter),
-    voltmeter: at(net.part.voltmeter),
-    box: at(net.part.box),
-    wire: at(net.part.wire),
+  solveMna(net.circuit);
+}
+
+const elementA = (net: BenchNetlist, i: number) =>
+  i < 0 ? 0 : floor(net.circuit.currentA[i] ?? 0);
+
+function partCurrentsOf(net: BenchNetlist): Record<PartId, number> {
+  return {
+    cells: elementA(net, net.part.cells),
+    key: elementA(net, net.part.key),
+    ammeter: elementA(net, net.part.ammeter),
+    voltmeter: elementA(net, net.part.voltmeter),
+    box: elementA(net, net.part.box),
+    wire: elementA(net, net.part.wire),
   };
-  const leadCurrentsA: Record<string, number> = {};
-  for (let i = 0; i < inputs.leads.length; i++) {
-    const l = inputs.leads[i];
-    if (l) leadCurrentsA[l.id] = at(net.lead[i] ?? -1);
+}
+
+/** Current in each lead by id. Ids are unique; if one repeats, the first lead with it wins. */
+function leadCurrentsOf(net: BenchNetlist, leads: readonly Lead[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (let i = 0; i < leads.length; i++) {
+    const l = leads[i];
+    if (!l || Object.hasOwn(out, l.id)) continue;
+    out[l.id] = elementA(net, net.lead[i] ?? -1);
   }
-  // Nearly short-circuited: current flows and the terminal p.d. is below half the emf, i.e. the
-  // external resistance is below the cells' own internal resistance.
-  const terminalV = (c.nodeV[TERMINAL_NODE["E+"]] ?? 0) - (c.nodeV[TERMINAL_NODE["E-"]] ?? 0);
-  const emfV = cells[0].emfV + cells[1].emfV;
-  const shortCircuit = partCurrentsA.cells !== 0 && terminalV < 0.5 * emfV;
-  return { partCurrentsA, leadCurrentsA, shortCircuit };
+  return out;
+}
+
+/**
+ * Nearly short-circuited: current flows and the terminal p.d. is below half the emf, i.e. the
+ * external resistance is below the cells' own internal resistance.
+ */
+function isShortCircuit(
+  net: BenchNetlist,
+  cells: readonly [CellState, CellState],
+  cellsA: number,
+): boolean {
+  const v = net.circuit.nodeV;
+  const terminalV = (v[TERMINAL_NODE["E+"]] ?? 0) - (v[TERMINAL_NODE["E-"]] ?? 0);
+  return cellsA !== 0 && terminalV < 0.5 * (cells[0].emfV + cells[1].emfV);
 }
 
 /** Wire heating: I²R in, Newton cooling h·(surface)·ΔT out, heat capacity m·c (exact step). */
@@ -214,11 +227,13 @@ export function stepOhmsLaw(
   let partCurrentsA = s.readout.partCurrentsA;
   let leadCurrentsA = s.readout.leadCurrentsA;
   let shortCircuit = s.readout.shortCircuit;
+  // While current flows the cells polarise and XY warms, so this re-solves every step. That is
+  // intended: 13 nodes in reused buffers is cheap, and the only allocations are the new readout's.
   if (resolve) {
-    const r = solveBench(eng.net, p, inputs, s.cells, wireOhm, s.timeS);
-    partCurrentsA = r.partCurrentsA;
-    leadCurrentsA = r.leadCurrentsA;
-    shortCircuit = r.shortCircuit;
+    solveBench(eng.net, p, inputs, s.cells, wireOhm, s.timeS);
+    partCurrentsA = partCurrentsOf(eng.net);
+    leadCurrentsA = leadCurrentsOf(eng.net, inputs.leads);
+    shortCircuit = isShortCircuit(eng.net, s.cells, partCurrentsA.cells);
   }
 
   // The two cells are in series, so they carry the same current.
