@@ -752,3 +752,59 @@ describe("review fixes (Oct 28 code and science review)", () => {
     expect([sheet.earned, sheet.available]).toEqual([20, 20]);
   });
 });
+
+describe("unit conversions between her table, her axes and her Δ (science re-check)", () => {
+  const g = OHMS_GOOD.graph;
+  if (!g) throw new Error("the good table has a graph");
+  // Her table in A, her current axis in mA: 2 cm to 100 mA, so 50 mA per cm. Points sit in
+  // the same sheet places as the good graph (0.71 A = 710 mA → 14.2 cm).
+  const mAxis = {
+    ...g.x,
+    label_as_written: "I/mA",
+    scale_as_written: "2 cm to 100 mA",
+    units_per_cm: 50,
+  };
+
+  it("reads a bare ΔI in the axis's own unit (I/mA axis, 'ΔI = 600')", () => {
+    // Re-check item 1. 1 mA = 0.001 A (SI). Her triangle's 12 cm leg at 50 mA/cm is 600 mA;
+    // "ΔI = 600" on that axis means 600 mA, so read (½) and value (½: 1.80 V ÷ 0.600 A = 3.0 Ω)
+    // both hold. Expected 20 / 20, the same as with "600 mA".
+    const bare = {
+      ...OHMS_GOOD,
+      graph: { ...g, x: mAxis, delta_x_as_written: "ΔI = 700 − 100 = 600" },
+    };
+    const withUnit = { ...OHMS_GOOD, graph: { ...g, x: mAxis, delta_x_as_written: "ΔI = 600 mA" } };
+    expect(mark(bare).earned).toBe(20);
+    expect(mark(withUnit).earned).toBe(20);
+  });
+
+  it("converts her table's A to the axis's mA before checking the points", () => {
+    // Re-check item 2. Table heading I/A, axis I/mA: 0.71 A plotted at 710 mA (14.2 cm) is
+    // correct. Expected GRAPH-POINTS 1½ of 1½.
+    expect(item({ ...OHMS_GOOD, graph: { ...g, x: mAxis } }, "GRAPH-POINTS")?.marks_earned).toBe(
+      1.5,
+    );
+    // The same for V: heading V/V, axis V/mV at 100 mV per cm.
+    const mvAxis = { ...g.y, label_as_written: "V/mV", units_per_cm: 100 };
+    expect(item({ ...OHMS_GOOD, graph: { ...g, y: mvAxis } }, "GRAPH-POINTS")?.marks_earned).toBe(
+      1.5,
+    );
+  });
+
+  it("takes 'the key was never left closed' as the key precaution, counted once", () => {
+    // Re-check item 3 (DRAFT): the same practice as opening the key between readings.
+    for (const p of ["The key was never left closed.", "The key was not closed for long."]) {
+      expect(judgePrecaution(p, "ohms_law_vi")).toMatchObject({
+        accepted: true,
+        matched: "current_brief",
+      });
+    }
+    const sheet = mark({
+      ...OHMS_GOOD,
+      precautions: ["The key was opened between readings.", "The key was never left closed."],
+    });
+    expect(sheet.items.filter((i) => i.rule === "PRECAUTIONS").map((i) => i.marks_earned)).toEqual([
+      1, 0,
+    ]);
+  });
+});

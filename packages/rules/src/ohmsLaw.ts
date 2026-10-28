@@ -515,8 +515,12 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
   let matched = 0;
   if (g) {
     const fits = complete.map((row) => {
-      const ex = onAxis(swapped ? row.V : row.I, g.x);
-      const ey = onAxis(swapped ? row.I : row.V, g.y);
+      // Her table value in her axis's unit: I in A on an "I/mA" axis is ×1000 (heading factor
+      // ÷ axis factor); the same for V and mV.
+      const inAxis = (q: "I" | "V", axis: OhmsLawAxis) =>
+        (row[q] * milliFactor(h[q])) / milliFactor(axis.label_as_written);
+      const ex = onAxis(inAxis(swapped ? "V" : "I", g.x), g.x);
+      const ey = onAxis(inAxis(swapped ? "I" : "V", g.y), g.y);
       return pts.map(
         (p) =>
           ex !== null &&
@@ -611,24 +615,26 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   const dyWritten = g ? lastNumber(g.delta_y_as_written) : null;
   const dxWritten = g ? lastNumber(g.delta_x_as_written) : null;
-  // Her Δ in her axis's own unit: "ΔI = 600 mA" on an axis in A is 0.600.
-  const readOk = (
+  // Her Δ in SI: "ΔI = 600 mA" is 0.600 A; a bare "ΔI = 600" is read in her axis's own unit,
+  // so on an "I/mA" axis it is 600 mA too.
+  const deltaSi = (
     written: number | null,
     deltaText: string | null,
-    legCm: number,
     axis: OhmsLawAxis | undefined,
-  ) => {
+  ) =>
+    written === null
+      ? null
+      : written * (writtenUnitFactor(deltaText) ?? milliFactor(axis?.label_as_written ?? null));
+  const dySi = g ? deltaSi(dyWritten, g.delta_y_as_written, g.y) : null;
+  const dxSi = g ? deltaSi(dxWritten, g.delta_x_as_written, g.x) : null;
+  // Read off the triangle in the axis's own unit.
+  const readOk = (si: number | null, legCm: number, axis: OhmsLawAxis | undefined) => {
     const u = scaleOf(axis);
-    if (written === null || u === null) return false;
-    const axisFactor = isMilli(axis?.label_as_written ?? null) ? 1e-3 : 1;
-    const inAxisUnits = (written * prefixFactor(deltaText)) / axisFactor;
+    if (si === null || u === null) return false;
+    const inAxisUnits = si / milliFactor(axis?.label_as_written ?? null);
     return Math.abs(Math.abs(inAxisUnits) - legCm * u) <= SLOPE_READ_TOLERANCE_CM * u + 1e-9;
   };
-  const deltasOk =
-    tri !== null &&
-    g !== null &&
-    readOk(dyWritten, g.delta_y_as_written, legY, g.y) &&
-    readOk(dxWritten, g.delta_x_as_written, legX, g.x);
+  const deltasOk = tri !== null && g !== null && readOk(dySi, legY, g.y) && readOk(dxSi, legX, g.x);
   s.add(
     "GRAPH-SLOPE:read",
     "GRAPH-SLOPE",
@@ -643,10 +649,8 @@ export function markOhmsLaw(record: OhmsLawRecord, opts: OhmsLawMarkOptions = {}
 
   const slopeText = g?.slope_as_written ?? null;
   const sWritten = lastNumber(slopeText);
-  // In SI units: "3.0 kΩ" is 3000 Ω; "ΔI = 600 mA" is 0.600 A.
+  // In SI units: "3.0 kΩ" is 3000 Ω.
   const sSi = sWritten !== null ? sWritten * prefixFactor(slopeText) : null;
-  const dySi = dyWritten !== null ? dyWritten * prefixFactor(g?.delta_y_as_written ?? null) : null;
-  const dxSi = dxWritten !== null ? dxWritten * prefixFactor(g?.delta_x_as_written ?? null) : null;
   const slopeOk =
     sSi !== null &&
     dySi !== null &&
@@ -928,6 +932,22 @@ export function slopeHasReciprocalOhmUnit(text: string | null): boolean {
  * The SI factor of the unit written after her last number: "kΩ" → 1000, "mA"/"mV" → 0.001,
  * anything else → 1.
  */
+/**
+ * The SI factor of the A or V unit written after her last number ("600 mA" → 0.001,
+ * "1.80 V" → 1), or null when she wrote no unit.
+ */
+function writtenUnitFactor(text: string | null): number | null {
+  const t = (text ?? "").trim();
+  if (/(?<![a-zA-Z])m[AV]\s*$/.test(t)) return 1e-3;
+  if (/(?<![a-zA-Z])[AV]\s*$/.test(t)) return 1;
+  return null;
+}
+
+/** 0.001 for a milli- unit in a heading or axis label ("I/mA", "V (mV)"), else 1. */
+function milliFactor(label: string | null): number {
+  return isMilli(label) ? 1e-3 : 1;
+}
+
 function prefixFactor(text: string | null): number {
   const t = (text ?? "").trim();
   if (/(?<![a-zA-Z])k(Ω|ohms?)\s*$/i.test(t)) return 1e3;

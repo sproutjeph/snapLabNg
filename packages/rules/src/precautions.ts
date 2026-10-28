@@ -64,11 +64,13 @@ const OHMS_LAW_TOPICS: Array<{ id: PrecautionId; test: (t: string) => boolean }>
     // "Current was not allowed to flow for long": here the negation is the precaution.
     id: "current_brief",
     test: (t) =>
-      /\bcurrents?\b/.test(t) &&
-      (new RegExp(
-        String.raw`\b${NEG}\s+(?:\w+\s+){0,3}?(flow|flowing|flowed|pass|passing|passed)\b.*\b(long|continuously|unnecessarily)\b`,
-      ).test(t) ||
-        /\b(flow|flowed|passed)\b.*\b(briefly|short time|only when)\b/.test(t)),
+      // "The key was never left closed" / "…not closed for long": the same practice.
+      (/\bkey\b/.test(t) && new RegExp(String.raw`\b${NEG}\s+(?:left\s+)?closed\b`).test(t)) ||
+      (/\bcurrents?\b/.test(t) &&
+        (new RegExp(
+          String.raw`\b${NEG}\s+(?:\w+\s+){0,3}?(flow|flowing|flowed|pass|passing|passed)\b.*\b(long|continuously|unnecessarily)\b`,
+        ).test(t) ||
+          /\b(flow|flowed|passed)\b.*\b(briefly|short time|only when)\b/.test(t))),
   },
   topicById("tight_clean_connections"),
   {
