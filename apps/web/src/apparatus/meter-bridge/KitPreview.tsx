@@ -1,10 +1,15 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import * as THREE from "three";
+import { parseOverride } from "../../quality/tier";
+import { InkComposer } from "../../scene/ink/InkComposer";
+import { InkLights } from "../../scene/ink/InkLights";
+import { PaperDesk } from "../../scene/ink/PaperDesk";
 import { ReadySignal } from "../../scene/ReadySignal";
 import { BRIDGE_BASE } from "./dimensions";
 import MeterBridgeKit from "./MeterBridgeKit";
+import type { QualityTier } from "./types";
 import { useMeterBridgeEngine } from "./useMeterBridgeEngine";
 
 const DEMO_PLUG_LABELS = ["1", "2", "2", "5", "10"];
@@ -37,59 +42,19 @@ function PreviewCameraRig() {
   return null;
 }
 
-function PreviewBench() {
-  const benchRes = useMemo(() => {
-    const geo = new THREE.BoxGeometry(2.2, 0.04, 1.2);
-    const mat = new THREE.MeshStandardMaterial({
-      color: "#2b2118",
-      roughness: 0.78,
-      metalness: 0.04,
-    });
-    return { geo, mat };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      benchRes.geo.dispose();
-      benchRes.mat.dispose();
-    };
-  }, [benchRes]);
-
-  return (
-    <mesh
-      geometry={benchRes.geo}
-      material={benchRes.mat}
-      position={[0, -BRIDGE_BASE.height - 0.02, -0.1]}
-      receiveShadow
-    />
-  );
-}
-
 // The plug box of the golden question: coils 1, 2, 2, 5 and 10 Ω, starting with only the
 // 1 Ω plug out (R = 1 Ω). X is the unknown and is never shown.
 const BENCH = { boxValuesOhm: [1, 2, 2, 5, 10], plugsIn: [false, true, true, true, true], xOhm: 3 };
 
-function DemoScene() {
+function DemoScene({ quality }: { quality: QualityTier }) {
   const { visual, handlers } = useMeterBridgeEngine(BENCH);
 
   return (
     <>
-      <color attach="background" args={["#11151c"]} />
-      <hemisphereLight args={["#fffbeb", "#3f2e21", 0.85]} />
-      <directionalLight
-        position={[1.2, 2.2, 1.4]}
-        intensity={2.2}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-1}
-        shadow-camera-right={1}
-        shadow-camera-top={1}
-        shadow-camera-bottom={-1}
-      />
-      <directionalLight position={[-1.0, 1.4, -0.8]} intensity={0.75} />
+      <InkLights quality={quality} />
       <PreviewCameraRig />
       <OrbitControls target={[0, 0, TARGET_Z]} makeDefault />
-      <PreviewBench />
+      <PaperDesk quality={quality} size={[2.2, 1.2]} y={-BRIDGE_BASE.height} />
       <MeterBridgeKit
         state={visual}
         plugLabels={DEMO_PLUG_LABELS}
@@ -100,20 +65,22 @@ function DemoScene() {
         onPlugToggle={handlers.onPlugToggle}
         onKeyToggle={handlers.onKeyToggle}
       />
+      <InkComposer quality={quality} />
       <ReadySignal />
     </>
   );
 }
 
 export default function KitPreview() {
+  const quality: QualityTier = parseOverride(location.search) ?? "high";
   return (
     <Canvas
       shadows="percentage"
-      dpr={[1, 2]}
+      dpr={quality === "low" ? 1 : [1, 2]}
       gl={{ antialias: true }}
       camera={{ fov: 40, position: [0, BASE_CAM_Y, TARGET_Z + BASE_CAM_Z], near: 0.02, far: 20 }}
     >
-      <DemoScene />
+      <DemoScene quality={quality} />
     </Canvas>
   );
 }

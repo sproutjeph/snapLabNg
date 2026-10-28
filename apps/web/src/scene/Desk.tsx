@@ -1,8 +1,7 @@
-export function Desk() {
-  return (
-    <mesh position={[0, -0.15, 0]} receiveShadow>
-      <boxGeometry args={[8, 0.3, 5]} />
-      <meshStandardMaterial color="#7a5232" roughness={0.7} />
-    </mesh>
-  );
+import type { QualityTier } from "../apparatus/meter-bridge/types";
+import { PaperDesk } from "./ink/PaperDesk";
+
+/** The desk under the exercise book: warm paper, like every bench in the ink look. */
+export function Desk({ quality }: { quality: QualityTier }) {
+  return <PaperDesk quality={quality} size={[8, 5]} y={0} />;
 }
