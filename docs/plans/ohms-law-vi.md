@@ -214,6 +214,8 @@ Started Oct 28 night, while the ink slice was still open. Ports: wiring 5177, sh
 - Guided mode works end to end through step 8 and (b), with the table, precautions and (b) marked.
 
 ## Wave 3 (Day 6, Oct 31)
+Started Oct 29, a day early. Ports: graph 5177, lesson content 5179, and the hero draw-on reveal 5178 (after the ink look merges). The lead wires the graph sheet, the poses and the Identify cards into `LearnPage` in Integration B.
+
 | Slot | Slice | Agent | Owns |
 |---|---|---|---|
 | 1 | Graph and slope sheet | `ui-builder` | `apps/web/src/learn/graph/**` |
