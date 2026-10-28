@@ -8,28 +8,50 @@ import { inkFillsOf, inkLinesOf, type RevealPhases } from "./reveal";
 /** How much later the farthest part's fill starts than the nearest one's (share of the fade). */
 const FILL_SPREAD = 0.5;
 
-/** A material's own values, kept while the reveal fades it in, and put back at the end. */
+/** The paper colour (linear), shared by every patched material. */
+const PAPER = new THREE.Uniform(new THREE.Color(PAPER_HEX));
+
+/** Where a patched material keeps its own fill uniform (1 = itself, 0 = flat paper). */
+const FILL_KEY = "revealFill";
+
+const FILL_CHUNK = `#include <opaque_fragment>
+gl_FragColor.rgb = mix(revealPaper, gl_FragColor.rgb, revealFill);`;
+
+/**
+ * Patches a built-in material once so its final colour (before tone mapping and colour-space
+ * output) blends from the paper to itself. Exact on every material type (specular, clearcoat
+ * and the environment included), and the same program for every material, so it is compiled
+ * with the kit and never again: the patch stays, at 1, after the reveal.
+ */
+function fillUniform(material: THREE.Material): THREE.Uniform<number> | null {
+  const held = material.userData[FILL_KEY] as THREE.Uniform<number> | undefined;
+  if (held) return held;
+  if ((material as THREE.ShaderMaterial).isShaderMaterial) return null;
+  const fill = new THREE.Uniform(1);
+  material.userData[FILL_KEY] = fill;
+  const before = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    before.call(material, shader, renderer);
+    shader.uniforms.revealFill = fill;
+    shader.uniforms.revealPaper = PAPER;
+    shader.fragmentShader = `uniform float revealFill;\nuniform vec3 revealPaper;\n${shader.fragmentShader.replace(
+      "#include <opaque_fragment>",
+      FILL_CHUNK,
+    )}`;
+  };
+  material.needsUpdate = true;
+  return fill;
+}
+
+/** A material while the reveal fades it in. */
 interface FillState {
   /** 0 at her page, 1 at the farthest part: when this material's fill starts. */
   delay: number;
-  /** Not faded: no colour to fade (shader materials). */
-  skip: boolean;
-  /** Faded through its opacity (glass, labels, hidden hit boxes stay at 0). */
+  /** See-through parts (glass, labels; hit boxes stay at 0) fade through their opacity. */
   transparent: boolean;
   opacity: number;
-  color: THREE.Color | null;
-  /** Lit materials fade through their emissive (paper) and colour (theirs); null for basic. */
-  emissive: THREE.Color | null;
-  emissiveIntensity: number;
-  envMapIntensity: number | null;
+  fill: THREE.Uniform<number> | null;
 }
-
-type Fadeable = THREE.Material & {
-  color?: THREE.Color;
-  emissive?: THREE.Color;
-  emissiveIntensity?: number;
-  envMapIntensity?: number;
-};
 
 interface MeshState {
   castShadow: boolean;
@@ -41,9 +63,9 @@ interface MeshState {
  * The kit's reveal on every quality tier (docs/plans/ink-look.md, Wave 3 slot 3). Its pen
  * outlines draw on from her page outward: this writes `lines` (InkComposer's `reveal`) and points
  * the sweep at her page. A little behind, each part's fill fades in from the paper colour, the
- * nearest first. A part casts its shadow once it is half filled. At the end every material is
- * put back exactly, so the live bench pays nothing. Allocates only the first time it sees a
- * material or a mesh.
+ * nearest first; a part casts its shadow once it is half filled. At the end every value is put
+ * back, so the live bench pays nothing. Allocates only the first time it sees a material or a
+ * mesh.
  */
 export function RevealClip({
   phases,
@@ -60,14 +82,12 @@ export function RevealClip({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const st = useMemo(() => {
-    const paper = new THREE.Color(PAPER_HEX);
     const origin = new THREE.Vector3();
     const box = new THREE.Box3();
     const v = new THREE.Vector3();
-    const tmp = new THREE.Color();
     const fills = new Map<THREE.Material, FillState>();
     const meshes = new Map<THREE.Mesh, MeshState>();
-    const s = { active: false, reach: 1, fill: 0, paper, origin, box, v, tmp, fills, meshes };
+    const s = { active: false, reach: 1, fill: 0 };
 
     const meshState = (mesh: THREE.Mesh): MeshState => {
       let m = meshes.get(mesh);
@@ -85,20 +105,14 @@ export function RevealClip({
       return m;
     };
 
-    const fillState = (material: Fadeable, delay: number): FillState => {
+    const fillState = (material: THREE.Material, delay: number): FillState => {
       let f = fills.get(material);
       if (!f) {
-        const lit = material.emissive instanceof THREE.Color;
         f = {
           delay,
-          skip: !(material.color instanceof THREE.Color),
           transparent: material.transparent,
           opacity: material.opacity,
-          color: material.color instanceof THREE.Color ? material.color.clone() : null,
-          emissive: lit ? (material.emissive as THREE.Color).clone() : null,
-          emissiveIntensity: material.emissiveIntensity ?? 1,
-          envMapIntensity:
-            typeof material.envMapIntensity === "number" ? material.envMapIntensity : null,
+          fill: material.transparent ? null : fillUniform(material),
         };
         fills.set(material, f);
       } else if (delay < f.delay) {
@@ -108,43 +122,11 @@ export function RevealClip({
       return f;
     };
 
-    const applyFill = (material: Fadeable, f: FillState, k: number) => {
-      if (f.skip) return;
-      if (f.transparent) {
-        material.opacity = f.opacity * k;
-        return;
-      }
-      if (f.emissive && f.color && material.color && material.emissive) {
-        // Lit: its own colour scaled in, the paper as emissive scaled out, so the part goes
-        // from flat paper to itself (a straight blend, with no program change).
-        material.color.copy(f.color).multiplyScalar(k);
-        material.emissive.copy(paper).multiplyScalar(1 - k);
-        tmp.copy(f.emissive).multiplyScalar(f.emissiveIntensity * k);
-        material.emissive.add(tmp);
-        material.emissiveIntensity = 1;
-        if (f.envMapIntensity !== null) material.envMapIntensity = f.envMapIntensity * k;
-      } else if (f.color && material.color) {
-        material.color.copy(f.color).lerp(paper, 1 - k);
-      }
-    };
-
-    const restoreFill = (f: FillState, material: THREE.Material) => {
-      const m = material as Fadeable;
-      if (f.skip) return;
-      m.opacity = f.opacity;
-      if (f.color && m.color) m.color.copy(f.color);
-      if (f.emissive && m.emissive) m.emissive.copy(f.emissive);
-      if (f.emissive) m.emissiveIntensity = f.emissiveIntensity;
-      if (f.envMapIntensity !== null) m.envMapIntensity = f.envMapIntensity;
-    };
-    const restoreMesh = (m: MeshState, mesh: THREE.Mesh) => {
-      mesh.castShadow = m.castShadow;
-    };
-
-    const fade = (material: Fadeable, delay: number): number => {
+    const fade = (material: THREE.Material, delay: number): number => {
       const f = fillState(material, delay);
       const k = Math.min(1, Math.max(0, s.fill * (1 + FILL_SPREAD) - f.delay * FILL_SPREAD));
-      applyFill(material, f, k);
+      if (f.transparent) material.opacity = f.opacity * k;
+      else if (f.fill) f.fill.value = k;
       return k;
     };
 
@@ -156,11 +138,19 @@ export function RevealClip({
       let k: number;
       if (Array.isArray(mesh.material)) {
         k = 1;
-        for (const x of mesh.material) k = Math.min(k, fade(x as Fadeable, m.delay));
+        for (const x of mesh.material) k = Math.min(k, fade(x, m.delay));
       } else {
-        k = fade(mesh.material as Fadeable, m.delay);
+        k = fade(mesh.material, m.delay);
       }
       mesh.castShadow = m.castShadow && k > 0.5;
+    };
+
+    const restoreFill = (f: FillState, material: THREE.Material) => {
+      if (f.transparent) material.opacity = f.opacity;
+      else if (f.fill) f.fill.value = 1;
+    };
+    const restoreMesh = (m: MeshState, mesh: THREE.Mesh) => {
+      mesh.castShadow = m.castShadow;
     };
 
     const corner = (x: number, y: number, z: number) => v.set(x, y, z).distanceTo(origin);
@@ -204,7 +194,7 @@ export function RevealClip({
     };
   }, []);
 
-  // Unmounted mid-reveal (the lite view, a new bench): leave the kit's materials as they were.
+  // Unmounted mid-reveal (the lite view, a new bench): leave the kit's values as they were.
   useEffect(() => () => st.restore(), [st]);
 
   useFrame(() => {
