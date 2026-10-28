@@ -187,11 +187,12 @@ export function makeCrocClipGeometries(): {
 
 // ---- Where the cable may not go ----------------------------------------------------------
 // Leads rest on top of whatever they cross. These boxes are the bench's parts as the Wave 0
-// stubs size them (width x height x depth, centred on the part's layout position, rotation 0):
-//   cells 0.14 x 0.04 x 0.07    key 0.08 x 0.02 x 0.05     ammeter and voltmeter 0.12 x 0.10 x 0.06
-//   resistance box 0.26 x 0.06 x 0.10   wire board 1.10 x 0.02 x 0.12   tray 0.26 x 0.014 x 0.34
-// The wire board's brass strips (3.2 cm) and the tray's rheostat are left out. If apparatus 1's
-// parts end up bigger, edit the sizes here.
+// parts size them (width x height x depth, centred on the part's layout position plus a z offset,
+// rotation 0). They follow the modelled parts: CellHolder (base 0.142 long, walls 0.046 high),
+// Key (base 0.092 wide on PLUG_KEY_DIMS, blocks on top), Meter (case 0.12 x 0.118 x 0.05, with the
+// nut ledge 0.012 high and 0.04 deep in front), ResistanceBox (0.30 wide on PLUG_BOX_DIMS), the
+// wire board and the tray. The wire board's brass strips and the tray's rheostat are left out.
+// Change these with the parts.
 
 export interface BenchFootprint {
   cx: number;
@@ -203,23 +204,28 @@ export interface BenchFootprint {
   top: number;
 }
 
-const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number]> = [
-  ["cells", 0.14, 0.04, 0.07],
-  ["key", 0.08, 0.02, 0.05],
-  ["ammeter", 0.12, 0.1, 0.06],
-  ["voltmeter", 0.12, 0.1, 0.06],
-  ["box", 0.26, 0.06, 0.1],
-  ["wire", 1.1, 0.02, 0.12],
-  ["tray", 0.26, 0.014, 0.34],
+/** [slot, width, height, depth, z offset from the slot's position]. */
+const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number, number]> = [
+  ["cells", 0.142, 0.046, 0.046, 0],
+  ["key", 0.092, 0.024, 0.05, 0],
+  ["ammeter", 0.12, 0.118, 0.05, 0],
+  ["ammeter", 0.12, 0.012, 0.04, 0.045],
+  ["voltmeter", 0.12, 0.118, 0.05, 0],
+  ["voltmeter", 0.12, 0.012, 0.04, 0.045],
+  ["box", 0.3, 0.06, 0.1, 0],
+  ["wire", 1.1, 0.02, 0.12, 0],
+  ["tray", 0.26, 0.014, 0.34, 0],
 ];
 
-export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(([slot, w, h, d]) => ({
-  cx: OHMS_LAW_LAYOUT[slot].position[0],
-  cz: OHMS_LAW_LAYOUT[slot].position[2],
-  hx: w / 2,
-  hz: d / 2,
-  top: h,
-}));
+export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(
+  ([slot, w, h, d, dz]) => ({
+    cx: OHMS_LAW_LAYOUT[slot].position[0],
+    cz: OHMS_LAW_LAYOUT[slot].position[2] + dz,
+    hx: w / 2,
+    hz: d / 2,
+    top: h,
+  }),
+);
 
 /** A cable slopes from a box's top edge down to the desk over this distance. */
 const FOOT_RAMP_M = 0.015;
