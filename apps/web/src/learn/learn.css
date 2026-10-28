@@ -209,6 +209,27 @@
   }
 }
 
+/* The graph paper covers the bench's uncovered area, under the toolbar. */
+.ol-graph {
+  position: absolute;
+  top: calc(var(--sh-head, 56px) + 68px);
+  left: calc(var(--sh-rail, 76px) + 12px);
+  right: 428px;
+  bottom: calc(var(--sh-bar, 80px) + 12px);
+  overflow: auto;
+  padding: 12px;
+  border: var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-sizing: border-box;
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .ol-graph {
+    right: 368px;
+  }
+}
+
 /* The shell's diagram or Identify card floats top-left: the toolbar and note go bottom-left. */
 .ol-float-open .ol-tools {
   top: auto;
@@ -245,6 +266,16 @@
     bottom: auto;
     left: 12px;
     right: 12px;
+  }
+
+  .ol-graph {
+    top: 152px;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--sh-bar, 76px) + 120px);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
   }
 }
 

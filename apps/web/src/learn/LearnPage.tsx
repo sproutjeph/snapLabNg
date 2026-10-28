@@ -1,7 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { MarkSheet, OhmsLawRecord } from "@snaplab/contracts";
-import type { TerminalId } from "@snaplab/engine";
+import { DIAGRAM_LEADS, type TerminalId } from "@snaplab/engine";
 import { markOhmsLaw } from "@snaplab/rules";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import * as THREE from "three";
@@ -11,6 +11,7 @@ import { InkComposer } from "../scene/ink/InkComposer";
 import { InkLights } from "../scene/ink/InkLights";
 import { PaperDesk } from "../scene/ink/PaperDesk";
 import { ReadySignal } from "../scene/ReadySignal";
+import { GraphSheet } from "./graph/GraphSheet";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { MarkPanel } from "./MarkPanel";
 import { stepStatuses } from "./marking";
@@ -196,7 +197,20 @@ function LearnView() {
   const search = useMemo(() => new URLSearchParams(location.search), []);
   const mode: LessonMode = search.get("mode") === "exam" ? "exam" : "practice";
   const [seed] = useState(() => readSeed(search));
-  const bench = useMemo(() => createOhmsLawBench(seed, { mode }), [seed, mode]);
+  const bench = useMemo(() => {
+    const b = createOhmsLawBench(seed, { mode });
+    // Dev only (screenshots and the no-leak check): `&demo=wired` pre-wires the diagram's
+    // leads, `&demo=wired-closed` also closes the key. Never in a production build.
+    const demo = import.meta.env.DEV ? search.get("demo") : null;
+    if (demo === "wired" || demo === "wired-closed") {
+      for (const [a, z] of DIAGRAM_LEADS) {
+        b.tapTerminal(a);
+        b.tapTerminal(z);
+      }
+      if (demo === "wired-closed") b.toggleKey();
+    }
+    return b;
+  }, [seed, mode, search]);
   const version = useBenchVersion(bench);
   const { tier, settings } = useQuality();
 
@@ -210,6 +224,7 @@ function LearnView() {
   const [sheet, setSheet] = useState<MarkSheet | null>(null);
   const [stale, setStale] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
 
   // The close-up loupe: OrbitControls stay unmounted until the camera is back.
@@ -267,6 +282,8 @@ function LearnView() {
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new step closes the card.
   useEffect(() => setCard(null), [stepIndex]);
+  // The graph paper comes out for Plot and Slope, and goes away for the bench steps.
+  useEffect(() => setGraphOpen(stepKey === "plot" || stepKey === "slope"), [stepKey]);
   // The ring is written into the visual state; parts read it in useFrame.
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs it after every bench change.
   useEffect(() => {
@@ -379,13 +396,40 @@ function LearnView() {
           <button type="button" className="ol-btn" onClick={() => setNotebookOpen(true)}>
             Notebook
           </button>
-          <button type="button" className="ol-btn" onClick={() => bench.undo()}>
-            Undo lead
+          <button
+            type="button"
+            className="ol-btn"
+            aria-pressed={graphOpen}
+            onClick={() => setGraphOpen(!graphOpen)}
+          >
+            {graphOpen ? "Back to the bench" : "Graph paper"}
           </button>
-          <button type="button" className="ol-btn" onClick={() => bench.reset()}>
-            Reset bench
-          </button>
+          {!graphOpen && (
+            <>
+              <button type="button" className="ol-btn" onClick={() => bench.undo()}>
+                Undo lead
+              </button>
+              <button type="button" className="ol-btn" onClick={() => bench.reset()}>
+                Reset bench
+              </button>
+            </>
+          )}
         </div>
+
+        {graphOpen && (
+          <section className="ol-graph" aria-label="Graph paper">
+            {handedIn ? (
+              <p className="ol-handed">Your graph has been handed in with your notebook.</p>
+            ) : (
+              <GraphSheet
+                value={record.graph}
+                onChange={(graph) => setRecord({ ...record, graph })}
+                mode={mode}
+                table={record}
+              />
+            )}
+          </section>
+        )}
 
         {loupe && (
           <fieldset className="ol-loupe" aria-label="Close-up">
