@@ -1,7 +1,7 @@
 import { Effect, EffectAttribute } from "postprocessing";
 import * as THREE from "three";
 import inkEdgesFrag from "./ink-edges.frag.glsl?raw";
-import { createInkIdMaterial, renderInkPass } from "./inkPass";
+import { InkIdPass } from "./inkPass";
 import { INK_HEX } from "./palette";
 
 /** Line width in CSS pixels, scaled by the device pixel ratio. */
@@ -18,7 +18,7 @@ export const INK_OPACITY = 0.92;
 /**
  * The ink outline as a postprocessing Effect (high and mid tiers). It reads the composer's
  * depth texture (EffectAttribute.DEPTH) and, in `update()`, draws its own ink-ID target at
- * `scale` × the drawing-buffer size with one override material (inkPass.ts). The fragment
+ * `scale` × the drawing-buffer size with the ID materials of inkPass.ts. The fragment
  * shader samples both in 8 directions. Uniforms are made once; `update()` allocates nothing.
  */
 export class InkEffect extends Effect {
@@ -29,15 +29,17 @@ export class InkEffect extends Effect {
   private readonly scene: THREE.Scene;
   private camera: THREE.Camera;
   private readonly inkTarget: THREE.WebGLRenderTarget;
-  private readonly inkMaterial: THREE.ShaderMaterial;
+  private readonly idPass: InkIdPass;
 
   constructor(scene: THREE.Scene, camera: THREE.Camera, scale: number) {
     const reveal = new THREE.Uniform(1);
-    const radius = new THREE.Uniform(INK_THICKNESS_PX * 0.5);
+    const radius = new THREE.Uniform(INK_THICKNESS_PX);
     const inkTarget = new THREE.WebGLRenderTarget(1, 1, {
       type: THREE.HalfFloatType,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
+      // Linear: at 0.75× (mid) nearest texels made the normals blocky and creases speckle on
+      // the leads. A blended id at a part boundary still reads as a boundary.
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
       depthBuffer: true,
       stencilBuffer: false,
       generateMipmaps: false,
@@ -62,7 +64,7 @@ export class InkEffect extends Effect {
     this.scene = scene;
     this.camera = camera;
     this.inkTarget = inkTarget;
-    this.inkMaterial = createInkIdMaterial();
+    this.idPass = new InkIdPass();
   }
 
   override set mainCamera(value: THREE.Camera) {
@@ -70,9 +72,9 @@ export class InkEffect extends Effect {
   }
 
   override update(renderer: THREE.WebGLRenderer): void {
-    // Half the line on each side of an edge; device pixels, so lines keep their CSS width.
-    this.radius.value = INK_THICKNESS_PX * 0.5 * renderer.getPixelRatio();
-    renderInkPass(renderer, this.scene, this.camera, this.inkMaterial, this.inkTarget);
+    // One full line width, on the far side of an edge; device pixels, so lines keep their CSS width.
+    this.radius.value = INK_THICKNESS_PX * renderer.getPixelRatio();
+    this.idPass.render(renderer, this.scene, this.camera, this.inkTarget);
   }
 
   override setSize(width: number, height: number): void {
@@ -85,6 +87,6 @@ export class InkEffect extends Effect {
   override dispose(): void {
     super.dispose();
     this.inkTarget.dispose();
-    this.inkMaterial.dispose();
+    this.idPass.dispose();
   }
 }

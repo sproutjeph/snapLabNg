@@ -1,10 +1,13 @@
 // Ink outline effect (a postprocessing Effect with EffectAttribute.DEPTH). Samples 8 directions
 // (4 opposite pairs) round each pixel and draws blue-black pen lines where:
 //   - the scene depth jumps (silhouettes),
-//   - the view-space normal bends sharply (creases: the second difference across a pair, so the
-//     smooth turn of a thin lead or a rod is not mistaken for an edge), or
-//   - the ink id changes (two touching parts).
-// Inputs: the scene depth and the ink-ID target (rgb = normal, a = id * 2 + thin).
+//   - the ink id changes (two touching parts), or
+//   - the view-space normal bends sharply (creases: it turns on one side of a pair and not the
+//     other, so the even turn of a lead or a rod is not mistaken for an edge).
+// Silhouette and part lines go on the far side of the edge only, a full line width out, so a
+// lead a few pixels wide keeps its colour inside its outline. Creases sit centred on the fold,
+// sampled at half the width. Inputs: the scene depth and the ink-ID target
+// (rgb = normal, a = id * 2 + thin).
 precision highp float;
 
 uniform vec3 inkColour;
@@ -26,42 +29,52 @@ float inkViewDepth(const in float d) {
   return max(-getViewZ(d), 1e-5);
 }
 
-// Depth and id edges against one neighbour, already weighted for `thin` parts.
-float inkTapEdge(const in vec4 c, const in float zC, const in vec4 n, const in float zN) {
-  float covC = step(0.25, dot(c.rgb, c.rgb));
-  float covN = step(0.25, dot(n.rgb, n.rgb));
+float inkCovered(const in vec4 s) {
+  return step(0.25, dot(s.rgb, s.rgb));
+}
+
+// Silhouette and part edges against one neighbour, drawn only when this pixel is the far side.
+float inkOuterEdge(const in vec4 c, const in float zC, const in vec4 n, const in float zN) {
+  float behind = zC - zN;
+  float near = max(min(zN, zC), 1e-5);
   // Relative depth jump, only where something inked is involved, so the paper desk (not in
   // the ink pass) never draws its own border.
-  float dz = abs(zN - zC) / max(min(zN, zC), 1e-5);
-  float eDepth = max(covC, covN) * smoothstep(depthThreshold * 0.5, depthThreshold, dz);
+  float cov = max(inkCovered(c), inkCovered(n));
+  float eDepth = cov * step(0.0, behind) * smoothstep(depthThreshold * 0.5, depthThreshold, behind / near);
   float idC = floor(c.a * 0.5);
   float idN = floor(n.a * 0.5);
-  float eId = step(0.5, abs(idN - idC));
-  float thin = max(c.a - idC * 2.0, n.a - idN * 2.0);
+  // Touching parts at one depth: the lower id takes the line, so it is drawn once.
+  float level = step(abs(behind) / near, 0.002);
+  float farSide = max(step(0.002, behind / near), level * step(idC, idN - 0.5));
+  float eId = step(0.5, abs(idN - idC)) * farSide;
+  float thin = clamp(max(c.a - idC * 2.0, n.a - idN * 2.0), 0.0, 1.0);
   return max(eDepth, eId) * mix(1.0, thinAlpha, thin);
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
   float zC = inkViewDepth(depth);
   vec4 c = texture2D(inkBuffer, uv);
-  float covC = step(0.25, dot(c.rgb, c.rgb));
-  float thinC = c.a - floor(c.a * 0.5) * 2.0;
-  vec2 step1 = texelSize * inkRadius;
+  float covC = inkCovered(c);
+  float thinC = clamp(c.a - floor(c.a * 0.5) * 2.0, 0.0, 1.0);
+  vec2 outer = texelSize * inkRadius;
+  vec2 inner = outer * 0.5;
 
   float ink = 0.0;
   for (int i = 0; i < 4; i++) {
-    vec2 sa = uv + INK_DIRS[i * 2] * step1;
-    vec2 sb = uv + INK_DIRS[i * 2 + 1] * step1;
-    vec4 na = texture2D(inkBuffer, sa);
-    vec4 nb = texture2D(inkBuffer, sb);
-    float za = inkViewDepth(readDepth(sa));
-    float zb = inkViewDepth(readDepth(sb));
-    ink = max(ink, inkTapEdge(c, zC, na, za));
-    ink = max(ink, inkTapEdge(c, zC, nb, zb));
+    vec2 da = INK_DIRS[i * 2];
+    vec2 db = INK_DIRS[i * 2 + 1];
+    vec2 sa = uv + da * outer;
+    vec2 sb = uv + db * outer;
+    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sa), inkViewDepth(readDepth(sa))));
+    ink = max(ink, inkOuterEdge(c, zC, texture2D(inkBuffer, sb), inkViewDepth(readDepth(sb))));
 
-    // Crease: zero for a flat face or an even curve, large where the normal steps.
-    float bend = length(na.rgb + nb.rgb - 2.0 * c.rgb);
-    float cov = max(covC, max(step(0.25, dot(na.rgb, na.rgb)), step(0.25, dot(nb.rgb, nb.rgb))));
+    // Crease: the normal turns on one side and not the other. An even curve (a lead, a rod)
+    // turns the same both ways and draws nothing. Only inside inked surfaces; silhouettes are
+    // the depth test's job.
+    vec4 na = texture2D(inkBuffer, uv + da * inner);
+    vec4 nb = texture2D(inkBuffer, uv + db * inner);
+    float bend = abs(distance(na.rgb, c.rgb) - distance(nb.rgb, c.rgb));
+    float cov = covC * inkCovered(na) * inkCovered(nb);
     float eCrease = cov * smoothstep(creaseThreshold * 0.7, creaseThreshold, bend);
     ink = max(ink, eCrease * mix(1.0, thinAlpha, thinC));
   }
