@@ -13,13 +13,13 @@ export interface CallDetailProps {
 function statusBadgeStyle(status: CallStatus): { bg: string; fg: string; text: string } {
   switch (status) {
     case "ok":
-      return { bg: "#14532d", fg: "#bbf7d0", text: "OK" };
+      return { bg: "var(--card)", fg: "var(--green)", text: "OK" };
     case "running":
-      return { bg: "#1e3a8a", fg: "#bfdbfe", text: "RUNNING" };
+      return { bg: "var(--card)", fg: "var(--ink)", text: "RUNNING" };
     case "fallback":
-      return { bg: "#78350f", fg: "#fde68a", text: "FALLBACK" };
+      return { bg: "var(--card)", fg: "var(--accent)", text: "FALLBACK" };
     case "error":
-      return { bg: "#7f1d1d", fg: "#fecaca", text: "ERROR" };
+      return { bg: "var(--card)", fg: "var(--ink-2)", text: "ERROR" };
   }
 }
 
@@ -78,9 +78,9 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
   return (
     <div
       style={{
-        border: "1px solid #334155",
-        borderRadius: "8px",
-        backgroundColor: "#0f172a",
+        border: "var(--rule)",
+        borderRadius: "var(--radius)",
+        backgroundColor: "var(--paper)",
         overflow: "hidden",
       }}
     >
@@ -90,7 +90,7 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "8px 10px",
-          backgroundColor: "#1e293b",
+          backgroundColor: "var(--paper-2)",
           gap: "8px",
         }}
       >
@@ -101,7 +101,7 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
           style={{
             background: "none",
             border: "none",
-            color: "#f8fafc",
+            color: "var(--ink)",
             fontSize: "12px",
             fontWeight: 700,
             cursor: "pointer",
@@ -114,7 +114,7 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
         >
           <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
           <span>{title}</span>
-          <span style={{ color: "#cbd5e1", fontWeight: 500 }}>
+          <span style={{ color: "var(--muted)", fontWeight: 500 }}>
             ({formattedJson.length.toLocaleString("en-US")} chars)
           </span>
         </button>
@@ -125,9 +125,9 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
           style={{
             padding: "4px 10px",
             borderRadius: "6px",
-            border: "1px solid #475569",
-            backgroundColor: "#0f172a",
-            color: copyState === "failed" ? "#fca5a5" : "#f8fafc",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--paper)",
+            color: copyState === "failed" ? "var(--accent)" : "var(--ink)",
             fontSize: "11px",
             fontWeight: 600,
             cursor: "pointer",
@@ -144,7 +144,7 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
               margin: 0,
               fontSize: "11px",
               lineHeight: 1.45,
-              color: "#e2e8f0",
+              color: "var(--ink-2)",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
               maxHeight: "220px",
@@ -162,9 +162,9 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
                 marginTop: "8px",
                 padding: "4px 10px",
                 borderRadius: "6px",
-                border: "1px solid #38bdf8",
-                backgroundColor: "#0f172a",
-                color: "#7dd3fc",
+                border: "1px solid var(--ink-2)",
+                backgroundColor: "var(--paper)",
+                color: "var(--ink-2)",
                 fontSize: "11px",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -197,9 +197,9 @@ export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
       style={{
         marginTop: "12px",
         padding: "12px",
-        borderRadius: "10px",
-        border: "1px solid #38bdf8",
-        backgroundColor: "#141c2b",
+        borderRadius: "var(--radius)",
+        border: "1px solid var(--ink-2)",
+        backgroundColor: "var(--card)",
         display: "flex",
         flexDirection: "column",
         gap: "8px",
@@ -214,12 +214,12 @@ export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
         }}
       >
         <div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc" }}>{call.label}</div>
-          <div style={{ fontSize: "12px", color: "#cbd5e1", marginTop: "2px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>{call.label}</div>
+          <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>
             Model:{" "}
             <code
               style={{
-                color: "#7dd3fc",
+                color: "var(--ink-2)",
                 fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
               }}
             >
@@ -250,9 +250,9 @@ export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
               style={{
                 padding: "2px 8px",
                 borderRadius: "6px",
-                border: "1px solid #475569",
-                backgroundColor: "#0f172a",
-                color: "#f8fafc",
+                border: "1px solid var(--ink-2)",
+                backgroundColor: "var(--paper)",
+                color: "var(--ink)",
                 fontSize: "11px",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -269,9 +269,9 @@ export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
           style={{
             padding: "6px 8px",
             borderRadius: "6px",
-            backgroundColor: "#422006",
-            border: "1px solid #b45309",
-            color: "#fde68a",
+            backgroundColor: "var(--paper-2)",
+            border: "1px solid var(--accent)",
+            color: "var(--ink-2)",
             fontSize: "12px",
           }}
         >

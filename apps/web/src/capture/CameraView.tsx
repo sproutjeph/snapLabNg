@@ -207,14 +207,14 @@ export function CameraView({ onCapture }: CameraViewProps) {
         position: "relative",
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "space-between",
         overflow: "hidden",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
       }}
     >
@@ -252,7 +252,8 @@ export function CameraView({ onCapture }: CameraViewProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          background: "linear-gradient(to bottom, rgba(12,15,20,0.85), rgba(12,15,20,0))",
+          background: "var(--paper)",
+          borderBottom: "var(--rule)",
           boxSizing: "border-box",
         }}
       >
@@ -260,7 +261,7 @@ export function CameraView({ onCapture }: CameraViewProps) {
           <div style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "0.01em" }}>
             SnapLab NG · Metre Bridge Practical
           </div>
-          <div style={{ fontSize: "13px", color: "#cbd5e1", marginTop: "2px" }}>
+          <div style={{ fontSize: "13px", color: "var(--muted)", marginTop: "2px" }}>
             Align your WAEC exercise-book page inside the guide
           </div>
         </div>
@@ -269,11 +270,12 @@ export function CameraView({ onCapture }: CameraViewProps) {
           <div
             style={{
               padding: "6px 12px",
-              borderRadius: "999px",
+              borderRadius: "var(--radius)",
               fontSize: "13px",
               fontWeight: 600,
-              backgroundColor: isSteady ? "rgba(22, 163, 74, 0.9)" : "rgba(217, 119, 6, 0.9)",
-              color: "#ffffff",
+              border: "1px solid var(--ink-2)",
+              backgroundColor: "var(--card)",
+              color: isSteady ? "var(--green)" : "var(--accent)",
             }}
           >
             {isSteady ? `Sharp (${sharpnessScore})` : "Hold steady…"}
@@ -301,9 +303,9 @@ export function CameraView({ onCapture }: CameraViewProps) {
               width: "min(76vw, 420px)",
               aspectRatio: "3 / 4",
               maxHeight: "66vh",
-              border: isSteady ? "2.5px solid #22c55e" : "2px dashed rgba(248, 250, 252, 0.78)",
-              borderRadius: "14px",
-              boxShadow: "0 0 0 9999px rgba(12, 15, 20, 0.48)",
+              border: isSteady ? "2.5px solid var(--green)" : "2px dashed var(--paper)",
+              borderRadius: "var(--radius)",
+              boxShadow: "0 0 0 9999px rgba(29, 36, 48, 0.48)",
               display: "flex",
               alignItems: "flex-end",
               justifyContent: "center",
@@ -313,11 +315,11 @@ export function CameraView({ onCapture }: CameraViewProps) {
           >
             <span
               style={{
-                backgroundColor: "rgba(15, 23, 42, 0.8)",
+                backgroundColor: "var(--card)",
                 padding: "6px 12px",
-                borderRadius: "8px",
+                borderRadius: "var(--radius)",
                 fontSize: "13px",
-                color: "#e2e8f0",
+                color: "var(--ink)",
               }}
             >
               Fit all four corners of your notebook page inside the frame
@@ -327,12 +329,12 @@ export function CameraView({ onCapture }: CameraViewProps) {
           <div
             style={{
               width: "min(90vw, 440px)",
-              backgroundColor: "#161b26",
-              border: "1px solid #2d3748",
-              borderRadius: "16px",
+              backgroundColor: "var(--card)",
+              border: "var(--rule)",
+              borderRadius: "var(--radius)",
               padding: "28px 24px",
               textAlign: "center",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.45)",
+              boxShadow: "none",
               boxSizing: "border-box",
             }}
           >
@@ -342,13 +344,13 @@ export function CameraView({ onCapture }: CameraViewProps) {
                 height: "80px",
                 margin: "0 auto 16px",
                 borderRadius: "8px",
-                border: "2px dashed #38bdf8",
-                backgroundColor: "rgba(56, 189, 248, 0.08)",
+                border: "2px dashed var(--ink-2)",
+                backgroundColor: "var(--paper-2)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "24px",
-                color: "#38bdf8",
+                color: "var(--ink-2)",
                 fontWeight: 700,
               }}
             >
@@ -362,7 +364,7 @@ export function CameraView({ onCapture }: CameraViewProps) {
                 margin: "0 0 22px",
                 fontSize: "14px",
                 lineHeight: 1.5,
-                color: "#94a3b8",
+                color: "var(--muted)",
               }}
             >
               {cameraState === "starting"
@@ -374,14 +376,17 @@ export function CameraView({ onCapture }: CameraViewProps) {
               onClick={openFilePicker}
               style={{
                 width: "100%",
-                minHeight: "48px",
+                minHeight: "var(--tap)",
                 padding: "12px 20px",
-                borderRadius: "10px",
-                border: "none",
-                backgroundColor: "#2563eb",
-                color: "#ffffff",
+                borderRadius: "var(--radius)",
+                border: "1px solid var(--ink)",
+                backgroundColor: "var(--ink)",
+                color: "var(--paper)",
                 fontSize: "15px",
+                fontFamily: "var(--f-cond)",
                 fontWeight: 600,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
                 cursor: "pointer",
               }}
             >
@@ -398,9 +403,10 @@ export function CameraView({ onCapture }: CameraViewProps) {
             zIndex: 2,
             marginBottom: "8px",
             padding: "8px 14px",
-            borderRadius: "8px",
-            backgroundColor: "rgba(220, 38, 38, 0.9)",
-            color: "#ffffff",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--accent)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
             fontSize: "13px",
           }}
         >
@@ -419,7 +425,8 @@ export function CameraView({ onCapture }: CameraViewProps) {
           alignItems: "center",
           justifyContent: "center",
           gap: "16px",
-          background: "linear-gradient(to top, rgba(12,15,20,0.9), rgba(12,15,20,0))",
+          background: "var(--paper)",
+          borderTop: "var(--rule)",
           boxSizing: "border-box",
         }}
       >
@@ -428,12 +435,12 @@ export function CameraView({ onCapture }: CameraViewProps) {
             type="button"
             onClick={handleSnapVideo}
             style={{
-              minHeight: "48px",
+              minHeight: "var(--tap)",
               padding: "12px 28px",
-              borderRadius: "999px",
-              border: "2px solid #ffffff",
-              backgroundColor: "#16a34a",
-              color: "#ffffff",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink)",
+              backgroundColor: "var(--ink)",
+              color: "var(--paper)",
               fontSize: "16px",
               fontWeight: 700,
               cursor: "pointer",
@@ -447,12 +454,12 @@ export function CameraView({ onCapture }: CameraViewProps) {
           type="button"
           onClick={openFilePicker}
           style={{
-            minHeight: "44px",
+            minHeight: "var(--tap)",
             padding: "10px 18px",
-            borderRadius: "999px",
-            border: "1px solid #475569",
-            backgroundColor: "rgba(30, 41, 59, 0.9)",
-            color: "#f1f5f9",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
             fontSize: "14px",
             fontWeight: 600,
             cursor: "pointer",

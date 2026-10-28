@@ -215,12 +215,16 @@ function BenchScene({
 }
 
 const BUTTON_STYLE = {
-  minHeight: 40,
+  minHeight: "var(--tap)",
   padding: "8px 12px",
-  borderRadius: 8,
-  border: "1px solid #334155",
-  background: "#1e293b",
-  color: "#f8fafc",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--ink-2)",
+  background: "var(--card)",
+  color: "var(--ink)",
+  fontFamily: "var(--f-cond)",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
   fontSize: 13,
 } as const;
 
@@ -280,9 +284,10 @@ function LabCanvas({
             alignItems: "center",
             gap: 10,
             padding: "8px 10px",
-            borderRadius: 8,
-            background: "rgba(12, 15, 20, 0.78)",
-            color: "#e2e8f0",
+            borderRadius: "var(--radius)",
+            border: "var(--rule)",
+            background: "var(--card)",
+            color: "var(--ink)",
             fontSize: 13,
           }}
         >
@@ -323,9 +328,10 @@ function LabCanvas({
           style={{
             margin: 0,
             padding: "8px 10px",
-            borderRadius: 8,
-            background: "rgba(12, 15, 20, 0.78)",
-            color: "#e2e8f0",
+            borderRadius: "var(--radius)",
+            border: "var(--rule)",
+            background: "var(--card)",
+            color: "var(--ink)",
             fontSize: 13,
             lineHeight: 1.4,
             maxWidth: 420,
@@ -345,12 +351,16 @@ function LabCanvas({
             type="button"
             onClick={() => setSkipKey((k) => k + 1)}
             style={{
-              minHeight: 40,
+              minHeight: "var(--tap)",
               padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid #334155",
-              background: "#1e293b",
-              color: "#f8fafc",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink-2)",
+              background: "var(--card)",
+              color: "var(--ink)",
+              fontFamily: "var(--f-cond)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               fontSize: 13,
             }}
           >
@@ -361,12 +371,16 @@ function LabCanvas({
             onClick={replay}
             style={{
               pointerEvents: "auto",
-              minHeight: 40,
+              minHeight: "var(--tap)",
               padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid #334155",
-              background: "#1e293b",
-              color: "#f8fafc",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink-2)",
+              background: "var(--card)",
+              color: "var(--ink)",
+              fontFamily: "var(--f-cond)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               fontSize: 13,
             }}
           >
@@ -407,7 +421,7 @@ function LabView(props: LabBenchProps) {
   if (!lite) return <LabCanvas props={props} bench={bench} onLite={() => setChoice("lite")} />;
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", overflowY: "auto" }}>
-      <p style={{ margin: "8px 12px", color: "#94a3b8", fontSize: 13 }}>
+      <p style={{ margin: "8px 12px", color: "var(--muted)", fontSize: 13 }}>
         {!webgl
           ? "This browser can't show the 3D lab, so here is the same bench in 2D."
           : choice === "lite"
@@ -417,7 +431,7 @@ function LabView(props: LabBenchProps) {
           <button
             type="button"
             onClick={() => setChoice("3d")}
-            style={{ ...BUTTON_STYLE, marginLeft: 8, minHeight: 32, padding: "4px 10px" }}
+            style={{ ...BUTTON_STYLE, marginLeft: 8, minHeight: "var(--tap)", padding: "4px 10px" }}
           >
             Back to 3D
           </button>

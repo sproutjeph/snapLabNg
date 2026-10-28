@@ -18,11 +18,11 @@ function ensureStyles(): void {
     .snaplab-mark-detail {
       position: fixed;
       z-index: 60;
-      background: #0f172a;
-      color: #f8fafc;
-      border: 1px solid #334155;
-      box-shadow: 0 18px 40px rgba(2, 6, 23, 0.65);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--card);
+      color: var(--ink);
+      border: var(--rule);
+      box-shadow: none;
+      font-family: var(--f-body);
       box-sizing: border-box;
       overflow-y: auto;
     }
@@ -32,7 +32,7 @@ function ensureStyles(): void {
         right: 0;
         bottom: 0;
         max-height: 62vh;
-        border-radius: 16px 16px 0 0;
+        border-radius: var(--radius) var(--radius) 0 0;
         padding: 14px 16px 20px;
       }
     }
@@ -42,7 +42,7 @@ function ensureStyles(): void {
         bottom: 20px;
         width: 380px;
         max-height: calc(100vh - 120px);
-        border-radius: 14px;
+        border-radius: var(--radius);
         padding: 16px 18px;
       }
     }
@@ -115,9 +115,9 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
               fontWeight: 700,
               padding: "3px 8px",
               borderRadius: "6px",
-              background: "#1e293b",
-              color: "#e2e8f0",
-              border: "1px solid #475569",
+              background: "var(--paper-2)",
+              color: "var(--ink-2)",
+              border: "1px solid var(--ink-2)",
             }}
           >
             {item.rule}
@@ -130,8 +130,8 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
               borderRadius: "6px",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
-              background: isLost ? "#7f1d1d" : "#14532d",
-              color: isLost ? "#fecaca" : "#bbf7d0",
+              background: "var(--card)",
+              color: isLost ? "var(--red-ink)" : "var(--green)",
             }}
           >
             {item.outcome}
@@ -142,8 +142,8 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
               fontWeight: 800,
               padding: "2px 8px",
               borderRadius: "6px",
-              background: isLost ? "#dc2626" : "#15803d",
-              color: "#ffffff",
+              background: isLost ? "var(--red-ink)" : "var(--green)",
+              color: "var(--paper)",
               fontVariantNumeric: "tabular-nums",
             }}
           >
@@ -156,10 +156,10 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
           type="button"
           onClick={onClose}
           style={{
-            background: "#1e293b",
-            color: "#f8fafc",
-            border: "1px solid #475569",
-            borderRadius: "8px",
+            background: "var(--card)",
+            color: "var(--ink)",
+            border: "1px solid var(--ink-2)",
+            borderRadius: "var(--radius)",
             padding: "5px 10px",
             fontSize: "12px",
             fontWeight: 600,
@@ -177,22 +177,22 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
             flexWrap: "wrap",
             gap: "10px",
             padding: "8px 10px",
-            borderRadius: "8px",
-            background: "#1e293b",
+            borderRadius: "var(--radius)",
+            background: "var(--paper-2)",
             marginBottom: "10px",
             fontSize: "13px",
           }}
         >
           {written && (
             <div>
-              <span style={{ color: "#94a3b8" }}>Written: </span>
-              <code style={{ color: "#f8fafc", fontWeight: 600 }}>{written}</code>
+              <span style={{ color: "var(--muted)" }}>Written: </span>
+              <code style={{ color: "var(--ink)", fontWeight: 600 }}>{written}</code>
             </div>
           )}
           {item.correction && (
             <div>
-              <span style={{ color: "#fca5a5" }}>Expected: </span>
-              <code style={{ color: "#fecaca", fontWeight: 700 }}>{item.correction}</code>
+              <span style={{ color: "var(--red-ink)" }}>Expected: </span>
+              <code style={{ color: "var(--red-ink)", fontWeight: 700 }}>{item.correction}</code>
             </div>
           )}
         </div>
@@ -203,7 +203,7 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
           margin: "0 0 8px",
           fontSize: "14px",
           lineHeight: 1.45,
-          color: "#f1f5f9",
+          color: "var(--ink)",
         }}
       >
         {item.fix_en}
@@ -215,15 +215,15 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
             margin: "0 0 10px",
             padding: "8px 10px",
             borderRadius: "8px",
-            background: "rgba(30, 41, 59, 0.75)",
-            borderLeft: "3px solid #f59e0b",
+            background: "var(--paper-2)",
+            borderLeft: "3px solid var(--accent)",
             fontSize: "13px",
             lineHeight: 1.45,
-            color: "#fde68a",
+            color: "var(--ink-2)",
             overflowWrap: "break-word",
           }}
         >
-          <strong style={{ color: "#fbbf24" }}>Pidgin: </strong>
+          <strong style={{ color: "var(--ink)" }}>Pidgin: </strong>
           {item.fix_pcm}
         </div>
       )}
@@ -235,7 +235,7 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
             target="_blank"
             rel="noreferrer"
             style={{
-              color: "#7dd3fc",
+              color: "var(--ink)",
               textDecoration: "underline",
               fontWeight: 600,
             }}

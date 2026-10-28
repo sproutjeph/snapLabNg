@@ -27,7 +27,7 @@ export default function ExaminerPreview() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#030712",
+        background: "var(--paper)",
         overflow: "hidden",
       }}
     >
@@ -38,16 +38,17 @@ export default function ExaminerPreview() {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "8px 16px",
-          background: "#0b1120",
-          borderBottom: "1px solid #1e293b",
+          background: "var(--paper)",
+          borderBottom: "var(--rule)",
           flexShrink: 0,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "1rem" }}>🔬</span>
-          <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "#f8fafc" }}>SnapLab NG</span>
-          <span style={{ color: "#64748b", fontSize: "0.82rem" }}>&bull;</span>
-          <span style={{ fontSize: "0.82rem", color: "#38bdf8", fontWeight: 600 }}>
+          <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--ink)" }}>
+            SnapLab NG
+          </span>
+          <span style={{ color: "var(--muted)", fontSize: "0.82rem" }}>&bull;</span>
+          <span style={{ fontSize: "0.82rem", color: "var(--ink-2)", fontWeight: 600 }}>
             Examiner Preview (G1 Mock)
           </span>
         </div>
@@ -55,20 +56,23 @@ export default function ExaminerPreview() {
           type="button"
           onClick={handleRestart}
           style={{
-            background: "#1e293b",
-            color: "#f8fafc",
-            border: "1px solid #334155",
-            borderRadius: "6px",
+            background: "var(--card)",
+            color: "var(--ink)",
+            border: "1px solid var(--ink-2)",
+            borderRadius: "var(--radius)",
             padding: "5px 12px",
             fontSize: "0.78rem",
+            fontFamily: "var(--f-cond)",
             fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            minHeight: "var(--tap)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: "4px",
           }}
         >
-          <span>🔄</span>
           <span>Restart</span>
         </button>
       </header>

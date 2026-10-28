@@ -196,7 +196,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         y1={WIRE_Y + 8}
         x2={x}
         y2={WIRE_Y + 8 + tickHeight}
-        stroke="#4a3728"
+        stroke="#1d2430"
         strokeWidth={isMajor ? 1.5 : 1}
       />,
     );
@@ -208,9 +208,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           y={WIRE_Y + 38}
           fontSize="11"
           fontWeight="600"
-          fill="#3b2b1d"
+          fill="#1d2430"
           textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
+          fontFamily="Barlow, system-ui, sans-serif"
         >
           {cm}
         </text>,
@@ -238,7 +238,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         y1={y1}
         x2={x2}
         y2={y2}
-        stroke="#1e293b"
+        stroke="#1d2430"
         strokeWidth={isNumbered ? 1.8 : 1.2}
       />,
     );
@@ -253,9 +253,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           y={ly + 4}
           fontSize="10"
           fontWeight="bold"
-          fill="#0f172a"
+          fill="#1d2430"
           textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
+          fontFamily="Barlow, system-ui, sans-serif"
         >
           {val === 0 ? "0" : val > 0 ? `+${val}` : `${val}`}
         </text>,
@@ -272,13 +272,13 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        backgroundColor: "#0f172a",
-        color: "#f8fafc",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         padding: "16px 8px",
         boxSizing: "border-box",
         minHeight: "100vh",
         userSelect: "none",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
       }}
     >
       <header style={{ textAlign: "center", marginBottom: "8px" }}>
@@ -295,7 +295,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         <p
           style={{
             fontSize: "0.875rem",
-            color: "#94a3b8",
+            color: "var(--muted)",
             margin: 0,
           }}
         >
@@ -326,29 +326,29 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           <defs>
             {/* Wooden Board Gradient */}
             <linearGradient id="woodGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3d2817" />
-              <stop offset="50%" stopColor="#2c1a0e" />
-              <stop offset="100%" stopColor="#1f1208" />
+              <stop offset="0%" stopColor="#efe5d1" />
+              <stop offset="50%" stopColor="#efe5d1" />
+              <stop offset="100%" stopColor="#efe5d1" />
             </linearGradient>
 
             {/* Metre Ruler Gradient */}
             <linearGradient id="rulerGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f5deb3" />
-              <stop offset="100%" stopColor="#e2c992" />
+              <stop offset="0%" stopColor="#f8f2e6" />
+              <stop offset="100%" stopColor="#f8f2e6" />
             </linearGradient>
 
             {/* Brass / Copper Gradient */}
             <linearGradient id="copperGradient" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#eab308" />
-              <stop offset="50%" stopColor="#ca8a04" />
-              <stop offset="100%" stopColor="#854d0e" />
+              <stop offset="0%" stopColor="#ddd2bd" />
+              <stop offset="50%" stopColor="#ddd2bd" />
+              <stop offset="100%" stopColor="#ddd2bd" />
             </linearGradient>
 
             {/* Resistor body gradient */}
             <linearGradient id="resistorGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#334155" />
-              <stop offset="50%" stopColor="#64748b" />
-              <stop offset="100%" stopColor="#1e293b" />
+              <stop offset="0%" stopColor="#3a4250" />
+              <stop offset="50%" stopColor="#3a4250" />
+              <stop offset="100%" stopColor="#3a4250" />
             </linearGradient>
           </defs>
 
@@ -360,7 +360,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             height="620"
             rx="16"
             fill="url(#woodGradient)"
-            stroke="#170f07"
+            stroke="#1d2430"
             strokeWidth="4"
           />
 
@@ -371,7 +371,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             width={WIRE_END_X - WIRE_START_X}
             height="36"
             fill="url(#rulerGradient)"
-            stroke="#8c6d46"
+            stroke="#3a4250"
             strokeWidth="1.5"
             rx="2"
           />
@@ -382,28 +382,28 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           <path
             d={`M 75 435 L 125 435 L 125 330 L 320 330 L 320 295 L 75 295 Z`}
             fill="url(#copperGradient)"
-            stroke="#713f12"
+            stroke="#3a4250"
             strokeWidth="2"
           />
           {/* Central Straight Strip */}
           <path
             d={`M 440 295 L 760 295 L 760 330 L 440 330 Z`}
             fill="url(#copperGradient)"
-            stroke="#713f12"
+            stroke="#3a4250"
             strokeWidth="2"
           />
           {/* Right L-Strip */}
           <path
             d={`M 880 295 L 1125 295 L 1125 435 L 1075 435 L 1075 330 L 880 330 Z`}
             fill="url(#copperGradient)"
-            stroke="#713f12"
+            stroke="#3a4250"
             strokeWidth="2"
           />
 
           {/* Terminal Terminals Bolts A, B, C */}
-          <circle cx="100" cy={WIRE_Y} r="7" fill="#fbbf24" stroke="#78350f" strokeWidth="2" />
-          <circle cx="600" cy="312.5" r="7" fill="#fbbf24" stroke="#78350f" strokeWidth="2" />
-          <circle cx="1100" cy={WIRE_Y} r="7" fill="#fbbf24" stroke="#78350f" strokeWidth="2" />
+          <circle cx="100" cy={WIRE_Y} r="7" fill="#f8f2e6" stroke="#1d2430" strokeWidth="2" />
+          <circle cx="600" cy="312.5" r="7" fill="#f8f2e6" stroke="#1d2430" strokeWidth="2" />
+          <circle cx="1100" cy={WIRE_Y} r="7" fill="#f8f2e6" stroke="#1d2430" strokeWidth="2" />
 
           {/* Terminal Text Labels */}
           <text
@@ -411,9 +411,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y={WIRE_Y + 5}
             fontSize="18"
             fontWeight="bold"
-            fill="#fef08a"
+            fill="#1d2430"
             textAnchor="middle"
-            fontFamily="system-ui, sans-serif"
+            fontFamily="Barlow, system-ui, sans-serif"
           >
             A
           </text>
@@ -422,9 +422,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y="285"
             fontSize="18"
             fontWeight="bold"
-            fill="#fef08a"
+            fill="#1d2430"
             textAnchor="middle"
-            fontFamily="system-ui, sans-serif"
+            fontFamily="Barlow, system-ui, sans-serif"
           >
             B
           </text>
@@ -433,9 +433,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y={WIRE_Y + 5}
             fontSize="18"
             fontWeight="bold"
-            fill="#fef08a"
+            fill="#1d2430"
             textAnchor="middle"
-            fontFamily="system-ui, sans-serif"
+            fontFamily="Barlow, system-ui, sans-serif"
           >
             C
           </text>
@@ -446,9 +446,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y="275"
             fontSize="16"
             fontWeight="bold"
-            fill="#cbd5e1"
+            fill="#1d2430"
             textAnchor="middle"
-            fontFamily="system-ui, sans-serif"
+            fontFamily="Barlow, system-ui, sans-serif"
           >
             Gap (R)
           </text>
@@ -457,9 +457,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y="275"
             fontSize="16"
             fontWeight="bold"
-            fill="#cbd5e1"
+            fill="#1d2430"
             textAnchor="middle"
-            fontFamily="system-ui, sans-serif"
+            fontFamily="Barlow, system-ui, sans-serif"
           >
             Gap ({unknownLabel})
           </text>
@@ -473,8 +473,8 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="230"
               height="100"
               rx="6"
-              fill="#451a03"
-              stroke="#270e02"
+              fill="#f8f2e6"
+              stroke="#1d2430"
               strokeWidth="2"
             />
             <text
@@ -482,9 +482,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               y="22"
               fontSize="12"
               fontWeight="bold"
-              fill="#fde68a"
+              fill="#1d2430"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
               letterSpacing="0.05em"
             >
               RESISTANCE BOX (R)
@@ -518,12 +518,12 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
                     cx={px}
                     cy={py}
                     r="13"
-                    fill="#ca8a04"
-                    stroke="#713f12"
+                    fill="#ddd2bd"
+                    stroke="#3a4250"
                     strokeWidth="1.5"
                   />
                   {/* Socket hole */}
-                  <circle cx={px} cy={py} r="8" fill="#18181b" />
+                  <circle cx={px} cy={py} r="8" fill="#1d2430" />
                   {/* Plug Peg (in = brass plug visible, out = dim/removed) */}
                   <circle
                     ref={(el) => {
@@ -532,8 +532,8 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
                     cx={px}
                     cy={py}
                     r="7.5"
-                    fill="#fef08a"
-                    stroke="#a16207"
+                    fill="#f8f2e6"
+                    stroke="#1d2430"
                     strokeWidth="1.5"
                     opacity={setup.plugsIn[slot.idx] ? 1 : 0.15}
                   />
@@ -542,9 +542,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
                     y={py + 30}
                     fontSize="11"
                     fontWeight="bold"
-                    fill="#fef08a"
+                    fill="#1d2430"
                     textAnchor="middle"
-                    fontFamily="system-ui, sans-serif"
+                    fontFamily="Barlow, system-ui, sans-serif"
                   >
                     {slot.lbl}Ω
                   </text>
@@ -556,13 +556,13 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           {/* Connection wires from Left Gap Copper to Plug Box */}
           <path
             d="M 320 312.5 L 320 255 L 285 255 L 285 240"
-            stroke="#94a3b8"
+            stroke="#3a4250"
             strokeWidth="3"
             fill="none"
           />
           <path
             d="M 440 312.5 L 440 255 L 475 255 L 475 240"
-            stroke="#94a3b8"
+            stroke="#3a4250"
             strokeWidth="3"
             fill="none"
           />
@@ -575,8 +575,8 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="120"
               height="80"
               rx="8"
-              fill="#1e293b"
-              stroke="#475569"
+              fill="#f8f2e6"
+              stroke="#3a4250"
               strokeWidth="2"
             />
             {/* Resistor cylinder */}
@@ -587,7 +587,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               height="30"
               rx="6"
               fill="url(#resistorGradient)"
-              stroke="#0f172a"
+              stroke="#1d2430"
               strokeWidth="1.5"
             />
             <text
@@ -595,9 +595,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               y="45"
               fontSize="16"
               fontWeight="bold"
-              fill="#38bdf8"
+              fill="#f4ecdc"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
             >
               {unknownLabel}
             </text>
@@ -605,9 +605,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               x="60"
               y="70"
               fontSize="10"
-              fill="#94a3b8"
+              fill="#8a8478"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
             >
               Unknown resistance
             </text>
@@ -616,13 +616,13 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           {/* Connection wires from Right Gap Copper to Resistor */}
           <path
             d="M 760 312.5 L 760 255 L 780 255 L 780 230"
-            stroke="#94a3b8"
+            stroke="#3a4250"
             strokeWidth="3"
             fill="none"
           />
           <path
             d="M 880 312.5 L 880 255 L 860 255 L 860 230"
-            stroke="#94a3b8"
+            stroke="#3a4250"
             strokeWidth="3"
             fill="none"
           />
@@ -636,15 +636,15 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="220"
               height="140"
               rx="12"
-              fill="#020617"
-              stroke="#334155"
+              fill="#22312a"
+              stroke="#1d2430"
               strokeWidth="2.5"
             />
             {/* Semicircular dial face */}
             <path
               d="M 515 150 A 85 85 0 0 1 685 150 Z"
-              fill="#f8fafc"
-              stroke="#cbd5e1"
+              fill="#f8f2e6"
+              stroke="#ddd2bd"
               strokeWidth="1.5"
             />
             {dialTicks}
@@ -655,9 +655,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               y="48"
               fontSize="10"
               fontWeight="bold"
-              fill="#94a3b8"
+              fill="#f4ecdc"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
               letterSpacing="0.08em"
             >
               CENTRE-ZERO GALVANOMETER
@@ -670,22 +670,22 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               y1="150"
               x2="600"
               y2="76"
-              stroke="#dc2626"
+              stroke="#1d2430"
               strokeWidth="2"
               strokeLinecap="round"
             />
             {/* Pivot cap */}
-            <circle cx="600" cy="150" r="5" fill="#0f172a" stroke="#cbd5e1" strokeWidth="1.5" />
+            <circle cx="600" cy="150" r="5" fill="#1d2430" stroke="#ddd2bd" strokeWidth="1.5" />
 
             {/* Terminals at base of Galvanometer */}
-            <circle cx="560" cy="160" r="4" fill="#fbbf24" />
-            <circle cx="640" cy="160" r="4" fill="#fbbf24" />
+            <circle cx="560" cy="160" r="4" fill="#f8f2e6" stroke="#1d2430" />
+            <circle cx="640" cy="160" r="4" fill="#f8f2e6" stroke="#1d2430" />
           </g>
 
           {/* Wire from Terminal B to Galvanometer negative terminal */}
           <path
             d="M 600 305 L 600 210 L 560 210 L 560 160"
-            stroke="#ef4444"
+            stroke="#3a4250"
             strokeWidth="2.5"
             fill="none"
           />
@@ -694,14 +694,14 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           <path
             ref={jockeyWirePathRef}
             d={`M 640 160 C 660 250, ${cmToSvgX(50)} 300, ${cmToSvgX(50)} ${WIRE_Y - 45}`}
-            stroke="#3b82f6"
+            stroke="#3a4250"
             strokeWidth="2.5"
             fill="none"
           />
 
           {/* 7. Leclanché Cell & Plug Key Circuit (Connected between A and C via bottom loop) */}
           {/* Wire from A down to Leclanché Cell */}
-          <path d={`M 100 435 L 100 560 L 340 560`} stroke="#64748b" strokeWidth="3" fill="none" />
+          <path d={`M 100 435 L 100 560 L 340 560`} stroke="#3a4250" strokeWidth="3" fill="none" />
 
           {/* Leclanché Cell */}
           <g transform="translate(340, 530)">
@@ -711,30 +711,30 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="120"
               height="60"
               rx="6"
-              fill="#1e293b"
-              stroke="#475569"
+              fill="#f8f2e6"
+              stroke="#3a4250"
               strokeWidth="2"
             />
             {/* Battery Plate Symbols */}
-            <line x1="48" y1="15" x2="48" y2="45" stroke="#f8fafc" strokeWidth="3" />
-            <line x1="58" y1="22" x2="58" y2="38" stroke="#f8fafc" strokeWidth="6" />
-            <line x1="68" y1="15" x2="68" y2="45" stroke="#f8fafc" strokeWidth="3" />
-            <line x1="78" y1="22" x2="78" y2="38" stroke="#f8fafc" strokeWidth="6" />
+            <line x1="48" y1="15" x2="48" y2="45" stroke="#1d2430" strokeWidth="3" />
+            <line x1="58" y1="22" x2="58" y2="38" stroke="#1d2430" strokeWidth="6" />
+            <line x1="68" y1="15" x2="68" y2="45" stroke="#1d2430" strokeWidth="3" />
+            <line x1="78" y1="22" x2="78" y2="38" stroke="#1d2430" strokeWidth="6" />
             <text
               x="60"
               y="54"
               fontSize="10"
               fontWeight="bold"
-              fill="#cbd5e1"
+              fill="#1d2430"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
             >
               LECLANCHÉ CELL
             </text>
           </g>
 
           {/* Wire between Cell and Plug Key */}
-          <path d="M 460 560 L 750 560" stroke="#64748b" strokeWidth="3" fill="none" />
+          <path d="M 460 560 L 750 560" stroke="#3a4250" strokeWidth="3" fill="none" />
 
           {/* Plug Key (Switch) */}
           {/* biome-ignore lint/a11y/useSemanticElements: SVG <g> requires role="button" for vector apparatus controls */}
@@ -759,13 +759,13 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="120"
               height="60"
               rx="6"
-              fill="#334155"
-              stroke="#64748b"
+              fill="#efe5d1"
+              stroke="#3a4250"
               strokeWidth="2"
             />
             {/* Brass blocks with gap */}
-            <rect x="20" y="24" width="30" height="12" fill="#ca8a04" />
-            <rect x="70" y="24" width="30" height="12" fill="#ca8a04" />
+            <rect x="20" y="24" width="30" height="12" fill="#ddd2bd" />
+            <rect x="70" y="24" width="30" height="12" fill="#ddd2bd" />
             {/* Plug Pin inserted across gap */}
             <rect
               ref={keyPlugRef}
@@ -774,8 +774,8 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="28"
               height="24"
               rx="3"
-              fill="#fef08a"
-              stroke="#a16207"
+              fill="#1d2430"
+              stroke="#3a4250"
               strokeWidth="2"
               opacity="0.15"
             />
@@ -784,9 +784,9 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               y="53"
               fontSize="10"
               fontWeight="bold"
-              fill="#fef08a"
+              fill="#1d2430"
               textAnchor="middle"
-              fontFamily="system-ui, sans-serif"
+              fontFamily="Barlow, system-ui, sans-serif"
             >
               KEY: <tspan ref={keyTextRef}>OPEN</tspan>
             </text>
@@ -795,7 +795,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           {/* Wire from Key to C */}
           <path
             d={`M 870 560 L 1100 560 L 1100 435`}
-            stroke="#64748b"
+            stroke="#3a4250"
             strokeWidth="3"
             fill="none"
           />
@@ -806,7 +806,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
             y1={WIRE_Y}
             x2={WIRE_END_X}
             y2={WIRE_Y}
-            stroke="#94a3b8"
+            stroke="#3a4250"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -814,7 +814,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           {/* Scrapes overlay path on wire */}
           <path
             ref={scrapesPathRef}
-            stroke="#8b0000"
+            stroke="#e0752e"
             strokeWidth="3.5"
             strokeLinecap="round"
             fill="none"
@@ -829,14 +829,14 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
               width="12"
               height="28"
               rx="2"
-              fill="#1e293b"
-              stroke="#0f172a"
+              fill="#1d2430"
+              stroke="#1d2430"
               strokeWidth="1.5"
             />
             {/* Brass Shaft */}
-            <rect x="-3" y="-14" width="6" height="10" fill="#eab308" />
+            <rect x="-3" y="-14" width="6" height="10" fill="#ddd2bd" />
             {/* Knife-Edge Triangle (Tip at 0, 0) */}
-            <polygon points="0,0 -7,-6 7,-6" fill="#fbbf24" stroke="#854d0e" strokeWidth="1" />
+            <polygon points="0,0 -7,-6 7,-6" fill="#f8f2e6" stroke="#3a4250" strokeWidth="1" />
           </g>
 
           {/* 10. Wire Hit Area (60px tall transparent rect over the wire) */}
@@ -870,7 +870,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
           style={{
             fontSize: "1rem",
             fontWeight: "500",
-            color: "#e2e8f0",
+            color: "var(--ink-2)",
             margin: "0 0 6px 0",
             lineHeight: 1.4,
           }}
@@ -881,7 +881,7 @@ export default function LiteBench({ setup, plugLabels, unknownLabel }: LiteBench
         <p
           style={{
             fontSize: "0.8rem",
-            color: "#64748b",
+            color: "var(--muted)",
             margin: 0,
           }}
         >

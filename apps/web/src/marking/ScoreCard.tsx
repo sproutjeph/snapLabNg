@@ -33,12 +33,12 @@ export function ScoreCard({
         padding: "8px 12px",
         maxWidth: "350px",
         boxSizing: "border-box",
-        borderRadius: "10px",
-        background: "#fffdf9",
-        border: "2px solid #dc2626",
-        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.25)",
-        color: "#0f172a",
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        borderRadius: "var(--radius)",
+        background: "var(--card)",
+        border: "1.5px solid var(--red-ink)",
+        boxShadow: "none",
+        color: "var(--ink)",
+        fontFamily: "var(--f-body)",
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -48,7 +48,7 @@ export function ScoreCard({
             fontWeight: 700,
             letterSpacing: "0.03em",
             textTransform: "uppercase",
-            color: "#991b1b",
+            color: "var(--red-ink)",
             lineHeight: 1.25,
           }}
         >
@@ -58,7 +58,7 @@ export function ScoreCard({
           style={{
             fontSize: "18px",
             fontWeight: 800,
-            color: "#b91c1c",
+            color: "var(--red-ink)",
             fontVariantNumeric: "tabular-nums",
           }}
         >
@@ -70,9 +70,9 @@ export function ScoreCard({
           style={{
             fontSize: "12px",
             fontWeight: 600,
-            color: "#475569",
+            color: "var(--muted)",
             paddingLeft: "10px",
-            borderLeft: "1px solid #fecaca",
+            borderLeft: "var(--rule)",
             fontVariantNumeric: "tabular-nums",
           }}
         >

@@ -112,12 +112,13 @@ export default function CaptureFlow({ onDone }: CaptureFlowProps) {
             bottom: "80px",
             left: "50%",
             transform: "translateX(-50%)",
-            backgroundColor: "rgba(220, 38, 38, 0.94)",
-            color: "#ffffff",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
             padding: "8px 16px",
-            borderRadius: "8px",
+            border: "1px solid var(--accent)",
+            borderRadius: "var(--radius)",
             fontSize: "13px",
-            fontFamily: "system-ui, -apple-system, sans-serif",
+            fontFamily: "var(--f-body)",
             pointerEvents: "none",
           }}
         >

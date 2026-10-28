@@ -15,14 +15,14 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
     <section
       aria-label="Lab notebook"
       style={{
-        backgroundColor: "#fdfcf8",
+        backgroundColor: "var(--card)",
         backgroundImage:
-          "repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #c7d6ea 31px, #c7d6ea 32px)",
-        color: "#1e3a5f",
-        border: "1px solid #d6d3c4",
-        borderRadius: "4px",
+          "repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--line) 31px, var(--line) 32px)",
+        color: "var(--ink)",
+        border: "var(--rule)",
+        borderRadius: "var(--radius)",
         padding: "20px",
-        fontFamily: "Segoe Print, Comic Sans MS, system-ui, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
         width: "100%",
       }}
@@ -50,11 +50,16 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
             }
           }}
           style={{
+            minHeight: "var(--tap)",
             padding: "10px 14px",
-            borderRadius: "6px",
-            border: "1px solid #1e3a5f",
-            backgroundColor: current ? "#1d4ed8" : "#94a3b8",
-            color: "#ffffff",
+            borderRadius: "var(--radius)",
+            fontFamily: "var(--f-cond)",
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            border: "1px solid var(--ink)",
+            backgroundColor: current ? "var(--ink)" : "var(--pencil)",
+            color: "var(--paper)",
             fontSize: "14px",
             cursor: current ? "pointer" : "not-allowed",
           }}
@@ -66,11 +71,16 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
           disabled={readings.length === 0}
           onClick={() => setWorkedOut(true)}
           style={{
+            minHeight: "var(--tap)",
             padding: "10px 14px",
-            borderRadius: "6px",
-            border: "1px solid #1e3a5f",
-            backgroundColor: "#ffffff",
-            color: "#1e3a5f",
+            borderRadius: "var(--radius)",
+            fontFamily: "var(--f-cond)",
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
             fontSize: "14px",
             cursor: readings.length === 0 ? "not-allowed" : "pointer",
           }}
@@ -81,7 +91,7 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
 
       <div role="status">
         {duplicateRs.map((r) => (
-          <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "#92400e" }}>
+          <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--accent)" }}>
             You already have a reading for R = {formatOhm(r)} Ω
           </p>
         ))}
@@ -99,34 +109,19 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
         >
           <thead>
             <tr>
-              <th
-                scope="col"
-                style={{ border: "1px solid #9db8d6", padding: "8px", textAlign: "left" }}
-              >
+              <th scope="col" style={{ border: "var(--rule)", padding: "8px", textAlign: "left" }}>
                 R (Ω)
               </th>
-              <th
-                scope="col"
-                style={{ border: "1px solid #9db8d6", padding: "8px", textAlign: "left" }}
-              >
+              <th scope="col" style={{ border: "var(--rule)", padding: "8px", textAlign: "left" }}>
                 l (cm)
               </th>
-              <th
-                scope="col"
-                style={{ border: "1px solid #9db8d6", padding: "8px", textAlign: "left" }}
-              >
+              <th scope="col" style={{ border: "var(--rule)", padding: "8px", textAlign: "left" }}>
                 R⁻¹ (Ω⁻¹)
               </th>
-              <th
-                scope="col"
-                style={{ border: "1px solid #9db8d6", padding: "8px", textAlign: "left" }}
-              >
+              <th scope="col" style={{ border: "var(--rule)", padding: "8px", textAlign: "left" }}>
                 l⁻¹ (cm⁻¹)
               </th>
-              <th
-                scope="col"
-                style={{ border: "1px solid #9db8d6", padding: "8px", textAlign: "left" }}
-              >
+              <th scope="col" style={{ border: "var(--rule)", padding: "8px", textAlign: "left" }}>
                 <span style={{ position: "absolute", left: "-9999px" }}>Delete</span>
               </th>
             </tr>
@@ -134,7 +129,7 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
           <tbody>
             {readings.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ border: "1px solid #9db8d6", padding: "8px" }}>
+                <td colSpan={5} style={{ border: "var(--rule)", padding: "8px" }}>
                   No readings yet. Find a still needle, then record it.
                 </td>
               </tr>
@@ -143,28 +138,24 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
                 const inv = workedOut ? reciprocalRow(reading) : null;
                 return (
                   <tr key={reading.id}>
-                    <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
+                    <td style={{ border: "var(--rule)", padding: "8px" }}>
                       {formatOhm(reading.rOhm)}
                     </td>
-                    <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
+                    <td style={{ border: "var(--rule)", padding: "8px" }}>
                       {formatLength(reading.lCm)}
                     </td>
-                    <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
-                      {inv?.rInv ?? ""}
-                    </td>
-                    <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
-                      {inv?.lInv ?? ""}
-                    </td>
-                    <td style={{ border: "1px solid #9db8d6", padding: "8px" }}>
+                    <td style={{ border: "var(--rule)", padding: "8px" }}>{inv?.rInv ?? ""}</td>
+                    <td style={{ border: "var(--rule)", padding: "8px" }}>{inv?.lInv ?? ""}</td>
+                    <td style={{ border: "var(--rule)", padding: "8px" }}>
                       <button
                         type="button"
                         aria-label={`Delete reading R = ${formatOhm(reading.rOhm)} Ω, l = ${formatLength(reading.lCm)} cm`}
                         onClick={() => onDelete(reading.id)}
                         style={{
-                          border: "1px solid #9db8d6",
-                          borderRadius: "6px",
-                          backgroundColor: "#ffffff",
-                          color: "#1e3a5f",
+                          border: "var(--rule)",
+                          borderRadius: "var(--radius)",
+                          backgroundColor: "var(--card)",
+                          color: "var(--ink)",
                           padding: "4px 9px",
                           cursor: "pointer",
                         }}

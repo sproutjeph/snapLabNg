@@ -70,16 +70,16 @@ export default function PwaPreview() {
       style={{
         minHeight: "100%",
         overflowY: "auto",
-        background: "#0b0d12",
-        color: "#e6edf3",
-        font: "15px/1.55 system-ui, sans-serif",
+        background: "var(--paper)",
+        color: "var(--ink)",
+        font: "15px/1.55 var(--f-body)",
         padding: online ? "28px 20px 96px" : "76px 20px 96px",
         boxSizing: "border-box",
       }}
     >
       <OfflineNotice />
       <h1 style={{ fontSize: 22, margin: "0 0 6px" }}>Offline app (PWA) status</h1>
-      <p style={{ color: "#9aa7b4", margin: "0 0 20px" }}>
+      <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
         Installable app shell, service worker and caches for the offline demo.
       </p>
       {status === null ? (
@@ -87,23 +87,23 @@ export default function PwaPreview() {
       ) : (
         <dl style={{ display: "grid", gap: 10, margin: 0 }}>
           <div>
-            <dt style={{ color: "#9aa7b4" }}>Service worker supported</dt>
+            <dt style={{ color: "var(--muted)" }}>Service worker supported</dt>
             <dd style={{ margin: 0 }}>{yesNo(status.supported)}</dd>
           </div>
           <div>
-            <dt style={{ color: "#9aa7b4" }}>Service worker registered</dt>
+            <dt style={{ color: "var(--muted)" }}>Service worker registered</dt>
             <dd style={{ margin: 0 }}>{yesNo(status.registered)}</dd>
           </div>
           <div>
-            <dt style={{ color: "#9aa7b4" }}>Controlling this page</dt>
+            <dt style={{ color: "var(--muted)" }}>Controlling this page</dt>
             <dd style={{ margin: 0 }}>{yesNo(status.controlling)}</dd>
           </div>
           <div>
-            <dt style={{ color: "#9aa7b4" }}>Online</dt>
+            <dt style={{ color: "var(--muted)" }}>Online</dt>
             <dd style={{ margin: 0 }}>{online ? "online" : "offline"}</dd>
           </div>
           <div>
-            <dt style={{ color: "#9aa7b4" }}>Caches</dt>
+            <dt style={{ color: "var(--muted)" }}>Caches</dt>
             <dd style={{ margin: 0 }}>
               {status.caches.length === 0 ? (
                 "none"

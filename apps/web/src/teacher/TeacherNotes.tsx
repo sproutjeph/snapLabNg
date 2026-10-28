@@ -3,25 +3,25 @@ export default function TeacherNotes() {
     <section
       aria-labelledby="teacher-notes-heading"
       style={{
-        border: "1px solid #334155",
-        borderRadius: "8px",
-        backgroundColor: "#0f172a",
+        border: "var(--rule)",
+        borderRadius: "var(--radius)",
+        backgroundColor: "var(--card)",
         padding: "16px",
         boxSizing: "border-box",
       }}
     >
       <h2
         id="teacher-notes-heading"
-        style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}
+        style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "var(--ink)" }}
       >
         Teacher notes — metre bridge model
       </h2>
-      <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6, color: "#cbd5e1" }}>
+      <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6, color: "var(--ink-2)" }}>
         What the bench computes, in plain language. These notes describe the model only; they do not
         mark any work.
       </p>
 
-      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>
+      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
         Balance and the graph
       </h3>
       <ul
@@ -30,7 +30,7 @@ export default function TeacherNotes() {
           paddingLeft: "20px",
           fontSize: "14px",
           lineHeight: 1.7,
-          color: "#e2e8f0",
+          color: "var(--ink-2)",
         }}
       >
         <li>
@@ -45,10 +45,10 @@ export default function TeacherNotes() {
         </li>
       </ul>
 
-      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>
+      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
         End corrections and interchanging R and X
       </h3>
-      <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.7, color: "#e2e8f0" }}>
+      <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.7, color: "var(--ink-2)" }}>
         With small end corrections α₁ and α₂ at the two ends of the wire, balance is{" "}
         <code>R / X = (l + α₁) / (100 − l + α₂)</code>. Interchanging R and X and averaging (the
         mean of l₁ and 100 − l₂) cancels the unequal part α₂ − α₁ exactly. What remains is{" "}
@@ -57,7 +57,7 @@ export default function TeacherNotes() {
         the wire gives the smallest error.
       </p>
 
-      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>
+      <h3 style={{ margin: "14px 0 6px", fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
         Cell, jockey and wire
       </h3>
       <ul
@@ -66,7 +66,7 @@ export default function TeacherNotes() {
           paddingLeft: "20px",
           fontSize: "14px",
           lineHeight: 1.7,
-          color: "#e2e8f0",
+          color: "var(--ink-2)",
         }}
       >
         <li>
@@ -84,7 +84,7 @@ export default function TeacherNotes() {
         </li>
       </ul>
 
-      <p style={{ margin: "14px 0 0", fontSize: "12px", lineHeight: 1.6, color: "#94a3b8" }}>
+      <p style={{ margin: "14px 0 0", fontSize: "12px", lineHeight: 1.6, color: "var(--muted)" }}>
         Sources: docs/07_SCIENCE_ENGINE.md section 4.2 (metre bridge model) and
         docs/15_METRE_BRIDGE_HERO.md sections 4 and 9. WAEC reports listed in docs/15 section 9:
         May/June 2023 Q3B, May/June 2018 Q3A, Nov/Dec 2011 Q3, May/June 2014 Q3 and 2008 Q3 (WAEC
