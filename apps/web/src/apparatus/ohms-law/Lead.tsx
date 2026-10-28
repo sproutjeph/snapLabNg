@@ -28,6 +28,40 @@ export interface LeadProps {
   onTap?: () => void;
 }
 
+/**
+ * A lead's sampled cable centreline, published so the current-flow dots can follow it. Points
+ * run from the `from` plug to the `to` plug, xyz packed, in the Lead's parent space (the same
+ * space as its siblings). `version` rises each time the points are rewritten.
+ */
+export interface LeadCurve {
+  readonly points: Float32Array;
+  /** Number of points (xyz triples) in `points`. */
+  readonly count: number;
+  version: number;
+}
+
+/** Published curves, per visual-state ref (one bench), keyed by leadCurveKey(from, to). */
+const LEAD_CURVES = new WeakMap<object, Map<string, LeadCurve>>();
+
+export const leadCurveKey = (from: TerminalId, to: TerminalId): string => `${from}>${to}`;
+
+/** The mounted lead's cable from `from` to `to` on this bench, or undefined while it is not drawn. */
+export function getLeadCurve(
+  state: { current: OhmsLawVisualState },
+  key: string,
+): LeadCurve | undefined {
+  return LEAD_CURVES.get(state)?.get(key);
+}
+
+function curvesOf(state: object): Map<string, LeadCurve> {
+  let m = LEAD_CURVES.get(state);
+  if (!m) {
+    m = new Map();
+    LEAD_CURVES.set(state, m);
+  }
+  return m;
+}
+
 /** Where along the lead the control points sit (0 = first plug, 1 = second). */
 const CTRL_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
 /** The lowest the cable's centre goes: it lies on the desk. */
@@ -208,6 +242,19 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       e: new THREE.Vector3(),
     };
   }, [from, to, colour, quality]);
+  const curveKey = useMemo(() => (to === "pointer" ? null : leadCurveKey(from, to)), [from, to]);
+  const curve = useMemo<LeadCurve>(
+    () => ({ points: res.main, count: res.mainN + 1, version: 0 }),
+    [res],
+  );
+  useEffect(
+    () => () => {
+      if (!curveKey) return;
+      const m = LEAD_CURVES.get(state);
+      if (m?.get(curveKey) === curve) m.delete(curveKey);
+    },
+    [state, curveKey, curve],
+  );
   useEffect(
     () => () => {
       res.tube.dispose();
@@ -234,6 +281,11 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     } else okB = registry.worldPosition(to, _b);
     const ok = okA && okB;
     g.visible = ok;
+    if (curveKey) {
+      const m = curvesOf(state);
+      if (ok && m.get(curveKey) !== curve) m.set(curveKey, curve);
+      else if (!ok && m.get(curveKey) === curve) m.delete(curveKey);
+    }
     // A missing end must not leave a stale tap tube behind.
     if (hit) {
       const k = ok ? 1 : 0;
@@ -314,6 +366,7 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       res.main[i * 3 + 2] = _pt.z;
     }
     writeTube(res.tube, res.main, res.mainN, res.radial, LEAD_RADIUS_M);
+    curve.version++;
     if (to !== "pointer") {
       // The tap target covers the middle only, so the ends stay free for tapping the nuts.
       const span = Math.hypot(_b.x - _a.x, _b.z - _a.z);
