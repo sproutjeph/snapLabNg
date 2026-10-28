@@ -1,6 +1,5 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import MeterBridgeKit from "../apparatus/meter-bridge/MeterBridgeKit";
@@ -11,6 +10,9 @@ import {
 import { ContextLossOverlay } from "../quality/ContextLossOverlay";
 import { QualityMonitor } from "../quality/QualityMonitor";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
+import { InkComposer } from "../scene/ink/InkComposer";
+import { InkLights } from "../scene/ink/InkLights";
+import { PaperDesk } from "../scene/ink/PaperDesk";
 import { benchSetupFrom } from "./benchSetup";
 import { CurrentFlow } from "./CurrentFlow";
 import { type DrawnPart, InkSparks } from "./InkSparks";
@@ -159,23 +161,8 @@ function BenchScene({
 
   return (
     <>
-      <color attach="background" args={["#0b0d12"]} />
-      <hemisphereLight args={["#fffbeb", "#3f2e21", 0.85]} />
-      <directionalLight
-        position={[1.2, 2.2, 1.4]}
-        intensity={2.2}
-        castShadow={settings.shadows}
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-1}
-        shadow-camera-right={1}
-        shadow-camera-top={1}
-        shadow-camera-bottom={-1}
-      />
-      <directionalLight position={[-1.0, 1.4, -0.8]} intensity={0.75} />
-      <mesh position={[0, BENCH_TOP_Y - 0.02, 0.15]} receiveShadow>
-        <boxGeometry args={[2.4, 0.04, 1.6]} />
-        <meshStandardMaterial color="#2b2118" roughness={0.78} metalness={0.04} />
-      </mesh>
+      <InkLights quality={tier} />
+      <PaperDesk quality={tier} y={BENCH_TOP_Y} />
       <Suspense fallback={null}>
         <PageSheet
           url={props.pageUrl}
@@ -222,11 +209,7 @@ function BenchScene({
         />
       )}
       <QualityMonitor />
-      {settings.bloom && (
-        <EffectComposer>
-          <Bloom luminanceThreshold={0.9} mipmapBlur intensity={1.1} />
-        </EffectComposer>
-      )}
+      <InkComposer quality={tier} />
     </>
   );
 }
@@ -270,7 +253,7 @@ function LabCanvas({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <Canvas
         key={canvasKey}
-        shadows={settings.shadows}
+        shadows={settings.shadows ? "percentage" : false}
         dpr={settings.dpr}
         gl={{ antialias: true }}
         camera={{ fov: FOV_DEG, near: 0.02, far: 20, position: [0, 0.6, 0.6] }}
