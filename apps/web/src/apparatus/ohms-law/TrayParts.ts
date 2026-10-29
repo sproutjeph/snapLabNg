@@ -54,6 +54,10 @@ const WALL_T = 0.016;
 const RHEO_X = -0.075;
 /** A lead's cable radius on the tray: 1.5 times the 3 mm lead of the bench, so it reads from afar. */
 const CABLE_R = 0.0022;
+/** A crocodile clip lies this long on the tray (m), whatever size LeadParts makes it. */
+const CLIP_LENGTH_M = 0.05;
+/** The tips of the clips and plugs lie at this x (m), 5 mm inside the leads' tap box. */
+const TIP_X = 0.0;
 
 export interface TrayBuild {
   parts: TrayPart[];
@@ -319,8 +323,19 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   // ---- Spare leads: red and black coiled with a crocodile clip on each end, yellow loose ----
   const clipProto = makeCrocClipGeometries();
   const plugProto = makePlugGeometries(quality);
-  const clipScale = 0.8;
-  const clipY = FLOOR_Y + 0.0056 * clipScale;
+  // The clip and plug shapes belong to LeadParts and may be reshaped: the leads are laid out from
+  // their measured size, so the tips of the clips and plugs always stop where they should.
+  const boxOf = (...geos: THREE.BufferGeometry[]) => {
+    const b = new THREE.Box3();
+    for (const g of geos) {
+      g.computeBoundingBox();
+      if (g.boundingBox) b.union(g.boundingBox);
+    }
+    return b;
+  };
+  const clipBox = boxOf(clipProto.boot, clipProto.jaws);
+  const clipScale = CLIP_LENGTH_M / Math.max(1e-6, clipBox.max.y);
+  const clipY = FLOOR_Y + Math.max(-clipBox.min.x, clipBox.max.x) * clipScale;
   const cableY = FLOOR_Y + CABLE_R;
   const segsPerM = low ? 120 : 250;
   const tubeOf = (pts: THREE.Vector3[]) => {
@@ -337,19 +352,22 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       ),
     };
   };
-  // Two coils, the black one on top of the red; their four clips lie in a row at the coils' left.
+  // Two coils, the black one on top of the red; their four clips lie in a row at the coils' left,
+  // each lead's tail just long enough that its clips' tips stop at x = TIP_X.
+  const coilOf = (c: { cx: number; a: number; b: number; turns: number }) => {
+    const rOut = c.a + c.b * c.turns * Math.PI * 2;
+    return { ...c, reach: Math.max(0.006, c.cx - rOut - (TIP_X + CLIP_LENGTH_M)) };
+  };
+  const redCoil = coilOf({ cx: 0.09, a: 0.006, b: 0.0012, turns: 3 });
+  const blackCoil = coilOf({ cx: 0.092, a: 0.006, b: 0.0014, turns: 2 });
   const coils = [
     {
       lead: coiledLead({
-        cx: 0.09,
+        ...redCoil,
         cz: 0.068,
-        a: 0.006,
-        b: 0.0012,
-        turns: 3,
         y: cableY,
         endY: clipY,
         rowGap: 0.012,
-        reach: 0.013,
         rng,
       }),
       mat: "red" as const,
@@ -358,15 +376,11 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     },
     {
       lead: coiledLead({
-        cx: 0.092,
+        ...blackCoil,
         cz: 0.094,
-        a: 0.006,
-        b: 0.0014,
-        turns: 2,
         y: cableY + 2 * CABLE_R,
         endY: clipY,
         rowGap: 0.012,
-        reach: 0.013,
         rng,
       }),
       mat: "black" as const,
@@ -399,15 +413,19 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   clipProto.jaws.dispose();
   // The yellow lead is folded back on itself along the front, a banana plug on each end.
   {
-    const py = FLOOR_Y + 0.0058;
+    const plugBox = boxOf(plugProto.body, plugProto.pin);
+    // The pin's tip to the cable's entry, and the body's radius, which the plug rests on.
+    const endX = TIP_X + (plugBox.max.y - plugBox.min.y);
+    const py = FLOOR_Y + Math.max(plugBox.max.x, -plugBox.min.x);
+    const x1 = Math.max(0.075, endX + 0.02);
     const pts = [
-      new THREE.Vector3(0.05, py, 0.145),
-      new THREE.Vector3(0.075, cableY, 0.145),
-      new THREE.Vector3(0.1, cableY, 0.142),
-      new THREE.Vector3(0.112, cableY, 0.135),
-      new THREE.Vector3(0.1, cableY, 0.128),
-      new THREE.Vector3(0.075, cableY, 0.126),
-      new THREE.Vector3(0.05, py, 0.126),
+      new THREE.Vector3(endX, py, 0.145),
+      new THREE.Vector3(x1, cableY, 0.145),
+      new THREE.Vector3(x1 + 0.025, cableY, 0.142),
+      new THREE.Vector3(x1 + 0.037, cableY, 0.135),
+      new THREE.Vector3(x1 + 0.025, cableY, 0.128),
+      new THREE.Vector3(x1, cableY, 0.126),
+      new THREE.Vector3(endX, py, 0.126),
     ];
     const { curve, geo } = tubeOf(pts);
     acc.add("leads", 1, false, "yellow", geo);
