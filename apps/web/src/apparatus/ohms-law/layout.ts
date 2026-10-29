@@ -3,24 +3,30 @@ import { type PartId as CircuitPartId, PART_TERMINALS, type TerminalId } from "@
 import type { OhmsLawVisualState } from "../../learn/types";
 import type { QualityTier } from "../meter-bridge/types";
 
-// Where everything sits on the V–I bench, in metres: x to the right, z toward the student,
-// y = 0 on the desk top. The loop runs from the cells (back right) leftward through the key,
-// ammeter and box to X (front left), along the wire to Y (front right) and back to the cells, so
-// each part's incoming terminal is on its right: E+ left of the cells; K1, A+, R1 on the right.
-// The voltmeter sits in front, between the two ends of the wire. Lead-owned (Wave 0).
+// Where everything sits on the V-I bench, in metres: x to the right, z toward the student,
+// y = 0 on the desk top. Layout v2 is compact: the box, ammeter, key and cells stand in a front
+// arc, the wire board lies behind them, and the voltmeter and the tray stand behind the board.
+// The board is low (2 cm), so from the front camera nothing hides it; the voltmeter would, if it
+// stood in front of it. The loop still runs right to left (cells, key, ammeter, box, then X at
+// the wire's left end, Y back to the cells), so each part's incoming terminal is on its right:
+// E+ left of the cells; K1, A+, R1 on the right. The meters keep rotationY = 0 because the
+// loupe poses (learn/readings/poses.ts) look straight at their dials; the voltmeter's x leaves a
+// clear line of sight past the front parts at the loupe's +-30 degrees (layout.test.ts checks).
+// The tray stays at the back, not in the front arc: it holds Identify items only, and in front
+// it would add 0.3 m to the bench's width and shrink everything on a phone.
 
 export type BenchSlot = CircuitPartId | "tray";
 
 export const OHMS_LAW_LAYOUT: Readonly<
   Record<BenchSlot, { position: readonly [number, number, number]; rotationY: number }>
 > = {
-  cells: { position: [0.42, 0, -0.22], rotationY: 0 },
-  key: { position: [0.15, 0, -0.32], rotationY: 0 },
-  ammeter: { position: [-0.15, 0, -0.34], rotationY: 0 },
-  box: { position: [-0.42, 0, -0.22], rotationY: 0 },
-  voltmeter: { position: [0, 0, -0.06], rotationY: 0 },
-  wire: { position: [0, 0, 0.16], rotationY: 0 },
-  tray: { position: [0.72, 0, 0.12], rotationY: 0 },
+  cells: { position: [0.44, 0, 0.08], rotationY: 0 },
+  key: { position: [0.2, 0, 0.12], rotationY: 0 },
+  ammeter: { position: [-0.16, 0, 0.1], rotationY: 0 },
+  box: { position: [-0.43, 0, 0.1], rotationY: 0 },
+  voltmeter: { position: [0.14, 0, -0.28], rotationY: 0 },
+  wire: { position: [0, 0, -0.13], rotationY: 0 },
+  tray: { position: [0.38, 0, -0.4], rotationY: 0 },
 };
 
 export const TERMINAL_LABELS: Readonly<Record<TerminalId, string>> = {
@@ -57,6 +63,8 @@ export const INK_IDS = {
   box: 50,
   wire: 60,
   tray: 80,
+  /** The Watch cursor (PenNib). */
+  pen: 90,
   /** + TERMINAL_IDS index (0–11). */
   nutBase: 100,
   /** + lead index (0–19, wrapping). */

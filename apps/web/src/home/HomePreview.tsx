@@ -6,8 +6,12 @@ import HomePage from "./HomePage";
  * Sets `window.__SNAPLAB_READY__ = true` after mount for screenshot capture.
  */
 export default function HomePreview() {
+  // Ready once the entrance has played, so a shot (and its fps) shows the page at rest.
   useEffect(() => {
-    window.__SNAPLAB_READY__ = true;
+    const t = setTimeout(() => {
+      window.__SNAPLAB_READY__ = true;
+    }, 1400);
+    return () => clearTimeout(t);
   }, []);
 
   return <HomePage />;

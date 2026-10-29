@@ -1,0 +1,96 @@
+/* The cream graph-paper desk and the shared pieces of the exam-paper look (docs/plans/exam-redesign.md,
+   "The look"): thin ink rules, uppercase condensed labels, a classic serif for exam text, orange only
+   for the primary action. Used by the picker, the question paper and the results. Tokens only, except
+   the serif stack, which has no self-hosted file yet. */
+
+.xp {
+  --f-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --xp-orange: var(--accent);
+  --xp-marker: #f6e58d;
+  color: var(--ink);
+  font-family: var(--f-body);
+}
+
+/* A graph-paper desk: one fine line every 24 px, a stronger one every 120 px. An SVG tile, so
+   it stays crisp and costs no gradient. */
+.xp-desk {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><path d='M24 0V120M48 0V120M72 0V120M96 0V120M0 24H120M0 48H120M0 72H120M0 96H120' stroke='%23d9cdb2' stroke-width='1' opacity='.45' fill='none'/><path d='M0 0V120M0 0H120' stroke='%23d9cdb2' stroke-width='1.4' opacity='.8' fill='none'/></svg>");
+  background-size: 120px 120px;
+}
+
+.xp-caps {
+  font-family: var(--f-cond);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* Buttons. Pills, at least 44 px tall; the primary one is orange with ink text (5.0:1; white on
+   this orange would be 3.1:1). The press is a 2 px drop of the pill's ink edge, a shape cue and
+   not only a colour one. */
+.xp-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 8px 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--ink);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+
+.xp-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.xp-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.xp-btn-primary {
+  background: var(--xp-orange);
+  font-weight: 600;
+}
+
+/* The orange of the primary button is too light to ring on paper (2.6:1), so every focus ring
+   is ink. */
+.xp-btn:focus-visible,
+.xp-link:focus-visible,
+.xp-focus:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.xp-link {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-btn,
+  .xp-btn:hover,
+  .xp-btn:active {
+    transition: none;
+    transform: none;
+  }
+}

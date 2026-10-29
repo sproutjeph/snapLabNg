@@ -2,12 +2,19 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
+import {
+  bevelBox,
+  bevelSegments,
+  boxProjectUV,
+  disposeKitBag,
+  kitTexture,
+  woodMaterial,
+} from "../materials";
 import { INK_IDS, type PartProps } from "./layout";
 import {
   brassMaterial,
   COLOURS,
   canvasTexture,
-  disposeAll,
   jitterColour,
   makeCanvas,
   matte,
@@ -97,6 +104,8 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     const rnd = seeded(7);
     const seg = low ? 14 : 32;
     const tex = wrapperTexture();
+    const woodTex = kitTexture("mahogany", quality);
+    const bs = bevelSegments(quality);
     const wrapperMat = matte("#ffffff", rnd, { roughness: 0.85, amount: 0.01, map: tex });
     wrapperMat.color.copy(jitterColour("#a9c2d1", rnd, 0.06));
     const cellAx = -INNER_X + CAP_L + CELL_L / 2; // centre of the left-hand can
@@ -125,7 +134,8 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
       wrapperMat,
       zincMat: matte(COLOURS.zinc, rnd, { roughness: 0.7, metalness: 0.3 }),
       brassMat: brassMaterial(rnd),
-      woodMat: matte("#4a2f20", rnd, { roughness: 0.78 }),
+      woodTex,
+      woodMat: woodMaterial(7, { map: woodTex }),
       // Both cells, both sets of ends, both caps and the spring: one draw call each.
       cansGeo: mergeStatic([can(cellAx), can(cellBx)]),
       discsGeo: mergeStatic([
@@ -139,19 +149,23 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
         cap(CAP_L / 2),
         { geo: spring, place: (g: THREE.BufferGeometry) => g.translate(INNER_X, CELL_Y, 0) },
       ]),
-      // The base and both end walls: one geometry.
-      holderGeo: mergeStatic([
-        {
-          geo: new THREE.BoxGeometry(BASE_L, BASE_T, BASE_D),
-          place: (g) => g.translate(0, BASE_T / 2, 0),
-        },
-        ...[-1, 1].map((side) => ({
-          geo: new THREE.BoxGeometry(WALL, WALL_H, BASE_D),
-          place: (g: THREE.BufferGeometry) => g.translate(side * WALL_X, WALL_H / 2, 0),
-        })),
-      ]),
+      // The base and both end walls: one bevelled geometry.
+      holderGeo: (() => {
+        const g = mergeStatic([
+          {
+            geo: bevelBox(BASE_L, BASE_T, BASE_D, 0.0022, bs),
+            place: (g) => g.translate(0, BASE_T / 2, 0),
+          },
+          ...[-1, 1].map((side) => ({
+            geo: bevelBox(WALL, WALL_H, BASE_D, 0.0022, bs),
+            place: (g: THREE.BufferGeometry) => g.translate(side * WALL_X, WALL_H / 2, 0),
+          })),
+        ]);
+        boxProjectUV(g, [0.3, 0.15]);
+        return g;
+      })(),
     };
-  }, [low]);
+  }, [low, quality]);
 
   useEffect(() => {
     wrapperMatRef.current = res.wrapperMat;
@@ -160,7 +174,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     FRESH.copy(res.wrapperMat.color);
     SPENT.copy(FRESH).lerp(SPENT_TINT, 0.55);
     lastDrain.current = -1;
-    return () => disposeAll(res);
+    return () => disposeKitBag(res);
   }, [res]);
 
   useFrame(() => {

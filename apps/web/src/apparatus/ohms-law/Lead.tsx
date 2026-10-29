@@ -26,6 +26,12 @@ export interface LeadProps {
   quality: QualityTier;
   /** Tap the lead to remove it. */
   onTap?: () => void;
+  /**
+   * How much of the lead is drawn, 0..1 (default 1): the cable grows from the `from` plug along
+   * its curve, and the far plug pops in as it arrives. Pass a ref-like object and change its
+   * `.current` in useFrame to animate without a React render per frame (Watch's draw-on).
+   */
+  drawn?: number | { current: number };
 }
 
 /**
@@ -228,7 +234,7 @@ function shapeCable(pts: THREE.Vector3[], s: THREE.Vector3, e: THREE.Vector3, bu
  * world space, rests on the bench parts' footprints (`floorAt`), and stacks its plugs on any
  * earlier leads at the same nut. A fatter invisible tube along the middle takes the tap.
  */
-export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
+export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: LeadProps) {
   const registry = useTerminalRegistry();
   const root = useRef<THREE.Group>(null);
   const plugA = useRef<THREE.Group>(null);
@@ -280,7 +286,7 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       bulge,
       main: new Float32Array((mainN + 1) * 3),
       mid: new Float32Array((hitN + 1) * 3),
-      last: new Float32Array(8).fill(Number.NaN),
+      last: new Float32Array(9).fill(Number.NaN),
       ink: -1,
       s: new THREE.Vector3(),
       e: new THREE.Vector3(),
@@ -310,6 +316,8 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     const g = root.current;
     if (!g) return;
     const hit = hitMesh.current;
+    const dRaw = typeof drawn === "number" ? drawn : drawn.current;
+    const d01 = Number.isFinite(dRaw) ? Math.max(0, Math.min(dRaw, 1)) : 1;
     const okA = registry.worldPosition(from, _a);
     let okB = true;
     if (to === "pointer") {
@@ -328,7 +336,7 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     }
     // A missing end must not leave a stale tap tube behind.
     if (hit) {
-      const k = ok ? 1 : 0;
+      const k = ok && d01 >= 0.999 ? 1 : 0;
       if (hit.scale.x !== k) hit.scale.setScalar(k);
     }
     if (!ok) return;
@@ -371,7 +379,8 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
       l[4] === _b.y &&
       l[5] === _b.z &&
       l[6] === liftA &&
-      l[7] === liftB
+      l[7] === liftB &&
+      l[8] === d01
     ) {
       return;
     }
@@ -383,6 +392,7 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     l[5] = _b.z;
     l[6] = liftA;
     l[7] = liftB;
+    l[8] = d01;
 
     // Everything is worked out in world space (the footprints are world boxes), then moved
     // into the parent's space, so a transformed parent cannot break the lead.
@@ -393,12 +403,16 @@ export function Lead({ from, to, colour, state, quality, onTap }: LeadProps) {
     _lb.set(_b.x, _b.y + liftB, _b.z).applyMatrix4(_inv);
     plugA.current?.position.copy(_la);
     plugB.current?.position.copy(_lb);
+    // The far plug pops in over the last tenth of the draw; the cable hides until it has length.
+    plugB.current?.scale.setScalar(Math.max(0.001, Math.min(1, (d01 - 0.9) * 10)));
+    const cable = tagged.current?.children[0];
+    if (cable) cable.visible = d01 > 0.002;
 
     res.s.set(_a.x, _a.y + liftA + PLUG_HEIGHT_M, _a.z);
     res.e.set(_b.x, _b.y + liftB + PLUG_HEIGHT_M, _b.z);
     shapeCable(res.pts, res.s, res.e, res.bulge);
     for (let i = 0; i <= res.mainN; i++) {
-      res.curve.getPoint(i / res.mainN, _pt);
+      res.curve.getPoint((i / res.mainN) * d01, _pt);
       restOnBench(_pt);
       _pt.applyMatrix4(_inv);
       res.main[i * 3] = _pt.x;
