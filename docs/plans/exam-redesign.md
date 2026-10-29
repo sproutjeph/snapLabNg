@@ -10,7 +10,8 @@ Inputs:
 
 ## Progress (update at the end of every wave; a fresh session reads this first)
 - [x] Decisions D1–D3 answered: D1 demo bench plus reveal after hand-in (21 marks, with the engine as supervisor); D2 Muse Image targets (≤ 12 images, ≤ ₦170); D3 viva as a COULD
-- [ ] Wave 0: seams and contracts (lead) merged
+- [x] Design targets: 9 Muse Image targets in `docs/design/exam-redesign/` ($0.12); **direction approved by the user on Oct 29** (cream graph-paper desk, blue-black ink #1d2430, wood, brass and bakelite). Best references: `golden-frame`, `watch-mode`, `materials-closeup`. `metre-bridge` is weak (a knife-like jockey, screws instead of plugs), so W2-hero must not copy those parts.
+- [x] Wave 0: seams and contracts (lead) merged (`claude/exam-seams`: science PASS ×2, verifier green, code review SHIP after one fix round)
 - [ ] Wave 1: look, apparatus v2, director and voice, paper and picker merged; **golden frame approved by the user**
 - [ ] Wave 2: Watch script, guided Practise, callouts and motion, hero look merged
 - [ ] Integration: the practical page end to end, E2E green
@@ -178,12 +179,13 @@ After hand-in she sees her marks and, only then, how her readings compare with h
 | Slice | Agent | Owns |
 |---|---|---|
 | W2-watch | `circuit-engineer` (Opus) | `learn/lessons/ohms-law/script.ts` (+ test): every beat, actor action, shot and callout; the narration in WAEC wording |
-| W2-guide | `circuit-engineer` (Opus) | `learn/lessons/ohms-law/{guide.ts,checks.ts}` (instructions, mistake → voice lines, the hint ladder, which beats allow Show me), `learn/wiring/**` (bigger hit targets, hover highlight, both target terminals ringed, wrong-tap shake) |
+| W2-guide | `circuit-engineer` (Opus) | `learn/lessons/ohms-law/{guide.ts,checks.ts}` (instructions, mistake → voice lines, the hint ladder, which beats allow Show me), `learn/wiring/**` (bigger hit targets, hover highlight, both target terminals ringed, wrong-tap shake; and the Wave 0 review's note: `supervisor.test.ts` counts each needle's settle separately) |
 | W2-callouts | `ui-builder` | `learn/callouts/**` (one DOM overlay; anchors projected per frame without drei `Html`; leader lines; a spring; label flip), `learn/stage/**` (the entrance drop, the focus set → ink focus-fade uniform) |
 | W2-hero | `shader-artist` (Opus) | `lab/LabBench.tsx` (camera, lights, shadows), `apparatus/meter-bridge/**` (bevels and the materials kit). The reveal still works, and golden marks are unchanged. |
 
 **Integration: a fresh Opus `general-purpose` integrator in its own worktree, Nov 1. The lead gates it.**
 - `learn/PracticalPage.tsx`: phases paper → mode → Watch, Practise or Exam → results. It owns the seeds and the director per mode. `LearnPage.tsx` becomes its bench view.
+- In Practise and Exam it passes the director a wrapper of her bench **without** `supervisor` (Wave 0 review: `Omit<>` hides it in the type only).
 - Wiring Callouts, Stage, Player, LookCamera, LookLights and LookGround into the canvas.
 - `apps/web/scripts/e2e/{watch,practise,exam,noleak}.mjs`.
 
