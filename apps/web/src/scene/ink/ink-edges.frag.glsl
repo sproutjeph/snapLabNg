@@ -101,23 +101,25 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float edge = 0.0;
   vec4 owner = c;
   vec2 ownerUv = uv;
-  float ownerDepth = depth;
   for (int i = 0; i < 4; i++) {
     vec2 sa = uv + INK_DIRS[i * 2] * outer;
     vec2 sb = uv + INK_DIRS[i * 2 + 1] * outer;
     vec4 na = texture2D(inkBuffer, sa);
     vec4 nb = texture2D(inkBuffer, sb);
-    float da = readDepth(sa);
-    float db = readDepth(sb);
-    float za = inkViewDepth(da);
-    float zb = inkViewDepth(db);
-    // This surface carried on past the pixel, from the opposite sample when it is this part.
-    float nearerA = inkDepthUnits((zC - za) + inkSame(nb, idC) * (zC - zb), zC);
-    float nearerB = inkDepthUnits((zC - zb) + inkSame(na, idC) * (zC - za), zC);
+    // Paper pixels only ask whether a part is next to them: no depth needed.
+    float nearerA = 0.0;
+    float nearerB = 0.0;
+    if (covC > 0.5) {
+      float za = inkViewDepth(readDepth(sa));
+      float zb = inkViewDepth(readDepth(sb));
+      // This surface carried on past the pixel, from the opposite sample when it is this part.
+      nearerA = inkDepthUnits((zC - za) + inkSame(nb, idC) * (zC - zb), zC);
+      nearerB = inkDepthUnits((zC - zb) + inkSame(na, idC) * (zC - za), zC);
+    }
     float ea = inkEdge(covC, idC, na, nearerA, thr);
     float eb = inkEdge(covC, idC, nb, nearerB, thr);
-    if (ea > edge) { edge = ea; owner = na; ownerUv = sa; ownerDepth = da; }
-    if (eb > edge) { edge = eb; owner = nb; ownerUv = sb; ownerDepth = db; }
+    if (ea > edge) { edge = ea; owner = na; ownerUv = sa; }
+    if (eb > edge) { edge = eb; owner = nb; ownerUv = sb; }
   }
   float ownerThin = step(1.5, owner.b);
   float ownerStrength = clamp(owner.b - 2.0 * ownerThin, 0.0, 1.0);
@@ -151,7 +153,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float drawn = 1.0;
   if (inkReveal < 1.0 && ink > 0.0) {
     vec2 at = edge >= crease ? ownerUv : uv;
-    float d = edge >= crease ? ownerDepth : depth;
+    // The owner's depth is read only here, while the ink draws itself on.
+    float d = edge >= crease ? readDepth(ownerUv) : depth;
     vec4 view = inkProjInverse * vec4(at * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
     vec3 viewPos = view.xyz / (abs(view.w) > 1e-5 ? view.w : 1e-5);
     drawn = inkSweep((inkCameraWorld * vec4(viewPos, 1.0)).xyz, inkReveal);

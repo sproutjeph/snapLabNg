@@ -93,6 +93,37 @@ export function fitShot(
   return out;
 }
 
+/** Azimuths sampled across a drag's range when fitting for the widest view of the bench. */
+const DRAG_FIT_SAMPLES = 11;
+
+/**
+ * fitShot for every azimuth within ±`spreadRad` of `azimuthRad`, keeping the widest, so a drag
+ * to either limit never clips the bench and the zoom never changes while she drags. Allocates
+ * nothing; `scratch` is any spare Frustum.
+ */
+export function fitShotAcross(
+  spanM: number,
+  covered: Covered,
+  width: number,
+  height: number,
+  azimuthRad: number,
+  spreadRad: number,
+  out: Frustum,
+  scratch: Frustum,
+): Frustum {
+  fitShot(spanM, covered, width, height, azimuthRad, out);
+  if (spreadRad <= 0) return out;
+  for (let i = 0; i < DRAG_FIT_SAMPLES; i++) {
+    const az = azimuthRad - spreadRad + (2 * spreadRad * i) / (DRAG_FIT_SAMPLES - 1);
+    fitShot(spanM, covered, width, height, az, scratch);
+    if (scratch.halfW > out.halfW) {
+      out.halfW = scratch.halfW;
+      out.halfH = scratch.halfH;
+    }
+  }
+  return out;
+}
+
 /** One step of the follow: the fraction of the remaining way to move this frame. */
 export function followK(dtS: number, rate = FOLLOW_RATE): number {
   return 1 - Math.exp(-rate * Math.max(0, dtS));
@@ -145,8 +176,9 @@ export function LookCamera({
     primed: false,
   });
   const frustum = useMemo<Frustum>(() => ({ halfW: 1, halfH: 1, offsetX: 0, offsetY: 0 }), []);
-  const target = useRef({ shot, covered, reducedMotion });
-  target.current = { shot, covered, reducedMotion };
+  const scratch = useMemo<Frustum>(() => ({ halfW: 1, halfH: 1, offsetX: 0, offsetY: 0 }), []);
+  const target = useRef({ shot, covered, reducedMotion, drag });
+  target.current = { shot, covered, reducedMotion, drag };
 
   useLayoutEffect(() => {
     const prev = get().camera;
@@ -251,8 +283,10 @@ export function LookCamera({
     camera.lookAt(r.focus);
 
     const { width, height } = state.size;
-    // Fitted at the shot's own azimuth, so a drag turns the bench without zooming.
-    const f = fitShot(r.span, r.covered, width, height, r.azimuth, frustum);
+    // Fitted for the widest azimuth she can drag to, so a drag turns the bench without zooming
+    // and never clips its ends.
+    const spread = t.drag ? DRAG_LIMIT_RAD : 0;
+    const f = fitShotAcross(r.span, r.covered, width, height, r.azimuth, spread, frustum, scratch);
     camera.left = -f.halfW;
     camera.right = f.halfW;
     camera.top = f.halfH;

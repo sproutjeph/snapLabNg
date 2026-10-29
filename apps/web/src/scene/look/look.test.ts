@@ -20,6 +20,7 @@ import { createDprLadder, DPR_SETTLE_FRAMES } from "./dprLadder";
 import {
   type Frustum,
   fitShot,
+  fitShotAcross,
   followK,
   LOOK_ELEVATION_DEG,
   SHOT_DEPTH_RATIO,
@@ -76,6 +77,18 @@ describe("the shot camera", () => {
     const f = fitShot(1, { ...NONE, left: 600, right: 600 }, 1000, 800, 0, frustum());
     expect(f.halfW * 2).toBeCloseTo(1, 9);
     expect(f.offsetX).toBe(0);
+  });
+
+  it("fits a draggable shot for the widest azimuth in the drag range", () => {
+    // A phone shot at 66°: dragging 25° back toward 41° shows more of the bench's length.
+    const az = (66 * Math.PI) / 180;
+    const spread = (25 * Math.PI) / 180;
+    const still = fitShot(1, NONE, 390, 844, az, frustum());
+    const turned = fitShot(1, NONE, 390, 844, az - spread, frustum());
+    const across = fitShotAcross(1, NONE, 390, 844, az, spread, frustum(), frustum());
+    expect(turned.halfW).toBeGreaterThan(still.halfW);
+    expect(across.halfW).toBeGreaterThanOrEqual(turned.halfW - 1e-12);
+    expect(fitShotAcross(1, NONE, 390, 844, az, 0, frustum(), frustum()).halfW).toBe(still.halfW);
   });
 
   it("writes into the frustum it is given", () => {
