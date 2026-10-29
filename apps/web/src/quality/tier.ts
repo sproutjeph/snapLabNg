@@ -106,8 +106,10 @@ export interface OutlineSettings {
   scale: number;
   /**
    * MSAA samples for the composer's scene buffer (WebGL2). On since the user's golden-frame
-   * review (Oct 30, "looking pixelated"): 4× on high, 2× on mid. Low has no composer; the
-   * canvas's own antialias (MSAA on the default framebuffer) smooths its hull lines.
+   * review (Oct 30, "looking pixelated"): 4× on high; none on mid, where the 3 px lines cover
+   * every silhouette and FXAA smooths them, and the resolve copy would cost the bandwidth that
+   * limits mid phones. Low has no composer; the canvas's own antialias (MSAA on the default
+   * framebuffer) smooths its hull lines.
    */
   multisampling: number;
   /** FXAA after the ink pass, so the ink lines (drawn per pixel, after MSAA) get smooth edges. */
@@ -116,7 +118,7 @@ export interface OutlineSettings {
 
 const OUTLINE: Record<QualityTier, OutlineSettings> = {
   low: { mode: "hull", scale: 1, multisampling: 0, fxaa: false },
-  mid: { mode: "ink", scale: 0.75, multisampling: 2, fxaa: true },
+  mid: { mode: "ink", scale: 1, multisampling: 0, fxaa: true },
   high: { mode: "ink", scale: 1, multisampling: 4, fxaa: true },
 };
 

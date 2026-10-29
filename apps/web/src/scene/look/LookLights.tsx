@@ -179,7 +179,12 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
     for (const light of [rig.key, rig.contact]) {
       const on = light === rig.contact ? contactOn : shadows;
       light.castShadow = on;
-      if (!on) continue;
+      if (!on) {
+        // A light that stops casting (the contact light after a step down to mid) frees its map.
+        light.shadow.map?.dispose();
+        light.shadow.map = null;
+        continue;
+      }
       // The contact rim needs no fine detail: half the key's map, so its blur spreads wider.
       const size = light === rig.contact ? shadowMapSize / 2 : shadowMapSize;
       light.shadow.mapSize.set(size, size);

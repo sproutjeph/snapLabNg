@@ -111,7 +111,9 @@ export class InkEffect extends Effect {
 
   override update(renderer: THREE.WebGLRenderer): void {
     // One full line width, on the far side of an edge; device pixels, so lines keep their CSS width.
-    this.radius.value = INK_THICKNESS_PX * renderer.getPixelRatio();
+    // Rounded to whole pixels: at DPR 1.5 a 4.5 px tap fell between two ID texels and the
+    // blended ID made the lines hairy.
+    this.radius.value = Math.max(1, Math.round(INK_THICKNESS_PX * renderer.getPixelRatio()));
     // The scene pass has just rendered, so the camera's matrices are this frame's.
     this.projInverse.value.copy(this.camera.projectionMatrixInverse);
     this.cameraWorld.value.copy(this.camera.matrixWorld);

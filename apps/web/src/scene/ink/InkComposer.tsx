@@ -25,9 +25,10 @@ interface Stack {
 
 /**
  * The post-processing stack for every canvas (docs/plans/ink-look.md). No bloom.
- *   - High and mid: the scene (MSAA 4× and 2×), then the ink outline effect (depth, normal and
- *     ink-ID edges; the ID target at full and 0.75× size), then FXAA over the ink. It takes over
- *     the render loop (useFrame priority 1).
+ *   - High and mid: the scene (MSAA 4× on high only), then the ink outline effect (depth,
+ *     normal and ink-ID edges; the ID target at full size on both, as a 0.75× target made
+ *     hairy lines at DPR 1.5), then FXAA over the ink. It takes over the render loop
+ *     (useFrame priority 1).
  *   - Low (and any device that cannot render to half-float targets): no post pass at all;
  *     inverted-hull lines on the parts (inkHull.ts), and r3f renders.
  * Tone mapping is off on every tier, so the paper is exactly --paper. The props are frozen.
@@ -70,6 +71,12 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
       // No bloom and no tone mapping, so no HDR to keep: 8-bit (sRGB-encoded) scene buffers.
       frameBufferType: THREE.UnsignedByteType,
     });
+    // The composer clones the scene buffer's sample count into its output buffer, but only the
+    // scene pass needs MSAA: the ink and FXAA passes draw full-screen quads, so a multisampled
+    // output would be resolved for nothing. (render() swaps the two locally, so the scene pass
+    // always gets the multisampled input buffer.)
+    composer.outputBuffer.samples = 0;
+    composer.outputBuffer.dispose();
     const effect = new InkEffect(scene, camera, scale);
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new EffectPass(camera, effect));
