@@ -236,8 +236,10 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     u0: number,
     v0: number,
   ) => grainUV(bevelBox(w, h, d, r, Math.max(1, bs - 1)), tile, alongZ, u0, v0).translate(x, y, z);
-  const wallTile: readonly [number, number] = [0.6, 0.22];
-  const floorTile: readonly [number, number] = [0.6, 0.3];
+  // A tile is long, 1.5 m along the grain, so the mahogany's slow bend shows as a gentle wave
+  // across a 0.34 m board, not a steep one.
+  const wallTile: readonly [number, number] = [1.5, 0.22];
+  const floorTile: readonly [number, number] = [1.5, 0.3];
   const hx = TRAY_SIZE.x / 2;
   const hz = TRAY_SIZE.z / 2;
   // Every board is a fifth of a millimetre short of the next one's face (and the short walls a
