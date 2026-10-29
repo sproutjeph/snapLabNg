@@ -228,6 +228,20 @@ describe("createVoice", () => {
     expect(voice.speaking).toBe(false);
   });
 
+  it("stop() leaves other speakers alone when this queue is not speaking", () => {
+    const voice = createVoice();
+    voice.stop();
+    expect(synth.cancelled).toBe(0);
+    voice.muted = true;
+    voice.say("Silent words.");
+    voice.stop();
+    expect(synth.cancelled).toBe(0);
+    voice.muted = false;
+    voice.say("Spoken words.");
+    voice.stop();
+    expect(synth.cancelled).toBe(1);
+  });
+
   it("speaks again after stop()", () => {
     const voice = createVoice();
     voice.say("Old.");

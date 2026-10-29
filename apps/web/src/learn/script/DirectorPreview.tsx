@@ -13,20 +13,22 @@ import { Player } from "../player/Player";
 import { playerCovered } from "../player/stages";
 import { emptyOhmsLawRecord } from "../readings/record";
 import { TerminalProvider } from "../terminals";
-import type { BenchState, PracticalMode } from "../types";
+import type { BenchState } from "../types";
 import { createVoice } from "../voice/createVoice";
 import { createSfx } from "../voice/sfx";
 import { BenchParts } from "../wiring/BenchParts";
 import { BenchWiring } from "../wiring/BenchWiring";
 import { createOhmsLawBench } from "../wiring/bench";
 import { createDirector } from "./createDirector";
+import { modeFrom } from "./previewMode";
 import { SAMPLE_SCRIPT } from "./sampleScript";
 import type { DirectorOptions } from "./types";
 
 // ?director=1: the director and its player on the real V–I bench, with the director's own
 // sample script (sampleScript.ts), for the director slice (docs/plans/exam-redesign.md, Wave 1).
 // The look here is today's (perspective camera, ink pass); the look slice replaces it.
-//   &mode=watch|practice|exam   (default watch; practice and exam run on the one bench you see)
+//   &mode=watch|practice|exam   (default watch; "practise" works too; practice and exam run on
+//                               the one bench you see)
 //   &seed=N                     the practice bench's seed (default 7; Watch runs on demoSeedFor(N))
 //   &beat=N                     starts paused at the start of beat N
 //   &play=1                     starts playing (browsers only speak after a tap, so the voice
@@ -135,8 +137,41 @@ const css = `
 @media (max-width: 640px) { .dpv-notebook { display: none; } }
 `;
 
-function modeFrom(q: string | null): PracticalMode {
-  return q === "practice" || q === "exam" ? q : "watch";
+function makeRig(search: URLSearchParams) {
+  const mode = modeFrom(search.get("mode"));
+  const seed = Number(search.get("seed")) || 7;
+  // Watch drives its own bench, on a different seed from the one she would practise on.
+  const bench = createOhmsLawBench(mode === "watch" ? demoSeedFor(seed) : seed, {
+    mode: mode === "exam" ? "exam" : "practice",
+  });
+  const voice = createVoice();
+  voice.muted = search.get("mute") === "1";
+  // Her notebook is never edited here: the same record object every frame (see createDirector).
+  const record = emptyOhmsLawRecord("practice");
+  const benchState = (): BenchState => ({
+    comparison: bench.comparison,
+    keyClosed: bench.visual.current.keyClosed,
+    boxSettingOhm: bench.boxSettingOhm,
+    record,
+    identified: new Set(),
+  });
+  const base = { script: SAMPLE_SCRIPT, voice, benchState };
+  const options: DirectorOptions =
+    mode === "watch" ? { ...base, mode, bench } : { ...base, mode, bench };
+  const director = createDirector(options);
+  const sfx = createSfx(() => voice.muted);
+  director.onEvent((e) => {
+    if (e.kind === "lead") sfx.leadSnap();
+    else if (e.kind === "plug") sfx.plug();
+    else if (e.kind === "key") sfx.key();
+    else if (e.kind === "write" || e.kind === "plot") sfx.page();
+  });
+  const speed = Number(search.get("speed"));
+  if (speed === 1 || speed === 1.5 || speed === 2) director.setSpeed(speed);
+  const beat = search.get("beat");
+  if (beat !== null && beat !== "" && Number.isFinite(Number(beat))) director.seek(Number(beat));
+  if (search.get("play") === "1") director.play();
+  return { bench, director, voice, sfx };
 }
 
 export default function DirectorPreview() {
@@ -145,51 +180,23 @@ export default function DirectorPreview() {
   const quality: QualityTier = q === "low" || q === "mid" ? q : "high";
   const [size, setSize] = useState(() => [window.innerWidth, window.innerHeight] as const);
 
-  const [rig] = useState(() => {
-    const mode = modeFrom(search.get("mode"));
-    const seed = Number(search.get("seed")) || 7;
-    // Watch drives its own bench, on a different seed from the one she would practise on.
-    const bench = createOhmsLawBench(mode === "watch" ? demoSeedFor(seed) : seed, {
-      mode: mode === "exam" ? "exam" : "practice",
-    });
-    const voice = createVoice();
-    voice.muted = search.get("mute") === "1";
-    const benchState = (): BenchState => ({
-      comparison: bench.comparison,
-      keyClosed: bench.visual.current.keyClosed,
-      boxSettingOhm: bench.boxSettingOhm,
-      record: emptyOhmsLawRecord("practice"),
-      identified: new Set(),
-    });
-    const base = { script: SAMPLE_SCRIPT, voice, benchState };
-    const options: DirectorOptions =
-      mode === "watch" ? { ...base, mode, bench } : { ...base, mode, bench };
-    const director = createDirector(options);
-    const sfx = createSfx(() => voice.muted);
-    director.onEvent((e) => {
-      if (e.kind === "lead") sfx.leadSnap();
-      else if (e.kind === "plug") sfx.plug();
-      else if (e.kind === "key") sfx.key();
-      else if (e.kind === "write" || e.kind === "plot") sfx.page();
-    });
-    const speed = Number(search.get("speed"));
-    if (speed === 1 || speed === 1.5 || speed === 2) director.setSpeed(speed);
-    const beat = search.get("beat");
-    if (beat !== null && beat !== "" && Number.isFinite(Number(beat))) director.seek(Number(beat));
-    if (search.get("play") === "1") director.play();
-    return { bench, director, voice, sfx };
-  });
-
+  // Made in an effect and torn down on unmount (StrictMode runs it twice: the first rig is
+  // disposed, the second is the one on screen).
+  const [rig, setRig] = useState<ReturnType<typeof makeRig> | null>(null);
   useEffect(() => {
+    const made = makeRig(new URLSearchParams(location.search));
+    setRig(made);
     const onResize = () => setSize([window.innerWidth, window.innerHeight]);
     window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("resize", onResize);
-      rig.voice.stop();
+      made.director.dispose();
+      made.sfx.dispose();
     };
-  }, [rig]);
+  }, []);
 
   const covered = playerCovered(size[0], size[1]);
+  if (!rig) return null;
   return (
     <div className="dpv snap-paper">
       <style>{css}</style>

@@ -154,12 +154,15 @@ export function createVoice(opts: VoiceOptions = {}): VoiceGuide {
       pump();
     },
     stop() {
+      // Cancel the browser's speech only if it is ours: speechSynthesis is shared with the
+      // examiner's speak() and anything else on the page, and a silent stop must not cut them off.
+      const wasAudible = audible;
       queue.length = 0;
       token++;
       clearTimer();
       running = false;
       audible = false;
-      cancelSynth();
+      if (wasAudible) cancelSynth();
     },
     get speaking() {
       return audible;

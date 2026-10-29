@@ -1,3 +1,4 @@
+import type { OhmsLawRecord } from "@snaplab/contracts";
 import { demoSeedFor } from "@snaplab/engine";
 import { markOhmsLaw } from "@snaplab/rules";
 import { describe, expect, it, vi } from "vitest";
@@ -51,12 +52,13 @@ interface Rig {
   runUntil(until: () => boolean, maxS?: number): number;
 }
 
-function benchState(bench: OhmsLawBenchController): BenchState {
+/** Her notebook's record keeps its identity until she edits it (see createDirector). */
+function benchState(bench: OhmsLawBenchController, record: OhmsLawRecord): BenchState {
   return {
     comparison: bench.comparison,
     keyClosed: bench.visual.current.keyClosed,
     boxSettingOhm: bench.boxSettingOhm,
-    record: emptyOhmsLawRecord("practice"),
+    record,
     identified: new Set(),
   };
 }
@@ -81,7 +83,8 @@ function rig(
       return Reflect.get(target, prop, receiver);
     },
   }) as Omit<OhmsLawBench, "supervisor">;
-  const base = { script, voice, benchState: o.done ?? (() => benchState(bench)) };
+  const record = emptyOhmsLawRecord("practice");
+  const base = { script, voice, benchState: o.done ?? (() => benchState(bench, record)) };
   const options: DirectorOptions =
     mode === "watch"
       ? { ...base, mode, bench }
@@ -181,6 +184,15 @@ describe("Watch", () => {
     r.director.setSpeed(1.5);
     r.director.dispose();
     expect(r.voice.rate).toBeCloseTo(0.95, 10);
+  });
+
+  it("play() while already playing does not say the narration twice", () => {
+    const r = rig(script(beat("a", "Say this once."), beat("b", "Then this.")), { voice: "never" });
+    r.director.play();
+    r.director.play();
+    r.run(0.2);
+    r.director.play();
+    expect(r.said).toEqual(["Say this once."]);
   });
 
   it("pauses and resumes: pause stops the voice and holds the beat, play says it again", () => {
@@ -321,22 +333,54 @@ describe("seek", () => {
     expect(shape(sought)).toEqual(atBeat);
   });
 
-  it("a fresh seek reads the dials to within a division of what playing wrote", () => {
-    // The cells polarise and the wire warms (engine, params.ts), so the same circuit reads a
-    // hundredth or two differently after a different history. Divisions: 0.02 A and 0.05 V.
-    const played = rig(SAMPLE_SCRIPT);
-    played.director.setSpeed(2);
-    played.director.play();
-    played.runUntil(() => played.director.state.beat === 80);
-    const sought = rig(SAMPLE_SCRIPT);
-    sought.director.seek(80);
-    const a = played.director.demoRecord.rows;
-    const b = sought.director.demoRecord.rows;
-    expect(b).toHaveLength(a.length);
-    for (let i = 0; i < a.length; i++) {
-      expect(Math.abs((a[i]?.I.value ?? 0) - (b[i]?.I.value ?? 99))).toBeLessThanOrEqual(0.03);
-      expect(Math.abs((a[i]?.V.value ?? 0) - (b[i]?.V.value ?? 99))).toBeLessThanOrEqual(0.06);
-    }
+  it.each([1, 2] as const)(
+    "a fresh seek reads the dials to within a division of what playing wrote, at %ix",
+    (speed) => {
+      // The cells polarise and the wire warms (engine, params.ts), so the same circuit reads a
+      // hundredth or two differently after a different history. Divisions: 0.02 A and 0.05 V.
+      // Measured over 10 benches and both speeds, the worst gap is 0.01 A and 0.02 V.
+      for (const seed of [1, 7, 99, 250]) {
+        const played = rig(SAMPLE_SCRIPT, { seed });
+        played.director.setSpeed(speed);
+        played.director.play();
+        played.runUntil(() => played.director.state.beat === 80);
+        const sought = rig(SAMPLE_SCRIPT, { seed });
+        sought.director.seek(80);
+        const a = played.director.demoRecord.rows;
+        const b = sought.director.demoRecord.rows;
+        expect(b).toHaveLength(a.length);
+        for (let i = 0; i < a.length; i++) {
+          const dI = Math.abs((a[i]?.I.value ?? 0) - (b[i]?.I.value ?? 99));
+          const dV = Math.abs((a[i]?.V.value ?? 0) - (b[i]?.V.value ?? 99));
+          expect(dI).toBeLessThanOrEqual(0.02 + 1e-9);
+          expect(dV).toBeLessThanOrEqual(0.05 + 1e-9);
+        }
+      }
+    },
+  );
+
+  it("a live replay of a reading waits for the needle, and writes what the dial shows now", () => {
+    const r = rig(SAMPLE_SCRIPT);
+    r.director.setSpeed(2);
+    r.director.play();
+    // Beat 18 writes the first current. Play through it, so the beat has a cached reading.
+    r.runUntil(() => r.director.state.beat === 19);
+    expect(r.director.demoRecord.rows[0]?.I.text_as_written).toMatch(/^\d\.\d\d$/);
+    r.director.pause();
+    // A seek past it writes the cached text at once ...
+    r.director.seek(19);
+    expect(r.director.demoRecord.rows[0]?.I.text_as_written).toMatch(/^\d\.\d\d$/);
+    // ... but playing the beat live again starts with an empty cell, waits for the bench to be
+    // left alone (QUIET_S = 2 s), then writes the dial's reading, not the cache.
+    r.director.seek(18);
+    r.director.play();
+    expect(r.director.demoRecord.rows[0]?.I.text_as_written).toBe("");
+    r.run(0.5);
+    expect(r.director.demoRecord.rows[0]?.I.text_as_written).toBe("");
+    r.runUntil(() => r.director.demoRecord.rows[0]?.I.text_as_written !== "", 30);
+    expect(r.director.demoRecord.rows[0]?.I.text_as_written).toBe(
+      r.bench.supervisor.reading("ammeter"),
+    );
   });
 
   it("scrubbing never changes a reading she has seen written", () => {
@@ -541,6 +585,76 @@ describe("Practise", () => {
     expect(r.director.state.hint).toBe(0);
     r.run(4);
     expect(r.director.state.hint).toBe(1);
+  });
+
+  it("counts her writing in the notebook as activity, not idleness", () => {
+    const flag = { v: false };
+    const mine = { record: emptyOhmsLawRecord("practice") };
+    const r: Rig = rig(withDone(flag), {
+      mode: "practice",
+      done: () => benchState(r.bench, mine.record),
+    });
+    r.director.play();
+    r.run(HINT_REPEAT_S - 5);
+    // She edits her notebook: the page hands back a new record object.
+    mine.record = { ...mine.record, law_as_written: "Ohm's law" };
+    r.run(HINT_REPEAT_S - 5);
+    expect(r.director.state.hint).toBe(0);
+    r.run(10);
+    expect(r.director.state.hint).toBe(1);
+  });
+
+  describe("Show me and a lead she has half made", () => {
+    const showMeBeat = () => leadBeat("a", { showMe: true, done: () => false });
+    const leadsOf = (r: Rig) =>
+      r.bench.visual.current.leads.map((l) => [l.a, l.b].sort().join("-"));
+
+    it("puts down her pending terminal, so the lead made is the beat's and no other", () => {
+      const r = rig(script(showMeBeat()), { mode: "practice" });
+      r.director.play();
+      r.bench.tapTerminal("A+");
+      r.director.showMe();
+      r.run(3);
+      expect(leadsOf(r)).toEqual(["E+-K1"]);
+      expect(r.bench.visual.current.pendingFrom).toBeNull();
+    });
+
+    it("still makes the lead when her pending terminal is the beat's first", () => {
+      const r = rig(script(showMeBeat()), { mode: "practice" });
+      r.director.play();
+      r.bench.tapTerminal("E+");
+      r.director.showMe();
+      r.run(3);
+      expect(leadsOf(r)).toEqual(["E+-K1"]);
+      expect(r.bench.visual.current.pendingFrom).toBeNull();
+    });
+
+    it("does not finish a lead of its own if she tapped elsewhere between its two taps", () => {
+      const r = rig(script(showMeBeat()), { mode: "practice" });
+      r.director.play();
+      r.director.showMe();
+      // The first tap is at a quarter of the action (0.35 s of 1.4 s): E+ is now pending.
+      r.run(0.5);
+      expect(r.bench.visual.current.pendingFrom).toBe("E+");
+      r.bench.tapTerminal("V+");
+      r.run(3);
+      expect(leadsOf(r)).toEqual(["E+-V+"]);
+      expect(r.bench.visual.current.pendingFrom).toBeNull();
+    });
+
+    it("does nothing once her action is done and the beat is only waiting out its gap", () => {
+      const flag = { v: false };
+      const r = rig(script(leadBeat("a", { showMe: true, done: () => flag.v })), {
+        mode: "practice",
+      });
+      r.director.play();
+      flag.v = true;
+      r.run(2 * DT);
+      r.director.showMe();
+      expect(r.director.state.hint).toBe(0);
+      r.run(0.5);
+      expect(r.bench.visual.current.leads).toHaveLength(0);
+    });
   });
 
   it("Show me runs only on showMe beats", () => {

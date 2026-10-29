@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -22,13 +24,19 @@ const quiet: VoiceGuide = {
   rate: 0.95,
 };
 
-function html(mode: "watch" | "practice" | "exam", script: Script = SAMPLE_SCRIPT, beat = 0) {
+function html(
+  mode: "watch" | "practice" | "exam",
+  script: Script = SAMPLE_SCRIPT,
+  beat = 0,
+  play = false,
+) {
   const bench = createOhmsLawBench(5);
+  const record = emptyOhmsLawRecord("practice");
   const benchState = (): BenchState => ({
     comparison: bench.comparison,
     keyClosed: false,
     boxSettingOhm: 0,
-    record: emptyOhmsLawRecord("practice"),
+    record,
     identified: new Set(),
   });
   const director = createDirector(
@@ -37,7 +45,19 @@ function html(mode: "watch" | "practice" | "exam", script: Script = SAMPLE_SCRIP
       : { mode, script, voice: quiet, bench, benchState },
   );
   director.seek(beat);
+  if (play) director.play();
   return renderToStaticMarkup(createElement(Player, { director }));
+}
+
+/** The css rules whose selector names `.dp-label`, as [selector, body]. */
+function labelRules(): Array<[string, string]> {
+  const css = readFileSync(fileURLToPath(new URL("./player.css", import.meta.url)), "utf8");
+  const rules: Array<[string, string]> = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = m[1]?.trim() ?? "";
+    if (selector.includes(".dp-label")) rules.push([selector, m[2] ?? ""]);
+  }
+  return rules;
 }
 
 describe("stages", () => {
@@ -103,6 +123,47 @@ describe("Player markup", () => {
     expect(onLead).not.toContain("Speed");
     const onRead = html("practice", SAMPLE_SCRIPT, 17);
     expect(onRead).not.toContain("Show me");
+  });
+
+  it("keeps the caption's live region mounted even with nothing to say yet", () => {
+    const silent: Script = {
+      ...SAMPLE_SCRIPT,
+      beats: SAMPLE_SCRIPT.beats.map((b) => ({ ...b, say: "", instruct: "" })),
+    };
+    for (const mode of ["watch", "practice"] as const) {
+      expect(html(mode, silent, 0)).toContain('class="dp-caption" aria-live="polite"');
+    }
+  });
+
+  it("Say it again is disabled while the guide is paused and works while it plays", () => {
+    const sayAgain = /<button[^>]*>(?:(?!<\/button>).)*Say it again/s;
+    const paused = html("practice", SAMPLE_SCRIPT, 4).match(sayAgain)?.[0] ?? "";
+    const playing = html("practice", SAMPLE_SCRIPT, 4, true).match(sayAgain)?.[0] ?? "";
+    expect(paused).toContain("disabled");
+    expect(playing).not.toContain("disabled");
+  });
+
+  it("the narrow-screen css hides button words visually, never with display: none", () => {
+    const rules = labelRules();
+    expect(rules.length).toBeGreaterThan(0);
+    for (const [selector, body] of rules) {
+      expect({ selector, hidden: /display:\s*none/.test(body) }).toEqual({
+        selector,
+        hidden: false,
+      });
+    }
+    expect(rules.some(([, body]) => /clip-path|clip:/.test(body))).toBe(true);
+  });
+
+  it("every icon-only button on a phone keeps its words in the page for screen readers", () => {
+    const out = html("practice", SAMPLE_SCRIPT, 4, true);
+    for (const words of ["Say it again", "Show me"]) {
+      expect(out).toContain(`<span class="dp-label">${words}</span>`);
+    }
+    const watch = html("watch", SAMPLE_SCRIPT, 4);
+    for (const words of ["Previous", "Next"]) {
+      expect(watch).toContain(`<span class="dp-label">${words}</span>`);
+    }
   });
 
   it("Exam shows no caption, no checklist, no stage count and no Show me", () => {

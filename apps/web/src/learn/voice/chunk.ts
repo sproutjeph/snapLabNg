@@ -7,8 +7,12 @@ export interface Chunk {
   offset: number;
 }
 
-/** A chunk longer than this is cut at a comma or a space. No standard figure: well under 15 s of speech. */
-export const MAX_CHUNK_CHARS = 180;
+/**
+ * A chunk longer than this is cut at a comma or a space. Chrome stops an utterance after about
+ * 15 s: 140 characters is about 23 words, 9 s at the estimate below and still under 15 s for a
+ * voice that is a third slower. No standard figure.
+ */
+export const MAX_CHUNK_CHARS = 140;
 
 /**
  * Splits text into sentences (after . ! ? or a line break), keeping each chunk's offset in the

@@ -207,11 +207,10 @@ export function Player({ director, stageTitles }: PlayerProps) {
       ) : null}
 
       <div className="dp-dock">
-        {s.caption ? (
-          <p className="dp-caption" aria-live="polite">
-            {s.caption}
-          </p>
-        ) : null}
+        {/* Always mounted, so a screen reader is already listening when the first words arrive. */}
+        <p className="dp-caption" aria-live="polite">
+          {s.caption}
+        </p>
 
         <div className="dp-pill">
           {s.mode === "watch" ? (

@@ -46,6 +46,10 @@ import type {
 // supervisor (only Watch's DirectorOptions carries one; her bench's type has none), the length
 // from the metre rule, and everything else from the script's own text. Nothing from a
 // Practise or Exam bench is read here, and `supervisor` is never named on those paths.
+//
+// Practise's idle clock (the hint ladder) restarts on any bench change and whenever
+// `benchState().record` is a different object from the last frame's: the page must hand back the
+// same record object until she edits it, and a new one after each edit.
 
 /** Something the actor did to the bench that the page may want a sound for. */
 export type DirectorEvent =
@@ -113,6 +117,8 @@ interface Run {
   gapS: number;
   /** Practise: seconds since she last touched the bench. */
   idleS: number;
+  /** Practise: her record as of the last frame, to see her write in the notebook. */
+  lastRecord: OhmsLawRecord | null;
   /** Practise: seconds since her action was done (null while it is not). */
   doneS: number | null;
   shown: boolean;
@@ -129,6 +135,7 @@ const freshRun = (token: number): Run => ({
   actDone: true,
   gapS: 0,
   idleS: 0,
+  lastRecord: null,
   doneS: null,
   shown: false,
 });
@@ -172,11 +179,12 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   /** Seconds the bench has been left alone, for the needle to settle before a reading. */
   let sinceChangeS = 0;
   /**
-   * The text each meter-writing beat wrote the first time it ran. The dial is not a function of
-   * the circuit alone: the cells polarise (time constant 300 s at 0.5 A, params.ts) and the wire
-   * warms, so the same beat read a second time, or after a seek that settles the bench in two
-   * seconds, would read a hundredth or two differently. The notebook keeps the reading it first
-   * wrote, so scrubbing back and forth never changes a number she has seen.
+   * The text each meter-writing beat last wrote. The dial is not a function of the circuit
+   * alone: the cells polarise (time constant 300 s at 0.5 A, params.ts) and the wire warms, so a
+   * seek that settles the bench in two seconds would read a hundredth or two differently from
+   * playing. A seek writes what the beat last wrote, so scrubbing back and forth never changes a
+   * number she has seen. Live play never reads this cache: it waits for the needle and reads the
+   * dial again, and the cache takes the new reading.
    */
   const written = new Map<number, string>();
   const listeners = new Set<() => void>();
@@ -226,10 +234,22 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     if (act.kind === "lead") {
       const [first, second] = LEAD_TAP_AT;
       return [
-        { at: first, run: () => bench.tapTerminal(act.from) },
+        {
+          at: first,
+          run: () => {
+            // A lead she has half made would take this tap as its other end (or be cancelled
+            // by it): put hers down first, so the tap starts ours.
+            const hers = bench.visual.current.pendingFrom;
+            if (hers !== null) bench.tapTerminal(hers);
+            bench.tapTerminal(act.from);
+          },
+        },
         {
           at: second,
           run: () => {
+            // Only finish the lead we started: if the first tap did not take (a full terminal)
+            // or she tapped somewhere else since, a second tap would make a wrong lead.
+            if (bench.visual.current.pendingFrom !== act.from) return;
             bench.tapTerminal(act.to);
             if (announce) emit({ kind: "lead", from: act.from, to: act.to });
           },
@@ -356,8 +376,9 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     if (act.kind === "enter") emit({ kind: "enter" });
     if (act.kind === "loupe") state.loupe = act.target;
     if (act.kind === "write") {
-      if (isMeter(act.value) && sup && !written.has(beat)) {
-        // Wait for the needle: write nothing until the bench has been left alone and the dial reads.
+      if (isMeter(act.value) && sup) {
+        // Wait for the needle, every time: write nothing until the bench has been left alone
+        // and the dial reads. (The cache is for seek only: a replay is a live reading again.)
         ar.pendingMeter = act.value.from;
         notify();
         return;
@@ -378,8 +399,9 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   }
 
   function commitWrite(ar: ActRun, act: Extract<ActorAction, { kind: "write" }>): void {
+    // A dial that still will not read (off scale) falls back on what this beat wrote before.
     const text = isMeter(act.value)
-      ? (written.get(ar.beat) ?? textFor(act.field, act.value))
+      ? (textFor(act.field, act.value) ?? written.get(ar.beat) ?? null)
       : textFor(act.field, act.value);
     if (text !== null && isMeter(act.value)) written.set(ar.beat, text);
     const wrote = commitRecord(act, text);
@@ -441,7 +463,9 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     } else if (mode === "practice") {
       speakBeat(b.instruct);
       if (b.done) {
-        if (b.done(opts.benchState())) run.doneS = 0;
+        const st = opts.benchState();
+        run.lastRecord = st.record;
+        if (b.done(st)) run.doneS = 0;
         else state.waiting = true;
       }
     }
@@ -513,8 +537,13 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       }
       return;
     }
+    // She is not idle while she writes: a new record object (the page replaces it on every edit)
+    // counts as activity, as does a change on the bench.
+    const st = opts.benchState();
+    if (run.lastRecord !== null && st.record !== run.lastRecord) run.idleS = 0;
+    run.lastRecord = st.record;
     if (run.doneS === null) {
-      if (b.done(opts.benchState())) {
+      if (b.done(st)) {
         run.doneS = 0;
         state.waiting = false;
         notify();
@@ -545,7 +574,8 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     },
 
     play() {
-      if (disposed || mode === "exam") return;
+      // Playing already: a second play() must not say the narration twice.
+      if (disposed || mode === "exam" || state.playing) return;
       if (state.finished) {
         state.playing = true;
         goTo(0);
@@ -605,7 +635,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       const b = beats[state.beat];
       const act = b?.act;
       // Setup actions only (leads, plugs, the key), once per beat; never a reading or the graph.
-      if (!b?.showMe || !act || run.shown) return;
+      if (!b?.showMe || !act || run.shown || run.doneS !== null) return;
       if (act.kind !== "lead" && act.kind !== "plug" && act.kind !== "key") return;
       run.shown = true;
       state.hint = 3;
