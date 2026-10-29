@@ -244,8 +244,14 @@ describe("what a cable rests on, unchanged by the asset pass", () => {
       const want = expected[f.slot];
       if (want !== undefined) expect(floorAt(f.cx, f.cz), f.slot).toBeCloseTo(want, 9);
     }
-    expect(floorAt(-0.16, 0.1)).toBeCloseTo(0.118, 9);
-    expect(floorAt(-0.16, 0.145)).toBeCloseTo(0.012, 9);
+    // A meter's nut ledge is the low box in front of its case; the case's top is over it at the
+    // ledge's back edge, and beside the ledge's front edge it is the ledge alone, 1.2 cm.
+    for (const slot of ["ammeter", "voltmeter"] as const) {
+      const [caseBox, ledge] = BENCH_FOOTPRINTS.filter((f) => f.slot === slot);
+      if (!caseBox || !ledge) throw new Error(`no ${slot} footprints`);
+      expect(floorAt(caseBox.cx, caseBox.cz), `${slot} case`).toBeCloseTo(0.118, 9);
+      expect(floorAt(ledge.cx, ledge.cz + ledge.hz - 0.001), `${slot} ledge`).toBeCloseTo(0.012, 9);
+    }
     expect(floorAt(5, 5)).toBe(0);
   });
 

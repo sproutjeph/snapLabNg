@@ -259,8 +259,8 @@ export function makeNutGeometries(quality: QualityTier, cap: NutCap, seed = 0): 
 
 /**
  * A knurled terminal nut that lead ends attach to: a brass washer, hex collar and knurled nut,
- * under an insulating cap (brass-bare on the others, a threaded stud) with a socket in its top for
- * the plug. Registers itself in the terminal registry and forwards taps to it. When
+ * under an insulating cap on the meters or a bare threaded stud on the other parts, with a socket
+ * in its top for the plug. Registers itself in the terminal registry and forwards taps to it. When
  * `state.current.ring === id` a dashed ink ring pulses around it (still, if the student asks
  * for reduced motion). The tap target is grown in useFrame so it stays about 44 px across.
  *
