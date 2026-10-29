@@ -1,14 +1,17 @@
 // Ink outline effect (a postprocessing Effect with EffectAttribute.DEPTH), after Backcountry
-// 101's ink pass (docs/plans/exam-redesign-brief.md, research report 2). Ink is drawn only on
-// pixels of inked parts, so every line sits inside its part's silhouette and takes that part's
-// ink strength and focus. Eight taps on a circle of one line width (×0.55 for thin parts) find:
-//   - silhouettes: the neighbour is paper, or another part that is not nearer (at one depth the
-//     lower id draws), or the same part folding away behind a depth step;
-//   - creases, at a weight of .4 and within one id only: the normal turns on one side of the
-//     pixel and not the other, so the even curve of a lead or a rod draws nothing.
+// 101's ink pass (docs/plans/exam-redesign-brief.md, research report 2). Eight taps on a circle
+// of one line width round each pixel find:
+//   - silhouettes, drawn on the FAR side of the edge, like the low tier's hulls: on the paper
+//     next to a part, or on the part behind a nearer one (at one depth the higher id takes it),
+//     or on the far side of a step within one part. So a lead a few pixels wide keeps its colour
+//     inside its outline on every tier. The line takes the strength and focus of the part that
+//     owns the edge (the nearer one); thin parts draw it lighter;
+//   - creases, at a weight of .4, centred on the fold and within one id only: the normal turns
+//     on one side of the pixel and not the other, so the even curve of a lead draws nothing.
 // Depth steps are relative for a perspective camera and in metres for an orthographic one
-// (postprocessing's getViewZ handles both). Inked pixels get the grade (saturation 1.1) and the
-// focus fade; paper is left exactly as it is. Inputs: the scene depth and the ink-ID target
+// (postprocessing's getViewZ handles both); a surface's own slope is taken out first, so a plane
+// seen at a grazing angle never reads as a step. Inked pixels get the grade (saturation 1.1) and
+// the focus fade; paper is never graded. Inputs: the scene depth and the ink-ID target
 // (rg = normal xy, b = strength + 2 if thin, a = id + 1; see ink-id.frag.glsl).
 precision highp float;
 
@@ -19,7 +22,7 @@ uniform float inkReveal;
 uniform sampler2D inkBuffer;
 uniform sampler2D inkFocusMap;
 uniform float inkRadius;
-uniform float thinRadius;
+uniform float thinAlpha;
 uniform float depthThreshold;
 uniform float depthThresholdM;
 uniform float creaseThreshold;
@@ -58,84 +61,102 @@ float inkDepthUnits(const in float dz, const in float zC) {
 #endif
 }
 
-/** 1 when the sample belongs to the same part as the centre. */
+/** 1 when the sample belongs to the same part as the centre (never on paper). */
 float inkSame(const in vec4 s, const in float idC) {
   return step(0.5, s.a) * (1.0 - step(0.5, abs(inkIdOf(s) - idC)));
 }
 
-// `gap` > 0: the neighbour is farther than this pixel's own surface would be there (the slope
-// of the surface, taken from the opposite sample, is already removed, so a plane seen at a
-// grazing angle never reads as a step).
-float inkSilhouette(const in float idC, const in vec4 n, const in float gap, const in float thr) {
-  if (n.a < 0.5) return 1.0;
+float inkFade(const in float id) {
+  return texture2D(inkFocusMap, vec2((clamp(id, 0.0, 255.0) + 0.5) / 256.0, 0.5)).r;
+}
+
+// The edge a neighbour `n` throws on this pixel. `nearer` > 0: the neighbour is nearer than this
+// pixel's surface would be there. Lines fall on the far side, so only a nearer neighbour counts.
+float inkEdge(const in float covC, const in float idC, const in vec4 n, const in float nearer, const in float thr) {
+  if (n.a < 0.5) return 0.0;
+  if (covC < 0.5) return 1.0;
   float idN = inkIdOf(n);
   float level = thr * 0.05;
   float differ = step(0.5, abs(idN - idC));
-  float atLevel = step(abs(gap), level);
-  float eId = differ * max(step(level, gap), atLevel * step(idC, idN - 0.5));
-  float eDepth = smoothstep(thr * 0.5, thr, gap);
+  float atLevel = step(abs(nearer), level);
+  float eId = differ * max(step(level, nearer), atLevel * step(idN, idC - 0.5));
+  float eDepth = smoothstep(thr * 0.5, thr, nearer);
   return max(eId, eDepth);
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
   vec4 c = texture2D(inkBuffer, uv);
-  if (c.a < 0.5) {
-    outputColor = inputColor;
-    return;
-  }
+  float covC = step(0.5, c.a);
   float idC = inkIdOf(c);
-  float thinC = step(1.5, c.b);
-  float strength = clamp(c.b - 2.0 * thinC, 0.0, 1.0);
   float zC = inkViewDepth(depth);
 #ifdef PERSPECTIVE_CAMERA
   float thr = depthThreshold;
 #else
   float thr = depthThresholdM;
 #endif
-  vec2 outer = texelSize * inkRadius * mix(1.0, thinRadius, thinC);
+  vec2 outer = texelSize * inkRadius;
   vec2 inner = outer * 0.5;
 
-  float ink = 0.0;
+  // The strongest edge, and the sample that owns it.
+  float edge = 0.0;
+  vec4 owner = c;
+  vec2 ownerUv = uv;
+  float ownerDepth = depth;
   for (int i = 0; i < 4; i++) {
     vec2 sa = uv + INK_DIRS[i * 2] * outer;
     vec2 sb = uv + INK_DIRS[i * 2 + 1] * outer;
     vec4 na = texture2D(inkBuffer, sa);
     vec4 nb = texture2D(inkBuffer, sb);
-    float za = inkViewDepth(readDepth(sa));
-    float zb = inkViewDepth(readDepth(sb));
-    // The surface's own slope toward each side, from the opposite sample when it is this part.
-    float slopeA = inkSame(nb, idC) * (zC - zb);
-    float slopeB = inkSame(na, idC) * (zC - za);
-    ink = max(ink, inkSilhouette(idC, na, inkDepthUnits(za - zC - slopeA, zC), thr));
-    ink = max(ink, inkSilhouette(idC, nb, inkDepthUnits(zb - zC - slopeB, zC), thr));
+    float da = readDepth(sa);
+    float db = readDepth(sb);
+    float za = inkViewDepth(da);
+    float zb = inkViewDepth(db);
+    // This surface carried on past the pixel, from the opposite sample when it is this part.
+    float nearerA = inkDepthUnits((zC - za) + inkSame(nb, idC) * (zC - zb), zC);
+    float nearerB = inkDepthUnits((zC - zb) + inkSame(na, idC) * (zC - za), zC);
+    float ea = inkEdge(covC, idC, na, nearerA, thr);
+    float eb = inkEdge(covC, idC, nb, nearerB, thr);
+    if (ea > edge) { edge = ea; owner = na; ownerUv = sa; ownerDepth = da; }
+    if (eb > edge) { edge = eb; owner = nb; ownerUv = sb; ownerDepth = db; }
   }
+  float ownerThin = step(1.5, owner.b);
+  float ownerStrength = clamp(owner.b - 2.0 * ownerThin, 0.0, 1.0);
+  float line = edge * ownerStrength * mix(1.0, thinAlpha, ownerThin) * mix(1.0, focusInk, inkFade(inkIdOf(owner)));
 
-  // Crease: the normal turns on one side and not the other. Any fold line crosses one of the
-  // two axis pairs.
-  vec3 nC = inkNormalOf(c);
+  float fadeC = 0.0;
   float crease = 0.0;
-  for (int i = 0; i < 2; i++) {
-    vec4 na = texture2D(inkBuffer, uv + INK_DIRS[i * 2] * inner);
-    vec4 nb = texture2D(inkBuffer, uv + INK_DIRS[i * 2 + 1] * inner);
-    float same = (1.0 - step(0.5, abs(inkIdOf(na) - idC))) * (1.0 - step(0.5, abs(inkIdOf(nb) - idC)));
-    float bend = abs(distance(inkNormalOf(na), nC) - distance(inkNormalOf(nb), nC));
-    crease = max(crease, same * smoothstep(creaseThreshold * 0.7, creaseThreshold, bend));
+  vec3 col = inputColor.rgb;
+  if (covC > 0.5) {
+    // Crease: the normal turns on one side and not the other. Any fold line crosses one of the
+    // two axis pairs.
+    vec3 nC = inkNormalOf(c);
+    for (int i = 0; i < 2; i++) {
+      vec4 na = texture2D(inkBuffer, uv + INK_DIRS[i * 2] * inner);
+      vec4 nb = texture2D(inkBuffer, uv + INK_DIRS[i * 2 + 1] * inner);
+      float same = inkSame(na, idC) * inkSame(nb, idC);
+      float bend = abs(distance(inkNormalOf(na), nC) - distance(inkNormalOf(nb), nC));
+      crease = max(crease, same * smoothstep(creaseThreshold * 0.7, creaseThreshold, bend));
+    }
+    float thinC = step(1.5, c.b);
+    float strengthC = clamp(c.b - 2.0 * thinC, 0.0, 1.0);
+    fadeC = inkFade(idC);
+    crease *= creaseWeight * strengthC * mix(1.0, thinAlpha, thinC) * mix(1.0, focusInk, fadeC);
+    float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col = max(mix(vec3(luma), col, inkSaturation), 0.0);
+    col = mix(col, inkPaper, focusPaper * fadeC);
   }
-  ink = max(ink, crease * creaseWeight);
+  float ink = max(line, crease);
 
-  // Draw-on: the line shows only where the sweep has passed. Skipped once fully drawn.
+  // Draw-on: the line shows only where the sweep has passed, judged at the part that owns it.
   float drawn = 1.0;
   if (inkReveal < 1.0 && ink > 0.0) {
-    vec4 view = inkProjInverse * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec2 at = edge >= crease ? ownerUv : uv;
+    float d = edge >= crease ? ownerDepth : depth;
+    vec4 view = inkProjInverse * vec4(at * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
     vec3 viewPos = view.xyz / (abs(view.w) > 1e-5 ? view.w : 1e-5);
     drawn = inkSweep((inkCameraWorld * vec4(viewPos, 1.0)).xyz, inkReveal);
   }
 
-  float fade = texture2D(inkFocusMap, vec2((clamp(idC, 0.0, 255.0) + 0.5) / 256.0, 0.5)).r;
-  vec3 col = inputColor.rgb;
-  float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = max(mix(vec3(luma), col, inkSaturation), 0.0);
-  col = mix(col, inkPaper, focusPaper * fade);
-  float a = clamp(ink * strength * inkOpacity * mix(1.0, focusInk, fade) * drawn, 0.0, 1.0);
+  float a = clamp(ink * inkOpacity * drawn, 0.0, 1.0);
   outputColor = vec4(mix(col, inkColour, a), inputColor.a);
 }

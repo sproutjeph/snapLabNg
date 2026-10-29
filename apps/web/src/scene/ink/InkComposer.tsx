@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { outlineFor } from "../../quality/tier";
 import { InkEffect } from "./InkEffect";
-import { advanceInkFocus } from "./inkFocus";
+import { type InkFocusFade, inkFocusFor, releaseInkFocus } from "./inkFocus";
 import { useInkHulls } from "./inkHull";
 
 export interface InkComposerProps {
@@ -17,6 +17,7 @@ export interface InkComposerProps {
 interface Stack {
   composer: EffectComposer;
   effect: InkEffect;
+  focus: InkFocusFade;
   width: number;
   height: number;
   pixelRatio: number;
@@ -71,7 +72,8 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
     const effect = new InkEffect(scene, camera, scale);
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new EffectPass(camera, effect));
-    stack.current = { composer, effect, width: -1, height: -1, pixelRatio: -1 };
+    const focus = inkFocusFor(scene);
+    stack.current = { composer, effect, focus, width: -1, height: -1, pixelRatio: -1 };
     return () => {
       stack.current = null;
       // Disposes the passes, the effect's target and material, and the composer's buffers.
@@ -80,11 +82,14 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
     };
   }, [gl, scene, camera, post, scale, multisampling]);
 
+  // This canvas's focus fade (inkFocus.ts) lives as long as the composer.
+  useEffect(() => () => releaseInkFocus(scene), [scene]);
+
   useFrame(
     (state, delta) => {
       const s = stack.current;
       if (!s) return;
-      advanceInkFocus(delta);
+      s.focus.advance(delta);
       const { width, height } = state.size;
       const pixelRatio = state.gl.getPixelRatio();
       if (width !== s.width || height !== s.height || pixelRatio !== s.pixelRatio) {

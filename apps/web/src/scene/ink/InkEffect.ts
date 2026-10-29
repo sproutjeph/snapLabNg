@@ -2,7 +2,7 @@ import { Effect, EffectAttribute } from "postprocessing";
 import * as THREE from "three";
 import inkEdgesFrag from "./ink-edges.frag.glsl?raw";
 import inkSweepGlsl from "./ink-sweep.glsl?raw";
-import { FOCUS_FADE_INK, FOCUS_FADE_PAPER, inkFocusTexture } from "./inkFocus";
+import { FOCUS_FADE_INK, FOCUS_FADE_PAPER, inkFocusFor } from "./inkFocus";
 import { InkIdPass } from "./inkPass";
 import { inkSweepUniforms } from "./inkSweep";
 import { INK_HEX, PAPER_HEX } from "./palette";
@@ -11,8 +11,8 @@ import { INK_HEX, PAPER_HEX } from "./palette";
 
 /** Line width in CSS pixels, scaled by the device pixel ratio. */
 export const INK_THICKNESS_PX = 2.1;
-/** `thin` parts draw their lines at this fraction of the width. */
-export const INK_THIN_RADIUS = 0.55;
+/** `thin` parts (plugs, needles) draw their outline at this strength. */
+export const INK_THIN_ALPHA = 0.6;
 /** Relative depth jump that draws a silhouette (perspective camera). */
 export const INK_DEPTH_THRESHOLD = 0.045;
 /** Depth jump in metres that draws a silhouette (orthographic camera). */
@@ -32,7 +32,7 @@ export const INK_SATURATION = 1.1;
  * `scale` × the drawing-buffer size with the ID materials of inkPass.ts. The fragment
  * shader samples both in 8 directions. While `reveal` < 1 the lines show only where the
  * draw-on sweep (ink-sweep.glsl) has passed, found from each pixel's world position. The
- * focus fade (inkFocus.ts) is read per ink id from a shared 256 × 1 texture.
+ * focus fade (inkFocus.ts) is read per ink id from the scene's own 256 × 1 texture.
  * Uniforms are made once; `update()` allocates nothing.
  */
 export class InkEffect extends Effect {
@@ -72,9 +72,9 @@ export class InkEffect extends Effect {
         ["inkOpacity", new THREE.Uniform(INK_OPACITY)],
         ["inkReveal", reveal],
         ["inkBuffer", new THREE.Uniform(inkTarget.texture)],
-        ["inkFocusMap", new THREE.Uniform(inkFocusTexture())],
+        ["inkFocusMap", new THREE.Uniform(inkFocusFor(scene).texture)],
         ["inkRadius", radius],
-        ["thinRadius", new THREE.Uniform(INK_THIN_RADIUS)],
+        ["thinAlpha", new THREE.Uniform(INK_THIN_ALPHA)],
         ["depthThreshold", new THREE.Uniform(INK_DEPTH_THRESHOLD)],
         ["depthThresholdM", new THREE.Uniform(INK_DEPTH_THRESHOLD_M)],
         ["creaseThreshold", new THREE.Uniform(INK_CREASE_THRESHOLD)],
