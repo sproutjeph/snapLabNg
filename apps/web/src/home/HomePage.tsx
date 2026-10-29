@@ -6,6 +6,8 @@ interface ExperimentStatus {
   badgeBg: string;
   badgeColor: string;
   badgeBorder: string;
+  /** Where the row goes when it can be opened now. */
+  href?: string;
 }
 
 const EXPERIMENTS: ExperimentStatus[] = [
@@ -15,6 +17,14 @@ const EXPERIMENTS: ExperimentStatus[] = [
     badgeBg: "var(--card)",
     badgeColor: "var(--green)",
     badgeBorder: "1px solid var(--green)",
+  },
+  {
+    name: "Ohm's law (V–I)",
+    status: "Hands-on",
+    badgeBg: "var(--card)",
+    badgeColor: "var(--green)",
+    badgeBorder: "1px solid var(--green)",
+    href: ROUTES.ohmsLaw,
   },
   {
     name: "Titration",
@@ -178,9 +188,26 @@ export default function HomePage() {
                   border: "var(--rule)",
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>
-                  {exp.name}
-                </span>
+                {exp.href ? (
+                  <a
+                    href={exp.href}
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: "var(--ink)",
+                      minHeight: "var(--tap)",
+                      display: "flex",
+                      alignItems: "center",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    {exp.name}
+                  </a>
+                ) : (
+                  <span style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>
+                    {exp.name}
+                  </span>
+                )}
                 <span
                   style={{
                     fontSize: 12,

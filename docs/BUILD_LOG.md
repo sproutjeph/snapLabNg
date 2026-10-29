@@ -1,6 +1,7 @@
 # Build log
 
 ## Oct 29 (Day 4)
+- PR #73 **built with Muse Code**: every existing screen restyled to ink on paper (home, about, AI drawer, marking, notebook, teacher, examiner, capture, PWA notice, quality preview, the flow's overlay buttons, the Lite bench). Two review rounds: ink text on an ink button, AI-drawer statuses that only colour told apart, orange text below WCAG AA, small tap targets. Lead: #76 darkened `--muted` and `--red-ink` so body text passes AA everywhere; the home page now lists the hands-on Ohm's law (V–I) practical.
 - #74 the hero's draw-on reveal: pen-ink outlines sketch the metre bridge from her page, then the fills wash in; no cyan, glow or clipping-plane rise; the bench goes live at the same moment. User decision: the V–I lesson keeps the title "Ohm's law (V–I)".
 - Wave 3 merged: #69 the ink look (pen outlines on ruled paper; hulls on the low tier; no bloom anywhere; three review rounds), #70 lesson content (callouts, why it works, poses, 11 Identify cards; the science check removed guided text that handed over marked answers: the law, the formula, the precautions, the slope's unit), #71 the graph and slope sheet (her own scales; a tap always adds a point; the triangle snaps to her line).
 - Integration B (lead): each step eases to its camera pose, Identify cards on the Identify step, the graph paper on Plot and Slope. End to end through the real page: notebook plus graph scores 20/20. No-leak check: with the circuit wired and the key closed, no engine current, voltage, wire resistance or slope appears anywhere in the page.

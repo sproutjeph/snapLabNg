@@ -1,6 +1,7 @@
 export const ROUTES = {
   snap: "/?flow=1",
   demo: "/?flow=1&golden=note1",
+  ohmsLaw: "/?learn=ohms-law",
 } as const;
 
 /**
