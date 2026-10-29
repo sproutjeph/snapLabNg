@@ -185,29 +185,82 @@ const MACRO_DEPTH_M = 0.05;
 const MACRO_TOP_M = 0.07;
 /** The macro looks at the nut's top, a little above where a plug seats. */
 export const MACRO_LIFT_M = 0.01;
-/**
- * The macro's lead runs on to a free plug this far out to the side of the nut and this far toward
- * the student. That plug must land past the edge of the whole canvas, not only of the free area:
- * a phone still draws the strips above and below the free area (kitCovered), and Lead holds a
- * carried plug 2.2 cm off the paper, so a plug inside the canvas hangs in the air. At 390 x 844 and
- * 1440 x 900 this keeps the plug out of the canvas from every azimuth of the turn=1 sweep (15 to
- * 75) and from 25 degrees of drag beyond it: by 100 px with Lead's plug, and by 50 px with one
- * twice as thick and 2 cm higher (kitParams.test.ts pins the second, with 30 px to spare).
- */
-export const MACRO_REACH_M = 0.3;
-export const MACRO_FRONT_M = 0.18;
 
 /**
- * Writes into `out` where the macro lead's free plug is laid, on the paper: out to the side of its
- * part that the nut is on, and toward the student. Allocates nothing.
+ * Where a terminal's macro lead ends, as a heading from its nut. Two things decide it.
+ *
+ * The free plug must land past the edge of the whole canvas, not only of the free area: a phone
+ * still draws the strips above and below the free area (kitCovered), and Lead holds a carried plug
+ * 2.2 cm off the paper, so a plug inside the canvas hangs in the air. At 390 x 844 and 1440 x 900
+ * every end here is out of the canvas from every azimuth of the turn=1 sweep (15 to 75) and from
+ * 25 degrees of drag beyond it, with 30 px to spare for a plug twice as thick, longer and carried
+ * higher than Lead's (kitParams.test.ts pins that).
+ *
+ * And the cable must touch nothing the shot does not show. Lead rests its cable on every footprint
+ * in BENCH_FOOTPRINTS (floorAt), but `part=terminal` hides every part except the nut's own, so a
+ * cable lifted onto a hidden one floats 1.4 to 2.3 cm over bare paper. Lead also bulges the cable
+ * sideways by up to min(d, 0.5) x 0.22 of its span d, 7.7 cm at 0.35 m, a hash-chosen side and
+ * amount, so every heading below keeps that whole band clear of the other parts, of the taller
+ * body of its own part (a meter's case), and of its part's other nut.
+ */
+interface MacroLead {
+  /**
+   * Heading of the free end from the nut, in degrees: 0 her right (+x), 90 toward her (+z),
+   * 180 her left, 270 away from her.
+   */
+  deg: number;
+  /** Metres from the nut, level. */
+  reach: number;
+  /** Metres above the paper. */
+  up: number;
+}
+
+/** A lead that lies on the paper out to a plug past the canvas. */
+const LAID = { reach: 0.35, up: 0 } as const;
+/**
+ * A lead held up out of the frame. The voltmeter's nuts have no way across the paper: the wire
+ * board's footprint and ramp start 3 cm in front of them, their own case is just behind, and the
+ * tray is 6 cm to the right of V+, so a cable on the paper is lifted onto one of them whichever
+ * way it leaves. Held 0.4 m up and 0.1 m out, it keeps well clear of all three, and the short span
+ * keeps its sideways bulge to 2 cm. (Up and out it must not also come toward her: seen from the
+ * front, a plug that far up but near her lands back inside the frame.)
+ */
+const HELD = { reach: 0.1, up: 0.4 } as const;
+
+/**
+ * Each nut's lead. The front row (cells, key, ammeter, box) leaves toward her, splayed away from
+ * its neighbours, which stand 6 to 10 cm to either side. The wire's X runs out over the back of the
+ * board, as the ammeter and the box in front of it leave only 3 cm clear between their ramps, and
+ * Y out to her right and a little toward her, off the board's front edge, with the tray behind it
+ * and 9 cm between the key and the cells ahead.
+ */
+const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
+  "E+": { deg: 90, ...LAID },
+  "E-": { deg: 60, ...LAID },
+  K1: { deg: 60, ...LAID },
+  K2: { deg: 120, ...LAID },
+  "A+": { deg: 60, ...LAID },
+  "A-": { deg: 120, ...LAID },
+  "V+": { deg: 0, ...HELD },
+  "V-": { deg: 180, ...HELD },
+  R1: { deg: 120, ...LAID },
+  R2: { deg: 150, ...LAID },
+  X: { deg: 300, ...LAID },
+  Y: { deg: 20, ...LAID },
+};
+
+/**
+ * Writes into `out` where terminal `id`'s macro lead has its free plug: MACRO_LEADS' heading,
+ * reach and height from the nut at `nut`. Allocates nothing.
  */
 export function macroFreeEnd(
+  id: TerminalId,
   nut: { x: number; z: number },
-  partX: number,
   out: THREE.Vector3,
 ): THREE.Vector3 {
-  const side = nut.x >= partX ? 1 : -1;
-  return out.set(nut.x + side * MACRO_REACH_M, 0, nut.z + MACRO_FRONT_M);
+  const { deg, reach, up } = MACRO_LEADS[id];
+  const a = (deg * Math.PI) / 180;
+  return out.set(nut.x + reach * Math.cos(a), up, nut.z + reach * Math.sin(a));
 }
 
 function union(boxes: readonly Bounds[]): Bounds {

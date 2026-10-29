@@ -1,4 +1,4 @@
-import { PART_TERMINALS, TERMINAL_IDS } from "@snaplab/engine";
+import { PART_TERMINALS, TERMINAL_IDS, type TerminalId } from "@snaplab/engine";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createTerminalRegistry } from "../../learn/terminalRegistry";
@@ -34,8 +34,14 @@ import {
   terminalPositions,
   turnAzimuth,
 } from "./kitParams";
-import { PLUG_HEIGHT_M } from "./LeadParts";
-import { INK_IDS, OHMS_LAW_LAYOUT } from "./layout";
+import {
+  BENCH_FOOTPRINTS,
+  type BenchFootprint,
+  floorAt,
+  LEAD_RADIUS_M,
+  PLUG_HEIGHT_M,
+} from "./LeadParts";
+import { INK_IDS, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
 
 const DEG = Math.PI / 180;
 const params = (search: string): KitParams => parseKitParams(search);
@@ -421,32 +427,49 @@ describe("the shot", () => {
     expect(bench).toBeGreaterThan(span("wire"));
   });
 
-  describe("the terminal macro's free plug", () => {
+  describe("the terminal macro's lead", () => {
     // Lead holds a carried plug 2.2 cm off the paper, its pin 1.2 cm below the sleeve and the
     // sleeve 6 mm in radius. This asks for more of each (3 cm, 2 cm, 1.2 cm), so a plug twice as
     // thick and 2 cm higher, which the asset pass may bring, still clears.
     const CARRY_M = 0.03;
     const PIN_M = -0.02;
     const SLEEVE_R_M = 0.012;
-    // The lowest nut on the bench is a meter's, 3.57 cm up (the dump=1 baseline). A lower nut puts
-    // the focus lower and the plug higher on the screen, the worst case for the canvas's edges.
-    const NUT_Y_M = 0.03;
     // The turn=1 sweep reaches 30 degrees either way of 45, and she can drag 25 degrees past it.
     const SWEEP_DEG = Array.from({ length: 13 }, (_, i) => 15 + 5 * i);
     const DRAG_DEG = [-25, 0, 25];
     const MARGIN_PX = 30;
     const macro = planKit(params("?part=terminal")).bounds;
+
+    // Where each nut is, in metres (x to her right, y up, z toward her): ?kit=ohms-law&dump=1 on
+    // the seam's commit, to 0.1 mm. A restyle may move a nut by 2 mm (docs/plans/asset-pass.md,
+    // C8); nothing below is as tight as that.
+    const NUT_M: Readonly<Record<TerminalId, readonly [number, number, number]>> = {
+      "E+": [0.3718, 0.0697, 0.08],
+      "E-": [0.5082, 0.0697, 0.08],
+      K1: [0.231, 0.0477, 0.12],
+      K2: [0.169, 0.0477, 0.12],
+      "A+": [-0.125, 0.0357, 0.145],
+      "A-": [-0.195, 0.0357, 0.145],
+      "V+": [0.175, 0.0357, -0.235],
+      "V-": [0.105, 0.0357, -0.235],
+      R1: [-0.3, 0.0897, 0.094],
+      R2: [-0.56, 0.0897, 0.094],
+      X: [-0.256, 0.0577, -0.145],
+      Y: [0.2803, 0.0577, -0.145],
+    };
     const free = new THREE.Vector3();
 
-    /** The plug's offset from the shot's focus (the nut's top) for a nut on one side of its part. */
-    function plugOffset(side: 1 | -1) {
-      const nut = { x: side * 0.05, z: 0.1 };
-      macroFreeEnd(nut, 0, free);
-      return {
-        x: free.x - nut.x,
-        y: free.y + CARRY_M - (NUT_Y_M + MACRO_LIFT_M),
-        z: free.z - nut.z,
-      };
+    /** Where the macro puts terminal `id`'s free plug; y is its height above the paper. */
+    function freeEnd(id: TerminalId): THREE.Vector3 {
+      const [x, , z] = NUT_M[id];
+      return macroFreeEnd(id, { x, z }, free).clone();
+    }
+
+    /** The plug's offset from the shot's focus, the nut's top a little raised. */
+    function plugOffset(id: TerminalId) {
+      const [x, y, z] = NUT_M[id];
+      const end = freeEnd(id);
+      return { x: end.x - x, y: end.y + CARRY_M - (y + MACRO_LIFT_M), z: end.z - z };
     }
 
     /**
@@ -495,15 +518,16 @@ describe("the shot", () => {
       return Math.max(-maxX, minX - view.w, -maxY, minY - view.h);
     }
 
-    it(`lies at least ${MARGIN_PX} px past the whole canvas, on a phone and a laptop, from every azimuth she can see it from`, () => {
+    it(`puts all twelve free plugs at least ${MARGIN_PX} px past the whole canvas, on a phone and a laptop, from every azimuth she can see them from`, () => {
       let worst = { gap: Number.POSITIVE_INFINITY, at: "" };
-      for (const view of views) {
-        for (const az of SWEEP_DEG) {
-          for (const drag of DRAG_DEG) {
-            for (const side of [1, -1] as const) {
-              const gap = gapPx(view, az, az + drag, plugOffset(side));
+      for (const id of TERMINAL_IDS) {
+        const offset = plugOffset(id);
+        for (const view of views) {
+          for (const az of SWEEP_DEG) {
+            for (const drag of DRAG_DEG) {
+              const gap = gapPx(view, az, az + drag, offset);
               if (gap < worst.gap) {
-                worst = { gap, at: `${view.name}, azimuth ${az} dragged ${drag}, side ${side}` };
+                worst = { gap, at: `${id}, ${view.name}, azimuth ${az} dragged ${drag}` };
               }
             }
           }
@@ -514,11 +538,140 @@ describe("the shot", () => {
 
     it("would hang in the air on a phone if it were only past the free area, as 17 cm out and 7 cm toward her was", () => {
       // The free area is a strip about 430 px tall in the middle of the 844 px canvas; the strips
-      // above and below it are still drawn.
+      // above and below it are still drawn. 3.57 cm is the lowest nut on the bench, a meter's.
       const phone = views.find((v) => v.name === "phone");
       if (!phone) throw new Error("no phone view");
-      const old = { x: 0.17, y: CARRY_M - (NUT_Y_M + MACRO_LIFT_M), z: 0.07 };
+      const old = { x: 0.17, y: CARRY_M - (0.0357 + MACRO_LIFT_M), z: 0.07 };
       expect(gapPx(phone, 75, 75, old)).toBeLessThan(0);
+    });
+
+    // ---- The cable the free plug leaves behind ----
+    // Lead's cable, restated, because its shapeCable is private: eleven control points at CABLE_T
+    // along the chord from the plug top over the nut to the plug top over the free end, each hung
+    // 0.012 + 0.3 d below it (d the level span) in a belly of 4t(1 - t), pushed sideways by
+    // bulge x min(d, 0.5) x 0.22 in the same belly and lifted a little beside each plug, then a
+    // centripetal Catmull-Rom curve through them. Lead's bulge is a seeded number from -1 to 1,
+    // so every one of BULGES is tried. When Lead's path changes, change this with it.
+    const CABLE_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
+    /** How far above the paper Lead holds a free plug, and the lowest its cable's centre goes. */
+    const CARRY_LIFT_M = 0.022;
+    const FLOOR_M = LEAD_RADIUS_M + 0.0004;
+    const BULGES = [-1, -0.5, 0, 0.5, 1];
+    /** A footprint's own share of LeadParts' floorAt: its top, ramping to the paper over 1.5 cm. */
+    const RAMP_M = 0.015;
+
+    function cablePath(id: TerminalId, end: THREE.Vector3, bulge: number): THREE.Vector3[] {
+      const [nx, ny, nz] = NUT_M[id];
+      const sy = ny + PLUG_HEIGHT_M;
+      const ey = end.y + CARRY_LIFT_M + PLUG_HEIGHT_M;
+      const dx = end.x - nx;
+      const dz = end.z - nz;
+      const d = Math.hypot(dx, dz);
+      const droop = 0.012 + 0.3 * d;
+      const side = bulge * Math.min(d, 0.5) * 0.22;
+      const control = CABLE_T.map((t) => {
+        const belly = 4 * t * (1 - t);
+        const u = Math.min(t, 1 - t) * 26;
+        const stiff = 0.03 * u * Math.exp(-u);
+        return new THREE.Vector3(
+          nx + dx * t + (-dz / d) * side * belly,
+          Math.max(FLOOR_M, sy + (ey - sy) * t - droop * belly + stiff),
+          nz + dz * t + (dx / d) * side * belly,
+        );
+      });
+      return new THREE.CatmullRomCurve3(control, false, "centripetal").getPoints(112);
+    }
+
+    function footTop(f: BenchFootprint, x: number, z: number): number {
+      const dx = Math.max(Math.abs(x - f.cx) - f.hx, 0);
+      const dz = Math.max(Math.abs(z - f.cz) - f.hz, 0);
+      const d = Math.hypot(dx, dz);
+      return d < RAMP_M ? f.top * (1 - d / RAMP_M) : 0;
+    }
+
+    /**
+     * The most a hidden part (any footprint but the nut's own part's) would raise the cable above
+     * where it would lie on bare paper, over every bulge: what Lead's restOnBench does to a point.
+     */
+    function hiddenLift(id: TerminalId, end: THREE.Vector3): { lift: number; at: string } {
+      const hidden = BENCH_FOOTPRINTS.filter((f) => f.slot !== TERMINAL_PART[id]);
+      let worst = { lift: 0, at: "" };
+      for (const bulge of BULGES) {
+        for (const p of cablePath(id, end, bulge)) {
+          for (const f of hidden) {
+            const lift = footTop(f, p.x, p.z) + LEAD_RADIUS_M - Math.max(p.y, LEAD_RADIUS_M);
+            if (lift > worst.lift) {
+              const where = `(${p.x.toFixed(3)}, ${p.z.toFixed(3)})`;
+              worst = { lift, at: `${id}, bulge ${bulge}, over the ${f.slot} at ${where}` };
+            }
+          }
+        }
+      }
+      return worst;
+    }
+
+    it("restates LeadParts' floorAt, footprint by footprint", () => {
+      for (let x = -0.7; x <= 0.7; x += 0.0173) {
+        for (let z = -0.7; z <= 0.3; z += 0.0173) {
+          const top = Math.max(0, ...BENCH_FOOTPRINTS.map((f) => footTop(f, x, z)));
+          expect(top).toBeCloseTo(floorAt(x, z), 12);
+        }
+      }
+    });
+
+    it("is never lifted off the paper by a part the shot hides, whichever way Lead bulges it", () => {
+      for (const id of TERMINAL_IDS) {
+        const { lift, at } = hiddenLift(id, freeEnd(id));
+        expect(lift, at).toBeLessThan(0.001);
+      }
+    });
+
+    it("was lifted 1 to 2 cm by hidden parts under the headings before: V+ and V- across the wire board, R1 across the ammeter", () => {
+      // The rule then: out 30 cm to the side the nut is on, 18 cm toward her.
+      for (const id of ["V+", "V-", "R1"] as const) {
+        const [x, , z] = NUT_M[id];
+        const side = x >= OHMS_LAW_LAYOUT[TERMINAL_PART[id]].position[0] ? 1 : -1;
+        const end = new THREE.Vector3(x + side * 0.3, 0, z + 0.18);
+        expect(hiddenLift(id, end).lift, id).toBeGreaterThan(0.01);
+      }
+    });
+
+    it("never climbs onto a taller part of its own part than the one its nut stands on, and clears the other nut", () => {
+      // A meter's nuts stand on its 1.2 cm ledge, with the 11.8 cm case behind them. A nut's body
+      // is about 1.3 cm in radius, the cable 1.5 mm.
+      const NUT_CLEAR_M = 0.015;
+      for (const id of TERMINAL_IDS) {
+        const [nx, , nz] = NUT_M[id];
+        const own = BENCH_FOOTPRINTS.filter((f) => f.slot === TERMINAL_PART[id]);
+        const rest = Math.max(
+          ...own
+            .filter(
+              (f) => Math.abs(nx - f.cx) <= f.hx + 0.004 && Math.abs(nz - f.cz) <= f.hz + 0.004,
+            )
+            .map((f) => f.top),
+        );
+        expect(rest, `${id} stands on its own part`).toBeGreaterThan(0);
+        const others = TERMINAL_IDS.filter(
+          (o) => o !== id && TERMINAL_PART[o] === TERMINAL_PART[id],
+        );
+        for (const bulge of BULGES) {
+          for (const p of cablePath(id, freeEnd(id), bulge)) {
+            const where = `${id}, bulge ${bulge}, at (${p.x.toFixed(3)}, ${p.z.toFixed(3)})`;
+            for (const f of own) {
+              const climb = footTop(f, p.x, p.z) - Math.max(rest, p.y - LEAD_RADIUS_M);
+              expect(climb, `climbs the ${f.slot}: ${where}`).toBeLessThan(0.0005);
+            }
+            for (const other of others) {
+              const [ox, oy, oz] = NUT_M[other];
+              if (p.y >= oy + 0.003) continue;
+              expect(
+                Math.hypot(p.x - ox, p.z - oz),
+                `runs into ${other}: ${where}`,
+              ).toBeGreaterThan(NUT_CLEAR_M);
+            }
+          }
+        }
+      }
     });
   });
 });

@@ -50,7 +50,7 @@ import {
   turnAzimuth,
 } from "./kitParams";
 import { Lead } from "./Lead";
-import { type BenchSlot, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
+import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
 import { Meter } from "./Meter";
 import { PenNib } from "./PenNib";
 import { ResistanceBox } from "./ResistanceBox";
@@ -196,9 +196,9 @@ function KitCamera({
 }
 
 /**
- * `part=terminal`: aims the shot at the nut once it is mounted, and lays the lead's free plug out
+ * `part=terminal`: aims the shot at the nut once it is mounted, and puts the lead's free plug out
  * past the edge of the canvas (macroFreeEnd), so the shot shows the nut, its plug and the cable
- * leaving, not a plug held in the air.
+ * leaving, not a plug held in the air, and no cable lifted over a part the shot hides.
  */
 function MacroAim({
   id,
@@ -219,8 +219,8 @@ function MacroAim({
     shot.focus[2] = at.z;
     if (aimed.current) return;
     aimed.current = true;
-    // The cable leaves toward the side the nut is on, and toward the student.
-    macroFreeEnd(at, OHMS_LAW_LAYOUT[TERMINAL_PART[id]].position[0], state.current.pointer);
+    // The cable leaves by this nut's own heading, clear of the parts the shot hides.
+    macroFreeEnd(id, at, state.current.pointer);
   }, -2);
   return null;
 }
