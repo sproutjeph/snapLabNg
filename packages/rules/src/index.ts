@@ -6,6 +6,7 @@ export * from "./examiner";
 export * from "./meterBridge";
 export * from "./meterBridgeL1L2";
 export * from "./ohmsLaw";
+export * from "./ohmsLawBench";
 export * from "./precautions";
 export * from "./text";
 

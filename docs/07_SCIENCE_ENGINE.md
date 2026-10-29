@@ -104,6 +104,12 @@ The same wire and solver with a driver cell across AC and a test cell through th
 ### 4.4 Ohm's law, V against I (hands-on, added Oct 28; plan `docs/plans/ohms-law-vi.md`)
 **What she does:** measures XY; wires E → K → A → R → X–Y → E with V across XY (the corrected diagram); for R = 0, 1, 5, 10, 20, 40, 60 Ω closes K, reads I and V off analogue meters and types them; plots V (vertical) against I; finds the slope s; states two precautions; part (b): states Ohm's law and computes L = RA/ρ.
 **Model:** a small modified-nodal-analysis solver (≤ 12 nodes) over the terminal graph her leads make: two dry cells with internal resistance (`stepCell` polarisation, an illustrative 300 s time constant at 0.5 A for this bench, so a reading drifts about half a division while she reads it but a key left closed shows within a minute), plug key, ammeter (≈ 0.1 Ω, 0–1 A, 0.02 A divisions), voltmeter (≈ 1 kΩ/V, 0–3 V, 0.05 V divisions), plug box (coils 1, 2, 2, 5, 10, 20, 20, 50 Ω), constantan XY (2.8–4.5 Ω so I(R=0) ≤ 0.92 A; the gauge is seeded first (SWG 28: 63.5–100 cm, SWG 29: 53–86 cm, SWG 30: 45–72 cm), then a length in its range), contact resistance per lead end (loose or dirty joints flicker deterministically). Needles are damped oscillators at 120 Hz with stops; a reversed meter kicks below zero, over-range slams. Any wiring is solved, so mistakes show themselves: ammeter across XY with R = 0 (over-range, cells drain), voltmeter in series (≈ 1 mA, and the voltmeter reads ≈ the emf, at or past full scale), open loop (nothing), reversed meters. Heating uses constantan's α (8×10⁻⁶ K⁻¹; ΔR/R ≤ 0.1 %, below meter resolution); leaving K closed shows up as cell polarisation instead. V/I = R_XY ∥ R_V ≈ R_XY, so the slope ≈ R_XY and the line passes near the origin. **Never shown:** I, V, R_XY or the slope.
+**Supervisor values on the simulated bench (Oct 29, exam-redesign D1).** The engine's own meters act as the supervisor's values.
+- **Effective resistance:** `effectiveXyOhm` (`packages/engine/src/ohms-law/supervisor.ts`) returns R_XY ∥ R_V, the value the meters actually see.
+- **Dial reading:** `displayedValue` (`meter.ts`) is what the dial shows for a needle angle, zero error included.
+- **Demonstration bench:** `demoSeedFor` gives Watch a different bench. Its wire is at least 20% away from hers (`DEMO_MIN_OHM_DIFFERENCE`), twice the ±10% PHYS-ACCURACY tolerance, so copying the demo table fails the accuracy check.
+- **Reading check:** `checkReadingsAgainstBench` (`packages/rules/src/ohmsLawBench.ts`) compares each typed reading with the bench meters. It passes within one scale division. DRAFT.
+
 **Part (b):** (i) Ohm's law: the current through a metallic conductor is directly proportional to the potential difference across its ends, provided temperature and other physical conditions remain constant. (ii) A = πd²/4 = (22/7)(0.2×10⁻³)²/4 = 3.143×10⁻⁸ m², L = RA/ρ = 7 × 3.143×10⁻⁸ / 8.8×10⁻⁷ = **0.25 m**.
 
 ---
@@ -169,7 +175,7 @@ The same wire and solver with a driver cell across AC and a test cell through th
   - PRECAUTIONS 2.
   - PHYS-LAW 2½: the name ½, the statement 1, the condition 1.
   - PHYS-CALC 2: the formula ½, A = πd²/4 ½, the value ½, the unit ½.
-- **Accuracy:** PHYS-ACCURACY 1, teacher mode only, within ±10 %.
+- **Accuracy:** PHYS-ACCURACY 1, within ±10 %. On a snapped page it is teacher mode only. In Practise and Exam on the simulated bench it is awarded against the supervisor value (`effectiveXyOhm`), making 21 marks.
 
 **Decisions:**
 - All rows she writes are checked; the "five rows" items are earned by any five rows that pass. The metre bridge marks the first five.

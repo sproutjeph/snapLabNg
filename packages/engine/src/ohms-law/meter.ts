@@ -26,6 +26,16 @@ export function meterTargetDeg(m: MeterParams, reading: number, trimDeg: number)
 export const meterRestDeg = (m: MeterParams): number => meterTargetDeg(m, 0, 0);
 
 /**
+ * The value on the scale under the needle: what a candidate reads off the dial, zero error and
+ * any zero-adjust trim included, because both move the needle itself. The inverse of
+ * meterTargetDeg's scale: displayedValue(m, meterTargetDeg(m, r, 0)) = r + m.zeroError.
+ * Nothing clamps it: a needle on a stop gives a value off the scale, and the caller decides.
+ */
+export function displayedValue(m: MeterParams, needleDeg: number): number {
+  return ((needleDeg - METER_ZERO_DEG) * m.fullScale) / METER_SPAN_DEG;
+}
+
+/**
  * One 120 Hz step of a left-zero moving-coil needle: the metre bridge's stepNeedle dynamics
  * (θ'' + 2ζω₀θ' + ω₀²θ = ω₀²·θ_target, semi-implicit Euler) on the dial's own angles, with stops
  * at ±METER_STOP_DEG. A needle that meets a stop bounces back with `restitution`; it slams when

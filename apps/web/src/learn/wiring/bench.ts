@@ -3,15 +3,19 @@ import {
   createOhmsLaw,
   type DiagramComparison,
   DT_S,
+  displayedValue,
+  effectiveXyOhm,
   MAX_LEADS_PER_TERMINAL,
   type OhmsLawInputs,
   type OhmsLawState,
   paramsFromSeed,
   stepOhmsLaw,
 } from "@snaplab/engine";
+import type { BenchLogEntry } from "@snaplab/rules";
 import * as THREE from "three";
 import type {
   BenchLead,
+  BenchSupervisor,
   LeadColour,
   LessonMode,
   OhmsLawBench,
@@ -34,6 +38,19 @@ export const LEAD_COLOURS: readonly LeadColour[] = ["red", "black", "yellow"];
  * takes a few seconds, so half a minute is clearly "left on" (docs/plans/ohms-law-vi.md).
  */
 export const KEY_LEFT_CLOSED_S = 30;
+/** The supervisor's log keeps at most this many entries, oldest dropped first. */
+export const SUPERVISOR_LOG_CAP = 500;
+/** A needle at or above this speed (deg/s) is still moving: no reading. */
+export const NEEDLE_SETTLED_DEG_PER_S = 0.5;
+/**
+ * A needle is settled only once it has stayed below NEEDLE_SETTLED_DEG_PER_S for this long, in
+ * consecutive 120 Hz steps, so the instant it turns round on an overshoot is never read or
+ * logged. No textbook or WAEC figure: a screen choice. The needle (ζ = 0.7, f₀ = 1.5 Hz) passes
+ * its turning point in a few milliseconds, far shorter than this hold.
+ */
+export const NEEDLE_SETTLED_HOLD_S = 0.25;
+const SETTLED_HOLD_STEPS = Math.round(NEEDLE_SETTLED_HOLD_S / DT_S);
+const METERS = ["ammeter", "voltmeter"] as const;
 
 /** The procedure notes, worded about what to do, never a value. Practice mode only. */
 export const NOTE_TEXT: Readonly<Record<ProcedureNote["kind"], string>> = {
@@ -121,6 +138,51 @@ export function createOhmsLawBench(
    */
   let circuit = "";
   const notedFor: Partial<Record<ProcedureNote["kind"], string>> = {};
+
+  /** The supervisor's log of settled readings; it survives reset(). */
+  const supervisorLog: BenchLogEntry[] = [];
+  /** Consecutive steps each needle has been below NEEDLE_SETTLED_DEG_PER_S. */
+  const stillSteps = { ammeter: 0, voltmeter: 0 };
+  function countStill(): void {
+    for (const meter of METERS) {
+      const still = Math.abs(engine[meter].omegaDegPerS) < NEEDLE_SETTLED_DEG_PER_S;
+      stillSteps[meter] = still ? stillSteps[meter] + 1 : 0;
+    }
+  }
+  function dialText(meter: "ammeter" | "voltmeter"): string | null {
+    const m = params[meter];
+    if (stillSteps[meter] < SETTLED_HOLD_STEPS) return null;
+    const v = displayedValue(m, engine[meter].thetaDeg);
+    // Below zero only as far as the zero error reaches (plus half a division), so a needle
+    // resting at −1 division reads "-0.02"; a reversed meter's kick below that reads nothing.
+    if (v < -(Math.abs(m.zeroError) + m.division / 2) || v > m.fullScale + m.division / 2) {
+      return null;
+    }
+    const text = v.toFixed(2);
+    return text === "-0.00" ? "0.00" : text;
+  }
+  function logSettled(): void {
+    if (!inputs.keyClosed || !comparison.matches) return;
+    const iShown = dialText("ammeter");
+    const vShown = dialText("voltmeter");
+    if (iShown === null || vShown === null) return;
+    const boxOhm = bench.boxSettingOhm;
+    for (let i = supervisorLog.length - 1; i >= 0; i--) {
+      const e = supervisorLog[i];
+      if (e && e.boxOhm === boxOhm) {
+        if (e.iShown === iShown && e.vShown === vShown) return;
+        break;
+      }
+    }
+    supervisorLog.push({ boxOhm, iShown, vShown });
+    if (supervisorLog.length > SUPERVISOR_LOG_CAP) supervisorLog.shift();
+  }
+  const supervisor: BenchSupervisor = {
+    reading: dialText,
+    lengthText: () => params.wire.lengthCm.toFixed(1),
+    log: () => supervisorLog,
+    effectiveOhm: () => effectiveXyOhm(params),
+  };
 
   const nowS = () => t.steps * DT_S;
   const notify = () => {
@@ -225,9 +287,11 @@ export function createOhmsLawBench(
       } else t.accumulatorS = Math.max(0, t.accumulatorS - n * DT_S);
       for (let i = 0; i < n; i++) {
         engine = stepOhmsLaw(engine, inputs);
+        countStill();
         t.steps++;
         t.keyClosedSteps = inputs.keyClosed ? t.keyClosedSteps + 1 : 0;
         watch();
+        logSettled();
       }
       visual.current.readout = engine.readout;
     },
@@ -316,6 +380,8 @@ export function createOhmsLawBench(
       applyHints();
       notify();
     },
+
+    supervisor,
 
     get mode() {
       return mode;
