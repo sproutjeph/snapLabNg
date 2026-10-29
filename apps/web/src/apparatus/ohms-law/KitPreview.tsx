@@ -234,27 +234,39 @@ function allMounted(registry: TerminalRegistry): boolean {
   return true;
 }
 
-/** `dump=1`: one console line of JSON, the terminals' world positions, once they are all mounted. */
+/**
+ * `dump=1`: one console line of JSON, the terminals' world positions, once they are all mounted.
+ * The frame only decides when; the line is built after it, in an effect.
+ */
 function DumpTerminals({ registry }: { registry: TerminalRegistry }) {
   const frames = useRef(0);
-  const done = useRef(false);
+  const [ready, setReady] = useState(false);
   useFrame(() => {
-    if (done.current) return;
+    if (ready) return;
     frames.current += 1;
     if (frames.current < DUMP_FRAME) return;
     if (frames.current < DUMP_GIVE_UP_FRAME && !allMounted(registry)) return;
-    done.current = true;
-    console.log(JSON.stringify(terminalPositions(registry)));
+    setReady(true);
   });
+  useEffect(() => {
+    if (ready) console.log(JSON.stringify(terminalPositions(registry)));
+  }, [ready, registry]);
   return null;
 }
 
-/** The desk things sit in LookGround; they are shown only where the subject is the desk or the whole bench. */
+/**
+ * The desk things sit in LookGround (scene/look/DeskProps.tsx names their group "DeskProps"); they
+ * are shown only where the subject is the desk or the whole bench, and hidden for a part alone.
+ */
 function DeskVisibility({ show }: { show: boolean }) {
   const scene = useThree((s) => s.scene);
   useEffect(() => {
     const desk = scene.getObjectByName("DeskProps");
-    if (!desk) return;
+    if (!desk) {
+      if (!show)
+        console.warn("kit: no DeskProps group in the scene, so the desk things stay in view");
+      return;
+    }
     desk.visible = show;
     return () => {
       desk.visible = true;
