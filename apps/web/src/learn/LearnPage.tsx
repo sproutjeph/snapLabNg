@@ -373,7 +373,7 @@ function LearnView() {
               makeDefault
               enablePan={false}
               minDistance={0.45}
-              maxDistance={2.6}
+              maxDistance={4.2}
               maxPolarAngle={Math.PI * 0.45}
             />
           )}
