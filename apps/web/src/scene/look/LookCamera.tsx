@@ -5,8 +5,8 @@ import type { Covered, LookCameraProps, LookShot } from "./types";
 
 // The look's shot camera (docs/plans/exam-redesign.md, "The look": camera; numbers from
 // Backcountry 101, research report 2). Orthographic, azimuth 45°, elevation 41°. Each shot is
-// {focus, spanM}: the zoom fits spanM of bench across the part of the canvas no panel covers,
-// and the view offset centres the focus there. The camera follows a new shot with
+// {focus, spanM}: the zoom fits the shot's bounds (spanM of bench, see fitShot) into the part of
+// the canvas no panel covers, in width and height, and the view offset centres the focus there. The camera follows a new shot with
 // k = 1 − e^(−8 dt); reduced motion jumps. Dragging turns the azimuth only (±25°, 0.006 rad/px,
 // inertia e^(−5 dt)), then the camera eases back to the shot.
 
@@ -21,8 +21,10 @@ export const LOOK_ELEVATION_DEG = 41;
 const DISTANCE_M = 4;
 const NEAR_M = 0.1;
 const FAR_M = 10;
-/** The shot's height fits spanM × this across the free height, so a short canvas still fits. */
+/** A shot frames a patch of desk spanM wide (x) and spanM × this deep (z)… */
 export const SHOT_DEPTH_RATIO = 0.6;
+/** …and this tall, so the tops of the parts stay in frame. */
+export const SHOT_HEIGHT_M = 0.12;
 const FOLLOW_RATE = 8;
 const DRAG_RAD_PER_PX = 0.006;
 const DRAG_LIMIT_RAD = (25 * Math.PI) / 180;
@@ -31,6 +33,8 @@ const INERTIA_RATE = 5;
 const RETURN_RATE = 3;
 /** Pointer travel before a press counts as a drag (taps on parts stay taps). */
 const DRAG_START_PX = 6;
+/** A release more than this long after the last move keeps no velocity. */
+const FLING_WINDOW_MS = 50;
 const DEG = Math.PI / 180;
 
 export interface Frustum {
@@ -43,10 +47,20 @@ export interface Frustum {
 }
 
 /**
- * Fits `spanM` across the uncovered part of a `width` × `height` canvas and centres the focus in
- * it. Pure, so it is tested without a renderer. Covers that leave less than 1 px free are ignored.
+ * Fits the shot's bounds (a box of desk spanM × spanM·SHOT_DEPTH_RATIO × SHOT_HEIGHT_M round the
+ * focus, seen from `azimuthRad` at the look's elevation) into the uncovered part of a
+ * `width` × `height` canvas, in both width and height, and centres the focus there. Writes `out`
+ * and returns it, so the per-frame call allocates nothing. Pure, so it is tested without a
+ * renderer. Covers that leave less than 1 px free are ignored.
  */
-export function fitShot(spanM: number, covered: Covered, width: number, height: number): Frustum {
+export function fitShot(
+  spanM: number,
+  covered: Covered,
+  width: number,
+  height: number,
+  azimuthRad: number,
+  out: Frustum,
+): Frustum {
   const w = Math.max(1, width);
   const h = Math.max(1, height);
   let freeW = w - Math.max(0, covered.left) - Math.max(0, covered.right);
@@ -61,18 +75,22 @@ export function fitShot(spanM: number, covered: Covered, width: number, height: 
     freeH = h;
     top = 0;
   }
-  const span = Math.max(1e-3, spanM);
-  // Metres per CSS px: the larger of "span across the free width" and "span × ratio across the
-  // free height", so the shot fits both ways.
-  const mPerPx = Math.max(span / freeW, (span * SHOT_DEPTH_RATIO) / freeH);
-  const cx = left + freeW / 2;
-  const cy = top + freeH / 2;
-  return {
-    halfW: (mPerPx * w) / 2,
-    halfH: (mPerPx * h) / 2,
-    offsetX: w / 2 - cx,
-    offsetY: h / 2 - cy,
-  };
+  const a = Math.max(1e-3, spanM) / 2;
+  const b = a * SHOT_DEPTH_RATIO;
+  const el = LOOK_ELEVATION_DEG * DEG;
+  const sinAz = Math.abs(Math.sin(azimuthRad));
+  const cosAz = Math.abs(Math.cos(azimuthRad));
+  // The box's half extents on screen: along the camera's right vector (cos az, 0, −sin az) and
+  // its up vector (−sin el sin az, cos el, −sin el cos az).
+  const halfX = cosAz * a + sinAz * b;
+  const halfY = Math.sin(el) * (sinAz * a + cosAz * b) + Math.cos(el) * SHOT_HEIGHT_M;
+  // Metres per CSS px: whichever of width and height is tighter.
+  const mPerPx = Math.max((2 * halfX) / freeW, (2 * halfY) / freeH);
+  out.halfW = (mPerPx * w) / 2;
+  out.halfH = (mPerPx * h) / 2;
+  out.offsetX = w / 2 - (left + freeW / 2);
+  out.offsetY = h / 2 - (top + freeH / 2);
+  return out;
 }
 
 /** One step of the follow: the fraction of the remaining way to move this frame. */
@@ -126,6 +144,7 @@ export function LookCamera({
     held: false,
     primed: false,
   });
+  const frustum = useMemo<Frustum>(() => ({ halfW: 1, halfH: 1, offsetX: 0, offsetY: 0 }), []);
   const target = useRef({ shot, covered, reducedMotion });
   target.current = { shot, covered, reducedMotion };
 
@@ -173,7 +192,8 @@ export function LookCamera({
       if (e.pointerId !== pointer) return;
       pointer = -1;
       rig.current.held = false;
-      if (!dragging) rig.current.dragVel = 0;
+      // A hold before letting go throws nothing: only a moving finger flings the bench.
+      if (!dragging || e.timeStamp - lastT > FLING_WINDOW_MS) rig.current.dragVel = 0;
     };
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
@@ -231,7 +251,8 @@ export function LookCamera({
     camera.lookAt(r.focus);
 
     const { width, height } = state.size;
-    const f = fitShot(r.span, r.covered, width, height);
+    // Fitted at the shot's own azimuth, so a drag turns the bench without zooming.
+    const f = fitShot(r.span, r.covered, width, height, r.azimuth, frustum);
     camera.left = -f.halfW;
     camera.right = f.halfW;
     camera.top = f.halfH;

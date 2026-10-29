@@ -61,23 +61,26 @@ function GlossyEnvironment() {
   } | null>(null);
   const timer = useRef(0);
 
-  const visit = useMemo(
-    () => (o: THREE.Object3D) => {
+  const visit = useMemo(() => {
+    const give = (m: THREE.Material) => {
       const e = env.current;
+      if (!e || !isGlossy(m)) return;
+      const s = m as THREE.MeshStandardMaterial;
+      if (s.envMap || e.given.has(s)) return;
+      s.envMap = e.target.texture;
+      s.needsUpdate = true;
+      e.given.add(s);
+    };
+    return (o: THREE.Object3D) => {
       const slot = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-      if (!e || !slot || !(o as THREE.Mesh).isMesh) return;
-      const list = Array.isArray(slot) ? slot : [slot];
-      for (const m of list) {
-        if (!isGlossy(m)) continue;
-        const s = m as THREE.MeshStandardMaterial;
-        if (s.envMap || e.given.has(s)) continue;
-        s.envMap = e.target.texture;
-        s.needsUpdate = true;
-        e.given.add(s);
+      if (!slot || !(o as THREE.Mesh).isMesh) return;
+      if (Array.isArray(slot)) {
+        for (const m of slot) give(m);
+      } else {
+        give(slot);
       }
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     const pmrem = new THREE.PMREMGenerator(gl);

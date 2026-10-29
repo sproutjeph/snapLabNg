@@ -1,43 +1,23 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
-import { DPR_SLOW_FRAME_MS, DPR_WINDOW_FRAMES, nextDprRung } from "../../quality/tier";
+import { useSyncExternalStore } from "react";
+import type { DprLadder } from "./dprLadder";
 
-// The pixel-ratio ladder (docs/plans/exam-redesign.md, "Performance"): the canvas starts on the
-// top rung and steps down one rung whenever more than 60 of 90 frames took over 25 ms. It never
-// steps back up during a visit. Use inside a Canvas whose `dpr` prop is the ladder's first rung;
-// r3f puts the prop back if the Canvas re-renders, which only restarts the climb down.
+// The pixel-ratio ladder's two hooks (dprLadder.ts). Outside the Canvas, useLadderDpr gives the
+// `dpr` prop and re-renders the owner when the ladder steps. Inside it, useDprLadder feeds the
+// ladder each frame's time and, if the ratio on the renderer ever differs from the ladder's
+// (a Canvas re-render from an owner that does not pass the ladder's dpr), puts it back.
 
-/** Frames ignored after mount and after each step, while shaders compile and targets resize. */
-const SETTLE_FRAMES = 20;
+/** The Canvas's `dpr` prop: the ladder's current rung. */
+export function useLadderDpr(ladder: DprLadder): number {
+  return useSyncExternalStore(ladder.subscribe, ladder.dpr, ladder.dpr);
+}
 
-export function useDprLadder(ladder: readonly number[], enabled = true): void {
+export function useDprLadder(ladder: DprLadder, enabled = true): void {
   const setDpr = useThree((s) => s.setDpr);
-  const state = useRef({ rung: 0, frames: 0, slow: 0, settle: SETTLE_FRAMES });
-
-  useEffect(() => {
-    state.current = { rung: 0, frames: 0, slow: 0, settle: SETTLE_FRAMES };
-    const top = ladder[0];
-    if (enabled && top !== undefined) setDpr(top);
-  }, [ladder, enabled, setDpr]);
-
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!enabled) return;
-    const s = state.current;
-    if (s.settle > 0) {
-      s.settle -= 1;
-      return;
-    }
-    s.frames += 1;
-    if (delta * 1000 > DPR_SLOW_FRAME_MS) s.slow += 1;
-    if (s.frames < DPR_WINDOW_FRAMES) return;
-    const next = nextDprRung(ladder, s.rung, s.slow);
-    s.frames = 0;
-    s.slow = 0;
-    if (next !== s.rung) {
-      s.rung = next;
-      s.settle = SETTLE_FRAMES;
-      const dpr = ladder[next];
-      if (dpr !== undefined) setDpr(dpr);
-    }
+    ladder.frame(delta);
+    const dpr = ladder.dpr();
+    if (state.viewport.dpr !== dpr) setDpr(dpr);
   });
 }

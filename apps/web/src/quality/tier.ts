@@ -39,7 +39,8 @@ const SETTINGS: Record<QualityTier, QualitySettings> = {
   mid: {
     dpr: [1, 1.5],
     bloom: true,
-    shadows: false,
+    // Real soft shadows on mid too (docs/plans/exam-redesign.md, "The look": 1024 on mid).
+    shadows: true,
     maxParticles: 400,
     physicalGlass: false,
     segments: 0.75,
@@ -122,9 +123,9 @@ export function outlineFor(tier: QualityTier): OutlineSettings {
 }
 
 /**
- * The look recipe per tier (docs/plans/exam-redesign.md, "The look" and "Performance"). Kept
- * apart from QualitySettings, like OutlineSettings, so the existing settings stay as they were.
- * Real soft shadows on mid (1024) as well as high (2048); low has none (blob shadows only).
+ * The look recipe per tier (docs/plans/exam-redesign.md, "The look" and "Performance"): the
+ * shadow map's size and the pixel-ratio ladder, which QualitySettings does not carry. Real soft
+ * shadows on mid (1024) and high (2048), matching `shadows`; low has none (blob shadows only).
  */
 export interface LookSettings {
   /** Side of the key light's shadow map; 0 means no shadow map. */

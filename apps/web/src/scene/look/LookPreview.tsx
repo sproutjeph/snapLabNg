@@ -1,10 +1,10 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { createOhmsLaw, DIAGRAM_LEADS, paramsFromSeed } from "@snaplab/engine";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { BRIDGE_BASE } from "../../apparatus/meter-bridge/dimensions";
 import MeterBridgeKit from "../../apparatus/meter-bridge/MeterBridgeKit";
-import type { QualityTier } from "../../apparatus/meter-bridge/types";
+import type { MeterBridgeVisualState, QualityTier } from "../../apparatus/meter-bridge/types";
 import { useMeterBridgeEngine } from "../../apparatus/meter-bridge/useMeterBridgeEngine";
 import { CellHolder } from "../../apparatus/ohms-law/CellHolder";
 import { KeyK } from "../../apparatus/ohms-law/Key";
@@ -18,15 +18,16 @@ import { TerminalProvider } from "../../learn/terminals";
 import type { BenchLead, LeadColour, OhmsLawVisualState } from "../../learn/types";
 import { lookFor, parseOverride } from "../../quality/tier";
 import { InkComposer } from "../ink/InkComposer";
-import { setInkFocus } from "../ink/inkFocus";
+import { useInkFocus } from "../ink/inkFocus";
 import { ReadySignal } from "../ReadySignal";
 import { BlobShadow } from "./BlobShadow";
+import { createDprLadder, type DprLadder } from "./dprLadder";
 import { LookCamera } from "./LookCamera";
 import { LookGround } from "./LookGround";
 import { LookLights } from "./LookLights";
 import { LookTier } from "./lookTier";
 import type { Covered, LookShot } from "./types";
-import { useDprLadder } from "./useDprLadder";
+import { useDprLadder, useLadderDpr } from "./useDprLadder";
 
 // ?look=ohms-law | ?look=meter-bridge: the look recipe on today's apparatus, for screenshots
 // and the golden frame (docs/plans/exam-redesign.md, Wave 1, W1-look).
@@ -65,10 +66,11 @@ function ohmsLawShot(search: URLSearchParams): LookShot {
     const [x, y, z] = OHMS_LAW_LAYOUT[part].position;
     return { id: part, focus: [x, y + 0.03, z], spanM: part === "wire" ? 1.15 : 0.42 };
   }
-  // A tall phone frames the apparatus only; a wide screen takes in the desk props too.
+  // A tall phone frames the apparatus only, turned so the bench runs up the screen; a wide
+  // screen takes in the desk props too.
   return portrait()
-    ? { id: "bench", focus: [0.08, 0, -0.02], spanM: 1.1 }
-    : { id: "bench", focus: [0.05, 0, 0.12], spanM: 1.75 };
+    ? { id: "bench", focus: [0.02, 0, 0.0], spanM: 1.0, azimuthDeg: 66 }
+    : { id: "bench", focus: [0.12, 0, 0.1], spanM: 1.45 };
 }
 
 function portrait(): boolean {
@@ -178,16 +180,43 @@ function bridgeShot(): LookShot {
   return {
     id: "bench",
     focus: [0, -BRIDGE_BASE.height, -0.02],
-    spanM: portrait() ? 1.15 : 1.7,
+    ...(portrait() ? { spanM: 0.95, azimuthDeg: 66 } : { spanM: 1.25 }),
   };
 }
 
-function MeterBridgeBench() {
+/** Contact shadows along the plank, so it sits on the desk (it is 1.1 m long, 0.15 m deep). */
+const PLANK_BLOBS_X = [-0.48, -0.29, -0.1, 0.1, 0.29, 0.48];
+
+/** What moves on the metre bridge, folded into one number, to know when shadows are stale. */
+function bridgePose(v: MeterBridgeVisualState): number {
+  let plugs = 0;
+  for (let i = 0; i < v.plugsIn.length; i++) if (v.plugsIn[i]) plugs += 2 ** i;
+  return (
+    v.jockeyCm * 1e3 +
+    (v.jockeyDown ? 7e5 : 0) +
+    (v.keyClosed ? 3e5 : 0) +
+    plugs * 1e6 +
+    v.needleDeg
+  );
+}
+
+function MeterBridgeBench({ shadowsDirty }: { shadowsDirty: { current: boolean } }) {
   const { visual, handlers } = useMeterBridgeEngine(BRIDGE_BENCH);
   const y = -BRIDGE_BASE.height;
+  const pose = useRef(Number.NaN);
+  // The jockey, plugs, key and needle cast shadows: re-render the map when any of them moves.
+  useFrame(() => {
+    const p = bridgePose(visual.current);
+    if (p !== pose.current) {
+      pose.current = p;
+      shadowsDirty.current = true;
+    }
+  });
   return (
     <>
-      <BlobShadow position={[0, y, 0.05]} radiusM={0.6} opacity={0.16} />
+      {PLANK_BLOBS_X.map((x) => (
+        <BlobShadow key={x} position={[x, y, 0.004]} radiusM={0.115} opacity={0.3} />
+      ))}
       <MeterBridgeKit
         state={visual}
         plugLabels={BRIDGE_PLUG_LABELS}
@@ -202,8 +231,14 @@ function MeterBridgeBench() {
   );
 }
 
-function Ladder({ ladder, enabled }: { ladder: readonly number[]; enabled: boolean }) {
+function Ladder({ ladder, enabled }: { ladder: DprLadder; enabled: boolean }) {
   useDprLadder(ladder, enabled);
+  return null;
+}
+
+function Focus({ ids }: { ids: Set<number> | null }) {
+  const focus = useMemo(() => ({ ids }), [ids]);
+  useInkFocus(focus);
   return null;
 }
 
@@ -226,15 +261,15 @@ export default function LookPreview() {
     }
   }, []);
 
-  useEffect(() => {
-    setInkFocus({ ids: which === "ohms-law" ? focusIds(search) : null });
-    return () => setInkFocus({ ids: null });
-  }, [search, which]);
+  const focus = useMemo(() => (which === "ohms-law" ? focusIds(search) : null), [search, which]);
+  // The ladder lives outside the Canvas, so a re-render keeps its rung (dprLadder.ts).
+  const ladder = useMemo(() => createDprLadder(look.dprLadder), [look]);
+  const dpr = useLadderDpr(ladder);
 
   return (
     <Canvas
       shadows={look.shadowMapSize > 0 ? "percentage" : false}
-      dpr={look.dprLadder[0] ?? 1}
+      dpr={dpr}
       gl={{ antialias: true }}
     >
       <LookTier.Provider value={quality}>
@@ -257,11 +292,12 @@ export default function LookPreview() {
             <group position-y={-BRIDGE_BASE.height}>
               <LookGround />
             </group>
-            <MeterBridgeBench />
+            <MeterBridgeBench shadowsDirty={shadowsDirty} />
           </>
         )}
         <InkComposer quality={quality} />
-        <Ladder ladder={look.dprLadder} enabled={search.get("ladder") !== "0"} />
+        <Focus ids={focus} />
+        <Ladder ladder={ladder} enabled={search.get("ladder") !== "0"} />
         <ReadySignal />
       </LookTier.Provider>
     </Canvas>
