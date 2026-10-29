@@ -44,14 +44,15 @@ const COLOURS: LeadColour[] = ["red", "black", "yellow"];
 const SLOTS = Object.keys(OHMS_LAW_LAYOUT) as BenchSlot[];
 const NO_COVER: Covered = { left: 0, right: 0, top: 0, bottom: 0 };
 
-/** Blob radius under each V–I part, in metres. The wire board gets a row of blobs. */
-const BLOB_RADIUS: Readonly<Record<Exclude<BenchSlot, "wire">, number>> = {
-  cells: 0.13,
-  key: 0.09,
-  ammeter: 0.13,
-  voltmeter: 0.13,
-  box: 0.26,
-  tray: 0.24,
+/** Blob shadows under each V–I part: x offsets from the part and a radius, in metres. Long parts get a row. */
+const BLOBS: Readonly<Record<BenchSlot, { dx: readonly number[]; r: number }>> = {
+  cells: { dx: [-0.05, 0.05], r: 0.08 },
+  key: { dx: [0], r: 0.075 },
+  ammeter: { dx: [0], r: 0.12 },
+  voltmeter: { dx: [0], r: 0.12 },
+  box: { dx: [-0.15, 0, 0.15], r: 0.11 },
+  wire: { dx: [-0.44, -0.22, 0, 0.22, 0.44], r: 0.11 },
+  tray: { dx: [-0.08, 0.08], r: 0.17 },
 };
 
 function parseCovered(raw: string | null): Covered {
@@ -69,7 +70,7 @@ function ohmsLawShot(search: URLSearchParams): LookShot {
   // A tall phone frames the apparatus only, turned so the bench runs up the screen; a wide
   // screen takes in the desk props too.
   return portrait()
-    ? { id: "bench", focus: [0.04, 0, -0.17], spanM: 1.36, azimuthDeg: 66 }
+    ? { id: "bench", focus: [-0.02, 0, -0.05], spanM: 0.9 }
     : { id: "bench", focus: [0.06, 0, -0.02], spanM: 1.3 };
 }
 
@@ -127,15 +128,15 @@ function OhmsLawBench({ quality, search }: { quality: QualityTier; search: URLSe
   const state = useRef(previewState(search));
   const L = OHMS_LAW_LAYOUT;
   const common = { state, quality };
-  const wire = L.wire.position;
   return (
     <>
-      {(Object.keys(BLOB_RADIUS) as (keyof typeof BLOB_RADIUS)[]).map((slot) => (
-        <BlobShadow key={slot} position={L[slot].position} radiusM={BLOB_RADIUS[slot]} />
-      ))}
-      {[-0.42, -0.21, 0, 0.21, 0.42].map((dx) => (
-        <BlobShadow key={dx} position={[wire[0] + dx, wire[1], wire[2]]} radiusM={0.15} />
-      ))}
+      {(Object.keys(BLOBS) as BenchSlot[]).flatMap((slot) => {
+        const [x, y, z] = L[slot].position;
+        const { dx, r } = BLOBS[slot];
+        return dx.map((d) => (
+          <BlobShadow key={`${slot}${d}`} position={[x + d, y, z]} radiusM={r} />
+        ));
+      })}
       <CellHolder {...common} position={L.cells.position} rotationY={L.cells.rotationY} />
       <KeyK {...common} position={L.key.position} rotationY={L.key.rotationY} />
       <Meter
@@ -160,7 +161,12 @@ function OhmsLawBench({ quality, search }: { quality: QualityTier; search: URLSe
         position={L.box.position}
         rotationY={L.box.rotationY}
       />
-      <WireBoard {...common} wire={params.wire} position={wire} rotationY={L.wire.rotationY} />
+      <WireBoard
+        {...common}
+        wire={params.wire}
+        position={L.wire.position}
+        rotationY={L.wire.rotationY}
+      />
       <Tray {...common} position={L.tray.position} rotationY={L.tray.rotationY} />
       {state.current.leads.map((l) => (
         <Lead key={l.id} from={l.a} to={l.b} colour={l.colour} state={state} quality={quality} />
@@ -180,7 +186,7 @@ function bridgeShot(): LookShot {
   return {
     id: "bench",
     focus: [0, -BRIDGE_BASE.height, -0.02],
-    ...(portrait() ? { spanM: 0.95, azimuthDeg: 66 } : { spanM: 1.25 }),
+    spanM: portrait() ? 0.85 : 1.25,
   };
 }
 

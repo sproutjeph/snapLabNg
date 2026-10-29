@@ -10,7 +10,7 @@ import type { LookGroundProps } from "./types";
 // The paper desk (docs/plans/exam-redesign.md, "The look": ground). A shader draws cream graph
 // paper: a faint grid every GRID_M, a fainter one every GRID_FINE_M, both anti-aliased with
 // fwidth, and a light paper grain. It is unlit, so it matches the --paper background exactly,
-// and fades into it toward its edge. A ShadowMaterial catcher (#5b4027 at .22) takes the key
+// and fades into it toward its edge. A ShadowMaterial catcher (#5b4027 at .42, stronger than the plan's .22 at the user's golden-frame review) takes the key
 // light's soft shadows when the canvas has shadows. The exam desk's things (answer booklet,
 // pencil, eraser, calculator) lie at its front edge as ink props. Nothing here writes depth or
 // draws ink outlines of its own, apart from the props.
@@ -20,7 +20,7 @@ export const GRID_M = 0.05;
 export const GRID_FINE_M = 0.01;
 export const GRID_COLOUR = "#c4b292";
 export const SHADOW_CATCHER_COLOUR = "#5b4027";
-export const SHADOW_CATCHER_OPACITY = 0.22;
+export const SHADOW_CATCHER_OPACITY = 0.42;
 const DEFAULT_SIZE_M = 8;
 
 const vertexShader = /* glsl */ `

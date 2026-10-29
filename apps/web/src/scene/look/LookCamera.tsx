@@ -6,9 +6,12 @@ import type { Covered, LookCameraProps, LookShot } from "./types";
 // The look's shot camera (docs/plans/exam-redesign.md, "The look": camera; numbers from
 // Backcountry 101, research report 2). Orthographic, azimuth 45°, elevation 41°. Each shot is
 // {focus, spanM}: the zoom fits the shot's bounds (spanM of bench, see fitShot) into the part of
-// the canvas no panel covers, in width and height, and the view offset centres the focus there. The camera follows a new shot with
-// k = 1 − e^(−8 dt); reduced motion jumps. Dragging turns the azimuth only (±25°, 0.006 rad/px,
-// inertia e^(−5 dt)), then the camera eases back to the shot.
+// the canvas no panel covers, in width and height, and the view offset centres the focus there.
+// When that free area is portrait (a phone), the camera looks steeper (64°) and, unless the shot
+// sets its own azimuth, turns to 82° so the bench's long side runs up the screen and fills it.
+// The camera follows a new shot with k = 1 − e^(−8 dt); reduced motion jumps. Dragging turns
+// the azimuth only (±25°, 0.006 rad/px, inertia e^(−5 dt)), then the camera eases back to the
+// shot.
 
 /**
  * Azimuth of every shot unless it sets its own, from +z (the student's side) toward +x: the
@@ -17,6 +20,11 @@ import type { Covered, LookCameraProps, LookShot } from "./types";
  */
 export const LOOK_AZIMUTH_DEG = 45;
 export const LOOK_ELEVATION_DEG = 41;
+/** On a portrait free area: steeper, and turned so the bench's long (x) side runs up the screen. */
+export const PORTRAIT_ELEVATION_DEG = 64;
+export const PORTRAIT_AZIMUTH_DEG = 82;
+/** The free area counts as portrait when it is this much taller than wide. */
+const PORTRAIT_RATIO = 1.15;
 /** Distance from the focus, in metres; orthographic, so it only has to clear the bench. */
 const DISTANCE_M = 4;
 const NEAR_M = 0.1;
@@ -46,11 +54,25 @@ export interface Frustum {
   offsetY: number;
 }
 
+/** True when the part of the canvas no panel covers is portrait (a phone held upright). */
+export function isPortrait(covered: Covered, width: number, height: number): boolean {
+  const freeW = width - Math.max(0, covered.left) - Math.max(0, covered.right);
+  const freeH = height - Math.max(0, covered.top) - Math.max(0, covered.bottom);
+  const w = freeW >= 1 ? freeW : width;
+  const h = freeH >= 1 ? freeH : height;
+  return h > w * PORTRAIT_RATIO;
+}
+
+/** The camera's elevation for a free area, in radians. */
+export function lookElevation(portrait: boolean): number {
+  return (portrait ? PORTRAIT_ELEVATION_DEG : LOOK_ELEVATION_DEG) * DEG;
+}
+
 /**
  * Fits the shot's bounds (a box of desk spanM × spanM·SHOT_DEPTH_RATIO × SHOT_HEIGHT_M round the
- * focus, seen from `azimuthRad` at the look's elevation) into the uncovered part of a
- * `width` × `height` canvas, in both width and height, and centres the focus there. Writes `out`
- * and returns it, so the per-frame call allocates nothing. Pure, so it is tested without a
+ * focus, seen from `azimuthRad` at `elevationRad`) into the uncovered part of a `width` ×
+ * `height` canvas, in both width and height, and centres the focus there. Writes `out` and
+ * returns it, so the per-frame call allocates nothing. Pure, so it is tested without a
  * renderer. Covers that leave less than 1 px free are ignored.
  */
 export function fitShot(
@@ -60,6 +82,7 @@ export function fitShot(
   height: number,
   azimuthRad: number,
   out: Frustum,
+  elevationRad = LOOK_ELEVATION_DEG * DEG,
 ): Frustum {
   const w = Math.max(1, width);
   const h = Math.max(1, height);
@@ -77,7 +100,7 @@ export function fitShot(
   }
   const a = Math.max(1e-3, spanM) / 2;
   const b = a * SHOT_DEPTH_RATIO;
-  const el = LOOK_ELEVATION_DEG * DEG;
+  const el = elevationRad;
   const sinAz = Math.abs(Math.sin(azimuthRad));
   const cosAz = Math.abs(Math.cos(azimuthRad));
   // The box's half extents on screen: along the camera's right vector (cos az, 0, −sin az) and
@@ -110,12 +133,13 @@ export function fitShotAcross(
   spreadRad: number,
   out: Frustum,
   scratch: Frustum,
+  elevationRad = LOOK_ELEVATION_DEG * DEG,
 ): Frustum {
-  fitShot(spanM, covered, width, height, azimuthRad, out);
+  fitShot(spanM, covered, width, height, azimuthRad, out, elevationRad);
   if (spreadRad <= 0) return out;
   for (let i = 0; i < DRAG_FIT_SAMPLES; i++) {
     const az = azimuthRad - spreadRad + (2 * spreadRad * i) / (DRAG_FIT_SAMPLES - 1);
-    fitShot(spanM, covered, width, height, az, scratch);
+    fitShot(spanM, covered, width, height, az, scratch, elevationRad);
     if (scratch.halfW > out.halfW) {
       out.halfW = scratch.halfW;
       out.halfH = scratch.halfH;
@@ -133,6 +157,7 @@ interface Rig {
   focus: THREE.Vector3;
   span: number;
   azimuth: number;
+  elevation: number;
   covered: Covered;
   /** Drag: the azimuth offset, its velocity (rad/s) and whether a finger is down. */
   drag: number;
@@ -141,8 +166,8 @@ interface Rig {
   primed: boolean;
 }
 
-function shotAzimuth(shot: LookShot): number {
-  return (shot.azimuthDeg ?? LOOK_AZIMUTH_DEG) * DEG;
+function shotAzimuth(shot: LookShot, portrait: boolean): number {
+  return (shot.azimuthDeg ?? (portrait ? PORTRAIT_AZIMUTH_DEG : LOOK_AZIMUTH_DEG)) * DEG;
 }
 
 /**
@@ -168,7 +193,8 @@ export function LookCamera({
   const rig = useRef<Rig>({
     focus: new THREE.Vector3(...shot.focus),
     span: shot.spanM,
-    azimuth: shotAzimuth(shot),
+    azimuth: shotAzimuth(shot, false),
+    elevation: lookElevation(false),
     covered: { ...covered },
     drag: 0,
     dragVel: 0,
@@ -248,12 +274,15 @@ export function LookCamera({
     const dt = Math.min(delta, 0.05);
     const snap = t.reducedMotion || !r.primed;
     const k = snap ? 1 : followK(dt);
+    const { width, height } = state.size;
+    const portrait = isPortrait(t.covered, width, height);
     const [fx, fy, fz] = t.shot.focus;
     r.focus.x += (fx - r.focus.x) * k;
     r.focus.y += (fy - r.focus.y) * k;
     r.focus.z += (fz - r.focus.z) * k;
     r.span += (t.shot.spanM - r.span) * k;
-    r.azimuth += (shotAzimuth(t.shot) - r.azimuth) * k;
+    r.azimuth += (shotAzimuth(t.shot, portrait) - r.azimuth) * k;
+    r.elevation += (lookElevation(portrait) - r.elevation) * k;
     r.covered.left += (t.covered.left - r.covered.left) * k;
     r.covered.right += (t.covered.right - r.covered.right) * k;
     r.covered.top += (t.covered.top - r.covered.top) * k;
@@ -273,7 +302,7 @@ export function LookCamera({
     }
 
     const az = r.azimuth + r.drag;
-    const el = LOOK_ELEVATION_DEG * DEG;
+    const el = r.elevation;
     camera.position.set(
       r.focus.x + Math.sin(az) * Math.cos(el) * DISTANCE_M,
       r.focus.y + Math.sin(el) * DISTANCE_M,
@@ -282,11 +311,20 @@ export function LookCamera({
     camera.up.set(0, 1, 0);
     camera.lookAt(r.focus);
 
-    const { width, height } = state.size;
     // Fitted for the widest azimuth she can drag to, so a drag turns the bench without zooming
     // and never clips its ends.
     const spread = t.drag ? DRAG_LIMIT_RAD : 0;
-    const f = fitShotAcross(r.span, r.covered, width, height, r.azimuth, spread, frustum, scratch);
+    const f = fitShotAcross(
+      r.span,
+      r.covered,
+      width,
+      height,
+      r.azimuth,
+      spread,
+      frustum,
+      scratch,
+      r.elevation,
+    );
     camera.left = -f.halfW;
     camera.right = f.halfW;
     camera.top = f.halfH;

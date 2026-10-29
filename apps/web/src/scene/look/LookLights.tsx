@@ -28,6 +28,11 @@ const LIGHT_DISTANCE_M = 3;
 /** The shadow box covers the largest bench (the hero's 2.2 × 1.2 m desk). */
 const SHADOW_HALF_M = 1.25;
 const SHADOW_RADIUS = 4;
+/** The contact light: nearly overhead, tipped so its rim shows on the front-right of each foot. */
+const CONTACT_DIR = new THREE.Vector3(-0.08, 1, -0.16).normalize();
+const CONTACT_RADIUS = 6;
+/** How dark the contact rim is, before the catcher's own opacity. */
+const CONTACT_STRENGTH = 1;
 const SHADOW_BIAS = -6e-4;
 /** BC101's 0.025 is in its own units (about 10 cm each); ours are metres. */
 const SHADOW_NORMAL_BIAS = 0.0025;
@@ -145,16 +150,38 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
     key.shadow.radius = SHADOW_RADIUS;
     key.shadow.bias = SHADOW_BIAS;
     key.shadow.normalBias = SHADOW_NORMAL_BIAS;
-    return { key, fill, hemi, warm: WARM_FRAMES };
+    // The contact shadow: a light that gives no light, straight above and tipped a little toward
+    // the back-left, whose blurred shadow makes a soft dark rim round each part's foot, on the
+    // front-right where she sees it. Three's shadow mask takes each light's shadow whatever its
+    // intensity, so only the shadow catcher on the desk shows it.
+    const contact = new THREE.DirectionalLight(0xffffff, 0);
+    contact.name = "LookContact";
+    contact.position.copy(CONTACT_DIR).multiplyScalar(LIGHT_DISTANCE_M);
+    const cc = contact.shadow.camera;
+    cc.left = -SHADOW_HALF_M;
+    cc.right = SHADOW_HALF_M;
+    cc.top = SHADOW_HALF_M;
+    cc.bottom = -SHADOW_HALF_M;
+    cc.near = 0.5;
+    cc.far = LIGHT_DISTANCE_M * 2;
+    cc.updateProjectionMatrix();
+    contact.shadow.radius = CONTACT_RADIUS;
+    contact.shadow.bias = SHADOW_BIAS;
+    contact.shadow.normalBias = SHADOW_NORMAL_BIAS;
+    contact.shadow.intensity = CONTACT_STRENGTH;
+    return { key, fill, hemi, contact, warm: WARM_FRAMES };
   }, []);
 
   useEffect(() => {
-    rig.key.castShadow = shadows;
-    if (shadows) {
-      rig.key.shadow.mapSize.set(shadowMapSize, shadowMapSize);
+    for (const light of [rig.key, rig.contact]) {
+      light.castShadow = shadows;
+      if (!shadows) continue;
+      // The contact rim needs no fine detail: half the key's map, so its blur spreads wider.
+      const size = light === rig.contact ? shadowMapSize / 2 : shadowMapSize;
+      light.shadow.mapSize.set(size, size);
       // A new size needs a new map.
-      rig.key.shadow.map?.dispose();
-      rig.key.shadow.map = null;
+      light.shadow.map?.dispose();
+      light.shadow.map = null;
     }
     rig.warm = WARM_FRAMES;
   }, [rig, shadows, shadowMapSize]);
@@ -171,6 +198,7 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
       rig.key.dispose();
       rig.fill.dispose();
       rig.hemi.dispose();
+      rig.contact.dispose();
     };
   }, [gl, scene, rig]);
 
@@ -191,6 +219,8 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
       <primitive object={rig.key} />
       <primitive object={rig.key.target} />
       <primitive object={rig.fill} />
+      <primitive object={rig.contact} />
+      <primitive object={rig.contact.target} />
       {tier !== "low" && <GlossyEnvironment />}
     </>
   );

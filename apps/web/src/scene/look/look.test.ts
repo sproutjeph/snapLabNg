@@ -22,7 +22,11 @@ import {
   fitShot,
   fitShotAcross,
   followK,
+  isPortrait,
   LOOK_ELEVATION_DEG,
+  lookElevation,
+  PORTRAIT_AZIMUTH_DEG,
+  PORTRAIT_ELEVATION_DEG,
   SHOT_DEPTH_RATIO,
   SHOT_HEIGHT_M,
 } from "./LookCamera";
@@ -89,6 +93,24 @@ describe("the shot camera", () => {
     expect(turned.halfW).toBeGreaterThan(still.halfW);
     expect(across.halfW).toBeGreaterThanOrEqual(turned.halfW - 1e-12);
     expect(fitShotAcross(1, NONE, 390, 844, az, 0, frustum(), frustum()).halfW).toBe(still.halfW);
+  });
+
+  it("looks steeper on a portrait free area, and only there", () => {
+    expect(isPortrait(NONE, 390, 844)).toBe(true);
+    expect(isPortrait(NONE, 1440, 900)).toBe(false);
+    // A phone turned on its side, or with a tall panel down one side: judged on what is free.
+    expect(isPortrait({ ...NONE, right: 900 }, 1440, 900)).toBe(true);
+    expect(lookElevation(true)).toBeCloseTo((PORTRAIT_ELEVATION_DEG * Math.PI) / 180, 12);
+    expect(lookElevation(false)).toBeCloseTo(EL, 12);
+  });
+
+  it("fills a phone with the bench turned up the screen", () => {
+    // The 1.1 m board along x: at the portrait azimuth and elevation its long side runs up the
+    // screen, so the fit is far tighter than the landscape view of the same span.
+    const portraitAz = (PORTRAIT_AZIMUTH_DEG * Math.PI) / 180;
+    const up = fitShot(1.1, NONE, 390, 844, portraitAz, frustum(), lookElevation(true));
+    const flat = fitShot(1.1, NONE, 390, 844, Math.PI / 4, frustum(), lookElevation(false));
+    expect(up.halfW).toBeLessThan(flat.halfW * 0.75);
   });
 
   it("writes into the frustum it is given", () => {

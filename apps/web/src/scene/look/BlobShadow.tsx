@@ -9,8 +9,8 @@ import type { BlobShadowProps } from "./types";
 // depth and draws no ink.
 
 export const BLOB_COLOUR = "#5b4027";
-/** Give the radius about 1.4× the part's half-diagonal, so the blob shows round its foot. */
-export const BLOB_OPACITY = 0.32;
+/** Give the radius about 1.5× the half-size of the part's foot, so the dark core rims it. */
+export const BLOB_OPACITY = 0.38;
 /** Lifted off the desk just enough not to fight it. */
 const LIFT_M = 0.0008;
 
@@ -29,8 +29,8 @@ uniform float blobOpacity;
 varying vec2 vUv;
 void main() {
   float r = length(vUv);
-  // Densest under the part, easing out to nothing at the rim.
-  float a = 1.0 - smoothstep(0.0, 1.0, r);
+  // Solid under the part and at its foot (r < .45), then easing out to nothing at the rim.
+  float a = 1.0 - smoothstep(0.45, 1.0, r);
   a = sqrt(a) * a;
   gl_FragColor = vec4(blobColour, a * blobOpacity);
   #include <colorspace_fragment>

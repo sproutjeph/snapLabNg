@@ -9,8 +9,11 @@ import { INK_HEX, PAPER_HEX } from "./palette";
 
 // Numbers from Backcountry 101's ink pass (docs/plans/exam-redesign-brief.md, research report 2).
 
-/** Line width in CSS pixels, scaled by the device pixel ratio. */
-export const INK_THICKNESS_PX = 2.1;
+/**
+ * Line width in CSS pixels, scaled by the device pixel ratio so it looks the same at DPR 1, 2
+ * and 3. 3 px, bolder than Backcountry 101's 2.1, at the user's golden-frame review (Oct 30).
+ */
+export const INK_THICKNESS_PX = 3;
 /** `thin` parts (plugs, needles) draw their outline at this strength. */
 export const INK_THIN_ALPHA = 0.6;
 /** Relative depth jump that draws a silhouette (perspective camera). */
