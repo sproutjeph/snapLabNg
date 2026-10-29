@@ -2,13 +2,19 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
-import { bevelBox, bevelSegments, boxProjectUV, mahoganyTexture, woodMaterial } from "../materials";
+import {
+  bevelBox,
+  bevelSegments,
+  boxProjectUV,
+  disposeKitBag,
+  kitTexture,
+  woodMaterial,
+} from "../materials";
 import { INK_IDS, type PartProps } from "./layout";
 import {
   brassMaterial,
   COLOURS,
   canvasTexture,
-  disposeAll,
   jitterColour,
   makeCanvas,
   matte,
@@ -98,7 +104,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     const rnd = seeded(7);
     const seg = low ? 14 : 32;
     const tex = wrapperTexture();
-    const woodTex = mahoganyTexture(7, quality);
+    const woodTex = kitTexture("mahogany", quality);
     const bs = bevelSegments(quality);
     const wrapperMat = matte("#ffffff", rnd, { roughness: 0.85, amount: 0.01, map: tex });
     wrapperMat.color.copy(jitterColour("#a9c2d1", rnd, 0.06));
@@ -168,7 +174,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     FRESH.copy(res.wrapperMat.color);
     SPENT.copy(FRESH).lerp(SPENT_TINT, 0.55);
     lastDrain.current = -1;
-    return () => disposeAll(res);
+    return () => disposeKitBag(res);
   }, [res]);
 
   useFrame(() => {

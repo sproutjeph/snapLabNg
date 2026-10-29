@@ -7,9 +7,9 @@ import {
   bevelSegments,
   boxProjectUV,
   brassSurface,
-  brushedBrassTexture,
-  labelTexture,
-  mahoganyTexture,
+  disposeKitBag,
+  kitLabel,
+  kitTexture,
   mergePieces,
   paintMaterial,
   paperMaterial,
@@ -17,7 +17,7 @@ import {
 } from "../materials";
 import { PLUG_KEY_DIMS } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
-import { disposeAll, hitMaterial } from "./MeterMaterials";
+import { hitMaterial } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
 
 export interface KeyKProps extends PartProps {
@@ -62,9 +62,9 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
     const seg = low ? 10 : 20;
-    const woodTex = mahoganyTexture(21, quality);
-    const brassTex = brushedBrassTexture(22, quality);
-    const tex = labelTexture({ lines: ["K"], width: 0.016, height: 0.01, px: 128, seed: 23 });
+    const woodTex = kitTexture("mahogany", quality);
+    const brassTex = kitTexture("brass", quality);
+    const tex = kitLabel({ lines: ["K"], width: 0.016, height: 0.01, seed: 23 }, quality);
     const labelGeo = new THREE.PlaneGeometry(0.016, 0.01);
     labelGeo.rotateX(-Math.PI / 2);
     const hitDepth = HIT_Z1 - HIT_Z0;
@@ -114,7 +114,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
     };
   }, [low, quality]);
 
-  useEffect(() => () => disposeAll(res), [res]);
+  useEffect(() => () => disposeKitBag(res), [res]);
 
   useFrame((_, dt) => {
     const g = plugRef.current;

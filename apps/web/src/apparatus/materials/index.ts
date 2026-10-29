@@ -1,5 +1,16 @@
 // The apparatus materials kit: seeded textures, matte materials and bevelled boxes.
+
 export { bevelBox, bevelSegments, boxProjectUV, mergePieces, moved } from "./bevel";
+export {
+  acquireTexture,
+  cachedTextureCount,
+  disposeKitBag,
+  KIT_SEEDS,
+  type KitKind,
+  kitLabel,
+  kitTexture,
+  releaseTexture,
+} from "./cache";
 export {
   bakeliteMaterial,
   brassSurface,

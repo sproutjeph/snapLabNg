@@ -3,7 +3,7 @@ import { METER_STOP_DEG } from "@snaplab/engine";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
-import { bakeliteMaterial, bakeliteTexture, bevelBox, boxProjectUV } from "../materials";
+import { bakeliteMaterial, bevelBox, boxProjectUV, disposeKitBag, kitTexture } from "../materials";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { createDialTexture, DIAL } from "./MeterDial";
 import {
@@ -17,7 +17,6 @@ import {
 import {
   brassMaterial,
   canvasTexture,
-  disposeAll,
   hitMaterial,
   makeCanvas,
   matte,
@@ -140,7 +139,7 @@ export function Meter({
       letter: kind === "ammeter" ? "A" : "V",
       px: low ? 512 : 1024,
     });
-    const bakeTex = bakeliteTexture(kind === "ammeter" ? 31 : 47, quality);
+    const bakeTex = kitTexture("bakelite", quality);
     const ledgeTex = ledgeLabelTexture();
     const caseMat = bakeliteMaterial(kind === "ammeter" ? 31 : 47, { map: bakeTex });
     const bs = low ? 1 : 3;
@@ -258,7 +257,7 @@ export function Meter({
 
   useEffect(
     () => () => {
-      disposeAll(res);
+      disposeKitBag(res);
       res.image?.material.dispose();
     },
     [res],

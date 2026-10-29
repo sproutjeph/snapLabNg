@@ -21,13 +21,16 @@ export interface TerminalNutProps {
 }
 
 /** Height of the nut's top above its foot, where a lead's plug seats. */
-export const NUT_TOP_M = 0.0215;
+export const NUT_TOP_M = 0.0237;
 /** The least size of the tap target on screen, in CSS pixels. */
 const MIN_HIT_PX = 44;
-/** The tap target never grows past this, so nuts only 6 cm apart (the key's) do not overlap. */
-const HIT_MAX_M = 0.028;
+/**
+ * The tap target never grows past this (after the 1.2 widening, its radius is at most 3 cm), so
+ * nuts only 6.2 cm apart (the key's) do not overlap.
+ */
+const HIT_MAX_M = 0.025;
 const HIT_MIN_M = 0.02;
-/** Vertical stretch of the target: 3.2 cm half-height, so it spans 0 to 6 cm above the foot. */
+/** Vertical stretch of the target: 4 cm half-height, centred 3 cm up, so it spans -1 to 7 cm. */
 const HIT_TALL = 2;
 
 const CAP_COLOURS = { red: "#a82a22", black: "#1f1f22", brass: "#b08d3c" } as const;
@@ -187,7 +190,7 @@ export function TerminalNut({
       }
       const metresPerPx = worldH / Math.max(1, s.size.height);
       const r = Math.min(HIT_MAX_M, Math.max(HIT_MIN_M, (MIN_HIT_PX / 2) * metresPerPx));
-      // The target is a tall ellipsoid, centred 3 cm up and reaching 6 cm, so an oblique tap on a
+      // The target is a tall ellipsoid, centred 3 cm up and 4 cm either way, so an oblique tap on a
       // seated plug still finds the nut; it is widened a fifth to keep the nut-height width.
       const k = (r / HIT_MIN_M) * 1.2;
       if (Math.abs(h.scale.x - k) > 0.02) h.scale.set(k, HIT_TALL, k);

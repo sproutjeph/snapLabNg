@@ -1,3 +1,4 @@
+import { POSE_TARGETS } from "../../../apparatus/ohms-law/poseTargets";
 import type { CameraPose, IdentifyCard, Lesson, Step } from "../../types";
 import { OHMS_LAW_DIAGRAM_CAPTION, OHMS_LAW_DIAGRAM_SVG } from "../../wiring/diagram";
 
@@ -256,12 +257,20 @@ export const OHMS_LAW_LESSON: Lesson = {
       },
     ),
   ],
+  // Targets come from the bench layout (apparatus/ohms-law/poseTargets.ts), so they follow the parts.
+  // On a phone LearnPage backs the camera off by 1 / aspect, so the visible width is 0.73 x distanceM
+  // metres whatever the aspect: 1.6 is the least that fits the 1.1 m board and the whole bench.
   poses: {
-    bench: { azimuthDeg: 0, elevationDeg: 42, target: [0, 0, -0.05], distanceM: 1.4 },
-    wire: { azimuthDeg: 0, elevationDeg: 50, target: [0, 0, 0.16], distanceM: 0.7 },
-    connect: { azimuthDeg: 0, elevationDeg: 48, target: [0, 0, -0.08], distanceM: 1.5 },
-    readings: { azimuthDeg: 0, elevationDeg: 40, target: [-0.1, 0, -0.2], distanceM: 0.95 },
-    box: { azimuthDeg: 0, elevationDeg: 38, target: [-0.3, 0, -0.25], distanceM: 0.8 },
+    bench: { azimuthDeg: 0, elevationDeg: 42, target: [...POSE_TARGETS.bench], distanceM: 1.6 },
+    wire: { azimuthDeg: 0, elevationDeg: 50, target: [...POSE_TARGETS.wire], distanceM: 1.6 },
+    connect: { azimuthDeg: 0, elevationDeg: 48, target: [...POSE_TARGETS.connect], distanceM: 1.6 },
+    readings: {
+      azimuthDeg: 0,
+      elevationDeg: 40,
+      target: [...POSE_TARGETS.readings],
+      distanceM: 0.95,
+    },
+    box: { azimuthDeg: 0, elevationDeg: 38, target: [...POSE_TARGETS.box], distanceM: 0.8 },
   } satisfies Record<string, CameraPose>,
   thumbnails: {},
   identify: [

@@ -13,6 +13,7 @@ import type { QualityTier } from "../meter-bridge/types";
 import { CellHolder } from "./CellHolder";
 import { KeyK } from "./Key";
 import { Lead } from "./Lead";
+import { BENCH_FOOTPRINTS } from "./LeadParts";
 import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
 import { Meter } from "./Meter";
 import { PenNib } from "./PenNib";
@@ -43,7 +44,7 @@ function previewState(search: URLSearchParams): OhmsLawVisualState {
   }
   const joint = { tightened: true, clean: true };
   const leads: BenchLead[] =
-    search.get("leads") === "1"
+    search.get("leads") === "1" || search.has("drawn")
       ? DIAGRAM_LEADS.map(([a, b], i) => ({
           id: `L${i + 1}`,
           a,
@@ -70,41 +71,86 @@ function previewState(search: URLSearchParams): OhmsLawVisualState {
 const EL = (41 * Math.PI) / 180;
 const FOV = 12;
 
+interface Box {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  /** Top of the tallest part, metres. */
+  h: number;
+}
+
+const _r = new THREE.Vector3();
+const _u = new THREE.Vector3();
+const _f = new THREE.Vector3();
+const _p = new THREE.Vector3();
+
 /**
  * An isometric-style view: a narrow field of view from far away looks the way the lab's
- * orthographic camera does (azimuth `azDeg`, elevation 41 degrees), and `spanM` of the bench
- * fits across whichever of width and height is tighter.
+ * orthographic camera does (azimuth `azDeg`, elevation 41 degrees). The camera looks at the
+ * middle of how `box` projects on the screen and backs off until that projection fits both the
+ * width and the height with a small margin, so a phone and a laptop both fill their frames.
  */
-function FrameRig({
-  target,
-  spanM,
-  azDeg,
-}: {
-  target: readonly [number, number, number];
-  spanM: number;
-  azDeg: number;
-}) {
+function FrameRig({ rects, azDeg }: { rects: readonly Box[]; azDeg: number }) {
   const camera = useThree((st) => st.camera);
   const width = useThree((st) => st.size.width);
   const height = useThree((st) => st.size.height);
+  const controls = useThree((st) => st.controls) as unknown as {
+    target: THREE.Vector3;
+    update(): void;
+  } | null;
   useEffect(() => {
     const aspect = width / Math.max(height, 1);
     const t = Math.tan((FOV * Math.PI) / 360);
-    // spanM across the width, and about 0.62 of it tall on screen (the bench is wider than deep).
-    const dW = spanM / (2 * t * Math.max(aspect, 0.2));
-    const dH = (spanM * 0.62) / (2 * t);
-    const d = Math.max(dW, dH);
     const az = (azDeg * Math.PI) / 180;
-    camera.position.set(
-      target[0] + d * Math.sin(az) * Math.cos(EL),
-      target[1] + d * Math.sin(EL),
-      target[2] + d * Math.cos(az) * Math.cos(EL),
+    // The camera looks along -f; r is screen right and u is screen up.
+    _f.set(-Math.sin(az) * Math.cos(EL), -Math.sin(EL), -Math.cos(az) * Math.cos(EL));
+    _r.set(Math.cos(az), 0, -Math.sin(az));
+    _u.crossVectors(_r, _f).negate();
+    const cx = (Math.min(...rects.map((r) => r.x0)) + Math.max(...rects.map((r) => r.x1))) / 2;
+    const cz = (Math.min(...rects.map((r) => r.z0)) + Math.max(...rects.map((r) => r.z1))) / 2;
+    let rMin = Number.POSITIVE_INFINITY;
+    let rMax = Number.NEGATIVE_INFINITY;
+    let uMin = Number.POSITIVE_INFINITY;
+    let uMax = Number.NEGATIVE_INFINITY;
+    for (const box of rects) {
+      for (const x of [box.x0, box.x1]) {
+        for (const z of [box.z0, box.z1]) {
+          for (const y of [0, box.h]) {
+            _p.set(x - cx, y, z - cz);
+            const pr = _p.dot(_r);
+            const pu = _p.dot(_u);
+            rMin = Math.min(rMin, pr);
+            rMax = Math.max(rMax, pr);
+            uMin = Math.min(uMin, pu);
+            uMax = Math.max(uMax, pu);
+          }
+        }
+      }
+    }
+    const margin = 1.08;
+    const d = Math.max(
+      ((rMax - rMin) / 2 / (t * aspect)) * margin,
+      ((uMax - uMin) / 2 / t) * margin,
     );
-    camera.lookAt(target[0], target[1], target[2]);
+    // Look at the middle of the projection, not of the footprint.
+    const tx = cx + _r.x * ((rMin + rMax) / 2) + _u.x * ((uMin + uMax) / 2);
+    const ty = _r.y * ((rMin + rMax) / 2) + _u.y * ((uMin + uMax) / 2);
+    const tz = cz + _r.z * ((rMin + rMax) / 2) + _u.z * ((uMin + uMax) / 2);
+    camera.position.set(
+      tx + d * Math.sin(az) * Math.cos(EL),
+      ty + d * Math.sin(EL),
+      tz + d * Math.cos(az) * Math.cos(EL),
+    );
+    camera.lookAt(tx, ty, tz);
+    if (controls) {
+      controls.target.set(tx, ty, tz);
+      controls.update();
+    }
     camera.near = Math.max(0.05, d - 2.5);
     camera.far = d + 3;
     camera.updateProjectionMatrix();
-  }, [camera, target, spanM, azDeg, width, height]);
+  }, [camera, controls, rects, azDeg, width, height]);
   return null;
 }
 
@@ -177,14 +223,30 @@ function Bench({ quality, search }: { quality: QualityTier; search: URLSearchPar
   );
 }
 
+/** The footprints the shot has to fit: every part of the bench, or one part with a little room. */
+function shotRects(part: BenchSlot | null): Box[] {
+  if (!part || !SLOTS.includes(part)) {
+    // Each part's footprint, with 6 cm on top for nuts and plugs.
+    return BENCH_FOOTPRINTS.map((f) => ({
+      x0: f.cx - f.hx,
+      x1: f.cx + f.hx,
+      z0: f.cz - f.hz,
+      z1: f.cz + f.hz,
+      h: f.top + 0.06,
+    }));
+  }
+  const [x, , z] = OHMS_LAW_LAYOUT[part].position;
+  const w = part === "wire" ? 0.42 : part === "tray" ? 0.18 : 0.14;
+  const d = part === "wire" ? 0.1 : part === "tray" ? 0.2 : 0.1;
+  return [{ x0: x - w, x1: x + w, z0: z - d, z1: z + d, h: 0.1 }];
+}
+
 export default function KitPreview() {
   const search = new URLSearchParams(location.search);
   const q = search.get("quality");
   const quality: QualityTier = q === "low" || q === "mid" ? q : "high";
   const part = search.get("part") as BenchSlot | null;
-  const focus = part && SLOTS.includes(part) ? OHMS_LAW_LAYOUT[part].position : null;
-  const target: [number, number, number] = focus ? [focus[0], 0.03, focus[2]] : [0, 0.02, -0.12];
-  const spanM = focus ? (part === "wire" ? 0.7 : part === "tray" ? 0.4 : 0.3) : 1.3;
+  const rects = useMemo(() => shotRects(part), [part]);
   const azParam = Number(search.get("az"));
   const azDeg = search.has("az") && Number.isFinite(azParam) ? azParam : -45;
   return (
@@ -195,8 +257,8 @@ export default function KitPreview() {
       camera={{ fov: FOV, position: [0, 4, 4], near: 1, far: 40 }}
     >
       <InkLights quality={quality} />
-      <FrameRig target={target} spanM={spanM} azDeg={azDeg} />
-      <OrbitControls target={target} makeDefault enableDamping={false} />
+      <FrameRig rects={rects} azDeg={azDeg} />
+      <OrbitControls makeDefault enableDamping={false} />
       <TerminalProvider>
         <Bench quality={quality} search={search} />
       </TerminalProvider>

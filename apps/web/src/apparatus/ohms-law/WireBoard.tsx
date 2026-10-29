@@ -6,9 +6,9 @@ import {
   bevelSegments,
   boxProjectUV,
   brassSurface,
-  brushedBrassTexture,
+  disposeKitBag,
+  kitTexture,
   mergePieces,
-  pineTexture,
   woodMaterial,
 } from "../materials";
 import { cmToX } from "../meter-bridge/dimensions";
@@ -64,8 +64,8 @@ export function WireBoard({
   const res = useMemo(() => {
     const rng = seeded(0x5ee1);
     const seg = low ? 8 : 14;
-    const woodTex = pineTexture(0x5ee1, quality);
-    const brassTex = brushedBrassTexture(0x5ee2, quality);
+    const woodTex = kitTexture("pine", quality);
+    const brassTex = kitTexture("brass", quality);
     const bs = bevelSegments(quality);
     const ruleTex = makeRuleTexture();
     const letterX = makeLetterTexture("X");
@@ -129,7 +129,7 @@ export function WireBoard({
   useEffect(() => repaintWhenFontReady([res.ruleTex, res.letterX, res.letterY]), [res]);
   useEffect(
     () => () => {
-      for (const v of Object.values(res)) v.dispose();
+      disposeKitBag(res);
     },
     [res],
   );

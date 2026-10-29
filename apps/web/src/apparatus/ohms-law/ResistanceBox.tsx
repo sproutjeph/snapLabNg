@@ -7,9 +7,9 @@ import {
   bevelSegments,
   boxProjectUV,
   brassSurface,
-  brushedBrassTexture,
-  labelTexture,
-  mahoganyTexture,
+  disposeKitBag,
+  kitLabel,
+  kitTexture,
   mergePieces,
   paintMaterial,
   paperMaterial,
@@ -17,7 +17,7 @@ import {
 } from "../materials";
 import { PLUG_BOX_DIMS, plugPositions } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
-import { canvasTexture, disposeAll, hitMaterial, makeCanvas } from "./MeterMaterials";
+import { canvasTexture, hitMaterial, makeCanvas } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
 
 export interface ResistanceBoxProps extends PartProps {
@@ -110,17 +110,19 @@ export function ResistanceBox({
     const bs = bevelSegments(quality);
     const seg = low ? 10 : 20;
     const coils = coilsKey ? coilsKey.split(",").map(Number) : [];
-    const woodTex = mahoganyTexture(53, quality);
-    const brassTex = brushedBrassTexture(55, quality);
+    const woodTex = kitTexture("mahogany", quality);
+    const brassTex = kitTexture("brass", quality);
     const topTex = topTexture(coils, xs, low ? 512 : 1024);
     // The strip of paper on the front, with the coil values as the maker printed them.
-    const frontTex = labelTexture({
-      lines: ["RESISTANCE BOX", `${coils.join("   ")}   \u03a9`],
-      width: 0.19,
-      height: 0.034,
-      px: low ? 512 : 1024,
-      seed: 57,
-    });
+    const frontTex = kitLabel(
+      {
+        lines: ["RESISTANCE BOX", `${coils.join("   ")}   \u03a9`],
+        width: 0.19,
+        height: 0.034,
+        seed: 57,
+      },
+      quality,
+    );
     // The engraving is a plate lying on the ebonite top, drawn on a transparent ground.
     const labelMat = new THREE.MeshStandardMaterial({
       map: topTex,
@@ -197,7 +199,7 @@ export function ResistanceBox({
     };
   }, [low, quality, xs, coilsKey, n]);
 
-  useEffect(() => () => disposeAll({ ...res, dummy: null, ease: null }), [res]);
+  useEffect(() => () => disposeKitBag({ ...res, dummy: null, ease: null }), [res]);
 
   useFrame((_, dt) => {
     const shafts = shaftsRef.current;

@@ -317,7 +317,7 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     if (!g) return;
     const hit = hitMesh.current;
     const dRaw = typeof drawn === "number" ? drawn : drawn.current;
-    const d01 = dRaw < 0 ? 0 : Math.min(dRaw, 1);
+    const d01 = Number.isFinite(dRaw) ? Math.max(0, Math.min(dRaw, 1)) : 1;
     const okA = registry.worldPosition(from, _a);
     let okB = true;
     if (to === "pointer") {

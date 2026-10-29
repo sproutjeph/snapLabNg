@@ -57,7 +57,8 @@ function paintField(w: number, h: number, fn: (u: number, v: number) => Rgb): HT
   return c;
 }
 
-const px = (tier: Tier, full: number) => (tier === "low" ? full / 2 : full);
+const px = (tier: Tier, full: number) =>
+  Math.max(64, tier === "low" ? full / 4 : tier === "mid" ? full / 2 : full);
 
 /**
  * Mahogany: deep red-brown with long dark grain streaks and fine pores. Tiles about 0.3 m
@@ -135,10 +136,10 @@ export function bakeliteTexture(seed: number, tier: Tier = "high"): THREE.Canvas
   }
   ctx.putImageData(mottle, 0, 0);
   const rnd = seededRandom(seed + 3);
-  const flecks = tier === "low" ? 260 : 900;
+  const flecks = tier === "low" ? 160 : tier === "mid" ? 420 : 900;
   const colours = ["#e8dcc0", "#d49a54", "#8c8478", "#f2ead6", "#b9794a"];
   for (let i = 0; i < flecks; i++) {
-    const r = (0.5 + rnd() * 1.6) * (w / 512);
+    const r = Math.max(0.7, (0.5 + rnd() * 1.6) * (w / 512));
     ctx.globalAlpha = 0.45 + rnd() * 0.5;
     ctx.fillStyle = colours[Math.floor(rnd() * colours.length)] ?? "#e8dcc0";
     ctx.beginPath();
