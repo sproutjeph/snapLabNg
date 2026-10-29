@@ -1,6 +1,16 @@
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
+import {
+  bevelBox,
+  bevelSegments,
+  boxProjectUV,
+  brassSurface,
+  brushedBrassTexture,
+  mergePieces,
+  pineTexture,
+  woodMaterial,
+} from "../materials";
 import { cmToX } from "../meter-bridge/dimensions";
 import { jitterColour, mergeAll, placeAt, seeded } from "./LeadParts";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
@@ -8,7 +18,6 @@ import { TerminalNut } from "./TerminalNut";
 import {
   makeLetterTexture,
   makeRuleTexture,
-  makeWoodTexture,
   RULE_DEPTH_M,
   RULE_MARGIN_M,
   repaintWhenFontReady,
@@ -30,9 +39,10 @@ const RULE = {
   depth: RULE_DEPTH_M,
   z: 0.019,
 } as const;
-const STRIP = { width: 0.02, height: 0.012, depth: 0.03 } as const;
+const STRIP = { width: 0.024, height: 0.014, depth: 0.032 } as const;
 const WIRE = { z: -0.015, radius: 0.0008, y: BOARD.height + 0.007 } as const;
 const NUT_Y = BOARD.height + STRIP.height;
+const BEVEL = 0.0035;
 
 /**
  * The constantan wire XY stretched on a wooden board, brass strips and terminals at X and Y,
@@ -54,7 +64,9 @@ export function WireBoard({
   const res = useMemo(() => {
     const rng = seeded(0x5ee1);
     const seg = low ? 8 : 14;
-    const woodTex = makeWoodTexture(rng, quality);
+    const woodTex = pineTexture(0x5ee1, quality);
+    const brassTex = brushedBrassTexture(0x5ee2, quality);
+    const bs = bevelSegments(quality);
     const ruleTex = makeRuleTexture();
     const letterX = makeLetterTexture("X");
     const letterY = makeLetterTexture("Y");
@@ -70,16 +82,18 @@ export function WireBoard({
         ),
       ),
     );
-    const strips = mergeAll(
+    const strips = mergePieces(
       [xX, xY].map((x) =>
-        placeAt(
-          new THREE.BoxGeometry(STRIP.width, STRIP.height, STRIP.depth),
+        bevelBox(STRIP.width, STRIP.height, STRIP.depth, 0.002, bs).translate(
           x,
           BOARD.height + STRIP.height / 2,
           WIRE.z,
         ),
       ),
     );
+    boxProjectUV(strips, [0.2, 0.2]);
+    const board = bevelBox(BOARD.length, BOARD.height, BOARD.depth, BEVEL, bs);
+    boxProjectUV(board, [0.55, 0.14]);
     const wireLen = Math.abs(xY - xX);
     const wireGeo = new THREE.CylinderGeometry(WIRE.radius, WIRE.radius, wireLen, low ? 5 : 8);
     wireGeo.rotateZ(Math.PI / 2);
@@ -88,27 +102,20 @@ export function WireBoard({
     letterGeo.rotateX(-Math.PI / 2);
     return {
       woodTex,
+      brassTex,
       ruleTex,
       letterX,
       letterY,
-      board: new THREE.BoxGeometry(BOARD.length, BOARD.height, BOARD.depth),
+      board,
       rule: new THREE.BoxGeometry(RULE.length, RULE.thickness, RULE.depth),
       ruleHit: new THREE.BoxGeometry(RULE.length, 0.008, 0.05),
       strips,
       screws,
       wireGeo,
       letterGeo,
-      boardMat: new THREE.MeshStandardMaterial({
-        map: woodTex,
-        color: jitterColour("#ffffff", rng, 0.02),
-        roughness: 0.85,
-      }),
+      boardMat: woodMaterial(0x5ee1, { map: woodTex }),
       ruleMat: new THREE.MeshStandardMaterial({ map: ruleTex, roughness: 0.8 }),
-      brassMat: new THREE.MeshStandardMaterial({
-        color: jitterColour("#b08d3c", rng),
-        roughness: 0.6,
-        metalness: 0.2,
-      }),
+      brassMat: brassSurface(0x5ee2, { map: brassTex }),
       wireMat: new THREE.MeshStandardMaterial({
         color: jitterColour("#9b9a94", rng),
         roughness: 0.6,

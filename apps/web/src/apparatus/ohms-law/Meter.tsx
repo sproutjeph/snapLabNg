@@ -3,6 +3,7 @@ import { METER_STOP_DEG } from "@snaplab/engine";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
+import { bakeliteMaterial, bakeliteTexture, bevelBox, boxProjectUV } from "../materials";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { createDialTexture, DIAL } from "./MeterDial";
 import {
@@ -15,11 +16,9 @@ import {
 } from "./MeterImage";
 import {
   brassMaterial,
-  COLOURS,
   canvasTexture,
   disposeAll,
   hitMaterial,
-  jitterColour,
   makeCanvas,
   matte,
   mergeStatic,
@@ -61,11 +60,10 @@ const DEG = Math.PI / 180;
 const SHAKE_S = 0.4;
 const LABEL_Z = 0.0575; // the + and − are printed this far forward on the ledge
 
-function ledgeLabelTexture(bg: string) {
+function ledgeLabelTexture() {
   const { canvas, ctx } = makeCanvas(512, 48);
   if (ctx) {
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 512, 48);
+    ctx.clearRect(0, 0, 512, 48);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "bold 40px Georgia, serif";
@@ -142,10 +140,10 @@ export function Meter({
       letter: kind === "ammeter" ? "A" : "V",
       px: low ? 512 : 1024,
     });
-    const bakelite = jitterColour(COLOURS.bakelite, rnd);
-    const ledgeTex = ledgeLabelTexture(`#${bakelite.getHexString()}`);
-    const caseMat = matte(COLOURS.bakelite, rnd, { roughness: 0.75 });
-    caseMat.color.copy(bakelite);
+    const bakeTex = bakeliteTexture(kind === "ammeter" ? 31 : 47, quality);
+    const ledgeTex = ledgeLabelTexture();
+    const caseMat = bakeliteMaterial(kind === "ammeter" ? 31 : 47, { map: bakeTex });
+    const bs = low ? 1 : 3;
     const ledgeLabelGeo = new THREE.PlaneGeometry(0.09, 0.008);
     ledgeLabelGeo.rotateX(-Math.PI / 2);
     const mirrorGeo = new THREE.RingGeometry(
@@ -184,6 +182,26 @@ export function Meter({
     };
     const screwGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.0024, seg);
     screwGeo.rotateX(Math.PI / 2);
+    // The case: a bevelled block with a bevelled ledge in front, speckled bakelite all over.
+    const caseGeo = mergeStatic([
+      {
+        geo: bevelBox(CASE.w, CASE.h, CASE.d, 0.006, bs),
+        place: (g) => g.translate(0, CASE.h / 2, 0),
+      },
+      {
+        geo: bevelBox(CASE.w, LEDGE.h, LEDGE.d, 0.003, bs),
+        place: (g) => g.translate(0, LEDGE.h / 2, FACE_Z + LEDGE.d / 2),
+      },
+    ]);
+    boxProjectUV(caseGeo, [0.12, 0.12]);
+    const cornerScrew = (side: number) => {
+      const geo = new THREE.CylinderGeometry(0.0036, 0.0036, 0.0022, seg);
+      geo.rotateX(Math.PI / 2);
+      return {
+        geo,
+        place: (g: THREE.BufferGeometry) => g.translate(side * 0.052, 0.0165, FACE_Z + 0.0008),
+      };
+    };
     const slotGeo = new THREE.BoxGeometry(0.0072, 0.0013, 0.0008);
     slotGeo.rotateZ(0.5);
     const bezelGeo = new THREE.ExtrudeGeometry(bezelShape(), {
@@ -196,19 +214,15 @@ export function Meter({
       dialTex,
       ledgeTex,
       caseMat,
-      // The case and its ledge: one geometry, one draw call.
-      caseGeo: mergeStatic([
-        {
-          geo: new THREE.BoxGeometry(CASE.w, CASE.h, CASE.d),
-          place: (g) => g.translate(0, CASE.h / 2, 0),
-        },
-        {
-          geo: new THREE.BoxGeometry(CASE.w, LEDGE.h, LEDGE.d),
-          place: (g) => g.translate(0, LEDGE.h / 2, FACE_Z + LEDGE.d / 2),
-        },
-      ]),
+      bakeTex,
+      caseGeo,
       ledgeLabelGeo,
-      ledgeLabelMat: matte("#ffffff", rnd, { roughness: 0.8, amount: 0.002, map: ledgeTex }),
+      ledgeLabelMat: (() => {
+        const m = matte("#ffffff", rnd, { roughness: 0.8, amount: 0.002, map: ledgeTex });
+        m.transparent = true;
+        m.depthWrite = false;
+        return m;
+      })(),
       dialGeo: new THREE.PlaneGeometry(DIAL.width, DIAL.height),
       dialMat: matte("#ffffff", rnd, { roughness: 0.85, amount: 0.008, map: dialTex }),
       // The bezel frame and the screw's slot share the dark material.
@@ -225,6 +239,8 @@ export function Meter({
         stopPiece(-1),
         stopPiece(1),
         { geo: screwGeo, place: (g) => g.translate(0, SCREW_Y, FACE_Z + 0.001) },
+        cornerScrew(-1),
+        cornerScrew(1),
       ]),
       // The hub and post turn with the needle.
       needleBrassGeo: mergeStatic([{ geo: hubGeo }, { geo: postGeo }]),
@@ -238,7 +254,7 @@ export function Meter({
       hitScrewGeo,
       hitMat: hitMaterial(),
     };
-  }, [kind, fullScale, division, low]);
+  }, [kind, fullScale, division, low, quality]);
 
   useEffect(
     () => () => {

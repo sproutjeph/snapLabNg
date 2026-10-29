@@ -4,7 +4,7 @@ import { createOhmsLaw, DIAGRAM_LEADS, paramsFromSeed } from "@snaplab/engine";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { TerminalProvider } from "../../learn/terminals";
-import type { BenchLead, LeadColour, OhmsLawVisualState } from "../../learn/types";
+import type { BenchLead, LeadColour, OhmsLawVisualState, TerminalId } from "../../learn/types";
 import { InkComposer } from "../../scene/ink/InkComposer";
 import { InkLights } from "../../scene/ink/InkLights";
 import { PaperDesk } from "../../scene/ink/PaperDesk";
@@ -15,6 +15,7 @@ import { KeyK } from "./Key";
 import { Lead } from "./Lead";
 import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
 import { Meter } from "./Meter";
+import { PenNib } from "./PenNib";
 import { ResistanceBox } from "./ResistanceBox";
 import { Tray } from "./Tray";
 import { WireBoard } from "./WireBoard";
@@ -23,6 +24,9 @@ import { WireBoard } from "./WireBoard";
 //   &part=ammeter|voltmeter|cells|key|box|wire|tray  frames one part
 //   &leads=1                                         adds the seven diagram leads
 //   &deg=<n>                                         sets both needles to n degrees
+//   &drawn=<0..1>                                    how much of each lead is drawn on
+//   &pen=<terminal id>                               puts the Watch pen nib on that terminal
+//   &az=<deg>                                        camera azimuth (default -45)
 //   &quality=low|mid|high
 // Lead-owned (Wave 0): slices fill in the parts, not this file.
 
@@ -63,27 +67,44 @@ function previewState(search: URLSearchParams): OhmsLawVisualState {
   };
 }
 
-/** Keeps the whole bench (or the framed part) in view on a tall phone screen. */
+const EL = (41 * Math.PI) / 180;
+const FOV = 12;
+
+/**
+ * An isometric-style view: a narrow field of view from far away looks the way the lab's
+ * orthographic camera does (azimuth `azDeg`, elevation 41 degrees), and `spanM` of the bench
+ * fits across whichever of width and height is tighter.
+ */
 function FrameRig({
-  camera: base,
   target,
+  spanM,
+  azDeg,
 }: {
-  camera: readonly [number, number, number];
   target: readonly [number, number, number];
+  spanM: number;
+  azDeg: number;
 }) {
   const camera = useThree((st) => st.camera);
   const width = useThree((st) => st.size.width);
   const height = useThree((st) => st.size.height);
   useEffect(() => {
     const aspect = width / Math.max(height, 1);
-    const k = aspect < 1 ? Math.min(2.2, 0.85 / aspect) : 1;
+    const t = Math.tan((FOV * Math.PI) / 360);
+    // spanM across the width, and about 0.62 of it tall on screen (the bench is wider than deep).
+    const dW = spanM / (2 * t * Math.max(aspect, 0.2));
+    const dH = (spanM * 0.62) / (2 * t);
+    const d = Math.max(dW, dH);
+    const az = (azDeg * Math.PI) / 180;
     camera.position.set(
-      target[0] + (base[0] - target[0]) * k,
-      target[1] + (base[1] - target[1]) * k,
-      target[2] + (base[2] - target[2]) * k,
+      target[0] + d * Math.sin(az) * Math.cos(EL),
+      target[1] + d * Math.sin(EL),
+      target[2] + d * Math.cos(az) * Math.cos(EL),
     );
     camera.lookAt(target[0], target[1], target[2]);
-  }, [camera, base, target, width, height]);
+    camera.near = Math.max(0.05, d - 2.5);
+    camera.far = d + 3;
+    camera.updateProjectionMatrix();
+  }, [camera, target, spanM, azDeg, width, height]);
   return null;
 }
 
@@ -92,6 +113,9 @@ function Bench({ quality, search }: { quality: QualityTier; search: URLSearchPar
   const state = useRef(previewState(search));
   const L = OHMS_LAW_LAYOUT;
   const common = { state, quality };
+  const drawnParam = Number(search.get("drawn"));
+  const drawn = search.has("drawn") && Number.isFinite(drawnParam) ? drawnParam : 1;
+  const pen = search.get("pen") as TerminalId | null;
   return (
     <>
       <PaperDesk quality={quality} />
@@ -138,8 +162,17 @@ function Bench({ quality, search }: { quality: QualityTier; search: URLSearchPar
       />
       <Tray {...common} position={L.tray.position} rotationY={L.tray.rotationY} />
       {state.current.leads.map((l) => (
-        <Lead key={l.id} from={l.a} to={l.b} colour={l.colour} state={state} quality={quality} />
+        <Lead
+          key={l.id}
+          from={l.a}
+          to={l.b}
+          colour={l.colour}
+          state={state}
+          quality={quality}
+          drawn={drawn}
+        />
       ))}
+      {pen ? <PenNib target={pen} quality={quality} /> : null}
     </>
   );
 }
@@ -150,20 +183,20 @@ export default function KitPreview() {
   const quality: QualityTier = q === "low" || q === "mid" ? q : "high";
   const part = search.get("part") as BenchSlot | null;
   const focus = part && SLOTS.includes(part) ? OHMS_LAW_LAYOUT[part].position : null;
-  const target: [number, number, number] = focus ? [focus[0], 0.03, focus[2]] : [0, 0, -0.05];
-  const camera: [number, number, number] = focus
-    ? [focus[0], 0.22, focus[2] + 0.32]
-    : [0, 0.95, 1.05];
+  const target: [number, number, number] = focus ? [focus[0], 0.03, focus[2]] : [0, 0.02, -0.12];
+  const spanM = focus ? (part === "wire" ? 0.7 : part === "tray" ? 0.4 : 0.3) : 1.3;
+  const azParam = Number(search.get("az"));
+  const azDeg = search.has("az") && Number.isFinite(azParam) ? azParam : -45;
   return (
     <Canvas
       shadows="percentage"
       dpr={quality === "low" ? 1 : [1, 2]}
       gl={{ antialias: true }}
-      camera={{ fov: 40, position: camera, near: 0.02, far: 20 }}
+      camera={{ fov: FOV, position: [0, 4, 4], near: 1, far: 40 }}
     >
       <InkLights quality={quality} />
-      <FrameRig camera={camera} target={target} />
-      <OrbitControls target={target} makeDefault />
+      <FrameRig target={target} spanM={spanM} azDeg={azDeg} />
+      <OrbitControls target={target} makeDefault enableDamping={false} />
       <TerminalProvider>
         <Bench quality={quality} search={search} />
       </TerminalProvider>

@@ -2,20 +2,22 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
+import {
+  bevelBox,
+  bevelSegments,
+  boxProjectUV,
+  brassSurface,
+  brushedBrassTexture,
+  labelTexture,
+  mahoganyTexture,
+  mergePieces,
+  paintMaterial,
+  paperMaterial,
+  woodMaterial,
+} from "../materials";
 import { PLUG_KEY_DIMS } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
-import {
-  brassMaterial,
-  COLOURS,
-  canvasTexture,
-  disposeAll,
-  hitMaterial,
-  jitterColour,
-  makeCanvas,
-  matte,
-  mergeStatic,
-  seeded,
-} from "./MeterMaterials";
+import { disposeAll, hitMaterial } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
 
 export interface KeyKProps extends PartProps {
@@ -50,20 +52,6 @@ const HIT_HALF_X = 0.009;
 const HIT_Z0 = -D.blockDepth / 2;
 const HIT_Z1 = OUT_Z + SHAFT_H + HEAD_H + 0.004;
 
-function labelTexture(bg: string) {
-  const { canvas, ctx } = makeCanvas(128, 64);
-  if (ctx) {
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 128, 64);
-    ctx.fillStyle = "#e9dfc6";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 52px Georgia, serif";
-    ctx.fillText("K", 64, 34);
-  }
-  return canvasTexture(canvas, 2);
-}
-
 export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyKProps) {
   const low = quality === "low";
   const cast = !low;
@@ -72,41 +60,59 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
   const t = useRef(-1); // 0 = plug out, 1 = plug in; eased toward the state
 
   const res = useMemo(() => {
-    const rnd = seeded(21);
+    const bs = bevelSegments(quality);
     const seg = low ? 10 : 20;
-    const ebonite = jitterColour(COLOURS.ebonite, rnd);
-    const tex = labelTexture(`#${ebonite.getHexString()}`);
-    const eboniteMat = matte(COLOURS.ebonite, rnd, { roughness: 0.7 });
-    eboniteMat.color.copy(ebonite);
-    // The "K" is a small plate lying on the base, painted the same ebonite colour.
-    const labelMat = matte("#ffffff", rnd, { roughness: 0.7, map: tex, amount: 0.002 });
-    const labelGeo = new THREE.PlaneGeometry(0.016, 0.008);
+    const woodTex = mahoganyTexture(21, quality);
+    const brassTex = brushedBrassTexture(22, quality);
+    const tex = labelTexture({ lines: ["K"], width: 0.016, height: 0.01, px: 128, seed: 23 });
+    const labelGeo = new THREE.PlaneGeometry(0.016, 0.01);
     labelGeo.rotateX(-Math.PI / 2);
     const hitDepth = HIT_Z1 - HIT_Z0;
     const hitGeo = new THREE.BoxGeometry(HIT_HALF_X * 2, 0.04, hitDepth);
     hitGeo.translate(0, 0.02, HIT_Z0 + hitDepth / 2);
+    const baseGeo = bevelBox(BASE_W, D.height, D.depth, 0.003, bs);
+    boxProjectUV(baseGeo, [0.3, 0.15]);
+    // Both brass blocks in one geometry: one draw call.
+    const blocksGeo = mergePieces(
+      [-1, 1].map((side) =>
+        bevelBox(BLOCK_W, D.blockHeight, D.blockDepth, 0.0016, bs).translate(
+          side * BLOCK_X,
+          D.height + D.blockHeight / 2,
+          0,
+        ),
+      ),
+    );
+    boxProjectUV(blocksGeo, [0.2, 0.2]);
+    // The plug's black knob: a tapered bakelite handle.
+    const k = HEAD_H / 0.0165;
+    const profile = [
+      [0, 0],
+      [0.0072, 0],
+      [0.0078, 0.002],
+      [0.0063, 0.0058],
+      [0.0052, 0.0108],
+      [0.0066, 0.0142],
+      [0.0062, 0.0162],
+      [0.0035, 0.0166],
+      [0, 0.0166],
+    ].map(([r, y]) => new THREE.Vector2((r ?? 0) * (HEAD_R / 0.0075), (y ?? 0) * k));
     return {
+      woodTex,
+      brassTex,
       tex,
-      eboniteMat,
-      labelMat,
+      woodMat: woodMaterial(21, { map: woodTex }),
+      labelMat: paperMaterial(23, { map: tex }),
       labelGeo,
       hitGeo,
-      brassMat: brassMaterial(rnd),
-      headMat: matte("#111111", rnd, { roughness: 0.7 }),
+      brassMat: brassSurface(22, { map: brassTex }),
+      headMat: paintMaterial("#151312", 24),
       hitMat: hitMaterial(),
-      baseGeo: new THREE.BoxGeometry(BASE_W, D.height, D.depth),
-      // Both brass blocks in one geometry: one draw call.
-      blocksGeo: mergeStatic(
-        [-1, 1].map((side) => ({
-          geo: new THREE.BoxGeometry(BLOCK_W, D.blockHeight, D.blockDepth),
-          place: (g: THREE.BufferGeometry) =>
-            g.translate(side * BLOCK_X, D.height + D.blockHeight / 2, 0),
-        })),
-      ),
+      baseGeo,
+      blocksGeo,
       shaftGeo: new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg),
-      headGeo: new THREE.CylinderGeometry(HEAD_R, HEAD_R * 0.92, HEAD_H, seg),
+      headGeo: new THREE.LatheGeometry(profile, seg),
     };
-  }, [low]);
+  }, [low, quality]);
 
   useEffect(() => () => disposeAll(res), [res]);
 
@@ -129,7 +135,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
       <InkGroup id={ids}>
         <mesh
           geometry={res.baseGeo}
-          material={res.eboniteMat}
+          material={res.woodMat}
           position={[0, D.height / 2, 0]}
           castShadow={cast}
           receiveShadow={cast}
@@ -159,7 +165,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
           <mesh
             geometry={res.headGeo}
             material={res.headMat}
-            position={[0, SHAFT_H + HEAD_H / 2, 0]}
+            position={[0, SHAFT_H, 0]}
             castShadow={cast}
           />
         </group>
