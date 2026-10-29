@@ -2,7 +2,7 @@
 
 This file is the one rulebook for every agent that writes code here (Claude Code, Gemini, Muse Code, anyone else). `CLAUDE.md` and `GEMINI.md` import it and add only tool-specific notes; Muse Code reads this file directly. Change the rules here, not there.
 
-A student snaps the WAEC practical in their exercise book. The apparatus rises out of the ink as a working 3D lab. An AI examiner then marks the student's own handwriting and asks examiner questions. Meta Global AI Developer Hackathon, Indie track. Built solo, Oct 26 – Nov 4, 2026. Hero experiment: **metre bridge** (doc 15). Second: titration. Stretch: glass block. Since Oct 28: a hands-on **Ohm's law (V–I)** practical (`?learn=ohms-law`, `docs/plans/ohms-law-vi.md`) comes before the titration engine, and the app moves to an ink-and-paper look (`docs/plans/ink-look.md`).
+A student snaps the WAEC practical in their exercise book. The apparatus rises out of the ink as a working 3D lab. An AI examiner then marks the student's own handwriting and asks examiner questions. Meta Global AI Developer Hackathon, Indie track. Built solo, Oct 26 – Nov 4, 2026. Hero experiment: **metre bridge** (doc 15). Second: titration. Stretch: glass block. Since Oct 28: a hands-on **Ohm's law (V–I)** practical (`?learn=ohms-law`, `docs/plans/ohms-law-vi.md`) comes before the titration engine, and the app moves to an ink-and-paper look (`docs/plans/ink-look.md`). **Current direction (Oct 29): the exam practical** (question → Watch → Practise → Exam), in `docs/plans/exam-redesign.md`.
 
 **Principle: the AI reads and judges. The engine decides.** AI output only parameterises the lab and explains marks. It never computes currents, balance points, pH or scores.
 
@@ -35,7 +35,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 ## Hard rules
 - IMPORTANT: the Meta API key exists only in server env (`MODEL_API_KEY`). Never put it in client code, a `VITE_` variable, a fixture or a log. Never read, print or copy `.env`.
 - Banned: Rust/WASM, WebGPU/TSL, Next.js, OpenCV.js, any database, Python services, SharedArrayBuffer.
-- Never show the student the expected result (the true X, or the expected titre). Accuracy is judged against a teacher-entered value.
+- Never show the student the expected result before she hands in. On a snapped page, accuracy is judged against a teacher-entered value; on a simulated bench, the engine's own meters are the supervisor's values.
 - Same page → same score. Marks come only from `packages/rules`.
 - Never weaken, skip or delete a test to make it pass. Fix the code, or stop and explain.
 - Don't add features, files, docs, tests or refactors that weren't asked for. Do finish everything that was asked.
@@ -82,10 +82,12 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `apps/web/src/learn/graph/**`, plus one `?graph=1` preview switch in `App.tsx` (plan: `docs/plans/ohms-law-vi.md`, Wave 3) | Claude subagent `ui-builder`, while `claude/ohms-graph` is open |
-| `apps/web/src/learn/lessons/ohms-law/**` (Wave 3) | Claude subagent `lesson-writer`, while `claude/ohms-lesson` is open |
-| The files listed in `docs/plans/ink-restyle.md` (DOM and CSS only) | Muse Code, while `muse/ink-restyle` is open (starts after `claude/ink-look` merges) |
-| `apps/web/src/scene/ink/**`, `scene/{Desk,Page,Scene}.tsx`, the composer/lights of `lab/LabBench.tsx` and of the two existing `KitPreview.tsx`, additive `quality/tier.ts` (plan: `docs/plans/ink-look.md`, Wave 1) | Claude subagent `shader-artist`, while `claude/ink-look` is open |
+| `scene/ink/**`, `scene/look/**` (except `types.ts`, plus `scene/look/LookPreview.tsx`), additive `quality/tier.ts` (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `shader-artist`, while `claude/look` is open |
+| `apparatus/ohms-law/**`, new `apparatus/materials/**`, `layout.ts` v2 (additive only), a `PenNib` cursor prop (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `apparatus-modeller`, while `claude/apparatus-v2` is open |
+| `learn/script/**`, `learn/voice/**` (both except `types.ts`), `learn/player/**`, additive `learn/timeline.ts`, `learn/script/DirectorPreview.tsx` (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `general-purpose`, while `claude/director` is open |
+| `home/**`, `learn/paper/**` (except `types.ts`, plus `learn/paper/PaperPreview.tsx`), `learn/results/**` (except `types.ts`, plus `learn/results/ResultsPreview.tsx`) (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `ui-builder`, while `claude/paper` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
+
+No Wave 1 slice edits `App.tsx`; the preview switches are already in place. All paths above are under `apps/web/src/`.
 
 The lead updates this table when it hands out a new slice. **All 3D work (scene, kits, reveal, particles, shaders) stays with the lead**: from Oct 27, Gemini runs as Gemini Flash and gets UI and logic slices only, and Muse Code gets non-3D slices only.

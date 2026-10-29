@@ -278,6 +278,13 @@ export interface VoiceGuide {
 }
 ```
 
+**Wave 0 as built (the committed types.ts files are the source of truth)**
+- `displayedValue(m, needleDeg)` takes 2 args. The trim moves the needle itself, the same as the engine's test-helper `dialReading`.
+- New `effectiveXyOhm(p)` and `DEMO_MIN_OHM_DIFFERENCE`.
+- `DirectorState` gains `act`, `actT` and `loupe`. New `DirectorOptions`.
+- New contract files `learn/paper/types.ts` (`PracticalQuestion`, `QuestionPaperProps`) and `learn/results/types.ts` (`ResultsProps`). Also `CalloutsProps`, `LookGroundProps`, `BlobShadowProps` and `VoiceOptions`.
+- `learn/results/handIn.ts` is the only place hand-in reads the supervisor.
+
 ## Tests (by name, with expected values and sources)
 - **Engine** (science-verifier):
   - `displayedValue inverts meterTargetDeg`: a round trip over readings 0, 0.25, 0.5, 0.75 and 1.0 A, and 0, 1 and 3 V, with a zero error of ±0.02, to within 1e-9.

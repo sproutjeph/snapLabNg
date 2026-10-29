@@ -36,6 +36,28 @@
 - Muse Image reality preview; Wonder end-of-practical report; Spark 1.2 Pidgin audio path
 - MediaPipe gestures on laptop (video flourish only; never for the jockey, since sliding is the mistake)
 
+**Exam practical (Oct 29, `docs/plans/exam-redesign.md`).** The cut lines below replace the Day 5–8 rows for this work.
+- **MUST (by the end of Nov 1):**
+  - the picker; the question paper with read-aloud and the entrance;
+  - Watch end to end, with player controls and callouts;
+  - guided Practise end to end;
+  - the results with the reading check (D1);
+  - the look recipe on the V–I lab (camera, lights, shadows, ink, apparatus v2, ground);
+  - the E2E scripts.
+- **SHOULD (Nov 2):**
+  - Exam polish (timer display);
+  - the hero look (W2-hero);
+  - sounds;
+  - the DPR ladder and the demand frameloop;
+  - the cached ground;
+  - baked step thumbnails (with an ink-icon fallback).
+- **COULD:**
+  - the D3 viva with Muse Spark;
+  - the "as printed" diagram beside ours;
+  - merged static geometry;
+  - focus fade on the hero.
+- **Later:** metre-bridge Watch/Practise, titration, Variant B.
+
 **WON'T (this hackathon):** free-form circuits from arbitrary drawings (we use the standard metre bridge template; her drawing feeds setup issues only), lens optics, live AR tracking, WebGPU, Rust/WASM, Postgres/Redis/R2/Python, continuous listening, 120 FPS claims.
 
 ## 2. Pre-hackathon: Oct 21–25 (generic scaffolding allowed from Oct 22; no git)
