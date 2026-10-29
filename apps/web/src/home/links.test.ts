@@ -5,6 +5,7 @@ describe("home links", () => {
   it("defines standard route paths", () => {
     expect(ROUTES.snap).toBe("/?flow=1");
     expect(ROUTES.demo).toBe("/?flow=1&golden=note1");
+    expect(ROUTES.ohmsLaw).toBe("/?learn=ohms-law");
   });
 
   it("adds a query param to an existing query string", () => {
