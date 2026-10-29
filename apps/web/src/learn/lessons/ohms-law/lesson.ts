@@ -259,10 +259,11 @@ export const OHMS_LAW_LESSON: Lesson = {
   ],
   // Targets come from the bench layout (apparatus/ohms-law/poseTargets.ts), so they follow the parts.
   // On a phone LearnPage backs the camera off by 1 / aspect, so the visible width is 0.73 x distanceM
-  // metres whatever the aspect: 1.6 is the least that fits the 1.1 m board and the whole bench.
+  // metres whatever the aspect: 1.6 is the least that fits the whole bench, and 1.5 fits the wire
+  // XY (up to 98 cm). The close look at the scale is the rule loupe, not this pose.
   poses: {
     bench: { azimuthDeg: 0, elevationDeg: 42, target: [...POSE_TARGETS.bench], distanceM: 1.6 },
-    wire: { azimuthDeg: 0, elevationDeg: 50, target: [...POSE_TARGETS.wire], distanceM: 1.6 },
+    wire: { azimuthDeg: 0, elevationDeg: 50, target: [...POSE_TARGETS.wire], distanceM: 1.5 },
     connect: { azimuthDeg: 0, elevationDeg: 48, target: [...POSE_TARGETS.connect], distanceM: 1.6 },
     readings: {
       azimuthDeg: 0,

@@ -24,7 +24,7 @@ export const OHMS_LAW_LAYOUT: Readonly<
   key: { position: [0.2, 0, 0.12], rotationY: 0 },
   ammeter: { position: [-0.16, 0, 0.1], rotationY: 0 },
   box: { position: [-0.43, 0, 0.1], rotationY: 0 },
-  voltmeter: { position: [0.1, 0, -0.28], rotationY: 0 },
+  voltmeter: { position: [0.14, 0, -0.28], rotationY: 0 },
   wire: { position: [0, 0, -0.13], rotationY: 0 },
   tray: { position: [0.38, 0, -0.4], rotationY: 0 },
 };

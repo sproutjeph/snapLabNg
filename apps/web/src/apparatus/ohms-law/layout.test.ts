@@ -14,6 +14,7 @@ const boxOf = (f: (typeof BENCH_FOOTPRINTS)[number]) => ({
   z1: f.cz + f.hz,
   top: f.top,
   cx: f.cx,
+  slot: f.slot,
 });
 const BOXES = BENCH_FOOTPRINTS.map(boxOf);
 const wireBox = (() => {
@@ -35,7 +36,7 @@ describe("V-I bench layout v2", () => {
       for (let j = i + 1; j < BOXES.length; j++) {
         const a = BOXES[i];
         const b = BOXES[j];
-        if (!a || !b || a.cx === b.cx) continue; // a meter's case and its ledge share a column
+        if (!a || !b || a.slot === b.slot) continue; // a meter's case and its ledge are one part
         const gapX = Math.max(a.x0 - b.x1, b.x0 - a.x1);
         const gapZ = Math.max(a.z0 - b.z1, b.z0 - a.z1);
         expect(Math.max(gapX, gapZ), `footprints ${i} and ${j}`).toBeGreaterThanOrEqual(0.01);
@@ -80,10 +81,10 @@ describe("V-I bench layout v2", () => {
   it("leaves a clear line to each dial at the loupe's +-30 degrees", () => {
     const pose = newPose();
     for (const kind of ["ammeter", "voltmeter"] as const) {
-      const own = OHMS_LAW_LAYOUT[kind].position[0];
+      const own = kind;
       for (const eye of [-30, -15, 0, 15, 30]) {
-        // 0.4 m: farther than the loupe ever stands (about 0.12 m on a laptop, 0.33 m on a phone).
-        meterPose(kind, eye, 0.4, pose);
+        // 0.45 m is fitDistance's cap in learn/readings/poses.ts, the farthest the loupe stands.
+        meterPose(kind, eye, 0.45, pose);
         const [cx, cy, cz] = pose.target;
         const [px, py, pz] = pose.position;
         for (let i = 0; i <= 200; i++) {
@@ -92,7 +93,7 @@ describe("V-I bench layout v2", () => {
           const y = py + (cy - py) * t;
           const z = pz + (cz - pz) * t;
           for (const b of BOXES) {
-            if (b.cx === own) continue; // this meter's own case and ledge
+            if (b.slot === own) continue; // this meter's own case and ledge
             const inside = x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y < b.top;
             expect(inside, `${kind} at ${eye} deg blocked by a part at x ${b.cx}`).toBe(false);
           }
