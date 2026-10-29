@@ -88,7 +88,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 | G2: `apparatus/ohms-law/{ResistanceBox,Key,CellHolder}.tsx`; `apparatus/materials/**` (additive only) (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-bench` is open |
 | G3: `apparatus/ohms-law/{WireBoard.tsx,WireBoardTextures.ts,Tray.tsx,TrayParts.ts}` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-board` is open |
 | G1: `apparatus/ohms-law/{Meter.tsx,MeterDial.ts,MeterImage.ts,MeterMaterials.ts}` (`MeterMaterials.ts` additive only), `scene/look/DeskProps.tsx` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-meters` is open |
-| `learn/shell/**`, `learn/player/**` and their CSS; the exact list is in `docs/plans/page-layout.md` once approved (plan: `docs/plans/exam-redesign.md`, "Page layout: Backcountry's") | Claude subagent `ui-builder`, while `claude/page-layout` is open |
+| `learn/shell/**`, `learn/player/**` and their CSS; in `learn/LearnPage.tsx` only its `coveredPx` (to `playerCovered`); `learn/script/DirectorPreview.tsx` (mount the new shell) (plan: `docs/plans/page-layout.md`) | Claude subagent `ui-builder`, while `claude/page-layout` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No Wave 1b slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/`, except `scripts/` and `docs/`.
