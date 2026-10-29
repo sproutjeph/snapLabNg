@@ -16,6 +16,7 @@ import { StageChecklist } from "../player/StageChecklist";
 import { MODE_NOTE, playerCovered } from "../player/stages";
 import { useStageNav } from "../player/useStageNav";
 import { emptyOhmsLawRecord } from "../readings/record";
+import { BENCH_CENTRE, FIT_HALF_WIDTH_M } from "../shell/benchFrame";
 import LessonShell, { type GuideState, type ShellTab } from "../shell/LessonShell";
 import { creditFromSource } from "../shell/StatusCard";
 import { TerminalProvider } from "../terminals";
@@ -47,8 +48,9 @@ const ShellPreview = lazy(() => import("../shell/ShellPreview"));
 //   &speed=1|1.5|2   &quality=low|mid|high   &mute=1
 // Watch is hands-off: the actor does the practical. In Practise tap the nuts yourself.
 
-const FIT_HALF_WIDTH_M = 0.62;
 const BASE_EYE = [0, 0.95, 1.1] as const;
+/** How far the camera backs off, at most, as a multiple of BASE_EYE: a 390 px phone needs 2.9. */
+const MAX_BACK_OFF = 3.2;
 
 /**
  * Backs the camera off until the bench's width fits the part of the canvas the cards leave free,
@@ -66,9 +68,9 @@ function FrameRig({ covered }: { covered: Covered }) {
     const aspect = freeW / Math.max(height, 1);
     const halfTan = Math.tan((camera.fov * Math.PI) / 360) * aspect;
     const need = FIT_HALF_WIDTH_M / Math.max(halfTan, 1e-3);
-    const k = Math.min(2.6, Math.max(1, need / Math.hypot(BASE_EYE[1], BASE_EYE[2])));
-    camera.position.set(0, BASE_EYE[1] * k, -0.05 + BASE_EYE[2] * k);
-    camera.lookAt(0, 0, -0.05);
+    const k = Math.min(MAX_BACK_OFF, Math.max(1, need / Math.hypot(BASE_EYE[1], BASE_EYE[2])));
+    camera.position.set(BENCH_CENTRE[0], BASE_EYE[1] * k, BENCH_CENTRE[1] + BASE_EYE[2] * k);
+    camera.lookAt(BENCH_CENTRE[0], 0, BENCH_CENTRE[1]);
     camera.setViewOffset(width, height, (right - left) / 2, (bottom - top) / 2, width, height);
     return () => camera.clearViewOffset();
   }, [camera, width, height, left, right, top, bottom]);
@@ -245,7 +247,7 @@ function Shelled({
         >
           <InkLights quality={quality} />
           <FrameRig covered={covered} />
-          <OrbitControls target={[0, 0, -0.05]} makeDefault />
+          <OrbitControls target={[BENCH_CENTRE[0], 0, BENCH_CENTRE[1]]} makeDefault />
           <TerminalProvider>
             <PaperDesk quality={quality} />
             <BenchParts bench={bench} quality={quality} />

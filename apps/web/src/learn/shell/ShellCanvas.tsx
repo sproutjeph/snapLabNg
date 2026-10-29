@@ -1,29 +1,27 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { lookFor } from "../../quality/tier";
 import { InkComposer } from "../../scene/ink/InkComposer";
-import { isPortrait, LookCamera } from "../../scene/look/LookCamera";
+import { LookCamera } from "../../scene/look/LookCamera";
 import { LookGround } from "../../scene/look/LookGround";
 import { LookLights } from "../../scene/look/LookLights";
 import { LookTier } from "../../scene/look/lookTier";
-import type { Covered, LookShot } from "../../scene/look/types";
+import type { Covered } from "../../scene/look/types";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { Director } from "../script/types";
 import { TerminalProvider } from "../terminals";
 import type { OhmsLawBench } from "../types";
 import { BenchParts } from "../wiring/BenchParts";
 import { BenchWiring } from "../wiring/BenchWiring";
+import { BENCH_SHOT } from "./benchFrame";
 
 // ?shell=1&canvas=1: the real V–I bench through the look (the orthographic camera, the soft
 // light and shadows, the graph-paper desk, the ink pass), full-bleed behind the shell's cards.
 // The camera fits the bench into the part of the stage the cards leave free (`covered`), as
-// scene/look/LookPreview.tsx does for its `&covered=` URLs. With a director the actor works the
-// bench (Watch), the same bench BenchParts and BenchWiring draw.
-
-const WIDE_SHOT: LookShot = { id: "bench", focus: [0.06, 0, -0.02], spanM: 1.3 };
-/** A tall free area frames the apparatus only; the camera turns it up the screen. */
-const TALL_SHOT: LookShot = { id: "bench", focus: [-0.02, 0, -0.05], spanM: 0.9 };
+// scene/look/LookPreview.tsx does for its `&covered=` URLs, with the one shot in benchFrame.ts
+// (the bench's real footprint). With a director the actor works the bench (Watch), the same bench
+// BenchParts and BenchWiring draw.
 
 export interface ShellCanvasProps {
   bench: OhmsLawBench;
@@ -45,10 +43,7 @@ function Rig({
   director: Director | null;
   covered: Covered;
 }) {
-  const width = useThree((s) => s.size.width);
-  const height = useThree((s) => s.size.height);
   const shadowsDirty = useRef(true);
-  const portrait = isPortrait(covered, width, height);
   const reducedMotion = useMemo(() => {
     try {
       return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -71,11 +66,7 @@ function Rig({
   });
   return (
     <>
-      <LookCamera
-        shot={portrait ? TALL_SHOT : WIDE_SHOT}
-        covered={covered}
-        reducedMotion={reducedMotion}
-      />
+      <LookCamera shot={BENCH_SHOT} covered={covered} reducedMotion={reducedMotion} />
       <LookLights shadowsDirty={shadowsDirty} />
     </>
   );

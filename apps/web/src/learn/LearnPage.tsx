@@ -61,10 +61,11 @@ function useBenchVersion(bench: OhmsLawBench): number {
 
 /**
  * Where the shell's cards cover the canvas (the guide, status card and step strip: shell/layout.ts,
- * from the window size), so the bench is framed in the part she can see.
+ * from the window size), so the bench is framed in the part she can see. On a phone held upright
+ * the guide starts folded to a peek (the shell's default), so the bench is framed for that window.
  */
 function coveredPx(): Covered {
-  return playerCovered(window.innerWidth, window.innerHeight);
+  return playerCovered(window.innerWidth, window.innerHeight, { guide: "peek" });
 }
 
 /** How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen. */
