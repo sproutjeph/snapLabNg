@@ -10,11 +10,13 @@ import { QualityProvider, useQuality } from "../quality/QualityProvider";
 import { InkComposer } from "../scene/ink/InkComposer";
 import { InkLights } from "../scene/ink/InkLights";
 import { PaperDesk } from "../scene/ink/PaperDesk";
+import type { Covered } from "../scene/look/types";
 import { ReadySignal } from "../scene/ReadySignal";
 import { GraphSheet } from "./graph/GraphSheet";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { MarkPanel } from "./MarkPanel";
 import { stepStatuses } from "./marking";
+import { playerCovered } from "./player/stages";
 import { OhmsLawNotebook } from "./readings/OhmsLawNotebook";
 import { useParallaxNote } from "./readings/parallax";
 import { clampEye, type LoupeTarget, MAX_EYE_DEG, type RuleEnd } from "./readings/poses";
@@ -58,19 +60,17 @@ function useBenchVersion(bench: OhmsLawBench): number {
 }
 
 /**
- * Where the shell's panels cover the canvas (shell.css: rail 76 px, panel 400 px or 340 px on a
- * tablet, a bottom sheet on phones), so the bench is framed in the part she can see.
+ * Where the shell's cards cover the canvas (the guide, status card and step strip: shell/layout.ts,
+ * from the window size), so the bench is framed in the part she can see.
  */
-function coveredPx(width: number): { left: number; right: number; top: number; bottom: number } {
-  if (width <= 640) return { left: 0, right: 0, top: 96, bottom: 200 };
-  if (width <= 900) return { left: 76, right: 356, top: 56, bottom: 80 };
-  return { left: 76, right: 416, top: 56, bottom: 80 };
+function coveredPx(): Covered {
+  return playerCovered(window.innerWidth, window.innerHeight);
 }
 
 /** How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen. */
 function fitFactor(width: number, height: number): number {
   const aspect = width / Math.max(height, 1);
-  const c = coveredPx(width);
+  const c = coveredPx();
   const fitTall = aspect < 1 ? 1 / aspect : 1;
   const fitPanels = (0.9 * width) / Math.max(width - c.left - c.right, 1);
   return Math.min(2.6, Math.max(1, fitTall, fitPanels));
@@ -108,7 +108,7 @@ function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
   const height = useThree((st) => st.size.height);
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
-    const c = coveredPx(width);
+    const c = coveredPx();
     camera.setViewOffset(
       width,
       height,
