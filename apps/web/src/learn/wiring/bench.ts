@@ -3,15 +3,19 @@ import {
   createOhmsLaw,
   type DiagramComparison,
   DT_S,
+  displayedValue,
+  effectiveXyOhm,
   MAX_LEADS_PER_TERMINAL,
   type OhmsLawInputs,
   type OhmsLawState,
   paramsFromSeed,
   stepOhmsLaw,
 } from "@snaplab/engine";
+import type { BenchLogEntry } from "@snaplab/rules";
 import * as THREE from "three";
 import type {
   BenchLead,
+  BenchSupervisor,
   LeadColour,
   LessonMode,
   OhmsLawBench,
@@ -34,6 +38,10 @@ export const LEAD_COLOURS: readonly LeadColour[] = ["red", "black", "yellow"];
  * takes a few seconds, so half a minute is clearly "left on" (docs/plans/ohms-law-vi.md).
  */
 export const KEY_LEFT_CLOSED_S = 30;
+/** The supervisor's log keeps at most this many entries, oldest dropped first. */
+export const SUPERVISOR_LOG_CAP = 500;
+/** A needle faster than this (deg/s) is still moving: no reading. */
+export const NEEDLE_SETTLED_DEG_PER_S = 0.5;
 
 /** The procedure notes, worded about what to do, never a value. Practice mode only. */
 export const NOTE_TEXT: Readonly<Record<ProcedureNote["kind"], string>> = {
@@ -121,6 +129,40 @@ export function createOhmsLawBench(
    */
   let circuit = "";
   const notedFor: Partial<Record<ProcedureNote["kind"], string>> = {};
+
+  /** The supervisor's log of settled readings; it survives reset(). */
+  const supervisorLog: BenchLogEntry[] = [];
+  function dialText(meter: "ammeter" | "voltmeter"): string | null {
+    const m = params[meter];
+    const needle = engine[meter];
+    if (Math.abs(needle.omegaDegPerS) > NEEDLE_SETTLED_DEG_PER_S) return null;
+    const v = displayedValue(m, needle.thetaDeg);
+    if (v < -m.division / 2 || v > m.fullScale + m.division / 2) return null;
+    const text = v.toFixed(2);
+    return text === "-0.00" ? "0.00" : text;
+  }
+  function logSettled(): void {
+    if (!inputs.keyClosed || !comparison.matches) return;
+    const iShown = dialText("ammeter");
+    const vShown = dialText("voltmeter");
+    if (iShown === null || vShown === null) return;
+    const boxOhm = bench.boxSettingOhm;
+    for (let i = supervisorLog.length - 1; i >= 0; i--) {
+      const e = supervisorLog[i];
+      if (e && e.boxOhm === boxOhm) {
+        if (e.iShown === iShown && e.vShown === vShown) return;
+        break;
+      }
+    }
+    supervisorLog.push({ boxOhm, iShown, vShown });
+    if (supervisorLog.length > SUPERVISOR_LOG_CAP) supervisorLog.shift();
+  }
+  const supervisor: BenchSupervisor = {
+    reading: dialText,
+    lengthText: () => params.wire.lengthCm.toFixed(1),
+    log: () => supervisorLog,
+    effectiveOhm: () => effectiveXyOhm(params),
+  };
 
   const nowS = () => t.steps * DT_S;
   const notify = () => {
@@ -228,6 +270,7 @@ export function createOhmsLawBench(
         t.steps++;
         t.keyClosedSteps = inputs.keyClosed ? t.keyClosedSteps + 1 : 0;
         watch();
+        logSettled();
       }
       visual.current.readout = engine.readout;
     },
@@ -316,6 +359,8 @@ export function createOhmsLawBench(
       applyHints();
       notify();
     },
+
+    supervisor,
 
     get mode() {
       return mode;
