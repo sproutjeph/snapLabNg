@@ -7,7 +7,7 @@ Inputs:
 - `docs/design/exam-redesign/{golden-frame.webp,prompts.md}`: the approved style. `scripts/design-targets.ts`. `.claude/agents/apparatus-modeller.md`.
 
 ## Progress (a fresh session reads this first)
-- [ ] Prerequisites: W1-look merged (the seam imports its files); the pending edit to `exam-redesign.md` (Wave 1 handoff notes) committed; AGENTS.md "Who owns what" gets the four rows below.
+- [x] Prerequisites (Oct 29): W1-look merged (the seam imports its files); the pending edit to `exam-redesign.md` (Wave 1 handoff notes) committed; AGENTS.md "Who owns what" gets the four rows below.
 - [ ] 1b-0: the seam (`claude/asset-seam`) and the 10 reference images merged; reference gate passed
 - [ ] G4 leads and terminal, G2 box/key/cells, G3 board and tray, G1 meters and desk props: gates passed, user sign-off, merged (this order)
 - [ ] Whole-bench integration shot at DPR 3 and DPR 2, and the user's last look in Chrome
