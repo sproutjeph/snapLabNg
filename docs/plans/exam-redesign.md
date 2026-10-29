@@ -284,6 +284,7 @@ export interface VoiceGuide {
 - `DirectorState` gains `act`, `actT` and `loupe`. New `DirectorOptions`.
 - New contract files `learn/paper/types.ts` (`PracticalQuestion`, `QuestionPaperProps`) and `learn/results/types.ts` (`ResultsProps`). Also `CalloutsProps`, `LookGroundProps`, `BlobShadowProps` and `VoiceOptions`.
 - `learn/results/handIn.ts` is the only place hand-in reads the supervisor.
+- `checkReadingsAgainstBench`'s third argument gains an optional `ammeterZeroErrorA` (default 0): an I cell is ok within one division of the shown value or of shown − zero error (the nearer), so a hand-corrected zero error is not penalised. `meterShowed` stays the dial's value; V is unchanged. `handIn` passes `params.ammeter.zeroError`.
 
 ## Tests (by name, with expected values and sources)
 - **Engine** (science-verifier):

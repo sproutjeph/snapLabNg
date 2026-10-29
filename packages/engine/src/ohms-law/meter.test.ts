@@ -24,11 +24,18 @@ describe("the value a candidate reads off a dial", () => {
   });
 
   it("includes the zero-adjust trim, since the trim moves the needle", () => {
-    // Trimming by −1 division (−0.8° on the 80° span of a 0–1 A dial in 0.02 A divisions)
-    // cancels a +0.02 A zero error: 0.30 A then shows 0.30 A.
+    // Trimming by −1 division (80° × 0.02/1 = 1.6°, taken off, on the 80° span of a 0–1 A dial
+    // in 0.02 A divisions) cancels a +0.02 A zero error: 0.30 A then shows 0.30 A.
     const m = { ...p.ammeter, zeroError: 0.02 };
     const trimDeg = (-80 * 0.02) / 1;
     expect(displayedValue(m, meterTargetDeg(m, 0.3, trimDeg))).toBeCloseTo(0.3, 12);
+  });
+
+  it("gives NaN for a NaN needle, so callers must guard it", () => {
+    // No textbook source: behaviour only. displayedValue does no checking of its own; callers
+    // (the supervisor, the dial) guard against a non-finite needle before showing a value.
+    expect(Number.isNaN(displayedValue(p.ammeter, Number.NaN))).toBe(true);
+    expect(Number.isNaN(displayedValue(p.voltmeter, Number.NaN))).toBe(true);
   });
 
   it("gives an off-scale value for a needle on a stop, unclamped", () => {
