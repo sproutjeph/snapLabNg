@@ -21,7 +21,7 @@ import { MAX_EYE_DEG } from "./loupe";
 import { PageSheet } from "./PageSheet";
 import { RevealClip } from "./RevealClip";
 import { type LoupeState, RuleLoupe } from "./RuleLoupe";
-import { ease, REVEAL_S, type RevealPhases, revealAt, revealInto } from "./reveal";
+import { ease, inkLinesOf, REVEAL_S, type RevealPhases, revealAt, revealInto } from "./reveal";
 
 const LiteBench = lazy(() => import("../lite/LiteBench"));
 
@@ -148,6 +148,8 @@ function BenchScene({
   const home = useMemo(() => ({ position: new THREE.Vector3(), target: BENCH_TARGET.clone() }), []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
   const phases = useRef<RevealPhases>(revealAt(0, reducedMotion));
+  // The kit's outlines, 0 → 1 as they draw on: written by RevealClip, read by InkComposer.
+  const inkLines = useRef(inkLinesOf(phases.current));
   // Fixed at mount: the tier can settle while the sparks are in flight, and a new budget
   // would rebuild them mid-air.
   const [sparkBudget] = useState(() => Math.floor(settings.maxParticles / 2));
@@ -173,7 +175,7 @@ function BenchScene({
         />
       </Suspense>
       <InkSparks parts={props.parts} page={page} maxSparks={sparkBudget} phases={phases} />
-      <RevealClip phases={phases}>
+      <RevealClip phases={phases} lines={inkLines} from={page.centre}>
         <MeterBridgeKit
           state={visual}
           plugLabels={bench.plugLabels}
@@ -209,7 +211,7 @@ function BenchScene({
         />
       )}
       <QualityMonitor />
-      <InkComposer quality={tier} />
+      <InkComposer quality={tier} reveal={inkLines} />
     </>
   );
 }

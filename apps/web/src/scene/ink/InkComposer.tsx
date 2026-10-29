@@ -28,6 +28,8 @@ interface Stack {
  *   - Low (and any device that cannot render to half-float targets): no post pass at all;
  *     inverted-hull lines on the parts (inkHull.ts), and r3f renders.
  * Tone mapping is off on every tier, so the paper is exactly --paper. The props are frozen.
+ * `reveal` drives the draw-on sweep (ink-sweep.glsl) on both paths; its origin is set with
+ * setInkSweep (inkSweep.ts).
  */
 export function InkComposer({ quality, reveal }: InkComposerProps) {
   const gl = useThree((s) => s.gl);
@@ -46,7 +48,7 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
   const mode = floatTargets ? outline.mode : "hull";
   const post = mode === "ink";
 
-  useInkHulls(mode === "hull");
+  useInkHulls(mode === "hull", reveal);
 
   useEffect(() => {
     const prev = gl.toneMapping;

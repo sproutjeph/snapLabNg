@@ -2,14 +2,17 @@ import { useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { INK_HEX } from "../scene/ink/palette";
 import type { RevealPhases } from "./reveal";
 
-/** Above 1, so bloom picks the glowing ink up on the tiers that have bloom. */
-const GLOW_COLOUR = new THREE.Color(0.25, 1.1, 1.7);
+/** How far her ink darkens towards the pen ink at the peak, and where it settles. */
+const LIFT_PEAK = 0.85;
+const LIFT_REST = 0.35;
 
 /**
- * Her flattened page on the bench. Its ink (the dark pixels) glows as the reveal starts and
- * settles to a faint shimmer once the sparks have lifted off.
+ * Her flattened page on the bench. As the reveal starts, her ink (the dark pixels) darkens
+ * towards the blue-black pen ink, as if fresh, then eases back a little once the motes have
+ * lifted off. A colour blend on the paper, not light: nothing glows.
  */
 export function PageSheet({
   url,
@@ -28,18 +31,18 @@ export function PageSheet({
   const { geometry, material, uniforms } = useMemo(() => {
     map.colorSpace = THREE.SRGBColorSpace;
     map.anisotropy = 4;
-    const uniforms = { uGlow: { value: 0 }, uGlowColour: { value: GLOW_COLOUR } };
+    const uniforms = { uLift: { value: 0 }, uInk: { value: new THREE.Color(INK_HEX) } };
     const material = new THREE.MeshStandardMaterial({ map, roughness: 0.92 });
     material.onBeforeCompile = (shader) => {
-      shader.uniforms.uGlow = uniforms.uGlow;
-      shader.uniforms.uGlowColour = uniforms.uGlowColour;
+      shader.uniforms.uLift = uniforms.uLift;
+      shader.uniforms.uInk = uniforms.uInk;
       shader.fragmentShader =
-        `uniform float uGlow;\nuniform vec3 uGlowColour;\n${shader.fragmentShader}`.replace(
-          "#include <emissivemap_fragment>",
-          `#include <emissivemap_fragment>
+        `uniform float uLift;\nuniform vec3 uInk;\n${shader.fragmentShader}`.replace(
+          "#include <map_fragment>",
+          `#include <map_fragment>
         float pageLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
         float inkAmount = 1.0 - smoothstep(0.30, 0.55, pageLum);
-        totalEmissiveRadiance += uGlowColour * inkAmount * uGlow;`,
+        diffuseColor.rgb = mix(diffuseColor.rgb, uInk, inkAmount * uLift);`,
         );
     };
     const geometry = new THREE.PlaneGeometry(width, height);
@@ -59,7 +62,7 @@ export function PageSheet({
 
   useFrame(() => {
     const p = phases.current;
-    uniforms.uGlow.value = 0.7 * p.glow * (1 - 0.9 * p.sparks);
+    uniforms.uLift.value = p.glow * (LIFT_PEAK - (LIFT_PEAK - LIFT_REST) * p.sparks);
   });
 
   return (
