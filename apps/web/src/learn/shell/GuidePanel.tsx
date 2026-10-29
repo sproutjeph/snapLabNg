@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type PointerEvent, type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useRef } from "react";
 import type { Step } from "../types";
 import { IconChevronDown, IconChevronUp } from "./icons";
 import { useSlider } from "./useLayout";
@@ -68,7 +68,7 @@ function InstructionsBody({
             {callouts.map((c) => (
               <li key={`${c.part}-${c.label}`}>
                 <strong>{c.label}</strong>
-                {c.sub && <span>{c.sub}</span>}
+                {c.sub && <span className="sh-sub">{c.sub}</span>}
               </li>
             ))}
           </ul>
@@ -129,7 +129,7 @@ export default function GuidePanel({
 }: GuidePanelProps) {
   const tabsRef = useRef<HTMLDivElement>(null);
   const inkRef = useRef<HTMLSpanElement>(null);
-  const dragFrom = useRef<number | null>(null);
+  const stopDrag = useRef<(() => void) | null>(null);
   const dragged = useRef(false);
   useSlider(
     tabsRef,
@@ -169,24 +169,34 @@ export default function GuidePanel({
     if (portrait && t !== "instructions") onGuideChange("open");
   }
 
+  // A drag on the tab row, up or down, opens or folds the phone's guide. The release is listened
+  // for on the window, so a finger that has left the row still ends the drag.
   const onRowDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (!portrait) return;
-    dragFrom.current = e.clientY;
+    if (!portrait || !e.isPrimary) return;
+    stopDrag.current?.();
+    const from = e.clientY;
     dragged.current = false;
+    const end = (ev: globalThis.PointerEvent) => {
+      stopDrag.current?.();
+      const dy = ev.clientY - from;
+      if (dy < -DRAG_PX) {
+        dragged.current = true;
+        onGuideChange("open");
+      } else if (dy > DRAG_PX) {
+        dragged.current = true;
+        if (activeTab === "instructions") onGuideChange("peek");
+      }
+    };
+    const cancel = () => stopDrag.current?.();
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", cancel);
+    stopDrag.current = () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", cancel);
+      stopDrag.current = null;
+    };
   };
-  const onRowUp = (e: PointerEvent<HTMLDivElement>) => {
-    const from = dragFrom.current;
-    dragFrom.current = null;
-    if (from === null || !portrait) return;
-    const dy = e.clientY - from;
-    if (dy < -DRAG_PX) {
-      dragged.current = true;
-      onGuideChange("open");
-    } else if (dy > DRAG_PX) {
-      dragged.current = true;
-      if (activeTab === "instructions") onGuideChange("peek");
-    }
-  };
+  useEffect(() => () => stopDrag.current?.(), []);
 
   const body = tabContent?.[activeTab] ?? defaultBody(activeTab, step, exam, checklist);
   const line = exam ? step.instruction : step.plain || step.instruction;
@@ -213,16 +223,7 @@ export default function GuidePanel({
       aria-label={`Step ${stepNumber}: ${step.title}`}
     >
       {/* The drag is a pointer-only shortcut; the fold button and the tabs do the same by keyboard. */}
-      <div
-        className="sh-tabs-row"
-        data-region="tabs"
-        role="presentation"
-        onPointerDown={onRowDown}
-        onPointerUp={onRowUp}
-        onPointerCancel={() => {
-          dragFrom.current = null;
-        }}
-      >
+      <div className="sh-tabs-row" data-region="tabs" role="presentation" onPointerDown={onRowDown}>
         <div
           ref={tabsRef}
           className="sh-tabs"

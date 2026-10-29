@@ -128,7 +128,9 @@ export default function Rail({ onNotebook }: { onNotebook(): void }) {
         aria-controls={`${id}-list`}
         onClick={() => setOpen((o) => !o)}
       >
-        <IconChevronRight />
+        <span className="sh-rail-chevron">
+          <IconChevronRight />
+        </span>
       </button>
       <div id={`${id}-list`} className="sh-rail-nav">
         <NavList variant="rail" onNotebook={onNotebook} onNavigate={() => setOpen(false)} />

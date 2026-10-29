@@ -38,6 +38,7 @@ const ShellCanvas = lazy(() => import("./ShellCanvas"));
 //   &diagram=1     opens the "Compare with diagram" card with a placeholder diagram
 //   &lost=<n,n>    steps shown as lost (✕); every step before the current one is otherwise done
 //   &tab=why|precautions|examiner   the guide's tab (default instructions)
+//   &examiner=1    adds the Examiner asks tab (the lesson page's), with a sample body
 //   &guide=open    a phone's guide fully open (default: folded to a peek)
 //   &director=1    the real director on the sample script drives the player, the checklist and
 //                  the strip (&beat=N starts paused at beat N, &play=1, &speed=1|1.5|2, &seed=N,
@@ -232,6 +233,8 @@ function Screen({
   const withCanvas = q.get("canvas") === "1";
   const debug = q.get("debug") === "1";
   const tabParam = q.get("tab");
+  // The Examiner asks tab is the lesson page's (its mark panel); the director screens have none.
+  const withExaminer = q.get("examiner") === "1" || tabParam === "examiner";
   const [tab, setTab] = useState<ShellTab>(
     tabParam === "why" || tabParam === "precautions" || tabParam === "examiner"
       ? tabParam
@@ -277,9 +280,15 @@ function Screen({
       readOnlyTabs={readOnlyTabs}
       tab={tab}
       onTabChange={setTab}
-      tabContent={{
-        examiner: <p>Sample slot: the lesson page passes the examiner's questions in here.</p>,
-      }}
+      {...(withExaminer
+        ? {
+            tabContent: {
+              examiner: (
+                <p>Sample slot: the lesson page passes the examiner's questions in here.</p>
+              ),
+            },
+          }
+        : {})}
       notebookSlot={<p>Sample slot: the typed notebook goes here.</p>}
       diagramSlot={<SampleDiagram />}
       diagramOpen={diagramOpen}
