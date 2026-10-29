@@ -263,6 +263,22 @@ describe("shell.css", () => {
     expect(labelled.some(([, body]) => /clip-path|clip:/.test(body))).toBe(true);
   });
 
+  it("the credit's small line and the phone's tagline have a floor on the screen, not only in design px", () => {
+    // The layers are zoomed by --ui, so 10.5 design px was 8.7 px on a 1440 laptop and 11.5 was
+    // 10.4 px on a 390 phone: each is at least 11.5 px as drawn, and 12 design px.
+    const rules = shellRules();
+    for (const selector of [
+      ".sh-credit-lead",
+      '.sh-root[data-layout="portrait"] .sh-brand-tagline',
+    ]) {
+      const body = rules.find(([s]) => s === selector)?.[1] ?? "";
+      expect({
+        selector,
+        floored: /font-size:\s*max\(12px,\s*calc\(11\.5px\s*\/\s*var\(--ui,\s*1\)\)\)/.test(body),
+      }).toEqual({ selector, floored: true });
+    }
+  });
+
   it("uses no layout media queries: the modes come from data-layout", () => {
     const css = readFileSync(fileURLToPath(new URL("./shell.css", import.meta.url)), "utf8");
     expect(css).not.toMatch(/@media\s*\(\s*(min|max)-(width|height)/);
