@@ -275,7 +275,7 @@ export function CameraView({ onCapture }: CameraViewProps) {
               fontWeight: 600,
               border: "1px solid var(--ink-2)",
               backgroundColor: "var(--card)",
-              color: isSteady ? "var(--green)" : "var(--accent)",
+              color: isSteady ? "var(--green)" : "var(--ink-2)",
             }}
           >
             {isSteady ? `Sharp (${sharpnessScore})` : "Hold steady…"}

@@ -91,7 +91,7 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
 
       <div role="status">
         {duplicateRs.map((r) => (
-          <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--accent)" }}>
+          <p key={r} style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--ink-2)" }}>
             You already have a reading for R = {formatOhm(r)} Ω
           </p>
         ))}
@@ -156,6 +156,8 @@ export default function LabNotebook({ current, readings, onRecord, onDelete }: N
                           borderRadius: "var(--radius)",
                           backgroundColor: "var(--card)",
                           color: "var(--ink)",
+                          minWidth: "var(--tap)",
+                          minHeight: "var(--tap)",
                           padding: "4px 9px",
                           cursor: "pointer",
                         }}

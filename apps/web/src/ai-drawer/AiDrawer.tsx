@@ -41,16 +41,19 @@ const LANE_META: Record<
   },
 };
 
-function barStyleForStatus(status: CallStatus, laneAccent: string): { bg: string; border: string } {
+function barStyleForStatus(
+  status: CallStatus,
+  laneAccent: string,
+): { bg: string; border: string; borderStyle: string; tag: string } {
   switch (status) {
     case "ok":
-      return { bg: `${laneAccent}52`, border: laneAccent };
+      return { bg: `${laneAccent}52`, border: laneAccent, borderStyle: "solid", tag: "" };
     case "running":
-      return { bg: "#1d243052", border: "#1d2430" };
+      return { bg: "#1d243052", border: "#1d2430", borderStyle: "dashed", tag: "" };
     case "fallback":
-      return { bg: "#e0752e52", border: "#e0752e" };
+      return { bg: "#e0752e52", border: "#e0752e", borderStyle: "dotted", tag: "FB" };
     case "error":
-      return { bg: "#3a425052", border: "#3a4250" };
+      return { bg: "#3a425052", border: "#3a4250", borderStyle: "dotted", tag: "ERR" };
   }
 }
 
@@ -359,6 +362,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                             position: "relative",
                             width: "100%",
                             height: "26px",
+                            minHeight: "var(--tap)",
                             padding: "0 8px",
                             borderRadius: "6px",
                             border: isSelected ? "1.5px solid var(--ink)" : "var(--rule)",
@@ -388,7 +392,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               minWidth: "6px",
                               borderRadius: "4px",
                               backgroundColor: barColors.bg,
-                              border: `1.5px solid ${barColors.border}`,
+                              border: `1.5px ${barColors.borderStyle} ${barColors.border}`,
                               boxSizing: "border-box",
                               pointerEvents: "none",
                             }}
@@ -416,6 +420,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               textShadow: "none",
                             }}
                           >
+                            {barColors.tag ? `${barColors.tag} ` : ""}
                             {formatMs(durationMs)}
                           </span>
                         </button>

@@ -133,7 +133,7 @@ export default function ExaminerConsole({
           label: "Partly correct",
           bg: "var(--card)",
           border: "var(--accent)",
-          text: "var(--accent)",
+          text: "var(--ink-2)",
         };
       case "needs_work":
         return {
@@ -366,6 +366,7 @@ export default function ExaminerConsole({
                       fontSize: "0.78rem",
                       fontWeight: 600,
                       cursor: "pointer",
+                      minHeight: "var(--tap)",
                       padding: "4px 0",
                       display: "flex",
                       alignItems: "center",
@@ -520,8 +521,9 @@ export default function ExaminerConsole({
                 background: "var(--ink)",
                 border: "1px solid var(--ink)",
                 color: "var(--paper)",
+                minHeight: "var(--tap)",
                 padding: "6px 12px",
-                borderRadius: "6px",
+                borderRadius: "var(--radius)",
                 fontSize: "0.8rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -596,7 +598,8 @@ export default function ExaminerConsole({
                     background: active ? "var(--ink)" : "transparent",
                     color: active ? "var(--paper)" : "var(--muted)",
                     border: "none",
-                    borderRadius: "4px",
+                    borderRadius: "var(--radius)",
+                    minHeight: "var(--tap)",
                     padding: "4px 8px",
                     fontSize: "0.74rem",
                     fontWeight: active ? 700 : 500,
@@ -615,7 +618,7 @@ export default function ExaminerConsole({
         {voiceAnswer.error && (
           <p
             role="status"
-            style={{ margin: "0 0 6px", color: "var(--accent)", fontSize: "0.78rem" }}
+            style={{ margin: "0 0 6px", color: "var(--ink-2)", fontSize: "0.78rem" }}
           >
             {voiceAnswer.error}
           </p>
@@ -679,8 +682,8 @@ export default function ExaminerConsole({
             aria-pressed={voiceAnswer.state === "listening"}
             style={{
               background: voiceAnswer.state === "listening" ? "var(--ink)" : "var(--card)",
-              color: "var(--ink)",
-              border: "none",
+              color: voiceAnswer.state === "listening" ? "var(--paper)" : "var(--ink)",
+              border: "1px solid var(--ink-2)",
               borderRadius: "var(--radius)",
               padding: "10px 16px",
               height: "46px",

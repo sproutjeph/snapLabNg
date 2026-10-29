@@ -169,14 +169,14 @@ export default function MicPreview() {
 
         {state === "denied" ? (
           <p
-            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--accent)" }}
+            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--ink-2)" }}
           >
             Allow the microphone in your browser settings, or type your answer instead.
           </p>
         ) : null}
         {state === "unsupported" ? (
           <p
-            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--accent)" }}
+            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--ink-2)" }}
           >
             This browser cannot capture microphone audio here. Try a recent Chrome, Edge or Safari,
             or type your answer instead.

@@ -164,7 +164,7 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
               style={{
                 margin: "8px 0 0",
                 fontSize: "13px",
-                color: "var(--accent)",
+                color: "var(--ink-2)",
                 lineHeight: 1.5,
               }}
             >

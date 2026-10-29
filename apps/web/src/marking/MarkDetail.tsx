@@ -160,6 +160,7 @@ export function MarkDetail({ item, onClose }: MarkDetailProps) {
             color: "var(--ink)",
             border: "1px solid var(--ink-2)",
             borderRadius: "var(--radius)",
+            minHeight: "var(--tap)",
             padding: "5px 10px",
             fontSize: "12px",
             fontWeight: 600,

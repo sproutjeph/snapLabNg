@@ -369,7 +369,7 @@ export default function FlowPage() {
           {readings ? <ReadingsTable readings={readings} /> : <p>Waiting for the table…</p>}
           {errors.map((e, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: errors only ever append
-            <p key={i} role="alert" style={{ color: "var(--accent)" }}>
+            <p key={i} role="alert" style={{ color: "var(--ink-2)" }}>
               {e.message}
             </p>
           ))}
@@ -432,7 +432,9 @@ function ReadingsTable({ readings }: { readings: Readings }) {
                   style={{
                     border: "var(--rule)",
                     padding: "4px 10px",
-                    color: x?.legibility === "unsure" ? "var(--accent)" : undefined,
+                    color: x?.legibility === "unsure" ? "var(--ink)" : undefined,
+                    textDecoration: x?.legibility === "unsure" ? "underline" : undefined,
+                    textDecorationColor: "var(--accent)",
                   }}
                 >
                   {x?.text_as_written ?? ""}

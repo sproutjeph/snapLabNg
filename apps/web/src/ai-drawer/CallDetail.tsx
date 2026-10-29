@@ -17,7 +17,7 @@ function statusBadgeStyle(status: CallStatus): { bg: string; fg: string; text: s
     case "running":
       return { bg: "var(--card)", fg: "var(--ink)", text: "RUNNING" };
     case "fallback":
-      return { bg: "var(--card)", fg: "var(--accent)", text: "FALLBACK" };
+      return { bg: "var(--card)", fg: "var(--ink-2)", text: "FALLBACK" };
     case "error":
       return { bg: "var(--card)", fg: "var(--ink-2)", text: "ERROR" };
   }
@@ -105,6 +105,7 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
             fontSize: "12px",
             fontWeight: 700,
             cursor: "pointer",
+            minHeight: "var(--tap)",
             padding: "2px 4px",
             display: "flex",
             alignItems: "center",
@@ -123,11 +124,12 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
           type="button"
           onClick={handleCopy}
           style={{
+            minHeight: "var(--tap)",
             padding: "4px 10px",
-            borderRadius: "6px",
+            borderRadius: "var(--radius)",
             border: "1px solid var(--ink-2)",
             backgroundColor: "var(--paper)",
-            color: copyState === "failed" ? "var(--accent)" : "var(--ink)",
+            color: copyState === "failed" ? "var(--ink-2)" : "var(--ink)",
             fontSize: "11px",
             fontWeight: 600,
             cursor: "pointer",
@@ -160,8 +162,9 @@ function CollapsibleJson({ title, payload, callId }: CollapsibleJsonProps) {
               onClick={() => setShowFull(true)}
               style={{
                 marginTop: "8px",
+                minHeight: "var(--tap)",
                 padding: "4px 10px",
-                borderRadius: "6px",
+                borderRadius: "var(--radius)",
                 border: "1px solid var(--ink-2)",
                 backgroundColor: "var(--paper)",
                 color: "var(--ink-2)",
@@ -248,8 +251,10 @@ export function CallDetail({ call, nowMs, onClose }: CallDetailProps) {
               onClick={onClose}
               aria-label="Close call details"
               style={{
+                minHeight: "var(--tap)",
+                minWidth: "var(--tap)",
                 padding: "2px 8px",
-                borderRadius: "6px",
+                borderRadius: "var(--radius)",
                 border: "1px solid var(--ink-2)",
                 backgroundColor: "var(--paper)",
                 color: "var(--ink)",

@@ -195,7 +195,7 @@ export function CornerEditor({
           <div
             style={{
               fontSize: "13px",
-              color: quadValid ? "var(--muted)" : "var(--accent)",
+              color: quadValid ? "var(--muted)" : "var(--ink-2)",
               marginTop: "2px",
             }}
           >
