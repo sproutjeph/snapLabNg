@@ -211,6 +211,7 @@ export default function LessonShell({
       className="sh-root"
       data-guide={guideNow}
       data-status={status?.credit ? "credit" : "plain"}
+      data-compare={compare !== null ? "on" : undefined}
     >
       <div className="sh-stage">
         <div className="sh-canvas">{children}</div>

@@ -59,6 +59,13 @@
   transform: translateX(-50%);
 }
 
+/* Watch's six buttons on a phone are 44 px each (below), so the card's own chrome closes up. */
+.dp.dp-watch[data-layout="portrait"] .dp-card,
+.dp.dp-watch[data-layout="short"] .dp-card {
+  gap: 3px;
+  padding: 0 3px;
+}
+
 /* Compact and narrow: the status card folds its credit to a mark, so the card sits against it.
    (After short and portrait, so the rules run from least to most specific.) */
 .dp[data-layout="compact"][data-credit="mark"] .dp-card {
@@ -72,6 +79,13 @@
 
 .sh-root[data-status="plain"] .dp[data-layout="compact"] .dp-card {
   right: 332px;
+}
+
+/* Beside the Compare button (the shell sets data-compare), the wider card starts after it instead
+   of in the middle: centred, it would sit on the button on a 360 px phone. 14 + 44 + 8 CSS px. */
+.sh-root[data-compare="on"] .dp.dp-watch[data-layout="portrait"] .dp-card {
+  left: calc(14px + 52px / var(--ui, 1));
+  transform: none;
 }
 
 .dp-group {
@@ -165,13 +179,36 @@
   text-transform: uppercase;
 }
 
-/* Practise and Exam have room on a phone, so their buttons are 44 px wide there too (Watch's six
-   keep Backcountry's size; they get a 44 px tall hit area below). */
+/* Practise and Exam have room on a phone, so their buttons are 44 px wide there too. */
 .dp.dp-practice[data-layout="portrait"] .dp-btn,
 .dp.dp-practice[data-layout="short"] .dp-btn,
 .dp.dp-exam[data-layout="portrait"] .dp-btn,
 .dp.dp-exam[data-layout="short"] .dp-btn {
   min-width: calc(var(--tap) / var(--ui, 1));
+}
+
+/* So do Watch's six, on a phone: next to each other they can only have 44 px hit areas if the
+   buttons themselves are 44 px apart, so the card grows from Backcountry's 243 px to 6 x 44 plus
+   its chrome (about 280 px) and its gaps close up. On a laptop they keep Backcountry's size. The
+   play and speed buttons keep their extra width where the scale leaves room for it. */
+.dp.dp-watch[data-layout="portrait"] .dp-btn,
+.dp.dp-watch[data-layout="short"] .dp-btn {
+  min-width: max(37px, calc(var(--tap) / var(--ui, 1)));
+}
+
+.dp.dp-watch[data-layout="portrait"] .dp-btn-main,
+.dp.dp-watch[data-layout="short"] .dp-btn-main {
+  min-width: max(44px, calc(var(--tap) / var(--ui, 1)));
+}
+
+.dp.dp-watch[data-layout="portrait"] .dp-btn-speed,
+.dp.dp-watch[data-layout="short"] .dp-btn-speed {
+  min-width: max(40px, calc(var(--tap) / var(--ui, 1)));
+}
+
+.dp.dp-watch[data-layout="portrait"] .dp-group,
+.dp.dp-watch[data-layout="short"] .dp-group {
+  gap: 0;
 }
 
 /* Hit area: the visual size is the design's; a pseudo-element brings the height to 44 px. */
@@ -183,6 +220,13 @@
   top: 50%;
   height: max(100%, calc(var(--tap) / var(--ui, 1)));
   transform: translateY(-50%);
+}
+
+/* Watch's phone buttons touch, so their hit areas stop at their own edges. */
+.dp.dp-watch[data-layout="portrait"] .dp-btn::after,
+.dp.dp-watch[data-layout="short"] .dp-btn::after {
+  left: 0;
+  right: 0;
 }
 
 .dp-clock {
@@ -287,7 +331,7 @@
 .sc-row {
   position: relative;
   min-height: 58px;
-  padding-right: 48px;
+  padding: 5px 48px 5px 0;
   display: grid;
   grid-template-columns: 26px 46px 1fr;
   align-items: center;

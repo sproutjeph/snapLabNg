@@ -43,24 +43,34 @@
   --strip-top: calc(var(--lh) - 250px);
 }
 
-/* The lesson page's own overlays (learn.css: the toolbar, the note, the loupe bar, the graph) are
-   anchored to these, as they were to the old shell's sizes. The canvas already starts beside the
-   rail, so --sh-rail is 0; --sh-head is where the free stage starts (under the Compare button)
-   and --sh-bar how tall the strip (and on a phone the guide) is, in CSS px. */
+/* The free stage's edges, in CSS px, for the lesson page's own overlays (learn.css: the toolbar,
+   the note, the close-up bar, the graph paper; see "The lesson page's overlays" below). The canvas
+   already starts beside the rail, so --sh-rail is 0. --sh-head is where the free stage starts
+   below the Compare button (a phone: below the player's row), --sh-bar is how tall the strip is
+   (a phone: the strip and the guide), and --sh-guide is how much of the right the guide takes,
+   with its gap to the edge. They are the CSS twins of coveredFor() in layout.ts. */
 .sh-root {
   --sh-rail: 0px;
   --sh-head: calc(112px * var(--ui) + 44px);
   --sh-bar: calc(164px * var(--ui));
+  --sh-guide: calc(529px * var(--ui));
+}
+
+.sh-root[data-layout="compact"] {
+  --sh-guide: calc(458px * var(--ui));
 }
 
 .sh-root[data-layout="portrait"] {
   --sh-head: calc(132px * var(--ui));
   --sh-bar: calc((var(--lh) - var(--strip-top)) * var(--ui));
+  --sh-guide: 0px;
 }
 
+/* Short: the Compare button sits at (12, 68) design px, under the player's row. */
 .sh-root[data-layout="short"] {
-  --sh-head: calc(58px * var(--ui));
+  --sh-head: calc(68px * var(--ui) + 44px);
   --sh-bar: calc(100px * var(--ui));
+  --sh-guide: calc((var(--guide-w) + 6px) * var(--ui));
 }
 
 .sh-root *,
@@ -181,6 +191,12 @@
 .sh-guide,
 .sh-strip {
   zoom: var(--ui);
+}
+
+/* On a laptop the Compare button sits in the float, which is already zoomed: zoomed twice it was
+   a 37 px target, under the 44 px bar. (On a phone it stands alone, and keeps its own zoom.) */
+.sh-float .sh-compare {
+  zoom: 1;
 }
 
 /* ---- Rail ------------------------------------------------------------------------------ */
@@ -1436,13 +1452,16 @@
   margin-right: 28px;
 }
 
-.sh-root[data-layout="compact"] .sh-nav-btn {
-  flex-basis: 52px;
-  margin-left: 0;
+/* Previous and next sit one gap apart, so each one's 44 px hit area needs the two to be 44 px apart
+   (centre to centre): the width never drops below 44 CSS px less the gap (and a design px to
+   spare), whatever the scale. */
+.sh-root[data-layout="compact"] .sh-nav-btn,
+.sh-root[data-layout="compact"] .sh-nav-primary {
+  flex-basis: max(52px, calc(44px / var(--ui) - 7px));
 }
 
-.sh-root[data-layout="compact"] .sh-nav-primary {
-  flex-basis: 52px;
+.sh-root[data-layout="compact"] .sh-nav-btn {
+  margin-left: 0;
 }
 
 /* ---- Short: a landscape phone ------------------------------------------------------------ */
@@ -1457,9 +1476,11 @@
   width: calc(var(--lw) - var(--guide-w) - 12px);
 }
 
+/* The mark is the menu button, with a 44 px hit area centred on it: on a screen under 330 px tall
+   it would stick out above the page, so the brand steps down until it does not. */
 .sh-root[data-layout="short"] .sh-brand {
   left: 12px;
-  top: 8px;
+  top: max(8px, calc(22px / var(--ui) - 21px));
   gap: 10px;
   width: auto;
   height: 42px;
@@ -1510,8 +1531,10 @@
   padding: 0 10px 10px;
 }
 
+/* The row holds the tabs' 44 px hit areas: 50 design px is enough above a 0.88 scale, below it the
+   row grows to 44 CSS px (a 640 x 360 phone) and the card gives the room back. */
 .sh-root[data-layout="short"] .sh-tabs-row {
-  height: 50px;
+  height: max(50px, calc(var(--tap) / var(--ui)));
 }
 
 .sh-root[data-layout="short"] .sh-tabs {
@@ -1531,7 +1554,7 @@
 }
 
 .sh-root[data-layout="short"] .sh-guide-card {
-  height: calc(100% - 50px);
+  height: calc(100% - max(50px, calc(var(--tap) / var(--ui))));
   padding: 12px 12px 14px 16px;
 }
 
@@ -1629,14 +1652,14 @@
   display: none;
 }
 
-.sh-root[data-layout="short"] .sh-nav-btn {
-  flex-basis: 44px;
-  height: 56px;
-  margin-left: 0;
+.sh-root[data-layout="short"] .sh-nav-btn,
+.sh-root[data-layout="short"] .sh-nav-primary {
+  flex-basis: max(44px, calc(44px / var(--ui) - 5px));
 }
 
-.sh-root[data-layout="short"] .sh-nav-primary {
-  flex-basis: 44px;
+.sh-root[data-layout="short"] .sh-nav-btn {
+  height: 56px;
+  margin-left: 0;
 }
 
 .sh-root[data-layout="short"] .sh-scrim,
@@ -1804,13 +1827,13 @@
   right: 4px;
 }
 
-.sh-root[data-layout="portrait"] .sh-nav-btn {
-  flex-basis: 44px;
-  margin-left: 0;
+.sh-root[data-layout="portrait"] .sh-nav-btn,
+.sh-root[data-layout="portrait"] .sh-nav-primary {
+  flex-basis: max(44px, calc(44px / var(--ui) - 5px));
 }
 
-.sh-root[data-layout="portrait"] .sh-nav-primary {
-  flex-basis: 44px;
+.sh-root[data-layout="portrait"] .sh-nav-btn {
+  margin-left: 0;
 }
 
 .sh-root[data-layout="portrait"] .sh-guide {
@@ -1846,13 +1869,16 @@
 }
 
 /* The fold button at the title's right: open or fold the guide. It is a small mark with a
-   44 px hit area (below). */
+   44 px hit area (below). The card scrolls, so it clips what sticks out of its padding box: the
+   mark is centred on the title's row and kept 16 design px from the edge, so the whole 44 px
+   square (the card's 14 px padding plus 2) stays inside it on a 360 px phone and up. */
 .sh-root[data-layout="portrait"] .sh-fold {
   position: relative;
   flex: none;
+  align-self: center;
   width: 24px;
   height: 24px;
-  margin: -2px -4px -2px 8px;
+  margin: -1.5px 2px -1.5px 8px;
   display: grid;
   place-items: center;
   color: var(--ink);
@@ -1983,11 +2009,155 @@
   height: max(100%, calc(var(--tap) / var(--ui)));
 }
 
-/* A landscape phone's selector sits right above the cards, so its hit area grows upward only. */
-.sh-root[data-layout="short"] .sh-practical-btn::after {
+/* The selector sits right above the cards (5 design px below it), so its hit area grows upward
+   and stops 4 px under it, short of the first card. Centred on the button, the card's top edge cut
+   2 px off its bottom and it measured 42 px high. */
+.sh-practical-btn::after {
   top: auto;
-  bottom: 0;
+  bottom: -4px;
+  height: max(calc(100% + 4px), calc(var(--tap) / var(--ui)));
   transform: translateX(-50%);
+}
+
+/* A landscape phone's selector is 32 high, and its cards start about 4 below it. */
+.sh-root[data-layout="short"] .sh-practical-btn::after {
+  bottom: -3px;
+  height: max(calc(100% + 3px), calc(var(--tap) / var(--ui)));
+}
+
+/* ---- The lesson page's overlays (learn.css) --------------------------------------------------
+   ?learn=ohms-law lays its toolbar, note, close-up bar and graph paper over the canvas (.ol-tools,
+   .ol-note, .ol-loupe, .ol-graph). learn.css anchored them to the old header and panel (top 96 px,
+   right 428 px, ...) and changes them by window width, not by this layout, so they ran under the
+   new cards: the toolbar under the Compare button, the graph paper and the close-up bar under the
+   guide. Here they are anchored to the free stage instead (--sh-head, --sh-bar and --sh-guide,
+   above). Every selector carries the root's data-layout, so it outranks learn.css however wide the
+   window is, and each one sets all of the edges learn.css might have set. Delete this section once
+   learn.css reads those variables itself. One element at a time, wide and compact first (the
+   guide on the right), then portrait (a phone upright), then short (a phone on its side). */
+
+/* The toolbar: under the Compare button on a laptop and beside it on a landscape phone; under the
+   player's row on a portrait phone. */
+.sh-root[data-layout="wide"] .ol-tools,
+.sh-root[data-layout="compact"] .ol-tools {
+  top: calc(var(--sh-head) + 12px);
+  right: auto;
+  bottom: auto;
+  left: calc(24px * var(--ui));
+  max-width: calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px);
+}
+
+.sh-root[data-layout="portrait"] .ol-tools {
+  top: calc(var(--sh-head) + 8px);
+  right: 12px;
+  bottom: auto;
+  left: 12px;
+  max-width: none;
+}
+
+.sh-root[data-layout="short"] .ol-tools {
+  top: calc(68px * var(--ui));
+  right: auto;
+  bottom: auto;
+  left: calc(12px * var(--ui) + 52px);
+  max-width: calc(100% - 12px * var(--ui) - 52px - var(--sh-guide) - 12px);
+}
+
+/* The note: under the toolbar on a laptop; at the foot of the free stage on a phone (never with
+   the close-up bar: the note is hidden while the bar is open). */
+.sh-root[data-layout="wide"] .ol-note,
+.sh-root[data-layout="compact"] .ol-note {
+  top: calc(var(--sh-head) + 68px);
+  right: auto;
+  bottom: auto;
+  left: calc(24px * var(--ui));
+  max-width: min(460px, calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px));
+}
+
+.sh-root[data-layout="portrait"] .ol-note {
+  top: auto;
+  right: 12px;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: 12px;
+  max-width: none;
+}
+
+.sh-root[data-layout="short"] .ol-note {
+  top: auto;
+  right: auto;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+  max-width: min(460px, calc(100% - 12px * var(--ui) - var(--sh-guide) - 12px));
+}
+
+/* The close-up bar: at the foot of the free stage, left of the guide. */
+.sh-root[data-layout="wide"] .ol-loupe,
+.sh-root[data-layout="compact"] .ol-loupe {
+  top: auto;
+  right: calc(var(--sh-guide) + 16px);
+  bottom: calc(var(--sh-bar) + 16px);
+  left: 16px;
+}
+
+.sh-root[data-layout="portrait"] .ol-loupe {
+  top: auto;
+  right: 12px;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: 12px;
+  max-width: none;
+  margin: 0;
+}
+
+.sh-root[data-layout="short"] .ol-loupe {
+  top: auto;
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+}
+
+/* The graph paper: the free stage under the toolbar, left of the guide; a phone's fills it. */
+.sh-root[data-layout="wide"] .ol-graph,
+.sh-root[data-layout="compact"] .ol-graph {
+  top: calc(var(--sh-head) + 68px);
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(24px * var(--ui));
+  border: var(--rule);
+  border-radius: var(--radius);
+}
+
+.sh-root[data-layout="portrait"] .ol-graph {
+  top: calc(var(--sh-head) + 64px);
+  right: 0;
+  bottom: var(--sh-bar);
+  left: 0;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+
+.sh-root[data-layout="short"] .ol-graph {
+  top: calc(var(--sh-head) + 8px);
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+  border: var(--rule);
+  border-radius: var(--radius);
+}
+
+/* The diagram or Identify card floats top-left on a laptop, so the toolbar and note go
+   bottom-left. (On a phone they open as sheets, and nothing floats.) Last: it is the most
+   specific. */
+.sh-root[data-layout="wide"] .ol-float-open .ol-tools,
+.sh-root[data-layout="compact"] .ol-float-open .ol-tools {
+  top: auto;
+  bottom: calc(var(--sh-bar) + 12px);
+}
+
+.sh-root[data-layout="wide"] .ol-float-open .ol-note,
+.sh-root[data-layout="compact"] .ol-float-open .ol-note {
+  top: auto;
+  bottom: calc(var(--sh-bar) + 68px);
 }
 
 /* ---- Motion: slides and fades only, and none under reduced motion ------------------------ */
