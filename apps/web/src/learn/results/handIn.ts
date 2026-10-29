@@ -20,6 +20,7 @@ export function handIn(
     checks: checkReadingsAgainstBench(record, supervisor.log(), {
       ammeterA: params.ammeter.division,
       voltmeterV: params.voltmeter.division,
+      ammeterZeroErrorA: params.ammeter.zeroError,
     }),
     record,
     benchOhm,
