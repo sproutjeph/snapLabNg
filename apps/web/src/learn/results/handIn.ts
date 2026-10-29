@@ -20,6 +20,7 @@ export function handIn(
     checks: checkReadingsAgainstBench(record, supervisor.log(), {
       ammeterA: params.ammeter.division,
       voltmeterV: params.voltmeter.division,
+      // Once a zero-adjust trim exists, pass the zero error left after the trim.
       ammeterZeroErrorA: params.ammeter.zeroError,
     }),
     record,

@@ -23,6 +23,25 @@ describe("the value a candidate reads off a dial", () => {
     expect(displayedValue(p.voltmeter, meterTargetDeg(p.voltmeter, 1.35, 0))).toBeCloseTo(1.35, 12);
   });
 
+  it("displayedValue inverts meterTargetDeg", () => {
+    // docs/plans/exam-redesign.md §Tests: readings 0, 0.25, 0.5, 0.75 and 1.0 A on the 0–1 A
+    // ammeter and 0, 1 and 3 V on the 0–3 V voltmeter (docs/07 §4.4), with a zero error of 0 or
+    // ±0.02 (one 0.02 A division, the seeded range: docs/plans/ohms-law-vi.md, paramsFromSeed),
+    // each shows r + zeroError to within 1e-9. Pure algebra: no textbook value applies.
+    const cases = [
+      { meter: p.ammeter, readings: [0, 0.25, 0.5, 0.75, 1.0] },
+      { meter: p.voltmeter, readings: [0, 1, 3] },
+    ];
+    for (const { meter, readings } of cases) {
+      for (const zeroError of [-0.02, 0, 0.02]) {
+        const m = { ...meter, zeroError };
+        for (const r of readings) {
+          expect(displayedValue(m, meterTargetDeg(m, r, 0))).toBeCloseTo(r + zeroError, 9);
+        }
+      }
+    }
+  });
+
   it("includes the zero-adjust trim, since the trim moves the needle", () => {
     // Trimming by −1 division (80° × 0.02/1 = 1.6°, taken off, on the 80° span of a 0–1 A dial
     // in 0.02 A divisions) cancels a +0.02 A zero error: 0.30 A then shows 0.30 A.

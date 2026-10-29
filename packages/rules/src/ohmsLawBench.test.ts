@@ -87,11 +87,12 @@ describe("her readings against her own bench", () => {
 
   it("accepts a reading corrected for the ammeter's zero error, with a slip of one division", () => {
     // WAEC credits the precaution "the zero errors of the meters were checked and corrected";
-    // docs/07 §4.4 seeds an ammeter zero error of ±1 division (0.02 A). Row 2 (R = 5 Ω): the
-    // dial showed 0.34 A with a +0.02 A zero error, so the corrected reading is 0.32 A; she wrote
-    // 0.30 A, one division below it. Expected: ok with the zero error given (0.02 A from the
-    // corrected value), not ok without it (0.04 A, two divisions from the dial). DRAFT: the
-    // one-division tolerance is the plan's choice.
+    // the bench seeds an ammeter zero error of 0 or ±1 division of 0.02 A
+    // (docs/plans/ohms-law-vi.md, the paramsFromSeed line; packages/engine/src/ohms-law/params.ts,
+    // paramsFromSeed's zero-error block). Row 2 (R = 5 Ω): the dial showed 0.34 A with a +0.02 A
+    // zero error, so the corrected reading is 0.32 A; she wrote 0.30 A, one division below it.
+    // Expected: ok with the zero error given (0.02 A from the corrected value), not ok without it
+    // (0.04 A, two divisions from the dial). DRAFT: the one-division tolerance is the plan's choice.
     const log = SAME_AS_GOOD.map((e) => (e.boxOhm === 5 ? { ...e, iShown: "0.34" } : e));
     const corrected = checkReadingsAgainstBench(OHMS_GOOD, log, {
       ...DIVISIONS,
@@ -100,14 +101,17 @@ describe("her readings against her own bench", () => {
     expect(find(corrected, 2, "I")).toMatchObject({ wrote: "0.30", meterShowed: "0.34", ok: true });
     const plain = checkReadingsAgainstBench(OHMS_GOOD, log, DIVISIONS);
     expect(find(plain, 2, "I")).toMatchObject({ wrote: "0.30", meterShowed: "0.34", ok: false });
-    // The voltmeter has no zero error (docs/07 §4.4): V is checked as before.
+    // The voltmeter has no zero error (paramsFromSeed sets it to 0: packages/engine/src/ohms-law/
+    // params.ts; docs/plans/ohms-law-vi.md seeds one for the ammeter only): V is checked as before.
     expect(find(corrected, 2, "V")?.ok).toBe(true);
   });
 
   it("changes nothing with a zero error of 0", () => {
     // No textbook figure; behaviour only. ammeterZeroErrorA = 0 gives the same checks as leaving
     // it out, on an exact log and on one showing 0.33 A at R = 5 Ω (1.5 divisions of 0.02 A
-    // from her 0.30 A, docs/07 §4.4, so not ok either way).
+    // from her 0.30 A, divisions per docs/07 §4.4, so not ok either way). A zero error of 0 is one
+    // of paramsFromSeed's seeded values (docs/plans/ohms-law-vi.md; packages/engine/src/ohms-law/
+    // params.ts, its zero-error block).
     const off = SAME_AS_GOOD.map((e) => (e.boxOhm === 5 ? { ...e, iShown: "0.33" } : e));
     const zero = { ...DIVISIONS, ammeterZeroErrorA: 0 };
     for (const log of [SAME_AS_GOOD, off]) {

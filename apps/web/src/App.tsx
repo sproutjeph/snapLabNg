@@ -37,7 +37,7 @@ function practicalProps(params: URLSearchParams) {
   const mode: PracticalMode | null = m === "watch" || m === "practice" || m === "exam" ? m : null;
   const raw = params.get("seed");
   const n = raw === null || raw === "" ? Number.NaN : Number(raw);
-  return { mode, seed: Number.isFinite(n) ? n : null };
+  return { mode, seed: Number.isInteger(n) ? n : null };
 }
 
 export function App() {

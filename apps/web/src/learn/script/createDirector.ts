@@ -2,6 +2,8 @@ import { emptyOhmsLawRecord } from "../readings/record";
 import type { Director, DirectorOptions } from "./types";
 
 // STUB (Wave 0): the real director arrives in W1-director. Contract: learn/script/types.ts.
+// DirectorOptions is a union on mode: only Watch's demonstration bench carries a supervisor, so
+// her bench's truth (Practise, Exam) never reaches the director. The stub reads no bench at all.
 export function createDirector(opts: DirectorOptions): Director {
   const listeners = new Set<() => void>();
   return {

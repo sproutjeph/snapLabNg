@@ -285,6 +285,10 @@ export interface VoiceGuide {
 - New contract files `learn/paper/types.ts` (`PracticalQuestion`, `QuestionPaperProps`) and `learn/results/types.ts` (`ResultsProps`). Also `CalloutsProps`, `LookGroundProps`, `BlobShadowProps` and `VoiceOptions`.
 - `learn/results/handIn.ts` is the only place hand-in reads the supervisor.
 - `checkReadingsAgainstBench`'s third argument gains an optional `ammeterZeroErrorA` (default 0): an I cell is ok within one division of the shown value or of shown − zero error (the nearer), so a hand-corrected zero error is not penalised. `meterShowed` stays the dial's value; V is unchanged. `handIn` passes `params.ammeter.zeroError`.
+- Her bench's truth never reaches the director: `DirectorOptions` is a union on `mode`. Watch gets the demonstration `OhmsLawBench`; Practise and Exam get `Omit<OhmsLawBench, "supervisor">`.
+- The supervisor reads a meter only after its needle has stayed below 0.5°/s for 0.25 s of consecutive 120 Hz steps (`NEEDLE_SETTLED_HOLD_S`), so an overshoot's turning point is never read or logged. The ammeter's floor is −(|zeroError| + division/2), so a −1 division zero error at rest reads "-0.02".
+- Leak guard as built (`apps/web/src/boundary.test.ts`): code with comments stripped may name `supervisor` (member, destructuring or bracket key) only in `learn/script/**`, `learn/results/**`, `learn/wiring/bench.ts`, `learn/types.ts` and tests.
+- Deferred §Tests: `a careful candidate's reading` waits for a shared reading formatter (today only the supervisor's `toFixed(2)` formats a reading). The Director, Voice, Script, Guide and E2E tests belong to their waves (W1-director, W2-watch, W2-guide, Integration).
 
 ## Tests (by name, with expected values and sources)
 - **Engine** (science-verifier):

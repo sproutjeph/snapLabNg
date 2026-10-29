@@ -98,15 +98,21 @@ export interface Director {
   dispose(): void;
 }
 
-export interface DirectorOptions {
+interface DirectorOptionsBase {
   script: Script;
-  mode: PracticalMode;
-  /**
-   * Watch: the demonstration bench (seeded with demoSeedFor), which the actor drives.
-   * Practise and Exam: her bench, which the director only reads.
-   */
-  bench: OhmsLawBench;
   voice: VoiceGuide;
   /** What a beat's `done` reads in Practise; the page owns her record and what she identified. */
   benchState: () => BenchState;
 }
+
+/**
+ * A union on `mode`, so her bench's truth never reaches the director: in Watch the director
+ * drives the demonstration bench (seeded with demoSeedFor) and may read its supervisor; in
+ * Practise and Exam it only reads her bench, and its type has no `supervisor` to read.
+ */
+export type DirectorOptions =
+  | (DirectorOptionsBase & { mode: "watch"; bench: OhmsLawBench })
+  | (DirectorOptionsBase & {
+      mode: "practice" | "exam";
+      bench: Omit<OhmsLawBench, "supervisor">;
+    });
