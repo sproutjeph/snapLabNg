@@ -104,6 +104,8 @@ function defaultBody(tab: ShellTab, step: Step, exam: boolean, checklist: ReactN
 
 /** A drag this far, up or down, opens or folds the phone's guide. */
 const DRAG_PX = 24;
+/** The click a mouse sends right after a drag ends on a tab is ignored: it came within this long (ms). */
+const CLICK_AFTER_DRAG_MS = 50;
 
 /**
  * The guide: tabs with a sliding accent underline, and the step's card (its title, the
@@ -130,7 +132,8 @@ export default function GuidePanel({
   const tabsRef = useRef<HTMLDivElement>(null);
   const inkRef = useRef<HTMLSpanElement>(null);
   const stopDrag = useRef<(() => void) | null>(null);
-  const dragged = useRef(false);
+  /** When the last drag on the tab row ended (an event's timeStamp), so its click can be ignored. */
+  const dragEndedAt = useRef(Number.NEGATIVE_INFINITY);
   useSlider(
     tabsRef,
     inkRef,
@@ -175,15 +178,14 @@ export default function GuidePanel({
     if (!portrait || !e.isPrimary) return;
     stopDrag.current?.();
     const from = e.clientY;
-    dragged.current = false;
     const end = (ev: globalThis.PointerEvent) => {
       stopDrag.current?.();
       const dy = ev.clientY - from;
       if (dy < -DRAG_PX) {
-        dragged.current = true;
+        dragEndedAt.current = ev.timeStamp;
         onGuideChange("open");
       } else if (dy > DRAG_PX) {
-        dragged.current = true;
+        dragEndedAt.current = ev.timeStamp;
         if (activeTab === "instructions") onGuideChange("peek");
       }
     };
@@ -242,11 +244,8 @@ export default function GuidePanel({
               aria-selected={activeTab === t}
               aria-controls={panelId}
               tabIndex={activeTab === t ? 0 : -1}
-              onClick={() => {
-                if (dragged.current) {
-                  dragged.current = false;
-                  return;
-                }
+              onClick={(e) => {
+                if (e.timeStamp - dragEndedAt.current < CLICK_AFTER_DRAG_MS) return;
                 if (t === activeTab) {
                   if (portrait && activeTab === "instructions") {
                     onGuideChange(guide === "open" ? "peek" : "open");
