@@ -3,19 +3,23 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
 import {
+  BENCH_TILE_M,
+  benchTag,
+  benchTexture,
   bevelBox,
   bevelSegments,
   boxProjectUV,
   brassSurface,
   disposeKitBag,
-  kitLabel,
-  kitTexture,
+  KEY_NUTS,
+  latheOf,
   mergePieces,
+  offsetUV,
   paintMaterial,
   paperMaterial,
+  projectUVPerTriangle,
   woodMaterial,
 } from "../materials";
-import { PLUG_KEY_DIMS } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { hitMaterial } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -26,31 +30,62 @@ export interface KeyKProps extends PartProps {
 }
 
 /**
- * The plug key K, terminals K1 and K2; open or closed from `state.current.keyClosed`. Built
- * like the metre bridge's PlugKey (same height, depth and plug) but matte and tagged for the
- * ink pass. Only the plug and a narrow box around it toggle the key; the nuts on the blocks
- * keep their own taps. Props frozen.
+ * The plug key K, terminals K1 and K2; open or closed from `state.current.keyClosed`. A mahogany
+ * base under two chunky brass blocks, a tapered brass plug with a speckled ebonite knob seated
+ * between them, and a small paper tag lettered K, after the golden frame and
+ * docs/design/asset-pass/plug-key.webp. Only the plug and a narrow box around it toggle the key;
+ * the nuts on the blocks keep their own taps and stand where they always did. Props frozen.
  */
 
-const D = PLUG_KEY_DIMS;
+// ---- Sizes, in metres -----------------------------------------------------------------------
+// The footprint is 0.092 x 0.05 (LeadParts' BENCH_FOOTPRINTS, 0.024 high at the blocks).
 const BASE_W = 0.092;
-const BLOCK_W = 0.036;
-const GAP = 0.0062; // the slot between the blocks, a little wider than the plug at its tip
-const SHAFT_H = 0.012;
-const SHAFT_R_TOP = 0.0034;
-const SHAFT_R_BOT = 0.0026;
-const HEAD_R = 0.0075;
-const HEAD_H = 0.017;
+const BASE_D = 0.05;
+const BASE_H = 0.01;
+const BLOCK_W = 0.034;
+const BLOCK_D = 0.028;
+const BLOCK_Z = -0.003; // a little back, which leaves a front strip for the tag
+const BLOCK_TOP = KEY_NUTS.K1[1]; // 0.024: the nuts' foot
+const BLOCK_H = BLOCK_TOP - BASE_H;
+const GAP = 0.012; // the slot between the blocks, which the plug fills
 const BLOCK_X = GAP / 2 + BLOCK_W / 2;
-const NUT_X = 0.031;
-const BLOCK_TOP = D.height + D.blockHeight;
-const SEAT_Y = D.height + 0.001; // plug base, when it sits in the slot
-const OUT_Z = D.depth / 2 + 0.016; // where the plug lies when it is out
-const OUT_Y = HEAD_R;
-// The tap box: the plug's own footprint, long enough in z to cover the plug lying out in front.
+const SEAT_Y = BASE_H + 0.001; // the plug's tip, when it is in
+// The plug: a tapered brass shank with a collar, then a tall pin-shaped ebonite knob.
+const SHANK: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0.004, 0],
+  [0.0043, 0.0014],
+  [0.0056, 0.0245],
+  [0.007, 0.025],
+  [0.007, 0.0268],
+  [0.0054, 0.0278],
+  [0, 0.0278],
+];
+const SHANK_H = 0.0278;
+const KNOB: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0.005, 0],
+  [0.0056, 0.0012],
+  [0.0066, 0.006],
+  [0.0086, 0.012],
+  [0.0101, 0.0166],
+  [0.01, 0.0196],
+  [0.0086, 0.0226],
+  [0.0052, 0.0246],
+  [0.0023, 0.0254],
+  [0, 0.0256],
+];
+// Out: the plug lies on the bench in front of the key, its knob resting on the desk.
+const OUT_Z = BASE_D / 2 + 0.004;
+const OUT_Y = 0.0036;
+const OUT_PITCH = 0.2;
+// The tap box: the plug's own footprint, long enough in z to cover the plug lying out in front
+// (unchanged from the metre bridge's plug key, whose size it was).
 const HIT_HALF_X = 0.009;
-const HIT_Z0 = -D.blockDepth / 2;
-const HIT_Z1 = OUT_Z + SHAFT_H + HEAD_H + 0.004;
+const HIT_Z0 = -0.012;
+const HIT_Z1 = 0.074;
+const TAG_W = 0.019;
+const TAG_H = 0.0115;
 
 export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyKProps) {
   const low = quality === "low";
@@ -61,56 +96,47 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 10 : 20;
-    const woodTex = kitTexture("mahogany", quality);
-    const brassTex = kitTexture("brass", quality);
-    const tex = kitLabel({ lines: ["K"], width: 0.016, height: 0.01, seed: 23 }, quality);
-    const labelGeo = new THREE.PlaneGeometry(0.016, 0.01);
-    labelGeo.rotateX(-Math.PI / 2);
+    const seg = low ? 12 : 18;
+    const woodTex = benchTexture("mahogany", quality);
+    const brassTex = benchTexture("brass", quality);
+    const eboniteTex = benchTexture("ebonite", quality);
+    const tagTex = benchTag({ text: "K", width: TAG_W, height: TAG_H, seed: 23 }, quality);
+    const tagGeo = new THREE.PlaneGeometry(TAG_W, TAG_H);
+    tagGeo.rotateX(-Math.PI / 2);
     const hitDepth = HIT_Z1 - HIT_Z0;
     const hitGeo = new THREE.BoxGeometry(HIT_HALF_X * 2, 0.04, hitDepth);
     hitGeo.translate(0, 0.02, HIT_Z0 + hitDepth / 2);
-    const baseGeo = bevelBox(BASE_W, D.height, D.depth, 0.003, bs);
-    boxProjectUV(baseGeo, [0.3, 0.15]);
+    const baseGeo = bevelBox(BASE_W, BASE_H, BASE_D, 0.003, bs);
+    boxProjectUV(baseGeo, [BENCH_TILE_M.mahogany[0], 0.09]);
+    offsetUV(baseGeo, 0.31, 0.3);
     // Both brass blocks in one geometry: one draw call.
     const blocksGeo = mergePieces(
       [-1, 1].map((side) =>
-        bevelBox(BLOCK_W, D.blockHeight, D.blockDepth, 0.0016, bs).translate(
+        bevelBox(BLOCK_W, BLOCK_H, BLOCK_D, 0.002, Math.min(bs, 2)).translate(
           side * BLOCK_X,
-          D.height + D.blockHeight / 2,
-          0,
+          BASE_H + BLOCK_H / 2,
+          BLOCK_Z,
         ),
       ),
     );
-    boxProjectUV(blocksGeo, [0.2, 0.2]);
-    // The plug's black knob: a tapered bakelite handle.
-    const k = HEAD_H / 0.0165;
-    const profile = [
-      [0, 0],
-      [0.0072, 0],
-      [0.0078, 0.002],
-      [0.0063, 0.0058],
-      [0.0052, 0.0108],
-      [0.0066, 0.0142],
-      [0.0062, 0.0162],
-      [0.0035, 0.0166],
-      [0, 0.0166],
-    ].map(([r, y]) => new THREE.Vector2((r ?? 0) * (HEAD_R / 0.0075), (y ?? 0) * k));
+    boxProjectUV(blocksGeo, BENCH_TILE_M.brass);
+    const knobBase = latheOf(KNOB, seg);
     return {
       woodTex,
       brassTex,
-      tex,
+      eboniteTex,
+      tagTex,
       woodMat: woodMaterial(21, { map: woodTex }),
-      labelMat: paperMaterial(23, { map: tex }),
-      labelGeo,
+      tagMat: paperMaterial(23, { map: tagTex }),
+      tagGeo,
       hitGeo,
-      brassMat: brassSurface(22, { map: brassTex }),
-      headMat: paintMaterial("#151312", 24),
+      brassMat: brassSurface(22, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
+      knobMat: paintMaterial("#ffffff", 24, { map: eboniteTex, amount: 0.012 }),
       hitMat: hitMaterial(),
       baseGeo,
       blocksGeo,
-      shaftGeo: new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg),
-      headGeo: new THREE.LatheGeometry(profile, seg),
+      shaftGeo: latheOf(SHANK, seg),
+      headGeo: projectUVPerTriangle(knobBase, BENCH_TILE_M.ebonite[0]),
     };
   }, [low, quality]);
 
@@ -125,8 +151,8 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
     const k = t.current;
     // In the slot: upright. Out: lying on the bench in front of the key.
     g.position.y = OUT_Y + (SEAT_Y - OUT_Y) * k;
-    g.position.z = OUT_Z * (1 - k);
-    g.rotation.x = (Math.PI / 2) * (1 - k);
+    g.position.z = BLOCK_Z + (OUT_Z - BLOCK_Z) * (1 - k);
+    g.rotation.x = (Math.PI / 2 - OUT_PITCH) * (1 - k);
     g.rotation.z = 0.28 * (1 - k);
   });
 
@@ -136,14 +162,16 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
         <mesh
           geometry={res.baseGeo}
           material={res.woodMat}
-          position={[0, D.height / 2, 0]}
+          position={[0, BASE_H / 2, 0]}
           castShadow={cast}
           receiveShadow={cast}
         />
+      </InkGroup>
+      <InkGroup id={ids + 4} thin>
         <mesh
-          geometry={res.labelGeo}
-          material={res.labelMat}
-          position={[0, D.height + 0.0003, 0.0185]}
+          geometry={res.tagGeo}
+          material={res.tagMat}
+          position={[0, BASE_H + 0.0004, (BASE_D / 2 + BLOCK_Z + BLOCK_D / 2) / 2]}
         />
       </InkGroup>
       <InkGroup id={ids + 2}>
@@ -154,37 +182,22 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
           receiveShadow={cast}
         />
       </InkGroup>
-      <InkGroup id={ids + 1} thin>
-        <group ref={plugRef} position={[0, SEAT_Y, 0]} onPointerDown={tapOnly(onToggle)}>
-          <mesh
-            geometry={res.shaftGeo}
-            material={res.brassMat}
-            position={[0, SHAFT_H / 2, 0]}
-            castShadow={cast}
-          />
+      <group ref={plugRef} position={[0, SEAT_Y, BLOCK_Z]} onPointerDown={tapOnly(onToggle)}>
+        <InkGroup id={ids + 1} thin>
+          <mesh geometry={res.shaftGeo} material={res.brassMat} castShadow={cast} />
+        </InkGroup>
+        <InkGroup id={ids + 3} thin>
           <mesh
             geometry={res.headGeo}
-            material={res.headMat}
-            position={[0, SHAFT_H, 0]}
+            material={res.knobMat}
+            position={[0, SHANK_H, 0]}
             castShadow={cast}
           />
-        </group>
-      </InkGroup>
+        </InkGroup>
+      </group>
       <mesh geometry={res.hitGeo} material={res.hitMat} onPointerDown={tapOnly(onToggle)} />
-      <TerminalNut
-        id="K1"
-        part="key"
-        position={[NUT_X, BLOCK_TOP, 0]}
-        state={state}
-        quality={quality}
-      />
-      <TerminalNut
-        id="K2"
-        part="key"
-        position={[-NUT_X, BLOCK_TOP, 0]}
-        state={state}
-        quality={quality}
-      />
+      <TerminalNut id="K1" part="key" position={KEY_NUTS.K1} state={state} quality={quality} />
+      <TerminalNut id="K2" part="key" position={KEY_NUTS.K2} state={state} quality={quality} />
     </group>
   );
 }
