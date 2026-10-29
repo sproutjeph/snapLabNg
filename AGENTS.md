@@ -82,12 +82,15 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `scene/ink/**`, `scene/look/**` (except `types.ts`, plus `scene/look/LookPreview.tsx`), additive `quality/tier.ts` (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `shader-artist`, while `claude/look` is open |
-| `apparatus/ohms-law/**`, new `apparatus/materials/**`, `layout.ts` v2 (additive only), a `PenNib` cursor prop (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `apparatus-modeller`, while `claude/apparatus-v2` is open |
-| `learn/script/**`, `learn/voice/**` (both except `types.ts`), `learn/player/**`, additive `learn/timeline.ts`, `learn/script/DirectorPreview.tsx` (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `general-purpose`, while `claude/director` is open |
-| `home/**`, `learn/paper/**` (except `types.ts`, plus `learn/paper/PaperPreview.tsx`), `learn/results/**` (except `types.ts`, plus `learn/results/ResultsPreview.tsx`) (plan: `docs/plans/exam-redesign.md`, Wave 1) | Claude subagent `ui-builder`, while `claude/paper` is open |
+| `apparatus/ohms-law/KitPreview.tsx` (plan: `docs/plans/asset-pass.md`, 1b-0) | Claude subagent `apparatus-modeller`, while `claude/asset-seam` is open |
+| `scripts/shot.ts`, `scripts/design-targets.ts` (additive `--set asset-pass`), `docs/design/asset-pass/**` (plan: `docs/plans/asset-pass.md`, 1b-0) | Claude subagent `implementer`, while `claude/asset-seam-scripts` is open |
+| G4: `apparatus/ohms-law/{Lead.tsx,LeadParts.ts,TerminalNut.tsx}`; named owner of `layout.ts` and `BENCH_FOOTPRINTS`/`floorAt` (additive, with the lead's OK) (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-leads` is open |
+| G2: `apparatus/ohms-law/{ResistanceBox,Key,CellHolder}.tsx`; `apparatus/materials/**` (additive only) (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-bench` is open |
+| G3: `apparatus/ohms-law/{WireBoard.tsx,WireBoardTextures.ts,Tray.tsx,TrayParts.ts}` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-board` is open |
+| G1: `apparatus/ohms-law/{Meter.tsx,MeterDial.ts,MeterImage.ts,MeterMaterials.ts}` (`MeterMaterials.ts` additive only), `scene/look/DeskProps.tsx` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-meters` is open |
+| `learn/shell/**`, `learn/player/**` and their CSS; the exact list is in `docs/plans/page-layout.md` once approved (plan: `docs/plans/exam-redesign.md`, "Page layout: Backcountry's") | Claude subagent `ui-builder`, while `claude/page-layout` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
-No Wave 1 slice edits `App.tsx`; the preview switches are already in place. All paths above are under `apps/web/src/`.
+No Wave 1b slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/`, except `scripts/` and `docs/`.
 
 The lead updates this table when it hands out a new slice. **All 3D work (scene, kits, reveal, particles, shaders) stays with the lead**: from Oct 27, Gemini runs as Gemini Flash and gets UI and logic slices only, and Muse Code gets non-3D slices only.
