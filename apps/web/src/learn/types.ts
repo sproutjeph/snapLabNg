@@ -7,6 +7,7 @@ import type {
   OhmsLawReadout,
   TerminalId,
 } from "@snaplab/engine";
+import type { BenchLogEntry } from "@snaplab/rules";
 import type * as THREE from "three";
 import type { Timeline } from "./timeline";
 
@@ -159,6 +160,25 @@ export interface Lesson {
 }
 
 export type LessonMode = "practice" | "exam";
+
+/** The three ways through a practical (docs/plans/exam-redesign.md). The UI word is "Practise". */
+export type PracticalMode = "watch" | "practice" | "exam";
+
+/**
+ * The bench's own truth, as a supervisor sees it (docs/plans/exam-redesign.md, "Where bench
+ * truth lives"). Only learn/script/** (Watch, on the demonstration bench) and learn/results/**
+ * (after hand-in) may read it; a test enforces that.
+ */
+export interface BenchSupervisor {
+  /** What the dial shows to 2 d.p. (displayedValue); null while the needle moves or off scale. */
+  reading(meter: "ammeter" | "voltmeter"): string | null;
+  /** The length XY in cm to 1 d.p., as a metre rule gives it. */
+  lengthText(): string;
+  /** Settled pairs of readings at each box setting while the key was closed, oldest first. */
+  log(): readonly BenchLogEntry[];
+  /** R_XY ∥ R_V (effectiveXyOhm): the supervisor's value for the accuracy mark. */
+  effectiveOhm(): number;
+}
 
 /**
  * The V–I bench controller (Wave 2 wiring slice builds it; readings, shell and the lesson page

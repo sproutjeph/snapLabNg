@@ -163,3 +163,28 @@ export function paramsFromSeed(seed: number): OhmsLawParams {
     boxCoilsOhm: BOX_COILS_OHM,
   };
 }
+
+/**
+ * How far the demonstration wire's resistance is from hers, at least, as a fraction of hers:
+ * twice the ±10% accuracy tolerance (PHYS-ACCURACY, docs/07 §5.2), so a slope copied from the
+ * Watch bench fails the accuracy check on her own bench (docs/plans/exam-redesign.md, D1(a)).
+ */
+export const DEMO_MIN_OHM_DIFFERENCE = 0.2;
+
+/**
+ * The seed of the demonstration (Watch) bench for a practice bench: the first seed in a
+ * sequence drawn from hers whose wire XY differs from hers by at least DEMO_MIN_OHM_DIFFERENCE.
+ * Pure: the same practice seed always gives the same demonstration bench.
+ */
+export function demoSeedFor(practiceSeed: number): number {
+  const practiceOhm = paramsFromSeed(practiceSeed).wire.ohm;
+  const next = mulberry32((practiceSeed ^ 0x9e3779b9) >>> 0);
+  // At least about 11% of seeds qualify for any practice wire in the 2.8–4.5 Ω band (the worst
+  // case is a wire near 3.65 Ω), so 1000 draws all failing has a chance below 10⁻⁵⁰.
+  for (let i = 0; i < 1000; i++) {
+    const seed = Math.floor(next() * 4294967296);
+    const ohm = paramsFromSeed(seed).wire.ohm;
+    if (Math.abs(ohm - practiceOhm) >= DEMO_MIN_OHM_DIFFERENCE * practiceOhm) return seed;
+  }
+  throw new Error(`demoSeedFor: no demonstration bench found for seed ${practiceSeed}`);
+}

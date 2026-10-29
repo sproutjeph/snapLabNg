@@ -3,6 +3,8 @@ import {
   CELL_EMF_RANGE_V,
   CELL_INTERNAL_RANGE_OHM,
   constantanOhmPerM,
+  DEMO_MIN_OHM_DIFFERENCE,
+  demoSeedFor,
   gaugeLengthRangeCm,
   paramsFromSeed,
   RULE_LENGTH_CM,
@@ -80,5 +82,41 @@ describe("bench parameters from a seed", () => {
     // .claude/rules/science-engine.md: pure, seeded.
     expect(paramsFromSeed(42)).toEqual(paramsFromSeed(42));
     expect(paramsFromSeed(42)).not.toEqual(paramsFromSeed(43));
+  });
+});
+
+describe("the demonstration bench for a practice bench", () => {
+  it("always has a wire XY at least 20% away from hers, over 10 000 practice seeds", () => {
+    // docs/plans/exam-redesign.md D1(a): twice the ±10% PHYS-ACCURACY tolerance (docs/07 §5.2),
+    // so a slope copied from the Watch bench fails accuracy on her own bench.
+    expect(DEMO_MIN_OHM_DIFFERENCE).toBeCloseTo(0.2, 12);
+    for (let seed = 0; seed < 10_000; seed++) {
+      const mine = paramsFromSeed(seed).wire.ohm;
+      const demo = paramsFromSeed(demoSeedFor(seed)).wire.ohm;
+      expect(Math.abs(demo - mine) / mine).toBeGreaterThanOrEqual(0.2);
+    }
+  });
+
+  it("is pure: the same practice seed gives the same demonstration seed", () => {
+    // .claude/rules/science-engine.md: pure, seeded.
+    expect(demoSeedFor(42)).toBe(demoSeedFor(42));
+    expect(Number.isInteger(demoSeedFor(42))).toBe(true);
+    expect(demoSeedFor(42)).not.toBe(42);
+  });
+
+  it("finds a bench for wires at both ends of the 2.8–4.5 Ω band and near its middle", () => {
+    // A 3.65 Ω wire needs ≤ 2.92 Ω or ≥ 4.38 Ω, the narrowest choice in the band (plan, D1(a)).
+    const byOhm = Array.from({ length: 5000 }, (_, seed) => ({
+      seed,
+      ohm: paramsFromSeed(seed).wire.ohm,
+    }));
+    const nearest = (target: number) =>
+      byOhm.reduce((a, b) => (Math.abs(b.ohm - target) < Math.abs(a.ohm - target) ? b : a));
+    for (const target of [2.8, 3.65, 4.5]) {
+      const { seed, ohm } = nearest(target);
+      expect(ohm).toBeCloseTo(target, 1);
+      const demo = paramsFromSeed(demoSeedFor(seed)).wire.ohm;
+      expect(Math.abs(demo - ohm)).toBeGreaterThanOrEqual(0.2 * ohm);
+    }
   });
 });
