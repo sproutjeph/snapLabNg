@@ -120,3 +120,49 @@ const OUTLINE: Record<QualityTier, OutlineSettings> = {
 export function outlineFor(tier: QualityTier): OutlineSettings {
   return { ...OUTLINE[tier] };
 }
+
+/**
+ * The look recipe per tier (docs/plans/exam-redesign.md, "The look" and "Performance"). Kept
+ * apart from QualitySettings, like OutlineSettings, so the existing settings stay as they were.
+ * Real soft shadows on mid (1024) as well as high (2048); low has none (blob shadows only).
+ */
+export interface LookSettings {
+  /** Side of the key light's shadow map; 0 means no shadow map. */
+  shadowMapSize: number;
+  /** The pixel-ratio ladder from the top rung down; the canvas starts on the first rung. */
+  dprLadder: readonly number[];
+}
+
+/** Backcountry 101's pixel-ratio ladder (research report 2). */
+export const DPR_LADDER: readonly number[] = [2, 1.5, 1.25, 1];
+/** A frame slower than this counts against the current rung. */
+export const DPR_SLOW_FRAME_MS = 25;
+/** Frames judged together. */
+export const DPR_WINDOW_FRAMES = 90;
+/** More slow frames than this in one window steps the ratio down a rung. */
+export const DPR_SLOW_LIMIT = 60;
+
+const LOOK: Record<QualityTier, { shadowMapSize: number; maxDpr: number }> = {
+  low: { shadowMapSize: 0, maxDpr: 1 },
+  mid: { shadowMapSize: 1024, maxDpr: 1.5 },
+  high: { shadowMapSize: 2048, maxDpr: 2 },
+};
+
+/** The look settings for `tier`; the ladder is capped at the device's own pixel ratio. */
+export function lookFor(tier: QualityTier, devicePixelRatio = 2): LookSettings {
+  const { shadowMapSize, maxDpr } = LOOK[tier];
+  const top = Math.max(1, Math.min(maxDpr, devicePixelRatio));
+  const rungs = DPR_LADDER.filter((d) => d <= top);
+  const dprLadder = rungs[0] === top ? rungs : [top, ...rungs];
+  return { shadowMapSize, dprLadder };
+}
+
+/**
+ * The rung after one window of frames: one step down when more than DPR_SLOW_LIMIT of
+ * DPR_WINDOW_FRAMES were slow, otherwise the same. Never below the last rung, never back up.
+ */
+export function nextDprRung(ladder: readonly number[], rung: number, slowFrames: number): number {
+  const last = Math.max(0, ladder.length - 1);
+  const current = Math.max(0, Math.min(last, rung));
+  return slowFrames > DPR_SLOW_LIMIT ? Math.min(last, current + 1) : current;
+}
