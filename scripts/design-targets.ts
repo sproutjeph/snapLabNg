@@ -1,13 +1,18 @@
-// Image-first design targets for the exam redesign (docs/plans/exam-redesign.md, decision D2).
+// Image-first design targets for the exam redesign (docs/plans/exam-redesign.md, decision D2) and
+// the asset pass (docs/plans/asset-pass.md, Wave 1b-0).
 // Generates the mock-up images every later writer builds to, with Meta's Muse Image
 // (docs/06). Run from the repo root so Bun loads the server env:
-//   bun scripts/design-targets.ts
+//   bun scripts/design-targets.ts                    (the exam-redesign set, the default)
+//   bun scripts/design-targets.ts --set asset-pass   (ten isolated parts, one image each)
 // The key is read from MODEL_API_KEY and is never printed or written. A target whose .webp
 // already exists is skipped, so a rerun never bills twice: to regenerate one, edit its prompt
-// below, delete its file and rerun. Outputs: docs/design/exam-redesign/<id>.webp and prompts.md.
+// below, delete its file and rerun. Outputs: docs/design/exam-redesign/<id>.webp and prompts.md,
+// or docs/design/asset-pass/<id>.webp and prompts.md. The asset-pass folder is resolved from this
+// file's own location, not from the working directory, so a run whose cwd is the checkout that
+// holds the server env still writes beside this script.
 // Price: $0.01 per image, 150 RPM.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const ENDPOINT = "https://api.meta.ai/v1/images/generations";
 const key = process.env.MODEL_API_KEY;
@@ -15,7 +20,20 @@ if (!key) {
   console.error("MODEL_API_KEY is not set in the server env (.env at the repo root).");
   process.exit(1);
 }
-const OUT_DIR = join("docs", "design", "exam-redesign");
+
+function arg(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+const SET = process.argv.includes("--set") ? (arg("set") ?? "") : "exam-redesign";
+if (SET !== "exam-redesign" && SET !== "asset-pass") {
+  console.error(`--set must be exam-redesign or asset-pass, got "${SET}".`);
+  process.exit(1);
+}
+const OUT_DIR =
+  SET === "asset-pass"
+    ? resolve(import.meta.dir, "..", "docs", "design", "asset-pass")
+    : join("docs", "design", "exam-redesign");
 mkdirSync(OUT_DIR, { recursive: true });
 
 type Size = "1536x1024" | "1024x1536" | "1792x1024";
@@ -297,6 +315,152 @@ const TARGETS: Target[] = [
   },
 ];
 
+/**
+ * The asset pass (docs/plans/asset-pass.md, "The reference prompts"): one isolated bench part per
+ * image, in the approved golden-frame style. `--set asset-pass` generates these ten.
+ */
+const assetFrame = (noun: string, body: string) =>
+  words(
+    `A single isolated ${noun} alone on a cream graph-paper desk, landscape: nothing else in the`,
+    "frame, no other apparatus, no hands, no user interface.",
+    SCENE_LOOK,
+    body,
+    "Composition: the object centred and filling about 70 percent of the frame, seen from the",
+    "45 degree front-right corner at 41 degrees elevation, one soft contact shadow under it, key",
+    "light from the upper left front. Text only where the real object is printed.",
+    AVOID,
+  );
+
+/** Added to every asset body (plan: "Backcountry side by side", the last bullets). */
+const CHUNKY =
+  "Drawn with chunky stylised proportions, rich hand-painted texture, like Backcountry 101.";
+
+/**
+ * The ammeter and the voltmeter are one meter with a different scale. The plan words the
+ * voltmeter as "the same meter in the same style", but each image is a separate request with no
+ * memory, so both bodies are built from this one text and only the scale changes.
+ */
+const meterBody = (name: string, numerals: string, letter: string) =>
+  words(
+    `${name}, a school moving-coil meter: a square speckled black bakelite case about 12 cm wide`,
+    `with a round glass dial window (cream scale, black ticks, numerals ${numerals} and the`,
+    `letter ${letter}, a thin black needle one third across, a soft curved highlight on the`,
+    "glass), a small zero-adjust screw under the dial, and a low front ledge carrying two chunky",
+    "brass terminals with knurled nuts and washers, one with a red insulating cap and one with a",
+    "black cap.",
+  );
+
+const asset = (id: string, noun: string, usedBy: string, body: string): Target => ({
+  id,
+  size: "1536x1024",
+  usedBy,
+  prompt: assetFrame(noun, words(body, CHUNKY)),
+});
+
+const ASSET_TARGETS: Target[] = [
+  asset(
+    "ammeter",
+    "ammeter",
+    "G1 meters (`claude/asset-meters`): the ammeter, in Meter.tsx.",
+    meterBody("an ammeter", "0 0.2 0.4 0.6 0.8 1", "A"),
+  ),
+  asset(
+    "voltmeter",
+    "voltmeter",
+    "G1 meters (`claude/asset-meters`): the voltmeter, in Meter.tsx (the ammeter's case).",
+    meterBody("a voltmeter", "0 1 2 3", "V"),
+  ),
+  asset(
+    "resistance-box",
+    "resistance box",
+    "G2 bench (`claude/asset-bench`): ResistanceBox.tsx.",
+    words(
+      "a resistance box: a long dark mahogany box about 30 cm long with visible grain and a",
+      "brushed-brass top plate carrying a row of eight brass blocks; ebonite-handled brass plugs",
+      "seated in the gaps between the blocks, two plugs pulled out and standing beside the box to",
+      "show their tapered brass shanks; a cream printed paper label along the front edge reading",
+      "1 2 2 5 10 20 20 50 and the ohm sign; a chunky brass terminal at each end.",
+    ),
+  ),
+  asset(
+    "plug-key",
+    "plug key",
+    "G2 bench (`claude/asset-bench`): Key.tsx.",
+    words(
+      "a one-way plug key: a small wooden base about 9 cm long, two thick brass blocks with a",
+      "tapered brass plug seated between them (closed), a black ebonite knob on the plug, a knurled",
+      "brass terminal on each block, and a small cream printed label reading K.",
+    ),
+  ),
+  asset(
+    "cell-holder",
+    "cell holder",
+    "G2 bench (`claude/asset-bench`): CellHolder.tsx.",
+    words(
+      "two 1.5 V cylindrical dry cells (black bodies with paper wrapper bands, silver tops, brass",
+      "caps) lying end to end in series in a bevelled wooden holder, brass spring clips at both",
+      "ends and between the cells, and two knurled brass terminals on the front edge marked + and −.",
+    ),
+  ),
+  asset(
+    "wire-board",
+    "metre-wire board",
+    "G3 board (`claude/asset-board`): WireBoard.tsx and WireBoardTextures.ts.",
+    words(
+      "a metre-wire board: a long, low pale-pine board about 110 cm by 12 cm with rounded edges and",
+      "visible grain; a thin bare constantan wire stretched taut along it between two chunky brass",
+      "end blocks, each with a knurled terminal nut, a printed X on the left and Y on the right; a",
+      "printed cream metre scale along the front edge with black ticks and numerals every 10 cm from",
+      "0 to 100. Shown whole, running from lower left to upper right.",
+    ),
+  ),
+  asset(
+    "tray",
+    "tray",
+    "G3 board (`claude/asset-board`): Tray.tsx and TrayParts.ts.",
+    words(
+      "a shallow wooden tray about 26 by 34 cm with a low rim, holding a loose coil of spare leads",
+      "with two crocodile clips, a strip of sandpaper, a rheostat (white ceramic tube wound with",
+      "bare wire, brass end terminals, a sliding brass contact on a rod) and a micrometer screw",
+      "gauge (steel C-frame, thimble with a scale, ratchet).",
+    ),
+  ),
+  asset(
+    "leads",
+    "set of three leads",
+    "G4 leads (`claude/asset-leads`): Lead.tsx and LeadParts.ts.",
+    words(
+      "three soft insulated flexible leads, one red, one black, one yellow, each about 60 cm long,",
+      "laid in gentle sagging curves with one loose loop; every end finished with a banana plug",
+      "(brass pin, ribbed coloured sleeve) standing upright about 4 cm tall.",
+    ),
+  ),
+  asset(
+    "terminal",
+    "terminal close-up",
+    "G4 leads (`claude/asset-leads`): TerminalNut.tsx.",
+    words(
+      "a tight close-up of one terminal on a school meter: a short chunky brass post with a knurled",
+      "brass nut, a flat washer and a red insulating cap on a small black bakelite pad, with a black",
+      "banana plug seated in its top and its soft 3 mm lead leaving sideways in a curve; beside it a",
+      "second, empty terminal showing the bare threaded post.",
+    ),
+  ),
+  asset(
+    "desk-props",
+    "set of four exam-desk items",
+    "G1 meters (`claude/asset-meters`): scene/look/DeskProps.tsx.",
+    words(
+      "four exam-desk items laid apart on the paper, none overlapping: a closed answer booklet with",
+      "a blue-black cover and a small printed label; a sharpened hexagonal wooden pencil; a pink",
+      "eraser block; a flat scientific calculator with a grey rubber keypad and a plain dark display",
+      "showing nothing.",
+    ),
+  ),
+];
+
+const TARGET_SET = SET === "asset-pass" ? ASSET_TARGETS : TARGETS;
+
 async function generate(t: Target): Promise<"billed" | "skipped" | "refused" | "failed"> {
   const file = join(OUT_DIR, `${t.id}.webp`);
   if (existsSync(file)) {
@@ -360,15 +524,27 @@ async function generate(t: Target): Promise<"billed" | "skipped" | "refused" | "
 }
 
 function writePrompts() {
-  const lines = [
-    "# Exam redesign: design targets",
-    "",
-    "Generated by `scripts/design-targets.ts` with `muse-image-1.0` (docs/plans/exam-redesign.md, D2).",
-    "These images are the visual target for every later writer: build toward them, do not copy",
-    "pixels. Text inside the images is approximate; the wording in the plan is the truth.",
-    "",
-  ];
-  for (const t of TARGETS) {
+  const lines =
+    SET === "asset-pass"
+      ? [
+          "# Asset pass: reference images",
+          "",
+          "Generated by `scripts/design-targets.ts --set asset-pass` with `muse-image-1.0`",
+          '(docs/plans/asset-pass.md, "The reference prompts"). One isolated bench part per image,',
+          "in the approved golden-frame style. Each image is the visual target for that part's",
+          "writer: build toward it, do not copy pixels. Text inside the images is approximate; the",
+          "wording in the plan is the truth.",
+          "",
+        ]
+      : [
+          "# Exam redesign: design targets",
+          "",
+          "Generated by `scripts/design-targets.ts` with `muse-image-1.0` (docs/plans/exam-redesign.md, D2).",
+          "These images are the visual target for every later writer: build toward them, do not copy",
+          "pixels. Text inside the images is approximate; the wording in the plan is the truth.",
+          "",
+        ];
+  for (const t of TARGET_SET) {
     lines.push(`## ${t.id}`, "", `- File: \`${t.id}.webp\` (${t.size})`, `- Used by: ${t.usedBy}`);
     lines.push("", "```text", t.prompt, "```", "");
   }
@@ -377,7 +553,7 @@ function writePrompts() {
 
 writePrompts();
 const outcomes: Record<string, string> = {};
-const queue = [...TARGETS];
+const queue = [...TARGET_SET];
 const workers = Array.from({ length: 3 }, async () => {
   for (let t = queue.shift(); t; t = queue.shift()) outcomes[t.id] = await generate(t);
 });

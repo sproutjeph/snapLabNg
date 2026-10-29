@@ -17,11 +17,21 @@ const name = arg("name") ?? (slug(route) || "home");
 // --dpr 2: the device pixel ratio (deviceScaleFactor) of both viewports; 1 by default.
 const dprArg = Number(arg("dpr") ?? "1");
 const deviceScaleFactor = Number.isFinite(dprArg) && dprArg >= 1 && dprArg <= 4 ? dprArg : 1;
+// The fps loop runs, and its number is printed, only at DPR 1: a DPR 2 or 3 frame in software GL
+// is too slow for fps to mean anything.
+const readFps = deviceScaleFactor === 1;
 
-const viewports = [
+const allViewports = [
   { viewport: "phone", width: 390, height: 844 },
   { viewport: "laptop", width: 1440, height: 900 },
 ];
+// --only phone|laptop: shoot just that viewport; both by default.
+const only = arg("only");
+if (process.argv.includes("--only") && only !== "phone" && only !== "laptop") {
+  console.error(`--only must be phone or laptop, got ${only === undefined ? "nothing" : only}.`);
+  process.exit(2);
+}
+const viewports = only ? allViewports.filter((vp) => vp.viewport === only) : allViewports;
 
 mkdirSync(".shots", { recursive: true });
 
@@ -66,20 +76,22 @@ for (const vp of viewports) {
       },
     );
     ready = true;
-    fps = await page.evaluate(
-      () =>
-        new Promise<number>((resolve) => {
-          let n = 0;
-          const start = performance.now();
-          const tick = () => {
-            n += 1;
-            const elapsed = performance.now() - start;
-            if (elapsed >= 2000) resolve((n * 1000) / elapsed);
-            else requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }),
-    );
+    if (readFps) {
+      fps = await page.evaluate(
+        () =>
+          new Promise<number>((resolve) => {
+            let n = 0;
+            const start = performance.now();
+            const tick = () => {
+              n += 1;
+              const elapsed = performance.now() - start;
+              if (elapsed >= 2000) resolve((n * 1000) / elapsed);
+              else requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }),
+      );
+    }
   } catch (err) {
     consoleErrors.push(`shot: ${String(err)}`);
   }
@@ -99,7 +111,7 @@ for (const vp of viewports) {
       viewport: vp.viewport,
       file,
       ready,
-      fps: Math.round(fps * 10) / 10,
+      ...(readFps ? { fps: Math.round(fps * 10) / 10 } : {}),
       dpr: deviceScaleFactor,
       canvasDpr,
       consoleErrors,
