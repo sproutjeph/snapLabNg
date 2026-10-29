@@ -11,10 +11,11 @@ import type { BenchState } from "../types";
 import type { VoiceGuide } from "../voice/types";
 import { createOhmsLawBench } from "../wiring/bench";
 import { Player } from "./Player";
-import { humaniseStage, playerCovered, stageIndexOf, stagesOf, WIDE_MIN_PX } from "./stages";
+import { StageChecklist } from "./StageChecklist";
+import { humaniseStage, playerCovered, stageIndexOf, stagesOf } from "./stages";
 
 // The player is markup over a director: these tests render it once with react-dom/server (no
-// browser) and check what is on the page for each mode.
+// browser) and check what is on the page for each mode. The stage checklist is the guide's.
 
 const quiet: VoiceGuide = {
   say: (_t, o) => o?.onEnd?.(),
@@ -24,7 +25,7 @@ const quiet: VoiceGuide = {
   rate: 0.95,
 };
 
-function html(
+function directorAt(
   mode: "watch" | "practice" | "exam",
   script: Script = SAMPLE_SCRIPT,
   beat = 0,
@@ -46,7 +47,27 @@ function html(
   );
   director.seek(beat);
   if (play) director.play();
-  return renderToStaticMarkup(createElement(Player, { director }));
+  return director;
+}
+
+function html(
+  mode: "watch" | "practice" | "exam",
+  script: Script = SAMPLE_SCRIPT,
+  beat = 0,
+  play = false,
+) {
+  return renderToStaticMarkup(
+    createElement(Player, { director: directorAt(mode, script, beat, play) }),
+  );
+}
+
+function checklist(mode: "watch" | "practice" | "exam", beat = 0, titles?: Record<string, string>) {
+  return renderToStaticMarkup(
+    createElement(StageChecklist, {
+      director: directorAt(mode, SAMPLE_SCRIPT, beat),
+      ...(titles ? { stageTitles: titles } : {}),
+    }),
+  );
 }
 
 /** The css rules whose selector names `.dp-label`, as [selector, body]. */
@@ -91,31 +112,34 @@ describe("stages", () => {
     expect(humaniseStage("measure-xy")).toBe("Measure xy");
   });
 
-  it("covers the stage panel on a wide screen only, plus the header and the dock", () => {
-    expect(playerCovered(1440, 900).right).toBeGreaterThan(280);
-    expect(playerCovered(WIDE_MIN_PX - 1, 800).right).toBe(0);
-    expect(playerCovered(390, 844).top).toBeGreaterThan(0);
-    expect(playerCovered(390, 844).bottom).toBeGreaterThan(0);
+  it("covers what the page's cards cover: the guide, status card and strip", () => {
+    // Backcountry 101's cards at 1440 x 900 and 390 x 844 (docs/plans/page-layout.md); the full
+    // table is in shell/layout.test.ts.
+    const laptop = playerCovered(1440, 900);
+    expect(laptop.right).toBeCloseTo(440.8, 0);
+    expect(laptop.top).toBeCloseTo(86.7, 0);
+    expect(laptop.bottom).toBeCloseTo(136.7, 0);
+    const phone = playerCovered(390, 844);
+    expect(phone.right).toBe(0);
+    expect(phone.top).toBeCloseTo(119.7, 0);
+    expect(phone.bottom).toBeCloseTo(490.5, 0);
   });
 });
 
 describe("Player markup", () => {
-  it("Watch says it is a demonstration bench, which stage it is on, and has the controls", () => {
+  it("Watch has the card's controls: restart, previous, play, next and the speed", () => {
     const out = html("watch", SAMPLE_SCRIPT, 4);
-    expect(out).toContain("Demonstration bench. Your own bench will give different readings.");
-    expect(out).toContain("Stage 3 of 11");
+    expect(out).toContain("Restart");
     expect(out).toContain("Previous");
     expect(out).toContain("Next");
     expect(out).toContain("1x");
-    expect(out).toContain("Join the cells to the key.");
-    expect(out).toContain("Stage 11: ");
   });
 
   it("Watch shows the narration as the caption", () => {
     expect(html("watch", SAMPLE_SCRIPT, 1)).toContain("Read the length XY on the metre rule.");
   });
 
-  it("Practise has no speed or stage ticks, and Show me only on a beat that allows it", () => {
+  it("Practise has no speed, and Show me only on a beat that allows it", () => {
     const onLead = html("practice", SAMPLE_SCRIPT, 4);
     expect(onLead).toContain("Show me");
     expect(onLead).toContain("Resume guide");
@@ -161,17 +185,55 @@ describe("Player markup", () => {
       expect(out).toContain(`<span class="dp-label">${words}</span>`);
     }
     const watch = html("watch", SAMPLE_SCRIPT, 4);
-    for (const words of ["Previous", "Next"]) {
+    for (const words of ["Previous", "Next", "Restart"]) {
       expect(watch).toContain(`<span class="dp-label">${words}</span>`);
     }
   });
 
-  it("Exam shows no caption, no checklist, no stage count and no Show me", () => {
+  it("Exam shows the clock, and no caption, no checklist, no stage count and no Show me", () => {
     const out = html("exam");
-    expect(out).toContain("Exam conditions");
     expect(out).toContain("0:00");
+    expect(out).toContain('role="timer"');
     for (const text of ["Join the cells", "Stage 1", "Show me", "dp-caption", "dp-panel", "Next"]) {
       expect(out).not.toContain(text);
     }
+  });
+});
+
+describe("StageChecklist", () => {
+  it("lists the beats of the stage the director is on, in the words she hears", () => {
+    const out = checklist("watch", 4);
+    expect(out).toContain("Join the cells to the key.");
+    expect(out).toContain("Put the voltmeter across the wire, at X.");
+    // Another stage's beats are not here.
+    expect(out).not.toContain("Read the length XY on the metre rule.");
+    expect(out).not.toContain("Head the R column.");
+  });
+
+  it("marks the current row, and the rows before it done in words as well as a tick", () => {
+    const out = checklist("practice", 6);
+    expect(out.match(/aria-current="step"/g)).toHaveLength(1);
+    // Beats 4 and 5 (the first two leads) are done.
+    expect(out.match(/Done\. /g)).toHaveLength(2);
+    expect(out).toContain("sc-now");
+  });
+
+  it("draws a ring and a glyph for each beat, and a cursor that slides to the current row", () => {
+    const out = checklist("watch", 5);
+    const stage = stagesOf(SAMPLE_SCRIPT)[2];
+    expect(out.match(/class="sc-glyph"/g)).toHaveLength(stage?.count ?? -1);
+    expect(out).toContain("--i:1");
+    expect(out).toContain("sc-cursor");
+  });
+
+  it("names the list by the stage's title", () => {
+    expect(checklist("watch", 4, { connect: "Connect" })).toContain(
+      'aria-label="Steps for Connect"',
+    );
+    expect(checklist("watch", 4)).toContain('aria-label="Steps for Connect"');
+  });
+
+  it("is empty in Exam: no guide, no checklist", () => {
+    expect(checklist("exam", 4)).toBe("");
   });
 });
