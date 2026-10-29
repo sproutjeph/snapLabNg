@@ -14,6 +14,9 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
 const name = arg("name") ?? (slug(route) || "home");
+// --dpr 2: the device pixel ratio (deviceScaleFactor) of both viewports; 1 by default.
+const dprArg = Number(arg("dpr") ?? "1");
+const deviceScaleFactor = Number.isFinite(dprArg) && dprArg >= 1 && dprArg <= 4 ? dprArg : 1;
 
 const viewports = [
   { viewport: "phone", width: 390, height: 844 },
@@ -30,7 +33,10 @@ const browser = await chromium.launch({
 let failed = false;
 
 for (const vp of viewports) {
-  const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+  const context = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    deviceScaleFactor,
+  });
   const page = await context.newPage();
   const consoleErrors: string[] = [];
   const webglWarnings: string[] = [];
@@ -48,6 +54,7 @@ for (const vp of viewports) {
 
   let ready = false;
   let fps = 0;
+  let canvasDpr: number | null = null;
   const file = `.shots/${name}-${vp.viewport}.png`;
   try {
     await page.goto(base + route);
@@ -77,6 +84,11 @@ for (const vp of viewports) {
     consoleErrors.push(`shot: ${String(err)}`);
   }
   try {
+    // The canvas's real pixel ratio at capture (backing width / CSS width), null without one.
+    canvasDpr = await page.evaluate(() => {
+      const c = document.querySelector("canvas");
+      return c && c.clientWidth > 0 ? Math.round((c.width / c.clientWidth) * 100) / 100 : null;
+    });
     await page.screenshot({ path: file });
   } catch (err) {
     consoleErrors.push(`screenshot: ${String(err)}`);
@@ -88,6 +100,8 @@ for (const vp of viewports) {
       file,
       ready,
       fps: Math.round(fps * 10) / 10,
+      dpr: deviceScaleFactor,
+      canvasDpr,
       consoleErrors,
       webglWarnings,
       failedRequests,

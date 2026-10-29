@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { createOhmsLaw, DIAGRAM_LEADS, paramsFromSeed } from "@snaplab/engine";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { BRIDGE_BASE } from "../../apparatus/meter-bridge/dimensions";
 import MeterBridgeKit from "../../apparatus/meter-bridge/MeterBridgeKit";
@@ -22,7 +22,7 @@ import { useInkFocus } from "../ink/inkFocus";
 import { ReadySignal } from "../ReadySignal";
 import { BlobShadow } from "./BlobShadow";
 import { createDprLadder, type DprLadder } from "./dprLadder";
-import { LookCamera } from "./LookCamera";
+import { isPortrait, LookCamera } from "./LookCamera";
 import { LookGround } from "./LookGround";
 import { LookLights } from "./LookLights";
 import { LookTier } from "./lookTier";
@@ -39,6 +39,7 @@ import { useDprLadder, useLadderDpr } from "./useDprLadder";
 //   &leads=0                     ohms-law: no leads
 //   &drag=1                      lets the camera turn by dragging
 //   &ladder=0                    keeps the top pixel ratio (no step-down)
+//   &dpr=<1–3>                   pins the pixel ratio there (no ladder)
 
 const COLOURS: LeadColour[] = ["red", "black", "yellow"];
 const SLOTS = Object.keys(OHMS_LAW_LAYOUT) as BenchSlot[];
@@ -61,21 +62,39 @@ function parseCovered(raw: string | null): Covered {
   return { left, right, top, bottom };
 }
 
-function ohmsLawShot(search: URLSearchParams): LookShot {
+function ohmsLawShot(search: URLSearchParams, portrait: boolean): LookShot {
   const part = search.get("shot") as BenchSlot | null;
   if (part && SLOTS.includes(part)) {
     const [x, y, z] = OHMS_LAW_LAYOUT[part].position;
     return { id: part, focus: [x, y + 0.03, z], spanM: part === "wire" ? 1.15 : 0.42 };
   }
-  // A tall phone frames the apparatus only, turned so the bench runs up the screen; a wide
-  // screen takes in the desk props too.
-  return portrait()
+  // A tall phone frames the apparatus only (the camera turns it up the screen); a wide screen
+  // takes in the desk props too.
+  return portrait
     ? { id: "bench", focus: [-0.02, 0, -0.05], spanM: 0.9 }
     : { id: "bench", focus: [0.06, 0, -0.02], spanM: 1.3 };
 }
 
-function portrait(): boolean {
-  return window.innerWidth < window.innerHeight;
+/** The camera's own portrait test (with its hysteresis), kept up to date as the screen turns. */
+function usePortrait(covered: Covered): boolean {
+  const [portrait, setPortrait] = useState(() =>
+    isPortrait(covered, window.innerWidth, window.innerHeight),
+  );
+  useEffect(() => {
+    const update = () =>
+      setPortrait((was) => isPortrait(covered, window.innerWidth, window.innerHeight, was));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [covered]);
+  return portrait;
+}
+
+/** `&dpr=1.5` pins the canvas at that ratio (no ladder), so a shot shows a chosen rung. */
+function pinnedDpr(search: URLSearchParams): number | null {
+  const raw = search.get("dpr");
+  const n = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(n) && n >= 1 && n <= 3 ? n : null;
 }
 
 function previewState(search: URLSearchParams): OhmsLawVisualState {
@@ -182,11 +201,11 @@ const BRIDGE_BENCH = {
   xOhm: 3,
 };
 const BRIDGE_PLUG_LABELS = ["1", "2", "2", "5", "10"];
-function bridgeShot(): LookShot {
+function bridgeShot(portrait: boolean): LookShot {
   return {
     id: "bench",
     focus: [0, -BRIDGE_BASE.height, -0.02],
-    spanM: portrait() ? 0.85 : 1.25,
+    spanM: portrait ? 0.85 : 1.25,
   };
 }
 
@@ -252,12 +271,17 @@ export default function LookPreview() {
   const search = useMemo(() => new URLSearchParams(location.search), []);
   const which = search.get("look") === "meter-bridge" ? "meter-bridge" : "ohms-law";
   const quality: QualityTier = parseOverride(location.search) ?? "high";
-  const look = useMemo(() => lookFor(quality, window.devicePixelRatio || 1), [quality]);
+  const pinned = useMemo(() => pinnedDpr(search), [search]);
+  const look = useMemo(() => {
+    const l = lookFor(quality, window.devicePixelRatio || 1);
+    return pinned === null ? l : { ...l, dprLadder: [pinned] };
+  }, [quality, pinned]);
+  const covered = useMemo(() => parseCovered(search.get("covered")), [search]);
+  const portrait = usePortrait(covered);
   const shot = useMemo(
-    () => (which === "ohms-law" ? ohmsLawShot(search) : bridgeShot()),
-    [which, search],
+    () => (which === "ohms-law" ? ohmsLawShot(search, portrait) : bridgeShot(portrait)),
+    [which, search, portrait],
   );
-  const covered = parseCovered(search.get("covered"));
   const shadowsDirty = useRef(true);
   const reducedMotion = useMemo(() => {
     try {
@@ -303,7 +327,7 @@ export default function LookPreview() {
         )}
         <InkComposer quality={quality} />
         <Focus ids={focus} />
-        <Ladder ladder={ladder} enabled={search.get("ladder") !== "0"} />
+        <Ladder ladder={ladder} enabled={pinned === null && search.get("ladder") !== "0"} />
         <ReadySignal />
       </LookTier.Provider>
     </Canvas>

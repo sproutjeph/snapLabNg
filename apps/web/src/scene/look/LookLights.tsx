@@ -129,6 +129,9 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
   const scene = useThree((s) => s.scene);
   const { shadowMapSize } = lookFor(tier);
   const shadows = shadowMapSize > 0 && gl.shadowMap.enabled;
+  // The contact light on high only: three runs its PCF taps on every shadow-receiving fragment
+  // whatever its intensity, so mid keeps that budget and grounds parts with the blobs' dark core.
+  const contactOn = shadows && tier === "high";
 
   const rig = useMemo(() => {
     const key = new THREE.DirectionalLight(KEY_COLOUR, KEY_INTENSITY);
@@ -174,8 +177,9 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
 
   useEffect(() => {
     for (const light of [rig.key, rig.contact]) {
-      light.castShadow = shadows;
-      if (!shadows) continue;
+      const on = light === rig.contact ? contactOn : shadows;
+      light.castShadow = on;
+      if (!on) continue;
       // The contact rim needs no fine detail: half the key's map, so its blur spreads wider.
       const size = light === rig.contact ? shadowMapSize / 2 : shadowMapSize;
       light.shadow.mapSize.set(size, size);
@@ -184,7 +188,7 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
       light.shadow.map = null;
     }
     rig.warm = WARM_FRAMES;
-  }, [rig, shadows, shadowMapSize]);
+  }, [rig, shadows, contactOn, shadowMapSize]);
 
   useEffect(() => {
     const prevAuto = gl.shadowMap.autoUpdate;
@@ -219,8 +223,9 @@ export function LookLights({ shadowsDirty }: LookLightsProps) {
       <primitive object={rig.key} />
       <primitive object={rig.key.target} />
       <primitive object={rig.fill} />
-      <primitive object={rig.contact} />
-      <primitive object={rig.contact.target} />
+      {/* Mounted only where it casts: an unmounted light costs the lit shaders nothing. */}
+      {contactOn && <primitive object={rig.contact} />}
+      {contactOn && <primitive object={rig.contact.target} />}
       {tier !== "low" && <GlossyEnvironment />}
     </>
   );

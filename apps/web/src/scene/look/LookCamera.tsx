@@ -23,8 +23,9 @@ export const LOOK_ELEVATION_DEG = 41;
 /** On a portrait free area: steeper, and turned so the bench's long (x) side runs up the screen. */
 export const PORTRAIT_ELEVATION_DEG = 64;
 export const PORTRAIT_AZIMUTH_DEG = 82;
-/** The free area counts as portrait when it is this much taller than wide. */
-const PORTRAIT_RATIO = 1.15;
+/** The free area turns portrait when this much taller than wide, and back below the second. */
+const PORTRAIT_ENTER = 1.15;
+const PORTRAIT_LEAVE = 1.05;
 /** Distance from the focus, in metres; orthographic, so it only has to clear the bench. */
 const DISTANCE_M = 4;
 const NEAR_M = 0.1;
@@ -54,13 +55,17 @@ export interface Frustum {
   offsetY: number;
 }
 
-/** True when the part of the canvas no panel covers is portrait (a phone held upright). */
-export function isPortrait(covered: Covered, width: number, height: number): boolean {
+/**
+ * True when the part of the canvas no panel covers is portrait (a phone held upright). `was` is
+ * the last answer: it enters at 1.15 and leaves at 1.05, so a panel near the line does not swing
+ * the camera back and forth.
+ */
+export function isPortrait(covered: Covered, width: number, height: number, was = false): boolean {
   const freeW = width - Math.max(0, covered.left) - Math.max(0, covered.right);
   const freeH = height - Math.max(0, covered.top) - Math.max(0, covered.bottom);
   const w = freeW >= 1 ? freeW : width;
   const h = freeH >= 1 ? freeH : height;
-  return h > w * PORTRAIT_RATIO;
+  return h > w * (was ? PORTRAIT_LEAVE : PORTRAIT_ENTER);
 }
 
 /** The camera's elevation for a free area, in radians. */
@@ -158,6 +163,8 @@ interface Rig {
   span: number;
   azimuth: number;
   elevation: number;
+  /** Whether the last frame was portrait (for the hysteresis in isPortrait). */
+  portrait: boolean;
   covered: Covered;
   /** Drag: the azimuth offset, its velocity (rad/s) and whether a finger is down. */
   drag: number;
@@ -195,6 +202,7 @@ export function LookCamera({
     span: shot.spanM,
     azimuth: shotAzimuth(shot, false),
     elevation: lookElevation(false),
+    portrait: false,
     covered: { ...covered },
     drag: 0,
     dragVel: 0,
@@ -275,7 +283,8 @@ export function LookCamera({
     const snap = t.reducedMotion || !r.primed;
     const k = snap ? 1 : followK(dt);
     const { width, height } = state.size;
-    const portrait = isPortrait(t.covered, width, height);
+    const portrait = isPortrait(t.covered, width, height, r.portrait);
+    r.portrait = portrait;
     const [fx, fy, fz] = t.shot.focus;
     r.focus.x += (fx - r.focus.x) * k;
     r.focus.y += (fy - r.focus.y) * k;

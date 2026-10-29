@@ -113,6 +113,26 @@ describe("the shot camera", () => {
     expect(up.halfW).toBeLessThan(flat.halfW * 0.75);
   });
 
+  it("turns portrait at 1.15 and back only below 1.05, so a panel near the line cannot swing it", () => {
+    // 1000 × 1100: ratio 1.10, between the two thresholds.
+    expect(isPortrait(NONE, 1000, 1100, false)).toBe(false);
+    expect(isPortrait(NONE, 1000, 1100, true)).toBe(true);
+    expect(isPortrait(NONE, 1000, 1160, false)).toBe(true);
+    expect(isPortrait(NONE, 1000, 1040, true)).toBe(false);
+  });
+
+  it("fits the whole drag range in portrait, so no azimuth she can reach clips the bench", () => {
+    const az = (PORTRAIT_AZIMUTH_DEG * Math.PI) / 180;
+    const el = lookElevation(true);
+    const spread = (25 * Math.PI) / 180;
+    const across = fitShotAcross(0.9, NONE, 390, 844, az, spread, frustum(), frustum(), el);
+    for (let deg = -25; deg <= 25; deg += 1) {
+      const one = fitShot(0.9, NONE, 390, 844, az + (deg * Math.PI) / 180, frustum(), el);
+      expect(across.halfW).toBeGreaterThanOrEqual(one.halfW * 0.995);
+      expect(across.halfH).toBeGreaterThanOrEqual(one.halfH * 0.995);
+    }
+  });
+
   it("writes into the frustum it is given", () => {
     const out = frustum();
     expect(fitShot(1, NONE, 800, 600, 0, out)).toBe(out);
@@ -134,10 +154,20 @@ describe("the look per tier", () => {
 
   it("caps the pixel-ratio ladder at the tier and the device", () => {
     expect(DPR_LADDER).toEqual([2, 1.5, 1.25, 1]);
-    expect(lookFor("high", 3).dprLadder).toEqual([2, 1.5, 1.25, 1]);
-    expect(lookFor("high", 1.75).dprLadder).toEqual([1.75, 1.5, 1.25, 1]);
-    expect(lookFor("mid", 2).dprLadder).toEqual([1.5, 1.25, 1]);
+    expect(lookFor("high", 1.75).dprLadder[0]).toBe(1.75);
+    expect(lookFor("mid", 3).dprLadder[0]).toBe(1.5);
     expect(lookFor("low", 3).dprLadder).toEqual([1]);
+  });
+
+  it("never steps below 1, nor below min(device, 1.5) on mid and high", () => {
+    // A Retina phone stays sharp however slow the frames: the low rungs are not on its ladder.
+    expect(lookFor("high", 3).dprLadder).toEqual([2, 1.5]);
+    expect(lookFor("high", 2).dprLadder).toEqual([2, 1.5]);
+    expect(lookFor("mid", 2).dprLadder).toEqual([1.5]);
+    expect(lookFor("high", 1.25).dprLadder).toEqual([1.25]);
+    expect(lookFor("high", 1).dprLadder).toEqual([1]);
+    expect(lookFor("high", 0.5).dprLadder).toEqual([1]);
+    expect(lookFor("low", 1).dprLadder).toEqual([1]);
   });
 
   it("steps down one rung only when more than 60 of 90 frames were slow", () => {

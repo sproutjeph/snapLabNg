@@ -1,5 +1,5 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { EffectComposer, EffectPass, RenderPass } from "postprocessing";
+import { EffectComposer, EffectPass, FXAAEffect, RenderPass } from "postprocessing";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
@@ -25,8 +25,9 @@ interface Stack {
 
 /**
  * The post-processing stack for every canvas (docs/plans/ink-look.md). No bloom.
- *   - High and mid: the scene, then the ink outline effect (depth, normal and ink-ID edges; the
- *     ID target at full and 0.75× size). It takes over the render loop (useFrame priority 1).
+ *   - High and mid: the scene (MSAA 4× and 2×), then the ink outline effect (depth, normal and
+ *     ink-ID edges; the ID target at full and 0.75× size), then FXAA over the ink. It takes over
+ *     the render loop (useFrame priority 1).
  *   - Low (and any device that cannot render to half-float targets): no post pass at all;
  *     inverted-hull lines on the parts (inkHull.ts), and r3f renders.
  * Tone mapping is off on every tier, so the paper is exactly --paper. The props are frozen.
@@ -39,7 +40,7 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
   const camera = useThree((s) => s.camera);
   const stack = useRef<Stack | null>(null);
   const outline = outlineFor(quality);
-  const { scale, multisampling } = outline;
+  const { scale, multisampling, fxaa } = outline;
   // The ID target is half float; without float colour-buffer targets, fall back to the hulls.
   const floatTargets = useMemo(
     () =>
@@ -72,6 +73,9 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
     const effect = new InkEffect(scene, camera, scale);
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new EffectPass(camera, effect));
+    // FXAA in its own pass after the ink: it smooths the ink lines, which are drawn per pixel
+    // after the scene's MSAA has resolved. (A convolution effect, so it cannot share the ink's pass.)
+    if (fxaa) composer.addPass(new EffectPass(camera, new FXAAEffect()));
     const focus = inkFocusFor(scene);
     stack.current = { composer, effect, focus, width: -1, height: -1, pixelRatio: -1 };
     return () => {
@@ -80,7 +84,7 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
       composer.dispose();
       gl.autoClear = autoClear;
     };
-  }, [gl, scene, camera, post, scale, multisampling]);
+  }, [gl, scene, camera, post, scale, multisampling, fxaa]);
 
   // This canvas's focus fade (inkFocus.ts) lives as long as the composer.
   useEffect(() => () => releaseInkFocus(scene), [scene]);

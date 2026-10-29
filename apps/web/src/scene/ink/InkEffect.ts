@@ -14,8 +14,11 @@ import { INK_HEX, PAPER_HEX } from "./palette";
  * and 3. 3 px, bolder than Backcountry 101's 2.1, at the user's golden-frame review (Oct 30).
  */
 export const INK_THICKNESS_PX = 3;
-/** `thin` parts (plugs, needles) draw their outline at this strength. */
-export const INK_THIN_ALPHA = 0.6;
+/**
+ * `thin` parts (plugs, needles) draw their outline at this strength: a shade lighter. At 3 px,
+ * 0.6 read as a grey halo round the plugs (round-4 review), so it is nearly full ink now.
+ */
+export const INK_THIN_ALPHA = 0.9;
 /** Relative depth jump that draws a silhouette (perspective camera). */
 export const INK_DEPTH_THRESHOLD = 0.045;
 /** Depth jump in metres that draws a silhouette (orthographic camera). */

@@ -105,17 +105,19 @@ export interface OutlineSettings {
   mode: OutlineMode;
   scale: number;
   /**
-   * MSAA samples for the composer's scene buffer. 0 on every tier: each geometric edge carries
-   * an ink line, so 4× MSAA changed nothing visible and cost about a third of the frame in the
-   * headless shot (high: 30 → 45 fps phone, 10 → 15 laptop).
+   * MSAA samples for the composer's scene buffer (WebGL2). On since the user's golden-frame
+   * review (Oct 30, "looking pixelated"): 4× on high, 2× on mid. Low has no composer; the
+   * canvas's own antialias (MSAA on the default framebuffer) smooths its hull lines.
    */
   multisampling: number;
+  /** FXAA after the ink pass, so the ink lines (drawn per pixel, after MSAA) get smooth edges. */
+  fxaa: boolean;
 }
 
 const OUTLINE: Record<QualityTier, OutlineSettings> = {
-  low: { mode: "hull", scale: 1, multisampling: 0 },
-  mid: { mode: "ink", scale: 0.75, multisampling: 0 },
-  high: { mode: "ink", scale: 1, multisampling: 0 },
+  low: { mode: "hull", scale: 1, multisampling: 0, fxaa: false },
+  mid: { mode: "ink", scale: 0.75, multisampling: 2, fxaa: true },
+  high: { mode: "ink", scale: 1, multisampling: 4, fxaa: true },
 };
 
 export function outlineFor(tier: QualityTier): OutlineSettings {
@@ -149,11 +151,20 @@ const LOOK: Record<QualityTier, { shadowMapSize: number; maxDpr: number }> = {
   high: { shadowMapSize: 2048, maxDpr: 2 },
 };
 
-/** The look settings for `tier`; the ladder is capped at the device's own pixel ratio. */
+/** On mid and high the ladder never steps below min(device ratio, this). */
+export const DPR_FLOOR_SHARP = 1.5;
+
+/**
+ * The look settings for `tier`. The ladder starts at the tier's top, capped at the device's own
+ * ratio, and never goes below 1, nor on mid and high below min(device ratio, 1.5), so a slow
+ * frame never makes a Retina phone render soft.
+ */
 export function lookFor(tier: QualityTier, devicePixelRatio = 2): LookSettings {
   const { shadowMapSize, maxDpr } = LOOK[tier];
-  const top = Math.max(1, Math.min(maxDpr, devicePixelRatio));
-  const rungs = DPR_LADDER.filter((d) => d <= top);
+  const device = Math.max(1, devicePixelRatio);
+  const top = Math.max(1, Math.min(maxDpr, device));
+  const floor = tier === "low" ? 1 : Math.min(top, Math.max(1, Math.min(device, DPR_FLOOR_SHARP)));
+  const rungs = DPR_LADDER.filter((d) => d <= top && d >= floor);
   const dprLadder = rungs[0] === top ? rungs : [top, ...rungs];
   return { shadowMapSize, dprLadder };
 }
