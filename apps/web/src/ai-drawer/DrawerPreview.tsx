@@ -75,9 +75,9 @@ export default function DrawerPreview() {
         position: "relative",
         width: "100%",
         height: "100%",
-        backgroundColor: "#080c14",
-        color: "#f8fafc",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
+        fontFamily: "var(--f-body)",
         overflow: "hidden",
         boxSizing: "border-box",
       }}
@@ -101,13 +101,15 @@ export default function DrawerPreview() {
               paddingRight: "144px",
               fontSize: "19px",
               fontWeight: 700,
-              color: "#f8fafc",
+              color: "var(--ink)",
               lineHeight: 1.3,
             }}
           >
             SnapLab NG · &ldquo;Show the AI&rdquo; Drawer Preview
           </h1>
-          <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#cbd5e1", lineHeight: 1.5 }}>
+          <p
+            style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--muted)", lineHeight: 1.5 }}
+          >
             Replaying the metre bridge pipeline trace ({formatMs(nowMs)} /{" "}
             {formatMs(MOCK_TRACE_END_MS)}). Use <strong>Replay</strong> to restart from 0 ms or{" "}
             <strong>Show the AI</strong> at the top right to toggle the drawer.
@@ -119,14 +121,17 @@ export default function DrawerPreview() {
             type="button"
             onClick={() => setReplayCount((c) => c + 1)}
             style={{
-              minHeight: "40px",
+              minHeight: "var(--tap)",
               padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #38bdf8",
-              backgroundColor: "#0369a1",
-              color: "#ffffff",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink)",
+              backgroundColor: "var(--ink)",
+              color: "var(--paper)",
               fontSize: "13px",
-              fontWeight: 700,
+              fontFamily: "var(--f-cond)",
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
               cursor: "pointer",
             }}
           >

@@ -96,13 +96,13 @@ export function CornerEditor({
     const sx = pt.x - srcSpan / 2;
     const sy = pt.y - srcSpan / 2;
 
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = "#1d2430";
     ctx.fillRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
     ctx.drawImage(canvas, sx, sy, srcSpan, srcSpan, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
 
     // Draw crosshair in the centre of the loupe
     const mid = LOUPE_SIZE / 2;
-    ctx.strokeStyle = "#22c55e";
+    ctx.strokeStyle = "#1f6b45";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(mid - 14, mid);
@@ -167,13 +167,13 @@ export function CornerEditor({
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         overflow: "hidden",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
       }}
     >
@@ -181,8 +181,8 @@ export function CornerEditor({
       <header
         style={{
           padding: "14px 20px",
-          backgroundColor: "#141923",
-          borderBottom: "1px solid #262f40",
+          backgroundColor: "var(--paper)",
+          borderBottom: "var(--rule)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -195,7 +195,7 @@ export function CornerEditor({
           <div
             style={{
               fontSize: "13px",
-              color: quadValid ? "#94a3b8" : "#f87171",
+              color: quadValid ? "var(--muted)" : "var(--ink-2)",
               marginTop: "2px",
             }}
           >
@@ -228,8 +228,8 @@ export function CornerEditor({
             top: `${displayRect.top}px`,
             width: `${displayRect.width}px`,
             height: `${displayRect.height}px`,
-            borderRadius: "4px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            borderRadius: "var(--radius)",
+            boxShadow: "none",
           }}
         />
 
@@ -245,8 +245,8 @@ export function CornerEditor({
         >
           <polygon
             points={polygonPoints}
-            fill={quadValid ? "rgba(34, 197, 94, 0.16)" : "rgba(239, 68, 68, 0.2)"}
-            stroke={quadValid ? "#22c55e" : "#ef4444"}
+            fill={quadValid ? "#1f6b4529" : "#e0752e33"}
+            stroke={quadValid ? "#1f6b45" : "#e0752e"}
             strokeWidth={2.5}
           />
         </svg>
@@ -271,16 +271,16 @@ export function CornerEditor({
                 height: "44px",
                 padding: 0,
                 borderRadius: "999px",
-                border: "3px solid #ffffff",
-                backgroundColor: isDragging ? "#16a34a" : "rgba(34, 197, 94, 0.88)",
-                color: "#ffffff",
+                border: "3px solid var(--paper)",
+                backgroundColor: isDragging ? "var(--ink)" : "var(--green)",
+                color: "var(--paper)",
                 fontSize: "11px",
                 fontWeight: 700,
                 cursor: "grab",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+                boxShadow: "none",
                 touchAction: "none",
               }}
             >
@@ -300,10 +300,10 @@ export function CornerEditor({
               height: `${LOUPE_SIZE}px`,
               borderRadius: "999px",
               overflow: "hidden",
-              border: "3px solid #22c55e",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.65)",
+              border: "3px solid var(--ink-2)",
+              boxShadow: "none",
               pointerEvents: "none",
-              backgroundColor: "#0f172a",
+              backgroundColor: "var(--ink)",
             }}
           >
             <canvas ref={loupeCanvasRef} width={LOUPE_SIZE} height={LOUPE_SIZE} />
@@ -315,8 +315,8 @@ export function CornerEditor({
       <footer
         style={{
           padding: "14px 24px 20px",
-          backgroundColor: "#141923",
-          borderTop: "1px solid #262f40",
+          backgroundColor: "var(--paper)",
+          borderTop: "var(--rule)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -328,12 +328,12 @@ export function CornerEditor({
           disabled={busy}
           onClick={onRetake}
           style={{
-            minHeight: "44px",
+            minHeight: "var(--tap)",
             padding: "10px 20px",
-            borderRadius: "10px",
-            border: "1px solid #475569",
-            backgroundColor: "transparent",
-            color: busy ? "#64748b" : "#e2e8f0",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: busy ? "var(--muted)" : "var(--ink)",
             fontSize: "14px",
             fontWeight: 600,
             cursor: busy ? "not-allowed" : "pointer",
@@ -349,12 +349,12 @@ export function CornerEditor({
             if (canConfirm) onConfirm(corners);
           }}
           style={{
-            minHeight: "46px",
+            minHeight: "var(--tap)",
             padding: "10px 26px",
-            borderRadius: "10px",
-            border: "none",
-            backgroundColor: canConfirm ? "#16a34a" : "#334155",
-            color: canConfirm ? "#ffffff" : "#94a3b8",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink)",
+            backgroundColor: canConfirm ? "var(--ink)" : "var(--paper-2)",
+            color: canConfirm ? "var(--paper)" : "var(--muted)",
             fontSize: "15px",
             fontWeight: 700,
             cursor: canConfirm ? "pointer" : "not-allowed",

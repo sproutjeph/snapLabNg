@@ -6,9 +6,9 @@ export default function AboutPage() {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
+        fontFamily: "var(--f-body)",
         overflowY: "auto",
         overflowX: "hidden",
         boxSizing: "border-box",
@@ -17,7 +17,7 @@ export default function AboutPage() {
     >
       <style>{`
         .snaplab-back-link:focus-visible {
-          outline: 2px solid #38bdf8;
+          outline: 2px solid var(--accent);
           outline-offset: 3px;
         }
       `}</style>
@@ -27,13 +27,16 @@ export default function AboutPage() {
             href="/?home=1"
             className="snaplab-back-link"
             style={{
-              color: "#38bdf8",
+              color: "var(--ink)",
               textDecoration: "none",
+              fontFamily: "var(--f-cond)",
               fontSize: 14,
-              fontWeight: 500,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
               display: "inline-flex",
               alignItems: "center",
-              minHeight: 32,
+              minHeight: "var(--tap)",
             }}
           >
             ← Back to home
@@ -47,7 +50,7 @@ export default function AboutPage() {
               fontWeight: 700,
               margin: "0 0 8px",
               letterSpacing: "-0.02em",
-              color: "#f8fafc",
+              color: "var(--ink)",
             }}
           >
             About SnapLab NG
@@ -63,7 +66,7 @@ export default function AboutPage() {
                   fontSize: 18,
                   fontWeight: 600,
                   margin: "0 0 12px",
-                  color: "#f8fafc",
+                  color: "var(--ink)",
                 }}
               >
                 {section.heading}
@@ -76,7 +79,7 @@ export default function AboutPage() {
                       idx === section.paragraphs.length - 1 && bullets.length === 0
                         ? 0
                         : "0 0 12px",
-                    color: "#cbd5e1",
+                    color: "var(--ink-2)",
                     lineHeight: 1.6,
                     fontSize: 15,
                   }}
@@ -89,7 +92,7 @@ export default function AboutPage() {
                   style={{
                     margin: 0,
                     paddingLeft: 20,
-                    color: "#cbd5e1",
+                    color: "var(--ink-2)",
                     lineHeight: 1.6,
                     fontSize: 15,
                   }}

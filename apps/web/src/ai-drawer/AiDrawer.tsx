@@ -13,44 +13,47 @@ const LANE_META: Record<
     title: "Spark",
     defaultModel: "muse-spark-1.3",
     role: "Blueprint compile & examiner turns",
-    accent: "#38bdf8",
+    accent: "#1d2430",
   },
   sam: {
     title: "SAM",
     defaultModel: "sam-3.1",
     role: "Object & graph outlines",
-    accent: "#22c55e",
+    accent: "#1f6b45",
   },
   wonder: {
     title: "Wonder",
     defaultModel: "muse-wonder-1.0",
     role: "Handwritten table, graph & precautions",
-    accent: "#a855f7",
+    accent: "#3a4250",
   },
   voice: {
     title: "Voice",
     defaultModel: "muse-voice-transcribe-1.0",
     role: "Live student speech captions",
-    accent: "#f59e0b",
+    accent: "#e0752e",
   },
   engine: {
     title: "Engine",
     defaultModel: "engine",
     role: "Deterministic physics & WAEC rules",
-    accent: "#14b8a6",
+    accent: "#8a8478",
   },
 };
 
-function barStyleForStatus(status: CallStatus, laneAccent: string): { bg: string; border: string } {
+function barStyleForStatus(
+  status: CallStatus,
+  laneAccent: string,
+): { bg: string; border: string; borderStyle: string; tag: string } {
   switch (status) {
     case "ok":
-      return { bg: `${laneAccent}52`, border: laneAccent };
+      return { bg: `${laneAccent}52`, border: laneAccent, borderStyle: "solid", tag: "" };
     case "running":
-      return { bg: "rgba(37, 99, 235, 0.58)", border: "#60a5fa" };
+      return { bg: "#1d243052", border: "#1d2430", borderStyle: "dashed", tag: "" };
     case "fallback":
-      return { bg: "rgba(217, 119, 6, 0.58)", border: "#fbbf24" };
+      return { bg: "#e0752e52", border: "#e0752e", borderStyle: "dotted", tag: "FB" };
     case "error":
-      return { bg: "rgba(220, 38, 38, 0.58)", border: "#f87171" };
+      return { bg: "#3a425052", border: "#3a4250", borderStyle: "dotted", tag: "ERR" };
   }
 }
 
@@ -139,15 +142,15 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
               height: "70vh",
               maxHeight: "70vh",
               zIndex: 70,
-              backgroundColor: "#0b111e",
-              color: "#f8fafc",
-              borderTop: "2px solid #334155",
-              borderTopLeftRadius: "16px",
-              borderTopRightRadius: "16px",
-              boxShadow: "0 -12px 32px rgba(0, 0, 0, 0.65)",
+              backgroundColor: "var(--paper)",
+              color: "var(--ink)",
+              borderTop: "var(--rule)",
+              borderTopLeftRadius: "var(--radius)",
+              borderTopRightRadius: "var(--radius)",
+              boxShadow: "none",
               display: "flex",
               flexDirection: "column",
-              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontFamily: "var(--f-body)",
               boxSizing: "border-box",
             }
           : {
@@ -158,13 +161,13 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
               width: "420px",
               maxWidth: "100vw",
               zIndex: 70,
-              backgroundColor: "#0b111e",
-              color: "#f8fafc",
-              borderLeft: "1px solid #334155",
-              boxShadow: "-12px 0 32px rgba(0, 0, 0, 0.55)",
+              backgroundColor: "var(--paper)",
+              color: "var(--ink)",
+              borderLeft: "var(--rule)",
+              boxShadow: "none",
               display: "flex",
               flexDirection: "column",
-              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontFamily: "var(--f-body)",
               boxSizing: "border-box",
             }
       }
@@ -186,7 +189,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
               width: "42px",
               height: "5px",
               borderRadius: "999px",
-              backgroundColor: "#64748b",
+              backgroundColor: "var(--pencil)",
             }}
           />
         </div>
@@ -196,7 +199,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
       <header
         style={{
           padding: isPhone ? "8px 16px 10px" : "14px 16px 12px",
-          borderBottom: "1px solid #1e293b",
+          borderBottom: "var(--rule)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -205,10 +208,10 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
         }}
       >
         <div>
-          <div style={{ fontSize: "15px", fontWeight: 700, color: "#f8fafc" }}>
+          <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--ink)" }}>
             Show the AI · Live Pipeline
           </div>
-          <div style={{ fontSize: "12px", color: "#cbd5e1", marginTop: "2px" }}>
+          <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>
             {summary.totalCalls} calls · Clock {formatMs(Math.max(0, nowMs - trace.t0Ms))}
             {summary.longestCall ? ` · Longest: ${formatMs(summary.longestCall.durationMs)}` : ""}
           </div>
@@ -219,12 +222,12 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
           onClick={onClose}
           aria-label="Close Show the AI drawer"
           style={{
-            minHeight: "36px",
+            minHeight: "var(--tap)",
             padding: "6px 12px",
-            borderRadius: "8px",
-            border: "1px solid #475569",
-            backgroundColor: "#1e293b",
-            color: "#f8fafc",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
             fontSize: "12px",
             fontWeight: 600,
             cursor: "pointer",
@@ -249,10 +252,10 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
         <div
           style={{
             padding: "10px 12px",
-            borderRadius: "10px",
-            backgroundColor: "#131c2e",
-            border: "1px solid #38bdf8",
-            color: "#f8fafc",
+            borderRadius: "var(--radius)",
+            backgroundColor: "var(--card)",
+            border: "1px solid var(--ink)",
+            color: "var(--ink)",
             fontSize: "13px",
             fontWeight: 700,
             textAlign: "center",
@@ -276,9 +279,9 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                 aria-label={`${meta.title} lane`}
                 style={{
                   padding: "9px 10px",
-                  borderRadius: "10px",
-                  backgroundColor: "#141d2f",
-                  border: "1px solid #263248",
+                  borderRadius: "var(--radius)",
+                  backgroundColor: "var(--card)",
+                  border: "var(--rule)",
                 }}
               >
                 <div
@@ -301,14 +304,14 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>
                       {meta.title}
                     </span>
                     <code
                       style={{
                         fontSize: "11px",
-                        color: "#93c5fd",
-                        backgroundColor: "#0b111e",
+                        color: "var(--ink-2)",
+                        backgroundColor: "var(--paper)",
                         padding: "1px 6px",
                         borderRadius: "4px",
                         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -318,7 +321,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                     </code>
                   </div>
 
-                  <span style={{ fontSize: "11px", color: "#cbd5e1", flexShrink: 0 }}>
+                  <span style={{ fontSize: "11px", color: "var(--muted)", flexShrink: 0 }}>
                     {laneStat.count} {laneStat.count === 1 ? "call" : "calls"} ·{" "}
                     {formatMs(laneStat.totalMs)}
                   </span>
@@ -329,12 +332,12 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                     style={{
                       height: "20px",
                       borderRadius: "6px",
-                      backgroundColor: "#0b111e",
+                      backgroundColor: "var(--paper)",
                       display: "flex",
                       alignItems: "center",
                       padding: "0 8px",
                       fontSize: "11px",
-                      color: "#94a3b8",
+                      color: "var(--muted)",
                     }}
                   >
                     {meta.role} — idle
@@ -359,11 +362,12 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                             position: "relative",
                             width: "100%",
                             height: "26px",
+                            minHeight: "var(--tap)",
                             padding: "0 8px",
                             borderRadius: "6px",
-                            border: isSelected ? "1.5px solid #f8fafc" : "1px solid #1e293b",
-                            backgroundColor: "#0b111e",
-                            color: "#f8fafc",
+                            border: isSelected ? "1.5px solid var(--ink)" : "var(--rule)",
+                            backgroundColor: "var(--paper)",
+                            color: "var(--ink)",
                             fontSize: "11px",
                             fontWeight: 600,
                             display: "flex",
@@ -388,7 +392,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               minWidth: "6px",
                               borderRadius: "4px",
                               backgroundColor: barColors.bg,
-                              border: `1.5px solid ${barColors.border}`,
+                              border: `1.5px ${barColors.borderStyle} ${barColors.border}`,
                               boxSizing: "border-box",
                               pointerEvents: "none",
                             }}
@@ -399,8 +403,8 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               zIndex: 1,
                               overflow: "hidden",
                               textOverflow: "ellipsis",
-                              color: "#f8fafc",
-                              textShadow: "0 1px 2px rgba(0, 0, 0, 0.9)",
+                              color: "var(--ink)",
+                              textShadow: "none",
                             }}
                           >
                             {call.label}
@@ -412,10 +416,11 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
                               fontSize: "11px",
                               fontWeight: 700,
                               flexShrink: 0,
-                              color: call.status === "fallback" ? "#fde68a" : "#e2e8f0",
-                              textShadow: "0 1px 2px rgba(0, 0, 0, 0.9)",
+                              color: "var(--ink)",
+                              textShadow: "none",
                             }}
                           >
+                            {barColors.tag ? `${barColors.tag} ` : ""}
                             {formatMs(durationMs)}
                           </span>
                         </button>
@@ -433,23 +438,25 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
           aria-label="Pipeline flags and assumptions"
           style={{
             padding: "9px 10px",
-            borderRadius: "10px",
-            backgroundColor: "#141d2f",
-            border: "1px solid #263248",
+            borderRadius: "var(--radius)",
+            backgroundColor: "var(--card)",
+            border: "var(--rule)",
           }}
         >
           <div
             style={{
               fontSize: "12px",
               fontWeight: 700,
-              color: "#f8fafc",
+              color: "var(--ink)",
               marginBottom: "6px",
             }}
           >
             Flags & Assumptions ({trace.flags.length})
           </div>
           {trace.flags.length === 0 ? (
-            <div style={{ fontSize: "12px", color: "#cbd5e1" }}>No flags raised on this page.</div>
+            <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+              No flags raised on this page.
+            </div>
           ) : (
             <ul
               style={{
@@ -463,9 +470,9 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
               {trace.flags.map((flag) => (
                 <li
                   key={`${flag.lane}:${flag.message}`}
-                  style={{ fontSize: "12px", color: "#fde68a", lineHeight: 1.4 }}
+                  style={{ fontSize: "12px", color: "var(--ink-2)", lineHeight: 1.4 }}
                 >
-                  <strong style={{ color: "#f8fafc", textTransform: "uppercase" }}>
+                  <strong style={{ color: "var(--ink)", textTransform: "uppercase" }}>
                     [{flag.lane}]
                   </strong>{" "}
                   {flag.message}
@@ -482,7 +489,7 @@ export default function AiDrawer({ trace, nowMs, open, onClose }: AiDrawerProps)
           <div
             style={{
               fontSize: "12px",
-              color: "#cbd5e1",
+              color: "var(--muted)",
               textAlign: "center",
               padding: "4px 0",
             }}

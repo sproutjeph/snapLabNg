@@ -64,17 +64,17 @@ export default function MicPreview() {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         padding: "24px",
         overflowY: "auto",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
       }}
     >
       <div style={{ maxWidth: "640px", margin: "0 auto" }}>
         <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>Mic capture preview</h1>
-        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "#94a3b8", lineHeight: 1.5 }}>
+        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "var(--muted)", lineHeight: 1.5 }}>
           Hold the button and speak. Audio leaves this page only as PCM16 mono 16 kHz chunks (100 ms
           each) for the examiner relay. Download the WAV to check it by ear.
         </p>
@@ -109,10 +109,10 @@ export default function MicPreview() {
             padding: "28px 16px",
             fontSize: "18px",
             fontWeight: 700,
-            borderRadius: "10px",
-            border: "1px solid #334155",
-            backgroundColor: recording ? "#14532d" : "#1e293b",
-            color: "#f8fafc",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: recording ? "var(--ink)" : "var(--card)",
+            color: recording ? "var(--paper)" : "var(--ink)",
             cursor: "pointer",
             touchAction: "none",
             userSelect: "none",
@@ -128,7 +128,7 @@ export default function MicPreview() {
               display: "flex",
               justifyContent: "space-between",
               fontSize: "13px",
-              color: "#94a3b8",
+              color: "var(--muted)",
               marginBottom: "6px",
             }}
           >
@@ -150,30 +150,34 @@ export default function MicPreview() {
             gap: "24px",
             margin: "20px 0 0",
             fontSize: "14px",
-            color: "#cbd5e1",
+            color: "var(--ink-2)",
           }}
         >
           <div>
-            <dt style={{ color: "#94a3b8", fontSize: "12px" }}>Recorded</dt>
+            <dt style={{ color: "var(--muted)", fontSize: "12px" }}>Recorded</dt>
             <dd style={{ margin: "2px 0 0", fontWeight: 700 }}>{seconds.toFixed(1)} s</dd>
           </div>
           <div>
-            <dt style={{ color: "#94a3b8", fontSize: "12px" }}>Chunks</dt>
+            <dt style={{ color: "var(--muted)", fontSize: "12px" }}>Chunks</dt>
             <dd style={{ margin: "2px 0 0", fontWeight: 700 }}>{chunkCount}</dd>
           </div>
           <div>
-            <dt style={{ color: "#94a3b8", fontSize: "12px" }}>Format</dt>
+            <dt style={{ color: "var(--muted)", fontSize: "12px" }}>Format</dt>
             <dd style={{ margin: "2px 0 0", fontWeight: 700 }}>PCM16 · 16 kHz · mono</dd>
           </div>
         </dl>
 
         {state === "denied" ? (
-          <p style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "#fca5a5" }}>
+          <p
+            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--ink-2)" }}
+          >
             Allow the microphone in your browser settings, or type your answer instead.
           </p>
         ) : null}
         {state === "unsupported" ? (
-          <p style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "#fca5a5" }}>
+          <p
+            style={{ marginTop: "16px", fontSize: "14px", lineHeight: 1.5, color: "var(--ink-2)" }}
+          >
             This browser cannot capture microphone audio here. Try a recent Chrome, Edge or Safari,
             or type your answer instead.
           </p>
@@ -186,10 +190,10 @@ export default function MicPreview() {
           style={{
             marginTop: "20px",
             padding: "10px 14px",
-            borderRadius: "8px",
-            border: "1px solid #334155",
-            backgroundColor: "#1e293b",
-            color: hasRecording ? "#f8fafc" : "#64748b",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: hasRecording ? "var(--ink)" : "var(--muted)",
             fontSize: "14px",
             cursor: hasRecording ? "pointer" : "default",
           }}

@@ -28,10 +28,10 @@ export default function NotebookPreview() {
     width: "100%",
     marginTop: "6px",
     padding: "9px 10px",
-    borderRadius: "6px",
-    border: "1px solid #475569",
-    backgroundColor: "#0f172a",
-    color: "#f8fafc",
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--ink-2)",
+    backgroundColor: "var(--card)",
+    color: "var(--ink)",
     fontSize: "14px",
     boxSizing: "border-box",
   };
@@ -41,17 +41,17 @@ export default function NotebookPreview() {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#12161d",
-        color: "#f1f5f9",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         padding: "24px",
         overflowY: "auto",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
       }}
     >
       <div style={{ maxWidth: "680px", margin: "0 auto" }}>
         <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>Lab notebook preview</h1>
-        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "#a8b3c2", lineHeight: 1.5 }}>
+        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "var(--muted)", lineHeight: 1.5 }}>
           Try the readings notebook on its own. Set a fake R and tap position below, record it, then
           work out the reciprocals. Nothing here marks your work.
         </p>
@@ -92,11 +92,16 @@ export default function NotebookPreview() {
             type="button"
             onClick={handleSet}
             style={{
+              minHeight: "var(--tap)",
               padding: "10px 14px",
-              borderRadius: "6px",
-              border: "1px solid #64748b",
-              backgroundColor: "#263448",
-              color: "#f8fafc",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink-2)",
+              backgroundColor: "var(--card)",
+              color: "var(--ink)",
+              fontFamily: "var(--f-cond)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               fontSize: "14px",
               cursor: "pointer",
             }}
@@ -107,11 +112,16 @@ export default function NotebookPreview() {
             type="button"
             onClick={() => setCurrent(null)}
             style={{
+              minHeight: "var(--tap)",
               padding: "10px 14px",
-              borderRadius: "6px",
-              border: "1px solid #64748b",
-              backgroundColor: "transparent",
-              color: "#f8fafc",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink-2)",
+              backgroundColor: "var(--card)",
+              color: "var(--ink)",
+              fontFamily: "var(--f-cond)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               fontSize: "14px",
               cursor: "pointer",
             }}

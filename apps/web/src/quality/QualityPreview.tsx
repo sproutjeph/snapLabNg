@@ -63,11 +63,16 @@ function StressScene() {
 }
 
 const btnStyle: React.CSSProperties = {
+  minHeight: "var(--tap)",
   padding: "10px 14px",
-  borderRadius: "8px",
-  border: "1px solid #334155",
-  backgroundColor: "#1e293b",
-  color: "#f8fafc",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--ink-2)",
+  backgroundColor: "var(--card)",
+  color: "var(--ink)",
+  fontFamily: "var(--f-cond)",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
   fontSize: "14px",
   cursor: "pointer",
 };
@@ -96,7 +101,7 @@ function QualityPreviewInner() {
     ["Warm-up FPS", signals?.warmupFps == null ? "measuring…" : String(signals.warmupFps)],
     ["Tier", tier],
     ["DPR", `[${settings.dpr[0]}, ${settings.dpr[1]}]`],
-    ["Bloom", settings.bloom ? "on" : "off"],
+    ["Ink outline", settings.bloom ? "on" : "off"],
     ["Shadows", settings.shadows ? "on" : "off"],
     ["Max particles", String(settings.maxParticles)],
     ["Physical glass", settings.physicalGlass ? "yes" : "no"],
@@ -108,9 +113,9 @@ function QualityPreviewInner() {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
@@ -119,7 +124,7 @@ function QualityPreviewInner() {
     >
       <div style={{ padding: "16px 20px 8px", flexShrink: 0 }}>
         <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>Quality tiers preview</h1>
-        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "#94a3b8", lineHeight: 1.5 }}>
+        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "var(--muted)", lineHeight: 1.5 }}>
           Detected signals, the chosen tier and its settings. The stress scene runs {INSTANCE_COUNT}{" "}
           instanced meshes inside the performance monitor.
         </p>
@@ -137,7 +142,7 @@ function QualityPreviewInner() {
       >
         {rows.map(([label, value]) => (
           <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
-            <span style={{ color: "#94a3b8" }}>{label}</span>
+            <span style={{ color: "var(--muted)" }}>{label}</span>
             <strong style={{ textAlign: "right", wordBreak: "break-all" }}>{value}</strong>
           </div>
         ))}
@@ -148,9 +153,10 @@ function QualityPreviewInner() {
           style={{
             margin: "8px 20px 0",
             padding: "10px 12px",
-            borderRadius: "8px",
-            backgroundColor: "#451a03",
-            color: "#fed7aa",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--accent)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink-2)",
             fontSize: "14px",
             flexShrink: 0,
           }}
@@ -171,7 +177,7 @@ function QualityPreviewInner() {
             loseExtRef.current = state.gl.getContext().getExtension("WEBGL_lose_context");
           }}
         >
-          <color attach="background" args={["#11151c"]} />
+          <color attach="background" args={["#f4ecdc"]} />
           <ambientLight intensity={0.7} />
           <directionalLight position={[2, 3, 2]} intensity={1.6} />
           <QualityMonitor>

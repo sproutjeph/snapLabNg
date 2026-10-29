@@ -413,10 +413,10 @@ export function RedInkOverlay({
           minHeight: 0,
           maxHeight: "100%",
           maxWidth: "100%",
-          boxShadow: "0 12px 32px rgba(2, 6, 23, 0.55)",
-          borderRadius: "6px",
+          boxShadow: "none",
+          borderRadius: "var(--radius)",
           overflow: "hidden",
-          background: "#faf6ec",
+          background: "var(--card)",
         }}
       >
         <img
@@ -620,7 +620,7 @@ export function RedInkOverlay({
                         height={Math.max((hitBox.y1 - hitBox.y0) * safeAspect, 0.02) + 0.016}
                         rx={0.006}
                         fill="none"
-                        stroke="#2563eb"
+                        stroke="#1d2430"
                         strokeWidth={0.0025}
                         opacity={isSelected ? 0.9 : 0}
                       />
@@ -691,10 +691,10 @@ export function RedInkOverlay({
                     width: "100%",
                     textAlign: "left",
                     padding: "6px 10px",
-                    borderRadius: 8,
-                    border: "1px solid #334155",
-                    background: "#faf6ec",
-                    color: isLost ? "#b91c1c" : "#15803d",
+                    borderRadius: "var(--radius)",
+                    border: "var(--rule)",
+                    background: "var(--card)",
+                    color: isLost ? "var(--red-ink)" : "var(--green)",
                     fontFamily: handFont,
                     fontSize: 15,
                     fontWeight: 700,

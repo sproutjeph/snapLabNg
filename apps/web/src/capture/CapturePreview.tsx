@@ -36,11 +36,11 @@ export default function CapturePreview() {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#0c0f14",
-        color: "#f8fafc",
+        backgroundColor: "var(--paper)",
+        color: "var(--ink)",
         padding: "24px",
         overflowY: "auto",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
       }}
     >
@@ -56,7 +56,7 @@ export default function CapturePreview() {
         >
           <div>
             <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>Captured Page Result</h1>
-            <p style={{ margin: "4px 0 0", fontSize: "14px", color: "#94a3b8" }}>
+            <p style={{ margin: "4px 0 0", fontSize: "14px", color: "var(--muted)" }}>
               Source: <strong>{result.source}</strong> · Dimensions:{" "}
               <strong>
                 {result.width} × {result.height} px
@@ -68,12 +68,12 @@ export default function CapturePreview() {
             type="button"
             onClick={() => setResult(null)}
             style={{
-              minHeight: "42px",
+              minHeight: "var(--tap)",
               padding: "8px 18px",
-              borderRadius: "8px",
-              border: "1px solid #475569",
-              backgroundColor: "#1e293b",
-              color: "#f8fafc",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--ink-2)",
+              backgroundColor: "var(--card)",
+              color: "var(--ink)",
               fontSize: "14px",
               fontWeight: 600,
               cursor: "pointer",
@@ -94,9 +94,9 @@ export default function CapturePreview() {
           {photoUrl && (
             <div
               style={{
-                backgroundColor: "#161b26",
-                border: "1px solid #2d3748",
-                borderRadius: "12px",
+                backgroundColor: "var(--card)",
+                border: "var(--rule)",
+                borderRadius: "var(--radius)",
                 padding: "12px",
               }}
             >
@@ -107,7 +107,7 @@ export default function CapturePreview() {
                   width: "100%",
                   height: "auto",
                   display: "block",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius)",
                 }}
               />
             </div>
@@ -115,9 +115,9 @@ export default function CapturePreview() {
 
           <div
             style={{
-              backgroundColor: "#161b26",
-              border: "1px solid #2d3748",
-              borderRadius: "12px",
+              backgroundColor: "var(--card)",
+              border: "var(--rule)",
+              borderRadius: "var(--radius)",
               padding: "16px",
               fontSize: "14px",
             }}
@@ -143,9 +143,9 @@ export default function CapturePreview() {
               style={{
                 margin: 0,
                 padding: "10px",
-                borderRadius: "8px",
-                backgroundColor: "#0c0f14",
-                color: "#cbd5e1",
+                borderRadius: "var(--radius)",
+                backgroundColor: "var(--paper-2)",
+                color: "var(--ink-2)",
                 fontSize: "12px",
                 overflowX: "auto",
               }}

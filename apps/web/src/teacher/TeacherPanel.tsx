@@ -47,11 +47,16 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
   }
 
   const btnStyle: React.CSSProperties = {
+    minHeight: "var(--tap)",
     padding: "8px 12px",
-    borderRadius: "6px",
-    border: "1px solid #64748b",
-    backgroundColor: "#263448",
-    color: "#f8fafc",
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--ink-2)",
+    backgroundColor: "var(--card)",
+    color: "var(--ink)",
+    fontFamily: "var(--f-cond)",
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
     fontSize: "13px",
     cursor: "pointer",
   };
@@ -64,13 +69,17 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           style={{
+            minHeight: "var(--tap)",
             padding: "8px 12px",
-            borderRadius: "6px",
-            border: "1px solid #64748b",
-            backgroundColor: "transparent",
-            color: "#f8fafc",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--ink-2)",
+            backgroundColor: "var(--card)",
+            color: "var(--ink)",
+            fontFamily: "var(--f-cond)",
             fontSize: "13px",
             fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
             cursor: "pointer",
           }}
         >
@@ -82,9 +91,9 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
             style={{
               fontSize: "12px",
               fontWeight: 600,
-              color: "#0f172a",
-              backgroundColor: "#facc15",
-              borderRadius: "999px",
+              color: "var(--paper)",
+              backgroundColor: "var(--ink)",
+              borderRadius: "var(--radius)",
               padding: "3px 8px",
             }}
           >
@@ -98,23 +107,25 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
           aria-label="Teacher mode"
           style={{
             marginTop: "12px",
-            border: "1px solid #334155",
-            borderRadius: "8px",
-            backgroundColor: "#0f172a",
+            border: "var(--rule)",
+            borderRadius: "var(--radius)",
+            backgroundColor: "var(--card)",
             padding: "16px",
             boxSizing: "border-box",
           }}
         >
-          <h2 style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: 700, color: "#f8fafc" }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: 700, color: "var(--ink)" }}>
             Teacher mode
           </h2>
-          <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6, color: "#cbd5e1" }}>
+          <p
+            style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6, color: "var(--ink-2)" }}
+          >
             This value is kept on this device only and is used only to mark accuracy.
           </p>
 
           <label
             htmlFor="teacher-x-input"
-            style={{ display: "block", fontSize: "14px", color: "#f1f5f9" }}
+            style={{ display: "block", fontSize: "14px", color: "var(--ink)" }}
           >
             True value of X (Ω)
             <input
@@ -136,10 +147,10 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
                 width: "100%",
                 marginTop: "6px",
                 padding: "9px 10px",
-                borderRadius: "6px",
-                border: "1px solid #475569",
-                backgroundColor: "#020617",
-                color: "#f8fafc",
+                borderRadius: "var(--radius)",
+                border: "1px solid var(--ink-2)",
+                backgroundColor: "var(--paper)",
+                color: "var(--ink)",
                 fontSize: "14px",
                 boxSizing: "border-box",
               }}
@@ -150,13 +161,18 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
             <p
               id="teacher-x-error"
               role="alert"
-              style={{ margin: "8px 0 0", fontSize: "13px", color: "#fca5a5", lineHeight: 1.5 }}
+              style={{
+                margin: "8px 0 0",
+                fontSize: "13px",
+                color: "var(--ink-2)",
+                lineHeight: 1.5,
+              }}
             >
               {error}
             </p>
           ) : null}
           {saved && !error ? (
-            <p role="status" style={{ margin: "8px 0 0", fontSize: "13px", color: "#86efac" }}>
+            <p role="status" style={{ margin: "8px 0 0", fontSize: "13px", color: "var(--green)" }}>
               Saved. Teacher mode is on.
             </p>
           ) : null}
@@ -180,7 +196,9 @@ function TeacherPanelInner({ teacher }: { teacher: UseTeacherResult }) {
             </button>
           </div>
 
-          <p style={{ margin: "12px 0 0", fontSize: "12px", lineHeight: 1.6, color: "#94a3b8" }}>
+          <p
+            style={{ margin: "12px 0 0", fontSize: "12px", lineHeight: 1.6, color: "var(--muted)" }}
+          >
             On shared computers, use Clear to remove the value when you finish. Students do not see
             this value while teacher mode is off.
           </p>

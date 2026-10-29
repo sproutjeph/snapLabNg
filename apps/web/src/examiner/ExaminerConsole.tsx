@@ -124,23 +124,23 @@ export default function ExaminerConsole({
       case "correct":
         return {
           label: "Correct",
-          bg: "#064e3b",
-          border: "#059669",
-          text: "#a7f3d0",
+          bg: "var(--card)",
+          border: "var(--green)",
+          text: "var(--green)",
         };
       case "partly":
         return {
           label: "Partly correct",
-          bg: "#78350f",
-          border: "#d97706",
-          text: "#fde68a",
+          bg: "var(--card)",
+          border: "var(--accent)",
+          text: "var(--ink-2)",
         };
       case "needs_work":
         return {
           label: "Needs work",
-          bg: "#7f1d1d",
-          border: "#dc2626",
-          text: "#fecaca",
+          bg: "var(--card)",
+          border: "var(--red-ink)",
+          text: "var(--red-ink)",
         };
     }
   };
@@ -154,9 +154,9 @@ export default function ExaminerConsole({
         height: "100%",
         maxWidth: "760px",
         margin: "0 auto",
-        background: "#0b1120",
-        color: "#f8fafc",
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        background: "var(--paper)",
+        color: "var(--ink)",
+        fontFamily: "var(--f-body)",
         boxSizing: "border-box",
         padding: "16px",
         overflow: "hidden",
@@ -165,7 +165,7 @@ export default function ExaminerConsole({
       {/* Header */}
       <header
         style={{
-          borderBottom: "1px solid #1e293b",
+          borderBottom: "var(--rule)",
           paddingBottom: "12px",
           marginBottom: "12px",
           display: "flex",
@@ -182,7 +182,7 @@ export default function ExaminerConsole({
               margin: 0,
               fontSize: "1.2rem",
               fontWeight: 700,
-              color: "#38bdf8",
+              color: "var(--ink)",
               letterSpacing: "-0.01em",
             }}
           >
@@ -192,7 +192,7 @@ export default function ExaminerConsole({
             style={{
               margin: "3px 0 0 0",
               fontSize: "0.82rem",
-              color: "#94a3b8",
+              color: "var(--muted)",
             }}
           >
             Examiner (computer voice) &bull; Questions based on your practical mistakes
@@ -201,11 +201,11 @@ export default function ExaminerConsole({
         <div
           style={{
             fontSize: "0.75rem",
-            background: "#1e293b",
-            color: "#cbd5e1",
+            background: "var(--card)",
+            color: "var(--ink-2)",
             padding: "4px 8px",
-            borderRadius: "6px",
-            border: "1px solid #334155",
+            borderRadius: "var(--radius)",
+            border: "var(--rule)",
           }}
         >
           Turn {Math.min(turns.length + (isCompleted ? 0 : 1), maxTurns)} of {maxTurns}
@@ -234,10 +234,10 @@ export default function ExaminerConsole({
                 display: "flex",
                 flexDirection: "column",
                 gap: "10px",
-                background: "#0f172a",
-                borderRadius: "10px",
+                background: "var(--card)",
+                borderRadius: "var(--radius)",
                 padding: "12px 14px",
-                border: "1px solid #1e293b",
+                border: "var(--rule)",
               }}
             >
               {/* Question */}
@@ -246,8 +246,9 @@ export default function ExaminerConsole({
                   style={{
                     fontSize: "0.72rem",
                     textTransform: "uppercase",
+                    fontFamily: "var(--f-cond)",
                     letterSpacing: "0.06em",
-                    color: "#64748b",
+                    color: "var(--muted)",
                     fontWeight: 600,
                   }}
                 >
@@ -259,7 +260,7 @@ export default function ExaminerConsole({
                     margin: 0,
                     fontSize: "0.96rem",
                     fontWeight: 600,
-                    color: "#f1f5f9",
+                    color: "var(--ink)",
                     lineHeight: 1.4,
                   }}
                 >
@@ -270,10 +271,10 @@ export default function ExaminerConsole({
               {/* Student Answer */}
               <div
                 style={{
-                  background: "#1e293b",
-                  borderRadius: "8px",
+                  background: "var(--paper-2)",
+                  borderRadius: "var(--radius)",
                   padding: "8px 12px",
-                  borderLeft: "3px solid #38bdf8",
+                  borderLeft: "3px solid var(--ink)",
                 }}
               >
                 <div
@@ -284,15 +285,15 @@ export default function ExaminerConsole({
                     marginBottom: "4px",
                   }}
                 >
-                  <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 600 }}>
                     Your answer
                   </span>
                   <span
                     style={{
                       fontSize: "0.68rem",
                       textTransform: "capitalize",
-                      background: "#334155",
-                      color: "#cbd5e1",
+                      background: "var(--paper)",
+                      color: "var(--ink-2)",
                       padding: "2px 6px",
                       borderRadius: "4px",
                     }}
@@ -304,7 +305,7 @@ export default function ExaminerConsole({
                   style={{
                     margin: 0,
                     fontSize: "0.9rem",
-                    color: "#f8fafc",
+                    color: "var(--ink)",
                     whiteSpace: "pre-wrap",
                   }}
                 >
@@ -318,10 +319,10 @@ export default function ExaminerConsole({
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
-                  background: "#131d31",
-                  borderRadius: "8px",
+                  background: "var(--paper-2)",
+                  borderRadius: "var(--radius)",
                   padding: "10px 12px",
-                  border: "1px solid #1e293b",
+                  border: "var(--rule)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -338,7 +339,7 @@ export default function ExaminerConsole({
                   >
                     {badge.label}
                   </span>
-                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
                     Examiner (computer voice)
                   </span>
                 </div>
@@ -346,7 +347,7 @@ export default function ExaminerConsole({
                   style={{
                     margin: 0,
                     fontSize: "0.92rem",
-                    color: "#e2e8f0",
+                    color: "var(--ink-2)",
                     lineHeight: 1.45,
                   }}
                 >
@@ -361,10 +362,11 @@ export default function ExaminerConsole({
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "#38bdf8",
+                      color: "var(--ink)",
                       fontSize: "0.78rem",
                       fontWeight: 600,
                       cursor: "pointer",
+                      minHeight: "var(--tap)",
                       padding: "4px 0",
                       display: "flex",
                       alignItems: "center",
@@ -378,10 +380,10 @@ export default function ExaminerConsole({
                     <div
                       style={{
                         marginTop: "6px",
-                        background: "#0b1120",
+                        background: "var(--paper)",
                         borderRadius: "6px",
                         padding: "8px 10px",
-                        border: "1px dashed #334155",
+                        border: "1px dashed var(--pencil)",
                       }}
                     >
                       <span
@@ -389,7 +391,7 @@ export default function ExaminerConsole({
                           fontSize: "0.7rem",
                           fontWeight: 700,
                           textTransform: "uppercase",
-                          color: "#94a3b8",
+                          color: "var(--muted)",
                           display: "block",
                           marginBottom: "4px",
                         }}
@@ -400,7 +402,7 @@ export default function ExaminerConsole({
                         style={{
                           margin: 0,
                           fontSize: "0.85rem",
-                          color: "#cbd5e1",
+                          color: "var(--ink-2)",
                           lineHeight: 1.4,
                         }}
                       >
@@ -419,10 +421,10 @@ export default function ExaminerConsole({
           <div
             aria-live="polite"
             style={{
-              background: "#0f172a",
-              borderRadius: "10px",
+              background: "var(--card)",
+              borderRadius: "var(--radius)",
               padding: "14px",
-              border: "1px solid #38bdf8",
+              border: "1px solid var(--ink)",
               display: "flex",
               flexDirection: "column",
               gap: "6px",
@@ -434,12 +436,12 @@ export default function ExaminerConsole({
                   fontSize: "0.7rem",
                   fontWeight: 700,
                   textTransform: "uppercase",
-                  color: "#38bdf8",
+                  color: "var(--ink)",
                 }}
               >
                 Question {turns.length + 1}
               </span>
-              <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
+              <span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
                 Examiner (computer voice)
               </span>
             </div>
@@ -448,7 +450,7 @@ export default function ExaminerConsole({
                 margin: 0,
                 fontSize: "1rem",
                 fontWeight: 600,
-                color: "#f8fafc",
+                color: "var(--ink)",
                 lineHeight: 1.45,
               }}
             >
@@ -463,9 +465,9 @@ export default function ExaminerConsole({
             role="status"
             aria-live="polite"
             style={{
-              background: "#064e3b",
-              border: "1px solid #059669",
-              borderRadius: "10px",
+              background: "var(--card)",
+              border: "1px solid var(--green)",
+              borderRadius: "var(--radius)",
               padding: "14px",
               textAlign: "center",
               display: "flex",
@@ -474,13 +476,12 @@ export default function ExaminerConsole({
               gap: "4px",
             }}
           >
-            <span style={{ fontSize: "1.1rem" }}>🎓</span>
             <p
               style={{
                 margin: 0,
                 fontSize: "1rem",
                 fontWeight: 700,
-                color: "#ecfdf5",
+                color: "var(--green)",
               }}
             >
               That's all. Well done for practising.
@@ -489,7 +490,7 @@ export default function ExaminerConsole({
               style={{
                 margin: 0,
                 fontSize: "0.82rem",
-                color: "#a7f3d0",
+                color: "var(--green)",
               }}
             >
               You answered {turns.length} examiner {turns.length === 1 ? "question" : "questions"}.
@@ -502,9 +503,9 @@ export default function ExaminerConsole({
           <div
             role="alert"
             style={{
-              background: "#450a0a",
-              border: "1px solid #dc2626",
-              borderRadius: "8px",
+              background: "var(--card)",
+              border: "1px solid var(--accent)",
+              borderRadius: "var(--radius)",
               padding: "10px 12px",
               display: "flex",
               justifyContent: "space-between",
@@ -512,16 +513,17 @@ export default function ExaminerConsole({
               gap: "10px",
             }}
           >
-            <p style={{ margin: 0, fontSize: "0.84rem", color: "#fecaca" }}>{error}</p>
+            <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--ink-2)" }}>{error}</p>
             <button
               type="button"
               onClick={() => handleSend()}
               style={{
-                background: "#dc2626",
-                border: "none",
-                color: "#ffffff",
+                background: "var(--ink)",
+                border: "1px solid var(--ink)",
+                color: "var(--paper)",
+                minHeight: "var(--tap)",
                 padding: "6px 12px",
-                borderRadius: "6px",
+                borderRadius: "var(--radius)",
                 fontSize: "0.8rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -539,7 +541,7 @@ export default function ExaminerConsole({
       {/* Answer Box (Always Visible) */}
       <footer
         style={{
-          borderTop: "1px solid #1e293b",
+          borderTop: "var(--rule)",
           paddingTop: "12px",
           marginTop: "12px",
           display: "flex",
@@ -562,10 +564,10 @@ export default function ExaminerConsole({
           <fieldset
             style={{
               display: "inline-flex",
-              background: "#0f172a",
-              borderRadius: "6px",
+              background: "var(--paper-2)",
+              borderRadius: "var(--radius)",
               padding: "2px",
-              border: "1px solid #1e293b",
+              border: "var(--rule)",
               margin: 0,
             }}
           >
@@ -593,10 +595,11 @@ export default function ExaminerConsole({
                   onClick={() => setLanguage(lang)}
                   aria-pressed={active}
                   style={{
-                    background: active ? "#38bdf8" : "transparent",
-                    color: active ? "#0f172a" : "#94a3b8",
+                    background: active ? "var(--ink)" : "transparent",
+                    color: active ? "var(--paper)" : "var(--muted)",
                     border: "none",
-                    borderRadius: "4px",
+                    borderRadius: "var(--radius)",
+                    minHeight: "var(--tap)",
                     padding: "4px 8px",
                     fontSize: "0.74rem",
                     fontWeight: active ? 700 : 500,
@@ -613,7 +616,10 @@ export default function ExaminerConsole({
         </div>
 
         {voiceAnswer.error && (
-          <p role="status" style={{ margin: "0 0 6px", color: "#fca5a5", fontSize: "0.78rem" }}>
+          <p
+            role="status"
+            style={{ margin: "0 0 6px", color: "var(--ink-2)", fontSize: "0.78rem" }}
+          >
             {voiceAnswer.error}
           </p>
         )}
@@ -641,10 +647,10 @@ export default function ExaminerConsole({
             rows={2}
             style={{
               flex: "1 1 260px",
-              background: isCompleted ? "#0f172a" : "#1e293b",
-              color: "#f8fafc",
-              border: "1px solid #334155",
-              borderRadius: "8px",
+              background: "var(--card)",
+              color: "var(--ink)",
+              border: "1px solid var(--ink-2)",
+              borderRadius: "var(--radius)",
               padding: "8px 12px",
               fontSize: "0.92rem",
               fontFamily: "inherit",
@@ -675,10 +681,10 @@ export default function ExaminerConsole({
             }}
             aria-pressed={voiceAnswer.state === "listening"}
             style={{
-              background: voiceAnswer.state === "listening" ? "#b91c1c" : "#0f766e",
-              color: "#f8fafc",
-              border: "none",
-              borderRadius: "8px",
+              background: voiceAnswer.state === "listening" ? "var(--ink)" : "var(--card)",
+              color: voiceAnswer.state === "listening" ? "var(--paper)" : "var(--ink)",
+              border: "1px solid var(--ink-2)",
+              borderRadius: "var(--radius)",
               padding: "10px 16px",
               height: "46px",
               fontSize: "0.9rem",
@@ -692,7 +698,6 @@ export default function ExaminerConsole({
               userSelect: "none",
             }}
           >
-            <span aria-hidden="true">🎙️</span>
             <span>
               {voiceAnswer.state === "listening"
                 ? "Listening… let go to stop"
@@ -706,10 +711,12 @@ export default function ExaminerConsole({
             onClick={() => handleSend()}
             disabled={isCompleted || isSubmitting || !answer.trim()}
             style={{
-              background: isCompleted || isSubmitting || !answer.trim() ? "#1e293b" : "#38bdf8",
-              color: isCompleted || isSubmitting || !answer.trim() ? "#64748b" : "#0f172a",
+              background:
+                isCompleted || isSubmitting || !answer.trim() ? "var(--paper-2)" : "var(--ink)",
+              color:
+                isCompleted || isSubmitting || !answer.trim() ? "var(--muted)" : "var(--paper)",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: "var(--radius)",
               padding: "10px 18px",
               fontSize: "0.9rem",
               fontWeight: 700,

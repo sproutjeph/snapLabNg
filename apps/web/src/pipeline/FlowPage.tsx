@@ -25,12 +25,16 @@ type Step = "capture" | "reading" | "done";
 const LINK_BUTTON = {
   display: "inline-flex",
   alignItems: "center",
-  minHeight: 36,
+  minHeight: "var(--tap)",
   padding: "6px 12px",
-  borderRadius: 8,
-  border: "1px solid #334155",
-  background: "#1e293b",
-  color: "#e2e8f0",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--ink-2)",
+  background: "var(--card)",
+  color: "var(--ink)",
+  fontFamily: "var(--f-cond)",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
   fontSize: 14,
   textDecoration: "none",
   cursor: "pointer",
@@ -254,16 +258,16 @@ export default function FlowPage() {
     <div
       style={{
         minHeight: "100%",
-        background: "#0c0f14",
-        color: "#f8fafc",
+        background: "var(--paper)",
+        color: "var(--ink)",
         padding: 20,
         boxSizing: "border-box",
-        fontFamily: "system-ui, sans-serif",
+        fontFamily: "var(--f-body)",
       }}
     >
       <ShowAiToggle running={step === "reading"} onClick={() => setDrawerOpen((o) => !o)} />
       <h1 style={{ fontSize: 20, margin: "0 0 4px", paddingRight: 140 }}>Reading your page</h1>
-      <p style={{ margin: "0 0 8px", color: "#94a3b8" }}>
+      <p style={{ margin: "0 0 8px", color: "var(--muted)" }}>
         {step === "reading"
           ? goldenId
             ? "Replaying a real read of this page, at the models' real speed (about 34 s)…"
@@ -312,9 +316,9 @@ export default function FlowPage() {
           <div
             style={{
               height: "min(72vh, 640px)",
-              borderRadius: 12,
+              borderRadius: "var(--radius)",
               overflow: "hidden",
-              border: "1px solid #1e293b",
+              border: "var(--rule)",
             }}
           >
             <Suspense fallback={null}>
@@ -365,12 +369,12 @@ export default function FlowPage() {
           {readings ? <ReadingsTable readings={readings} /> : <p>Waiting for the table…</p>}
           {errors.map((e, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: errors only ever append
-            <p key={i} role="alert" style={{ color: "#fca5a5" }}>
+            <p key={i} role="alert" style={{ color: "var(--ink-2)" }}>
               {e.message}
             </p>
           ))}
           {!marked && step === "done" && readings && (
-            <p style={{ color: "#94a3b8", fontSize: 13 }}>
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>
               Marking is ready for the metre bridge only, so far.
             </p>
           )}
@@ -405,13 +409,13 @@ function ReadingsTable({ readings }: { readings: Readings }) {
     readings.cells.find((c) => c.row === row && colKey(c) === col);
   return (
     <table style={{ borderCollapse: "collapse", fontSize: 14 }}>
-      <caption style={{ textAlign: "left", marginBottom: 6, color: "#cbd5e1" }}>
+      <caption style={{ textAlign: "left", marginBottom: 6, color: "var(--ink-2)" }}>
         Your table, exactly as written
       </caption>
       <thead>
         <tr>
           {cols.map((c) => (
-            <th key={c} style={{ border: "1px solid #334155", padding: "4px 10px" }}>
+            <th key={c} style={{ border: "var(--rule)", padding: "4px 10px" }}>
               {c}
             </th>
           ))}
@@ -426,9 +430,11 @@ function ReadingsTable({ readings }: { readings: Readings }) {
                 <td
                   key={c}
                   style={{
-                    border: "1px solid #334155",
+                    border: "var(--rule)",
                     padding: "4px 10px",
-                    color: x?.legibility === "unsure" ? "#fcd34d" : undefined,
+                    color: x?.legibility === "unsure" ? "var(--ink)" : undefined,
+                    textDecoration: x?.legibility === "unsure" ? "underline" : undefined,
+                    textDecorationColor: "var(--accent)",
                   }}
                 >
                   {x?.text_as_written ?? ""}
