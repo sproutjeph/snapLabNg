@@ -216,6 +216,8 @@ export interface OhmsLawBench {
   /** Practice-mode notes about procedure, newest last. Never a value. */
   readonly notes: readonly ProcedureNote[];
   addNote(note: Omit<ProcedureNote, "id" | "atS">): void;
+  /** The bench's own truth; only learn/script, learn/results and learn/wiring may read it. */
+  readonly supervisor: BenchSupervisor;
   /** Called after every discrete change; returns the unsubscribe function. */
   subscribe(fn: () => void): () => void;
 }

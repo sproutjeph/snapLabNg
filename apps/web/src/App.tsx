@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import type { PracticalMode } from "./learn/types";
 
 const Scene = lazy(() => import("./scene/Scene"));
 const KitPreview = lazy(() => import("./apparatus/meter-bridge/KitPreview"));
@@ -24,6 +25,20 @@ const LearnPage = lazy(() => import("./learn/LearnPage"));
 const WiringPreview = lazy(() => import("./learn/wiring/WiringPreview"));
 const ShellPreview = lazy(() => import("./learn/shell/ShellPreview"));
 const GraphPreview = lazy(() => import("./learn/graph/GraphPreview"));
+const PracticalPage = lazy(() => import("./learn/PracticalPage"));
+const LookPreview = lazy(() => import("./scene/look/LookPreview"));
+const DirectorPreview = lazy(() => import("./learn/script/DirectorPreview"));
+const PaperPreview = lazy(() => import("./learn/paper/PaperPreview"));
+const ResultsPreview = lazy(() => import("./learn/results/ResultsPreview"));
+
+// ?practical=ohms-law[&mode=watch|practice|exam][&seed=N]
+function practicalProps(params: URLSearchParams) {
+  const m = params.get("mode");
+  const mode: PracticalMode | null = m === "watch" || m === "practice" || m === "exam" ? m : null;
+  const raw = params.get("seed");
+  const n = raw === null || raw === "" ? Number.NaN : Number(raw);
+  return { mode, seed: Number.isFinite(n) ? n : null };
+}
 
 export function App() {
   const params = new URLSearchParams(location.search);
@@ -33,6 +48,11 @@ export function App() {
   const isTitrationKit = params.get("kit") === "titration";
   const isOhmsLawKit = params.get("kit") === "ohms-law";
   const isReadingsPreview = params.get("readings") === "1";
+  const isPractical = params.get("practical") === "ohms-law";
+  const isLookPreview = params.get("look") === "ohms-law" || params.get("look") === "meter-bridge";
+  const isDirectorPreview = params.get("director") === "1";
+  const isPaperPreview = params.get("paper") === "1";
+  const isResultsPreview = params.get("results") === "1";
   const isLearnOhmsLaw = params.get("learn") === "ohms-law";
   const isWiringPreview = params.get("wiring") === "1";
   const isShellPreview = params.get("shell") === "1";
@@ -54,7 +74,17 @@ export function App() {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={null}>
-        {isShellPreview ? (
+        {isPractical ? (
+          <PracticalPage {...practicalProps(params)} />
+        ) : isLookPreview ? (
+          <LookPreview />
+        ) : isDirectorPreview ? (
+          <DirectorPreview />
+        ) : isPaperPreview ? (
+          <PaperPreview />
+        ) : isResultsPreview ? (
+          <ResultsPreview />
+        ) : isShellPreview ? (
           <ShellPreview />
         ) : isGraphPreview ? (
           <GraphPreview />
