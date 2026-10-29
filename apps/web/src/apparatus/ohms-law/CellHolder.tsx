@@ -74,6 +74,9 @@ const SPRING_SPANS = [
 ] as const;
 const TAG_W = 0.0115;
 const TAG_H = 0.0095;
+// A paper label stands this far off the face it is stuck on (about a millimetre), so the ink pass draws a
+// steady line at its edge instead of a dotted one.
+const LABEL_LIFT = 0.001;
 
 const FRESH = new THREE.Color();
 const SPENT = new THREE.Color();
@@ -345,12 +348,12 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
         <mesh
           geometry={res.tagGeo}
           material={res.plusMat}
-          position={[-END_X, END_H * 0.62, HOLDER_D / 2 + 0.0004]}
+          position={[-END_X, END_H * 0.62, HOLDER_D / 2 + LABEL_LIFT]}
         />
         <mesh
           geometry={res.tagGeo}
           material={res.minusMat}
-          position={[END_X, END_H * 0.62, HOLDER_D / 2 + 0.0004]}
+          position={[END_X, END_H * 0.62, HOLDER_D / 2 + LABEL_LIFT]}
         />
       </InkGroup>
       <TerminalNut

@@ -86,6 +86,9 @@ const HIT_Z0 = -0.012;
 const HIT_Z1 = 0.074;
 const TAG_W = 0.019;
 const TAG_H = 0.0115;
+// A paper label stands this far off the face it is stuck on (about a millimetre), so the ink pass draws a
+// steady line at its edge instead of a dotted one.
+const LABEL_LIFT = 0.001;
 
 export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyKProps) {
   const low = quality === "low";
@@ -171,7 +174,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
         <mesh
           geometry={res.tagGeo}
           material={res.tagMat}
-          position={[0, BASE_H + 0.0004, (BASE_D / 2 + BLOCK_Z + BLOCK_D / 2) / 2]}
+          position={[0, BASE_H + LABEL_LIFT, (BASE_D / 2 + BLOCK_Z + BLOCK_D / 2) / 2]}
         />
       </InkGroup>
       <InkGroup id={ids + 2}>

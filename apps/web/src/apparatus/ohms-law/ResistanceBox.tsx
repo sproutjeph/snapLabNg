@@ -95,6 +95,7 @@ const SLOT_HIT_Y = 0.06 + 0.008; // the tap target over each slot (unchanged)
 const STRIP_W = 0.22;
 const STRIP_H = 0.025;
 const STRIP_PITCH = 0.0225;
+const STRIP_LIFT = 0.0005; // the strip lies this far off the front face
 const INK = "rgba(34, 20, 8, 0.92)";
 const FONT = "Arial, Helvetica, sans-serif";
 
@@ -144,6 +145,11 @@ function stripTexture(coils: readonly number[], w: number) {
       ctx.lineTo(x + 18 + (i % 7) * 6, y + ((i % 3) - 1) * 0.8);
       ctx.stroke();
     }
+    // The printed border, 0.7 mm thick: thick enough to stay steady when the strip is seen slanted.
+    const rule = Math.max(2.5, 0.0007 * px);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = rule;
+    ctx.strokeRect(rule * 1.5, rule * 1.5, w - rule * 3, h - rule * 3);
     ctx.fillStyle = INK;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -323,6 +329,13 @@ export function ResistanceBox({
           castShadow={cast}
           receiveShadow={cast}
         />
+        {/* The paper strip is a decal on the front face, so it shares the body's ink id: the ink pass
+            draws no line along a one-millimetre step on a slanted face, only its printed border. */}
+        <mesh
+          geometry={res.stripGeo}
+          material={res.stripMat}
+          position={[0, BODY_H * 0.5, BODY_D / 2 + STRIP_LIFT]}
+        />
       </InkGroup>
       <InkGroup id={ids + 1}>
         <mesh
@@ -343,13 +356,6 @@ export function ResistanceBox({
           material={res.engravingMat}
           position={[0, PLATE_TOP + 0.0009, 0]}
           renderOrder={2}
-        />
-      </InkGroup>
-      <InkGroup id={ids + 4} thin>
-        <mesh
-          geometry={res.stripGeo}
-          material={res.stripMat}
-          position={[0, BODY_H * 0.5, BODY_D / 2 + 0.0004]}
         />
       </InkGroup>
       <InkGroup id={ids + 2}>
