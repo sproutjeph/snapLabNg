@@ -1,62 +1,141 @@
-import { OrbitControls } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { createOhmsLaw, DIAGRAM_LEADS, paramsFromSeed } from "@snaplab/engine";
-import { useEffect, useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  createOhmsLaw,
+  DIAGRAM_LEADS,
+  paramsFromSeed,
+  TERMINAL_IDS,
+  type TerminalId,
+} from "@snaplab/engine";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { TerminalProvider } from "../../learn/terminals";
-import type { BenchLead, LeadColour, OhmsLawVisualState, TerminalId } from "../../learn/types";
+import { createTerminalRegistry } from "../../learn/terminalRegistry";
+import { TerminalProvider, useTerminalRegistry } from "../../learn/terminals";
+import type {
+  BenchLead,
+  LeadColour,
+  OhmsLawVisualState,
+  TerminalRegistry,
+} from "../../learn/types";
+import { lookFor } from "../../quality/tier";
 import { InkComposer } from "../../scene/ink/InkComposer";
-import { InkLights } from "../../scene/ink/InkLights";
-import { PaperDesk } from "../../scene/ink/PaperDesk";
+import { useInkFocus } from "../../scene/ink/inkFocus";
+import { BlobShadow } from "../../scene/look/BlobShadow";
+import { createDprLadder, type DprLadder } from "../../scene/look/dprLadder";
+import { LookCamera } from "../../scene/look/LookCamera";
+import { LookGround } from "../../scene/look/LookGround";
+import { LookLights } from "../../scene/look/LookLights";
+import { LookTier } from "../../scene/look/lookTier";
+import { useDprLadder, useLadderDpr } from "../../scene/look/useDprLadder";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { QualityTier } from "../meter-bridge/types";
 import { CellHolder } from "./CellHolder";
 import { KeyK } from "./Key";
+import {
+  type Bounds,
+  type Extents,
+  fillZoom,
+  type KitParams,
+  type KitPlan,
+  type KitShot,
+  kitCovered,
+  parseKitParams,
+  planKit,
+  referenceFile,
+  SLOT_SUBJECTS,
+  screenExtents,
+  shotFor,
+  terminalPositions,
+  turnAzimuth,
+} from "./kitParams";
 import { Lead } from "./Lead";
-import { BENCH_FOOTPRINTS } from "./LeadParts";
-import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
+import { type BenchSlot, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
 import { Meter } from "./Meter";
 import { PenNib } from "./PenNib";
 import { ResistanceBox } from "./ResistanceBox";
 import { Tray } from "./Tray";
 import { WireBoard } from "./WireBoard";
 
-// ?kit=ohms-law — every V–I part on the bench, for the apparatus slices' screenshots.
-//   &part=ammeter|voltmeter|cells|key|box|wire|tray  frames one part
-//   &leads=1                                         adds the seven diagram leads
-//   &deg=<n>                                         sets both needles to n degrees
-//   &drawn=<0..1>                                    how much of each lead is drawn on
-//   &pen=<terminal id>                               puts the Watch pen nib on that terminal
-//   &az=<deg>                                        camera azimuth (default -45)
+// ?kit=ohms-law — the V–I parts in the real look, for the apparatus slices' shots and for the
+// user's look in Chrome (docs/plans/asset-pass.md, "The seam"). The look is mounted as the
+// learn pages will mount it: LookTier, LookCamera (orthographic, azimuth 45 and elevation 41 on
+// every screen), LookLights, LookGround, BlobShadow under each part, InkComposer.
+//   &part=ammeter|voltmeter|cells|key|box|wire|tray   one part, alone on the paper
+//   &part=leads                                       the seven leads over their parts, faded
+//   &part=terminal&id=A%2B                            a macro of one nut with a plug seated in it
+//   &part=desk                                        the desk things alone
+//   (no part)                                         the whole bench and the desk things
+//   &az=<deg>                                         camera azimuth (default 45, the golden frame's)
+//   &zoom=<1..4>                                      this much tighter than the fitted view
+//   &turn=1                                           sweeps the azimuth ±30° about az, 8 s a round
+//   &dpr=<1..3>                                       pins the canvas pixel ratio (no ladder)
+//   &dump=1                                           logs the 12 terminal world positions as JSON
+//   &ref=1                                            the part's reference image beside the canvas
+//                                                     (dev server only; not in a build)
+//   &leads=1                                          adds the seven diagram leads
+//   &drawn=<0..1>                                     how much of each lead is drawn on
+//   &deg=<n>                                          sets both needles to n degrees
+//   &pen=<terminal id>                                puts the Watch pen nib on that terminal
 //   &quality=low|mid|high
-// Lead-owned (Wave 0): slices fill in the parts, not this file.
+// Every subject is fitted so that it fills about three quarters of the frame, on a phone and on a
+// laptop. The other parts are mounted but hidden, so the shot is the part alone, as in its
+// reference image; with leads= or pen= on one part the whole bench is drawn instead, and only
+// that part (and the leads) keep full ink. The key starts closed (tap it to open it) and every
+// plug of the box in. Drag turns the camera a little, as on the real pages. A plus in an id is
+// %2B in a URL; a typed "A+" reaches the page as "A " and is read as A+ too. The pure parts
+// (parameters, what is mounted, the shot) are in kitParams.ts.
 
 const COLOURS: LeadColour[] = ["red", "black", "yellow"];
-const SLOTS = Object.keys(OHMS_LAW_LAYOUT) as BenchSlot[];
+/** Frames the camera snaps to its shot (the focus of a macro is found only once the nut mounts). */
+const SETTLE_FRAMES = 12;
+/** Frames the shadow map is redrawn after a tap on the key or a plug (they move for a moment). */
+const SHADOW_KICK_FRAMES = 45;
+/** Frame at which the terminal dump is taken, after the ready signal's second frame. */
+const DUMP_FRAME = 4;
+const DUMP_GIVE_UP_FRAME = 240;
+/** The macro looks at the nut's top, a little above where a plug seats. */
+const MACRO_LIFT_M = 0.01;
+/** The macro's free plug stands this far out to the side of the nut and this far toward the student. */
+const MACRO_REACH_M = 0.1;
+const MACRO_FRONT_M = 0.05;
 
-function previewState(search: URLSearchParams): OhmsLawVisualState {
+/** Blob shadows under each V–I part: x offsets from the part and a radius, in metres. Long parts get a row. */
+const BLOBS: Readonly<Record<BenchSlot, { dx: readonly number[]; r: number }>> = {
+  cells: { dx: [-0.05, 0.05], r: 0.08 },
+  key: { dx: [0], r: 0.075 },
+  ammeter: { dx: [0], r: 0.12 },
+  voltmeter: { dx: [0], r: 0.12 },
+  box: { dx: [-0.15, 0, 0.15], r: 0.11 },
+  wire: { dx: [-0.44, -0.22, 0, 0.22, 0.44], r: 0.11 },
+  tray: { dx: [-0.08, 0.08], r: 0.17 },
+};
+
+/** A + terminal takes a red lead, a − terminal a black one, the others a yellow one. */
+function macroColour(id: TerminalId): LeadColour {
+  return id.endsWith("+") ? "red" : id.endsWith("-") ? "black" : "yellow";
+}
+
+function previewState(p: KitParams, plan: KitPlan): OhmsLawVisualState {
   const params = paramsFromSeed(1);
   const readout = { ...createOhmsLaw(params).readout };
-  const deg = Number(search.get("deg"));
-  if (search.has("deg") && Number.isFinite(deg)) {
-    readout.ammeterDeg = deg;
-    readout.voltmeterDeg = deg;
+  if (p.deg !== null) {
+    readout.ammeterDeg = p.deg;
+    readout.voltmeterDeg = p.deg;
   }
   const joint = { tightened: true, clean: true };
-  const leads: BenchLead[] =
-    search.get("leads") === "1" || search.has("drawn")
-      ? DIAGRAM_LEADS.map(([a, b], i) => ({
-          id: `L${i + 1}`,
-          a,
-          b,
-          jointA: joint,
-          jointB: joint,
-          colour: COLOURS[i % COLOURS.length] ?? "red",
-        }))
-      : [];
+  const leads: BenchLead[] = plan.leads
+    ? DIAGRAM_LEADS.map(([a, b], i) => ({
+        id: `L${i + 1}`,
+        a,
+        b,
+        jointA: joint,
+        jointB: joint,
+        colour: COLOURS[i % COLOURS.length] ?? "red",
+      }))
+    : [];
   return {
     readout,
-    keyClosed: false,
+    // Closed, as in the look page and the key's reference image (tap the key to open it).
+    keyClosed: true,
     plugsIn: params.boxCoilsOhm.map(() => true),
     leads,
     pendingFrom: null,
@@ -68,145 +147,230 @@ function previewState(search: URLSearchParams): OhmsLawVisualState {
   };
 }
 
-const EL = (41 * Math.PI) / 180;
-const FOV = 12;
-
-interface Box {
-  x0: number;
-  x1: number;
-  z0: number;
-  z1: number;
-  /** Top of the tallest part, metres. */
-  h: number;
+/**
+ * The look's camera with a shot fitted to the subject. LookCamera fits the shot's patch of desk
+ * to the screen; after its frame this zooms the orthographic camera in until the subject itself
+ * fills KIT_FILL of the free area (times `zoom`), whatever its shape and the screen's. It snaps
+ * to the shot for its first frames (a macro's focus arrives a frame late, and the shots wait for
+ * the first frames), then eases and lets her drag, like the real pages. `turn` sweeps the shot's
+ * azimuth, and the fit follows it. The covered strip keeps LookCamera on its 41° view on a tall
+ * phone.
+ */
+function KitCamera({
+  shot,
+  bounds,
+  azDeg,
+  turn,
+  zoom,
+}: {
+  shot: KitShot;
+  bounds: Bounds;
+  azDeg: number;
+  turn: boolean;
+  zoom: number;
+}) {
+  const { width, height } = useThree((s) => s.size);
+  const covered = useMemo(() => kitCovered(width, height), [width, height]);
+  const [settled, setSettled] = useState(false);
+  const frames = useRef(0);
+  const extents = useMemo<Extents>(() => ({ right: 0, up: 0 }), []);
+  // Before LookCamera's own frame (priority -1), so it follows this frame's azimuth.
+  useFrame((state) => {
+    if (turn) shot.azimuthDeg = turnAzimuth(azDeg, state.clock.elapsedTime);
+    if (frames.current < SETTLE_FRAMES) {
+      frames.current += 1;
+      if (frames.current === SETTLE_FRAMES) setSettled(true);
+    }
+  }, -2);
+  // After it: LookCamera has just written the frustum that fits its patch (at zoom 1).
+  useFrame((state) => {
+    const cam = state.camera as THREE.OrthographicCamera;
+    if (!cam.isOrthographicCamera) return;
+    screenExtents(bounds, shot.azimuthDeg, extents);
+    const halfW = (cam.right - cam.left) / 2;
+    const halfH = (cam.top - cam.bottom) / 2;
+    const z = zoom * fillZoom(extents, halfW, halfH, covered, state.size.width, state.size.height);
+    if (Math.abs(cam.zoom - z) > 1e-6) {
+      cam.zoom = z;
+      cam.updateProjectionMatrix();
+    }
+  });
+  return <LookCamera shot={shot} covered={covered} drag reducedMotion={!settled} />;
 }
 
-const _r = new THREE.Vector3();
-const _u = new THREE.Vector3();
-const _f = new THREE.Vector3();
-const _p = new THREE.Vector3();
-
-/**
- * An isometric-style view: a narrow field of view from far away looks the way the lab's
- * orthographic camera does (azimuth `azDeg`, elevation 41 degrees). The camera looks at the
- * middle of how `box` projects on the screen and backs off until that projection fits both the
- * width and the height with a small margin, so a phone and a laptop both fill their frames.
- */
-function FrameRig({ rects, azDeg }: { rects: readonly Box[]; azDeg: number }) {
-  const camera = useThree((st) => st.camera);
-  const width = useThree((st) => st.size.width);
-  const height = useThree((st) => st.size.height);
-  const controls = useThree((st) => st.controls) as unknown as {
-    target: THREE.Vector3;
-    update(): void;
-  } | null;
-  useEffect(() => {
-    const aspect = width / Math.max(height, 1);
-    const t = Math.tan((FOV * Math.PI) / 360);
-    const az = (azDeg * Math.PI) / 180;
-    // The camera looks along -f; r is screen right and u is screen up.
-    _f.set(-Math.sin(az) * Math.cos(EL), -Math.sin(EL), -Math.cos(az) * Math.cos(EL));
-    _r.set(Math.cos(az), 0, -Math.sin(az));
-    _u.crossVectors(_r, _f).negate();
-    const cx = (Math.min(...rects.map((r) => r.x0)) + Math.max(...rects.map((r) => r.x1))) / 2;
-    const cz = (Math.min(...rects.map((r) => r.z0)) + Math.max(...rects.map((r) => r.z1))) / 2;
-    let rMin = Number.POSITIVE_INFINITY;
-    let rMax = Number.NEGATIVE_INFINITY;
-    let uMin = Number.POSITIVE_INFINITY;
-    let uMax = Number.NEGATIVE_INFINITY;
-    for (const box of rects) {
-      for (const x of [box.x0, box.x1]) {
-        for (const z of [box.z0, box.z1]) {
-          for (const y of [0, box.h]) {
-            _p.set(x - cx, y, z - cz);
-            const pr = _p.dot(_r);
-            const pu = _p.dot(_u);
-            rMin = Math.min(rMin, pr);
-            rMax = Math.max(rMax, pr);
-            uMin = Math.min(uMin, pu);
-            uMax = Math.max(uMax, pu);
-          }
-        }
-      }
-    }
-    const margin = 1.08;
-    const d = Math.max(
-      ((rMax - rMin) / 2 / (t * aspect)) * margin,
-      ((uMax - uMin) / 2 / t) * margin,
-    );
-    // Look at the middle of the projection, not of the footprint.
-    const tx = cx + _r.x * ((rMin + rMax) / 2) + _u.x * ((uMin + uMax) / 2);
-    const ty = _r.y * ((rMin + rMax) / 2) + _u.y * ((uMin + uMax) / 2);
-    const tz = cz + _r.z * ((rMin + rMax) / 2) + _u.z * ((uMin + uMax) / 2);
-    camera.position.set(
-      tx + d * Math.sin(az) * Math.cos(EL),
-      ty + d * Math.sin(EL),
-      tz + d * Math.cos(az) * Math.cos(EL),
-    );
-    camera.lookAt(tx, ty, tz);
-    if (controls) {
-      controls.target.set(tx, ty, tz);
-      controls.update();
-    }
-    camera.near = Math.max(0.05, d - 2.5);
-    camera.far = d + 3;
-    camera.updateProjectionMatrix();
-  }, [camera, controls, rects, azDeg, width, height]);
+/** `part=terminal`: aims the shot at the nut once it is mounted, and lays the lead's free plug beside it. */
+function MacroAim({
+  id,
+  shot,
+  state,
+}: {
+  id: TerminalId;
+  shot: KitShot;
+  state: { current: OhmsLawVisualState };
+}) {
+  const registry = useTerminalRegistry();
+  const at = useMemo(() => new THREE.Vector3(), []);
+  const aimed = useRef(false);
+  useFrame(() => {
+    if (!registry.worldPosition(id, at)) return;
+    shot.focus[0] = at.x;
+    shot.focus[1] = at.y + MACRO_LIFT_M;
+    shot.focus[2] = at.z;
+    if (aimed.current) return;
+    aimed.current = true;
+    // The cable leaves toward the side the nut is on, and a little toward the student.
+    const side = at.x >= OHMS_LAW_LAYOUT[TERMINAL_PART[id]].position[0] ? 1 : -1;
+    state.current.pointer.set(at.x + side * MACRO_REACH_M, 0, at.z + MACRO_FRONT_M);
+  }, -2);
   return null;
 }
 
-function Bench({ quality, search }: { quality: QualityTier; search: URLSearchParams }) {
+function allMounted(registry: TerminalRegistry): boolean {
+  for (const id of TERMINAL_IDS) if (!registry.get(id)) return false;
+  return true;
+}
+
+/** `dump=1`: one console line of JSON, the terminals' world positions, once they are all mounted. */
+function DumpTerminals({ registry }: { registry: TerminalRegistry }) {
+  const frames = useRef(0);
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current) return;
+    frames.current += 1;
+    if (frames.current < DUMP_FRAME) return;
+    if (frames.current < DUMP_GIVE_UP_FRAME && !allMounted(registry)) return;
+    done.current = true;
+    console.log(JSON.stringify(terminalPositions(registry)));
+  });
+  return null;
+}
+
+/** The desk things sit in LookGround; they are shown only where the subject is the desk or the whole bench. */
+function DeskVisibility({ show }: { show: boolean }) {
+  const scene = useThree((s) => s.scene);
+  useEffect(() => {
+    const desk = scene.getObjectByName("DeskProps");
+    if (!desk) return;
+    desk.visible = show;
+    return () => {
+      desk.visible = true;
+    };
+  }, [scene, show]);
+  return null;
+}
+
+function Focus({ ids }: { ids: ReadonlySet<number> | null }) {
+  const focus = useMemo(() => ({ ids }), [ids]);
+  useInkFocus(focus);
+  return null;
+}
+
+function Ladder({ ladder, enabled }: { ladder: DprLadder; enabled: boolean }) {
+  useDprLadder(ladder, enabled);
+  return null;
+}
+
+/** Keeps the shadow map fresh for a moment after a tap moved the key or a plug. */
+function ShadowKick({
+  kick,
+  shadowsDirty,
+}: {
+  kick: { current: number };
+  shadowsDirty: { current: boolean };
+}) {
+  useFrame(() => {
+    if (kick.current <= 0) return;
+    kick.current -= 1;
+    shadowsDirty.current = true;
+  });
+  return null;
+}
+
+function Bench({
+  plan,
+  p,
+  state,
+  quality,
+  kick,
+}: {
+  plan: KitPlan;
+  p: KitParams;
+  state: { current: OhmsLawVisualState };
+  quality: QualityTier;
+  kick: { current: number };
+}) {
   const params = useMemo(() => paramsFromSeed(1), []);
-  const state = useRef(previewState(search));
   const L = OHMS_LAW_LAYOUT;
   const common = { state, quality };
-  const drawnParam = Number(search.get("drawn"));
-  const drawn = search.has("drawn") && Number.isFinite(drawnParam) ? drawnParam : 1;
-  const pen = search.get("pen") as TerminalId | null;
+  const on = plan.parts;
   return (
     <>
-      <PaperDesk quality={quality} />
-      <CellHolder {...common} position={L.cells.position} rotationY={L.cells.rotationY} />
-      <KeyK
-        {...common}
-        position={L.key.position}
-        rotationY={L.key.rotationY}
-        onToggle={() => {
-          state.current.keyClosed = !state.current.keyClosed;
-        }}
-      />
-      <Meter
-        {...common}
-        kind="ammeter"
-        fullScale={params.ammeter.fullScale}
-        division={params.ammeter.division}
-        position={L.ammeter.position}
-        rotationY={L.ammeter.rotationY}
-      />
-      <Meter
-        {...common}
-        kind="voltmeter"
-        fullScale={params.voltmeter.fullScale}
-        division={params.voltmeter.division}
-        position={L.voltmeter.position}
-        rotationY={L.voltmeter.rotationY}
-      />
-      <ResistanceBox
-        {...common}
-        coilsOhm={params.boxCoilsOhm}
-        position={L.box.position}
-        rotationY={L.box.rotationY}
-        onPlugToggle={(i) => {
-          const p = state.current.plugsIn;
-          p[i] = !p[i];
-        }}
-      />
-      <WireBoard
-        {...common}
-        wire={params.wire}
-        position={L.wire.position}
-        rotationY={L.wire.rotationY}
-      />
-      <Tray {...common} position={L.tray.position} rotationY={L.tray.rotationY} />
+      {SLOT_SUBJECTS.filter((slot) => on[slot]).flatMap((slot) => {
+        const [x, y, z] = L[slot].position;
+        const { dx, r } = BLOBS[slot];
+        return dx.map((d) => (
+          <BlobShadow key={`${slot}${d}`} position={[x + d, y, z]} radiusM={r} />
+        ));
+      })}
+      {/* Every part stays mounted, so all twelve terminals are registered; a hidden part draws nothing. */}
+      <group visible={on.cells}>
+        <CellHolder {...common} position={L.cells.position} rotationY={L.cells.rotationY} />
+      </group>
+      <group visible={on.key}>
+        <KeyK
+          {...common}
+          position={L.key.position}
+          rotationY={L.key.rotationY}
+          onToggle={() => {
+            state.current.keyClosed = !state.current.keyClosed;
+            kick.current = SHADOW_KICK_FRAMES;
+          }}
+        />
+      </group>
+      <group visible={on.ammeter}>
+        <Meter
+          {...common}
+          kind="ammeter"
+          fullScale={params.ammeter.fullScale}
+          division={params.ammeter.division}
+          position={L.ammeter.position}
+          rotationY={L.ammeter.rotationY}
+        />
+      </group>
+      <group visible={on.voltmeter}>
+        <Meter
+          {...common}
+          kind="voltmeter"
+          fullScale={params.voltmeter.fullScale}
+          division={params.voltmeter.division}
+          position={L.voltmeter.position}
+          rotationY={L.voltmeter.rotationY}
+        />
+      </group>
+      <group visible={on.box}>
+        <ResistanceBox
+          {...common}
+          coilsOhm={params.boxCoilsOhm}
+          position={L.box.position}
+          rotationY={L.box.rotationY}
+          onPlugToggle={(i) => {
+            const plugs = state.current.plugsIn;
+            plugs[i] = !plugs[i];
+            kick.current = SHADOW_KICK_FRAMES;
+          }}
+        />
+      </group>
+      <group visible={on.wire}>
+        <WireBoard
+          {...common}
+          wire={params.wire}
+          position={L.wire.position}
+          rotationY={L.wire.rotationY}
+        />
+      </group>
+      <group visible={on.tray}>
+        <Tray {...common} position={L.tray.position} rotationY={L.tray.rotationY} />
+      </group>
       {state.current.leads.map((l) => (
         <Lead
           key={l.id}
@@ -215,55 +379,133 @@ function Bench({ quality, search }: { quality: QualityTier; search: URLSearchPar
           colour={l.colour}
           state={state}
           quality={quality}
-          drawn={drawn}
+          drawn={p.drawn}
         />
       ))}
-      {pen ? <PenNib target={pen} quality={quality} /> : null}
+      {plan.macro ? (
+        <Lead
+          from={plan.macro}
+          to="pointer"
+          colour={macroColour(plan.macro)}
+          state={state}
+          quality={quality}
+        />
+      ) : null}
+      {p.pen ? <PenNib target={p.pen} quality={quality} /> : null}
     </>
   );
 }
 
-/** The footprints the shot has to fit: every part of the bench, or one part with a little room. */
-function shotRects(part: BenchSlot | null): Box[] {
-  if (!part || !SLOTS.includes(part)) {
-    // Each part's footprint, with 6 cm on top for nuts and plugs.
-    return BENCH_FOOTPRINTS.map((f) => ({
-      x0: f.cx - f.hx,
-      x1: f.cx + f.hx,
-      z0: f.cz - f.hz,
-      z1: f.cz + f.hz,
-      h: f.top + 0.06,
-    }));
-  }
-  const [x, , z] = OHMS_LAW_LAYOUT[part].position;
-  const w = part === "wire" ? 0.42 : part === "tray" ? 0.18 : 0.14;
-  const d = part === "wire" ? 0.1 : part === "tray" ? 0.2 : 0.1;
-  return [{ x0: x - w, x1: x + w, z0: z - d, z1: z + d, h: 0.1 }];
+/**
+ * `ref=1` (dev server only): the subject's reference image (docs/design/asset-pass/<name>.webp)
+ * to the right of the canvas, so the shot and the target are compared on one screen. The images
+ * are found by a glob that only the dev server runs (`import.meta.env.DEV`), so no build
+ * carries them.
+ */
+const REFERENCES: Readonly<Record<string, () => Promise<string>>> = import.meta.env.DEV
+  ? import.meta.glob<string>("../../../../../docs/design/asset-pass/*.webp", {
+      query: "?url",
+      import: "default",
+    })
+  : {};
+
+function ReferenceBeside({
+  subject,
+  children,
+}: {
+  subject: KitParams["subject"];
+  children: ReactNode;
+}) {
+  const [src, setSrc] = useState<string | null>(null);
+  const file = subject ? referenceFile(subject) : null;
+  useEffect(() => {
+    setSrc(null);
+    const load = Object.entries(REFERENCES).find(([path]) => file && path.endsWith(`/${file}`));
+    if (!load) return;
+    let live = true;
+    load[1]().then((url) => {
+      if (live) setSrc(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [file]);
+  return (
+    <div style={{ display: "flex", width: "100%", height: "100%" }}>
+      <div style={{ flex: "1 1 0", minWidth: 0, position: "relative" }}>{children}</div>
+      <aside
+        style={{
+          flex: "0 0 40%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f4ecdc",
+          borderLeft: "2px solid #1d2430",
+          font: "13px/1.4 ui-monospace, monospace",
+          color: "#1d2430",
+          padding: 8,
+          boxSizing: "border-box",
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={`Reference for the ${subject ?? "bench"}: ${file ?? ""}`}
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+          />
+        ) : (
+          <p>
+            {file ? `No reference image yet: ${file}` : "The whole bench has no reference image."}
+          </p>
+        )}
+      </aside>
+    </div>
+  );
 }
 
 export default function KitPreview() {
-  const search = new URLSearchParams(location.search);
-  const q = search.get("quality");
-  const quality: QualityTier = q === "low" || q === "mid" ? q : "high";
-  const part = search.get("part") as BenchSlot | null;
-  const rects = useMemo(() => shotRects(part), [part]);
-  const azParam = Number(search.get("az"));
-  const azDeg = search.has("az") && Number.isFinite(azParam) ? azParam : -45;
-  return (
+  const p = useMemo(() => parseKitParams(location.search), []);
+  const plan = useMemo(() => planKit(p), [p]);
+  const { quality } = p;
+  // The look's pixel-ratio ladder, as the real pages run it; `dpr` pins one rung and stops it.
+  const look = useMemo(() => {
+    const l = lookFor(quality, window.devicePixelRatio || 1);
+    return p.dpr === null ? l : { ...l, dprLadder: [p.dpr] };
+  }, [quality, p.dpr]);
+  const ladder = useMemo(() => createDprLadder(look.dprLadder), [look]);
+  const dpr = useLadderDpr(ladder);
+  const registry = useMemo(createTerminalRegistry, []);
+  const state = useMemo(() => ({ current: previewState(p, plan) }), [p, plan]);
+  // One shot, fitted once; KitCamera and MacroAim move its azimuth and focus in place.
+  const shot = useMemo(() => shotFor(plan.bounds, p.azDeg, p.subject ?? "bench"), [plan, p]);
+  const shadowsDirty = useRef(true);
+  const kick = useRef(0);
+  const canvas = (
     <Canvas
-      shadows="percentage"
-      dpr={quality === "low" ? 1 : [1, 2]}
+      shadows={look.shadowMapSize > 0 ? "percentage" : false}
+      dpr={dpr}
       gl={{ antialias: true }}
-      camera={{ fov: FOV, position: [0, 4, 4], near: 1, far: 40 }}
     >
-      <InkLights quality={quality} />
-      <FrameRig rects={rects} azDeg={azDeg} />
-      <OrbitControls makeDefault enableDamping={false} />
-      <TerminalProvider>
-        <Bench quality={quality} search={search} />
-      </TerminalProvider>
-      <InkComposer quality={quality} />
-      <ReadySignal />
+      <LookTier.Provider value={quality}>
+        <KitCamera shot={shot} bounds={plan.bounds} azDeg={p.azDeg} turn={p.turn} zoom={p.zoom} />
+        <LookLights shadowsDirty={shadowsDirty} />
+        <LookGround />
+        <DeskVisibility show={plan.desk} />
+        <TerminalProvider registry={registry}>
+          <Bench plan={plan} p={p} state={state} quality={quality} kick={kick} />
+          {plan.macro ? <MacroAim id={plan.macro} shot={shot} state={state} /> : null}
+        </TerminalProvider>
+        <ShadowKick kick={kick} shadowsDirty={shadowsDirty} />
+        <InkComposer quality={quality} />
+        <Focus ids={plan.focusIds} />
+        <Ladder ladder={ladder} enabled={p.dpr === null} />
+        {p.dump ? <DumpTerminals registry={registry} /> : null}
+        <ReadySignal />
+      </LookTier.Provider>
     </Canvas>
   );
+  // `ref=1` is for the dev server only: a build drops this branch and the images with it.
+  if (import.meta.env.DEV && p.ref)
+    return <ReferenceBeside subject={p.subject}>{canvas}</ReferenceBeside>;
+  return canvas;
 }
