@@ -3,19 +3,26 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
 import {
+  BENCH_TILE_M,
+  BOX_NUTS,
+  benchTexture,
   bevelBox,
   bevelSegments,
+  boxCoilLabels,
   boxProjectUV,
+  boxStripPlaces,
   brassSurface,
   disposeKitBag,
-  kitLabel,
-  kitTexture,
+  latheOf,
   mergePieces,
+  OHM,
   paintMaterial,
   paperMaterial,
+  projectUVPerTriangle,
+  seededRandom,
   woodMaterial,
 } from "../materials";
-import { PLUG_BOX_DIMS, plugPositions } from "../meter-bridge/dimensions";
+import { plugPositions } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { canvasTexture, hitMaterial, makeCanvas } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -29,62 +36,122 @@ export interface ResistanceBoxProps extends PartProps {
 
 /**
  * The plug-type resistance box R, terminals R1 and R2; plugs from `state.current.plugsIn`.
- * Laid out like the metre bridge's PlugBox (same dimensions and plug spacing, widened for the
- * 8 coils) but matte and tagged for the ink pass, with the terminals on the end blocks. It
- * shows which plugs are out and the printed coil values, never a total resistance.
- * Props frozen.
+ * A mahogany box under a brushed-brass plate, a row of chunky brass blocks with a slot between
+ * each pair, and a tapered brass plug with a speckled ebonite knob in every slot, drawn after
+ * the golden frame and docs/design/asset-pass/resistance-box.webp. The coil values are printed
+ * as the maker printed them: on the plate by each slot and on the paper strip on the front,
+ * never a total. Taps, slot targets and the two terminals stand where they always did. Props
+ * frozen.
  */
 
-const D = PLUG_BOX_DIMS;
-const WIDTH = 0.3;
-const PLUG_MARGIN = 0.056; // end slots sit well clear of the terminal nuts, so their taps never overlap
-const TOP_Y = D.height; // top of the ebonite plate
-const BODY_H = D.height - D.topThickness;
-const GAP = 0.006; // the slot between two brass blocks, which the plug closes
-const BLOCK_Z = -0.006;
-const SHAFT_H = 0.012;
-const SHAFT_R_TOP = 0.0034;
-const SHAFT_R_BOT = 0.0026;
-const HEAD_R = D.plugHeadRadius;
-const HEAD_H = D.plugHeadHeight;
-const SEAT_Y = TOP_Y + 0.001;
-const OUT_Z = D.depth / 2 + 0.012;
-const NUT_X = WIDTH / 2 - 0.02; // on the end blocks; 0.036 m from the nearest slot
+// ---- Sizes, in metres -----------------------------------------------------------------------
+// The footprint is 0.30 x 0.10 x 0.06 (LeadParts' BENCH_FOOTPRINTS); the plate and the blocks
+// stay inside it, the plugs and the nuts rise above, and the block tops stand at the nuts' foot.
+const WIDTH = 0.3; // the slots are spaced across this (plugPositions), as always
+const PLUG_MARGIN = 0.056; // the end slots sit well clear of the terminal nuts
+const BODY_W = 0.296;
+const BODY_D = 0.096;
+const BODY_H = 0.046;
+const PLATE_W = 0.286;
+const PLATE_D = 0.086;
+const PLATE_T = 0.004;
+const PLATE_TOP = BODY_H + PLATE_T;
+const BLOCK_H = 0.016; // block tops stand at 0.066, the nuts' foot
+const BLOCK_D = 0.03;
+const BLOCK_Z = BOX_NUTS.R1[2];
+const END_X = 0.1415; // the end blocks reach as far as the terminal nuts' washers
+const GAP = 0.009; // the slot between two blocks, which a plug fills
+const SEAT_Y = PLATE_TOP + 0.001; // a plug's tip, when it is in
+// A plug: tapered brass shank (a collar at its top), then a squat speckled knob.
+const SHANK: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0.0031, 0],
+  [0.0033, 0.0014],
+  [0.0046, 0.0185],
+  [0.0062, 0.019],
+  [0.0062, 0.0205],
+  [0.005, 0.0214],
+  [0, 0.0214],
+];
+const SHANK_H = 0.0214;
+const KNOB: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0.0052, 0],
+  [0.006, 0.0014],
+  [0.009, 0.005],
+  [0.0106, 0.0085],
+  [0.0107, 0.011],
+  [0.0096, 0.0138],
+  [0.0066, 0.0158],
+  [0.003, 0.0168],
+  [0, 0.0172],
+];
+// Out: the plug lies on the bench in front of the box, its knob resting on the desk.
+const OUT_Z = BODY_D / 2 + 0.014;
+const OUT_Y = 0.0036;
+const OUT_PITCH = 0.22; // the knob end is higher than the tip, as a plug lies on its belly
+const SLOT_HIT_Y = 0.06 + 0.008; // the tap target over each slot (unchanged)
 
-function topTexture(coils: readonly number[], xs: readonly number[], w: number) {
-  const h = Math.round((w * D.depth) / WIDTH);
+const STRIP_W = 0.22;
+const STRIP_H = 0.025;
+const STRIP_PITCH = 0.0225;
+const INK = "rgba(34, 20, 8, 0.92)";
+const FONT = "Arial, Helvetica, sans-serif";
+
+/** The engraving on the plate: each slot's value in front of it, and the maker's name behind. */
+function engravingTexture(coils: readonly number[], xs: readonly number[], w: number) {
+  const h = Math.round((w * PLATE_D) / PLATE_W);
   const { canvas, ctx } = makeCanvas(w, h);
   if (ctx) {
     ctx.clearRect(0, 0, w, h);
-    const sx = w / WIDTH;
-    const sz = h / D.depth;
+    const sx = w / PLATE_W;
+    const sz = h / PLATE_D;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#e9dfc6";
+    ctx.fillStyle = INK;
     // Canvas top is the back of the plate, the bottom its front edge.
-    ctx.font = `bold ${Math.round(0.0048 * sz)}px Georgia, serif`;
-    ctx.fillText("RESISTANCE BOX", w / 2, (0.043 + D.depth / 2) * sz);
-    ctx.font = `bold ${Math.round(0.0075 * sz)}px Georgia, serif`;
-    coils.forEach((ohm, i) => {
-      const x = ((xs[i] ?? 0) + WIDTH / 2) * sx;
-      ctx.fillText(`${ohm} Ω`, x, (0.03 + D.depth / 2) * sz);
+    ctx.font = `bold ${Math.round(0.0062 * sz)}px ${FONT}`;
+    ctx.fillText("RESISTANCE BOX", w / 2, (PLATE_D / 2 - 0.0315) * sz);
+    ctx.font = `bold ${Math.round(0.0112 * sz)}px ${FONT}`;
+    const labels = boxCoilLabels(coils);
+    labels.forEach((label, i) => {
+      const x = ((xs[i] ?? 0) + PLATE_W / 2) * sx;
+      ctx.fillText(`${label}${OHM}`, x, (PLATE_D / 2 + 0.0265) * sz);
     });
-    // A thin ring engraved round each slot.
-    ctx.strokeStyle = "#e9dfc6";
-    ctx.lineWidth = Math.max(1, 0.0003 * sz);
-    for (const x of xs) {
+  }
+  return canvasTexture(canvas, 8);
+}
+
+/** The paper strip on the front: the coil values in plug order, then the ohm sign. */
+function stripTexture(coils: readonly number[], w: number) {
+  const h = Math.round((w * STRIP_H) / STRIP_W);
+  const { canvas, ctx } = makeCanvas(w, h);
+  if (ctx) {
+    const paper = ctx.createLinearGradient(0, 0, 0, h);
+    paper.addColorStop(0, "#fdf6e3");
+    paper.addColorStop(1, "#f6ecd0");
+    ctx.fillStyle = paper;
+    ctx.fillRect(0, 0, w, h);
+    // Fibre, as on the kit's labels.
+    const px = w / STRIP_W;
+    ctx.strokeStyle = "rgba(120, 90, 40, 0.07)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 90; i++) {
+      const y = ((i * 37) % 100) * 0.01 * h;
+      const x = (((i * 61) % 100) * 0.01 * w) | 0;
       ctx.beginPath();
-      ctx.ellipse(
-        (x + WIDTH / 2) * sx,
-        (BLOCK_Z + D.depth / 2) * sz,
-        0.0105 * sx,
-        0.0105 * sz,
-        0,
-        0,
-        Math.PI * 2,
-      );
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 18 + (i % 7) * 6, y + ((i % 3) - 1) * 0.8);
       ctx.stroke();
     }
+    ctx.fillStyle = INK;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `bold ${Math.round(0.0148 * px)}px ${FONT}`;
+    const labels = [...boxCoilLabels(coils), OHM];
+    boxStripPlaces(coils.length, STRIP_PITCH).forEach((x, i) => {
+      ctx.fillText(labels[i] ?? "", w / 2 + x * px, h * 0.54);
+    });
   }
   return canvasTexture(canvas, 8);
 }
@@ -108,98 +175,96 @@ export function ResistanceBox({
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 10 : 20;
+    const seg = low ? 12 : 18;
     const coils = coilsKey ? coilsKey.split(",").map(Number) : [];
-    const woodTex = kitTexture("mahogany", quality);
-    const brassTex = kitTexture("brass", quality);
-    const topTex = topTexture(coils, xs, low ? 512 : 1024);
-    // The strip of paper on the front, with the coil values as the maker printed them.
-    const frontTex = kitLabel(
-      {
-        lines: ["RESISTANCE BOX", `${coils.join("   ")}   \u03a9`],
-        width: 0.19,
-        height: 0.034,
-        seed: 57,
-      },
-      quality,
-    );
-    // The engraving is a plate lying on the ebonite top, drawn on a transparent ground.
-    const labelMat = new THREE.MeshStandardMaterial({
-      map: topTex,
+    const woodTex = benchTexture("mahogany", quality);
+    const brassTex = benchTexture("brass", quality);
+    const eboniteTex = benchTexture("ebonite", quality);
+    const engraving = engravingTexture(coils, xs, low ? 512 : 1024);
+    const strip = stripTexture(coils, low ? 512 : 1024);
+    // The engraving is a transparent sheet lying on the brass.
+    const engravingMat = new THREE.MeshStandardMaterial({
+      map: engraving,
       transparent: true,
       depthWrite: false,
       roughness: 0.9,
     });
-    const labelGeo = new THREE.PlaneGeometry(WIDTH - 0.004, D.depth - 0.004);
-    labelGeo.rotateX(-Math.PI / 2);
-    const frontGeo = new THREE.PlaneGeometry(0.19, 0.034);
-    // Blocks run between slots; the first and last carry the terminals.
-    const halfW = WIDTH / 2 - 0.008;
+    const engravingGeo = new THREE.PlaneGeometry(PLATE_W, PLATE_D);
+    engravingGeo.rotateX(-Math.PI / 2);
+    const stripGeo = new THREE.PlaneGeometry(STRIP_W, STRIP_H);
+    // The box: mahogany, rounded all round; the brass plate sits on it with a margin of wood.
+    const bodyGeo = bevelBox(BODY_W, BODY_H, BODY_D, 0.005, bs);
+    boxProjectUV(bodyGeo, [BENCH_TILE_M.mahogany[0], 0.09]);
+    const plateGeo = bevelBox(PLATE_W, PLATE_T, PLATE_D, 0.0015, Math.min(bs, 2));
+    boxProjectUV(plateGeo, BENCH_TILE_M.brass);
+    // Blocks run between the slots; the first and last carry the terminals.
     const blocks: Array<{ x: number; w: number }> = [];
     for (let i = 0; i <= xs.length; i++) {
-      const left = i === 0 ? -halfW : (xs[i - 1] ?? 0) + GAP / 2;
-      const right = i === xs.length ? halfW : (xs[i] ?? 0) - GAP / 2;
+      const left = i === 0 ? -END_X : (xs[i - 1] ?? 0) + GAP / 2;
+      const right = i === xs.length ? END_X : (xs[i] ?? 0) - GAP / 2;
       blocks.push({ x: (left + right) / 2, w: Math.max(0.006, right - left) });
     }
     const blocksGeo = mergePieces(
       blocks.map((b) =>
-        bevelBox(b.w, D.blockHeight, D.blockDepth, 0.0015, bs).translate(
+        bevelBox(b.w, BLOCK_H, BLOCK_D, 0.002, Math.min(bs, 2)).translate(
           b.x,
-          TOP_Y + D.blockHeight / 2,
+          PLATE_TOP + BLOCK_H / 2,
           BLOCK_Z,
         ),
       ),
     );
-    boxProjectUV(blocksGeo, [0.2, 0.2]);
-    const bodyGeo = bevelBox(WIDTH - 0.004, BODY_H, D.depth - 0.004, 0.004, bs);
-    boxProjectUV(bodyGeo, [0.3, 0.15]);
-    const topGeo = bevelBox(WIDTH, D.topThickness, D.depth, 0.0016, bs);
-    boxProjectUV(topGeo, [0.12, 0.12]);
-    // Plugs are drawn as two instanced meshes (brass shafts, black bakelite knobs), one matrix each.
-    const shaftGeo = new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg);
-    shaftGeo.translate(0, SHAFT_H / 2, 0);
-    const k = HEAD_H / 0.0165;
-    const knob = [
-      [0, 0],
-      [0.0072, 0],
-      [0.0076, 0.0018],
-      [0.0062, 0.0055],
-      [0.0051, 0.0105],
-      [0.0063, 0.0138],
-      [0.006, 0.0161],
-      [0.0035, 0.0165],
-      [0, 0.0165],
-    ].map(([r, y]) => new THREE.Vector2((r ?? 0) * (HEAD_R / 0.007), (y ?? 0) * k));
-    const headGeo = new THREE.LatheGeometry(knob, seg);
-    headGeo.translate(0, SHAFT_H, 0);
+    boxProjectUV(blocksGeo, BENCH_TILE_M.brass);
+    // The ebonite showing at the bottom of each slot.
+    const slotsGeo = mergePieces(
+      xs.map((x) =>
+        new THREE.BoxGeometry(GAP + 0.002, 0.0006, BLOCK_D + 0.004).translate(
+          x,
+          PLATE_TOP + 0.0003,
+          BLOCK_Z,
+        ),
+      ),
+    );
+    // Plugs are two instanced meshes (brass shanks, speckled knobs), one matrix each.
+    const shaftGeo = latheOf(SHANK, seg);
+    const headBase = latheOf(KNOB, seg);
+    headBase.translate(0, SHANK_H, 0);
+    const headGeo = projectUVPerTriangle(headBase, BENCH_TILE_M.ebonite[0]);
     const hitGeo = new THREE.SphereGeometry(0.0125, 8, 6);
+    const rnd = seededRandom(61);
+    const dummy = new THREE.Object3D();
+    dummy.rotation.order = "YXZ";
+    const brass = { metalness: 0.4, roughness: 0.6 };
     return {
       woodTex,
       brassTex,
-      topTex,
-      frontTex,
+      eboniteTex,
+      engraving,
+      strip,
       woodMat: woodMaterial(53, { map: woodTex }),
-      eboniteMat: paintMaterial("#1c1a19", 56, { amount: 0.02 }),
-      labelMat,
-      labelGeo,
-      frontGeo,
-      frontMat: paperMaterial(57, { map: frontTex }),
-      brassMat: brassSurface(58, { map: brassTex }),
-      headMat: paintMaterial("#151312", 59),
+      brassMat: brassSurface(58, { map: brassTex, ...brass }),
+      slotMat: paintMaterial("#17130f", 56, { amount: 0.02 }),
+      engravingMat,
+      stripMat: paperMaterial(57, { map: strip }),
+      knobMat: paintMaterial("#ffffff", 59, { map: eboniteTex, amount: 0.012 }),
       hitMat: hitMaterial(),
+      engravingGeo,
+      stripGeo,
       bodyGeo,
-      topGeo,
+      plateGeo,
       blocksGeo,
+      slotsGeo,
       shaftGeo,
       headGeo,
       hitGeo,
-      dummy: new THREE.Object3D(),
+      dummy,
+      // Each plug's own turn about its axis, so the eight knobs do not show one speckle.
+      spin: Float32Array.from({ length: n }, () => rnd() * Math.PI * 2),
       // Plug positions, 0 = out, 1 = in, eased; -1 until the first frame sets it.
       ease: new Float32Array(n).fill(-1),
     };
   }, [low, quality, xs, coilsKey, n]);
 
-  useEffect(() => () => disposeKitBag({ ...res, dummy: null, ease: null }), [res]);
+  useEffect(() => () => disposeKitBag({ ...res, dummy: null, ease: null, spin: null }), [res]);
 
   useFrame((_, dt) => {
     const shafts = shaftsRef.current;
@@ -221,10 +286,14 @@ export function ResistanceBox({
       // In the slot: upright. Out: lying on the bench in front of the box.
       dummy.position.set(
         xs[i] ?? 0,
-        HEAD_R + (SEAT_Y - HEAD_R) * v,
+        OUT_Y + (SEAT_Y - OUT_Y) * v,
         BLOCK_Z + (OUT_Z - BLOCK_Z) * (1 - v),
       );
-      dummy.rotation.set((Math.PI / 2) * (1 - v), 0, 0.2 * (1 - v));
+      dummy.rotation.set(
+        (Math.PI / 2 - OUT_PITCH) * (1 - v),
+        (res.spin[i] ?? 0) * v,
+        0.2 * (1 - v),
+      );
       dummy.updateMatrix();
       shafts.setMatrixAt(i, dummy.matrix);
       heads.setMatrixAt(i, dummy.matrix);
@@ -257,24 +326,30 @@ export function ResistanceBox({
       </InkGroup>
       <InkGroup id={ids + 1}>
         <mesh
-          geometry={res.topGeo}
-          material={res.eboniteMat}
-          position={[0, BODY_H + D.topThickness / 2, 0]}
+          geometry={res.plateGeo}
+          material={res.brassMat}
+          position={[0, BODY_H + PLATE_T / 2, 0]}
           castShadow={cast}
           receiveShadow={cast}
         />
         <mesh
-          geometry={res.labelGeo}
-          material={res.labelMat}
-          position={[0, TOP_Y + 0.0003, 0]}
+          geometry={res.slotsGeo}
+          material={res.slotMat}
+          castShadow={false}
+          receiveShadow={cast}
+        />
+        <mesh
+          geometry={res.engravingGeo}
+          material={res.engravingMat}
+          position={[0, PLATE_TOP + 0.0009, 0]}
           renderOrder={2}
         />
       </InkGroup>
       <InkGroup id={ids + 4} thin>
         <mesh
-          geometry={res.frontGeo}
-          material={res.frontMat}
-          position={[0, BODY_H * 0.5, (D.depth - 0.004) / 2 + 0.0003]}
+          geometry={res.stripGeo}
+          material={res.stripMat}
+          position={[0, BODY_H * 0.5, BODY_D / 2 + 0.0004]}
         />
       </InkGroup>
       <InkGroup id={ids + 2}>
@@ -293,9 +368,11 @@ export function ResistanceBox({
           frustumCulled={false}
           onPointerDown={tapPlug}
         />
+      </InkGroup>
+      <InkGroup id={ids + 5} thin>
         <instancedMesh
           ref={headsRef}
-          args={[res.headGeo, res.headMat, n]}
+          args={[res.headGeo, res.knobMat, n]}
           castShadow={cast}
           frustumCulled={false}
           onPointerDown={tapPlug}
@@ -307,24 +384,12 @@ export function ResistanceBox({
           key={x}
           geometry={res.hitGeo}
           material={res.hitMat}
-          position={[x, TOP_Y + 0.008, BLOCK_Z]}
+          position={[x, SLOT_HIT_Y, BLOCK_Z]}
           onPointerDown={tapOnly(() => onPlugToggle?.(i))}
         />
       ))}
-      <TerminalNut
-        id="R1"
-        part="box"
-        position={[NUT_X, TOP_Y + D.blockHeight, BLOCK_Z]}
-        state={state}
-        quality={quality}
-      />
-      <TerminalNut
-        id="R2"
-        part="box"
-        position={[-NUT_X, TOP_Y + D.blockHeight, BLOCK_Z]}
-        state={state}
-        quality={quality}
-      />
+      <TerminalNut id="R1" part="box" position={BOX_NUTS.R1} state={state} quality={quality} />
+      <TerminalNut id="R2" part="box" position={BOX_NUTS.R2} state={state} quality={quality} />
     </group>
   );
 }
