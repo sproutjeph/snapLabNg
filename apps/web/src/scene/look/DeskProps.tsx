@@ -14,10 +14,10 @@ export const DESK_INK_IDS = { pencil: 190, eraser: 191, booklet: 192, calculator
 
 /** Where each prop lies: [x, z] in metres and its turn about y. In front of the bench. */
 export const DESK_PROP_PLACES = {
-  pencil: { x: -0.66, z: 0.5, turn: 0.42 },
-  eraser: { x: -0.2, z: 0.56, turn: -0.18 },
-  booklet: { x: 0.36, z: 0.6, turn: 0.12 },
-  calculator: { x: 0.66, z: 0.52, turn: -0.22 },
+  pencil: { x: -0.42, z: 0.44, turn: -0.5 },
+  eraser: { x: -0.1, z: 0.5, turn: -0.18 },
+  booklet: { x: 0.3, z: 0.56, turn: 0.12 },
+  calculator: { x: 0.62, z: 0.5, turn: -0.22 },
 } as const;
 
 const PENCIL_LEN = 0.175;
