@@ -1,6 +1,8 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { Step } from "../types";
-import { MarkCross, MarkTick } from "./icons";
+import { IconChevronLeft, IconChevronRight, IconLock, MarkCross, MarkTick } from "./icons";
+import PracticalMenu from "./PracticalMenu";
+import { useSlider } from "./useLayout";
 
 export type StepStatus = "todo" | "done" | "lost";
 
@@ -9,6 +11,14 @@ interface StepBarProps {
   stepIndex: number;
   stepStatus: StepStatus[];
   onStepChange(index: number): void;
+  /** The practical's name, for the selector at the strip's left. */
+  title: string;
+  /** Step.key to the URL of its picture. A step with none shows a numbered ink ring. */
+  thumbs?: Readonly<Record<string, string>> | undefined;
+  /** Cards from this index on are locked: shown, but not selectable yet. */
+  lockedFrom?: number | undefined;
+  /** The cards are display only: she goes through the stages in order, not by tapping them. */
+  readOnly?: boolean | undefined;
 }
 
 const STATUS_WORD: Record<StepStatus, string> = {
@@ -17,28 +27,48 @@ const STATUS_WORD: Record<StepStatus, string> = {
   lost: "lost",
 };
 
+const reducedMotion = () =>
+  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 /**
- * The bottom step bar. One numbered icon per step: dashed pencil ring = not done, solid ink ring
- * with a ✓ = done, solid red ring with a ✕ = lost, filled ink = the current step.
+ * The step strip along the foot: the practical selector on a raised tab, then one card per
+ * stage (a picture or a numbered ink ring, and the stage's name), a cursor in the accent that
+ * slides to the current card, and previous and next buttons. The row scrolls sideways and keeps
+ * the current card in view.
+ *
+ * State is never colour alone: done carries a ✓ and lost a ✕ (a disc each), locked a padlock and
+ * muted words, a ring that is not done yet is dashed pencil and a done one solid ink.
  *
  * It is a toolbar with a roving tab stop. Left/Right/Home/End only move focus; Enter or Space
  * selects the step. (Selecting runs a camera move and the step's reveal, so arrowing across the
- * bar must not do that.)
+ * bar must not do that.) Cards that cannot be selected stay focusable and say so (`aria-disabled`).
  */
-export default function StepBar({ steps, stepIndex, stepStatus, onStepChange }: StepBarProps) {
-  const scroller = useRef<HTMLOListElement>(null);
+export default function StepBar({
+  steps,
+  stepIndex,
+  stepStatus,
+  onStepChange,
+  title,
+  thumbs,
+  lockedFrom,
+  readOnly,
+}: StepBarProps) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const cursor = useRef<HTMLSpanElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusIndex, setFocusIndex] = useState(stepIndex);
 
-  // Keep the current step in view on phones, where the bar scrolls sideways, and put the tab stop
-  // back on it whenever the step changes.
+  useSlider(scroller, cursor, '.sh-step[aria-current="step"]', `${stepIndex}|${steps.length}`);
+
+  // Keep the current step in view (the row scrolls sideways) and put the tab stop back on it
+  // whenever the step changes.
   useEffect(() => {
     setFocusIndex(stepIndex);
     const box = scroller.current;
     const el = buttons.current[stepIndex];
     if (!box || !el) return;
     const left = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
-    box.scrollTo({ left: Math.max(0, left) });
+    box.scrollTo({ left: Math.max(0, left), behavior: reducedMotion() ? "auto" : "smooth" });
   }, [stepIndex]);
 
   const move = (i: number) => {
@@ -60,55 +90,117 @@ export default function StepBar({ steps, stepIndex, stepStatus, onStepChange }: 
     move(target);
   };
 
+  const lockedAt = (i: number) => lockedFrom !== undefined && i >= lockedFrom;
+  const canSelect = (i: number) => !readOnly && !lockedAt(i);
+  const prevOk = stepIndex > 0 && canSelect(stepIndex - 1);
+  const nextOk = stepIndex < steps.length - 1 && canSelect(stepIndex + 1);
+
   return (
-    <nav className="sh-stepbar" aria-label="Steps">
-      <ol
-        className="sh-steps"
-        ref={scroller}
-        role="toolbar"
-        aria-label="Lesson steps"
-        aria-orientation="horizontal"
-        onKeyDown={onKeyDown}
-      >
-        {steps.map((s, i) => {
-          const status = stepStatus[i] ?? "todo";
-          const current = i === stepIndex;
-          return (
-            <li key={s.key} className={`sh-step-item is-${status}`} role="presentation">
-              <button
-                type="button"
-                ref={(el) => {
-                  buttons.current[i] = el;
-                }}
-                className="sh-step"
-                data-status={status}
-                aria-current={current ? "step" : undefined}
-                aria-label={`Step ${i + 1}, ${s.title}, ${STATUS_WORD[status]}`}
-                tabIndex={i === focusIndex ? 0 : -1}
-                onFocus={() => setFocusIndex(i)}
-                onClick={() => onStepChange(i)}
-              >
-                <span className="sh-step-icon" aria-hidden="true">
-                  {i + 1}
-                  {status === "done" && (
-                    <span className="sh-step-mark is-done">
-                      <MarkTick />
+    <nav className="sh-strip" data-region="strip" aria-label="Steps">
+      <div className="sh-plate-body" aria-hidden="true" />
+      <div className="sh-plate-tab">
+        <PracticalMenu title={title} stageCount={steps.length} />
+        <svg className="sh-ear" viewBox="0 0 74 26" aria-hidden="true" focusable="false">
+          <path className="sh-ear-fill" d="M0 .75C30 .75 40 25.75 74 25.75V30H0z" />
+          <path className="sh-ear-line" d="M0 .75C30 .75 40 25.75 74 25.75" />
+        </svg>
+      </div>
+
+      <div className="sh-track">
+        <div ref={scroller} className="sh-cards">
+          <ol
+            className="sh-steps"
+            role="toolbar"
+            aria-label="Lesson steps"
+            aria-orientation="horizontal"
+            onKeyDown={onKeyDown}
+          >
+            {steps.map((s, i) => {
+              const status = stepStatus[i] ?? "todo";
+              const current = i === stepIndex;
+              const locked = lockedAt(i);
+              const selectable = canSelect(i);
+              const thumb = thumbs?.[s.key];
+              const word = locked ? "locked" : STATUS_WORD[status];
+              return (
+                <li
+                  key={s.key}
+                  className={`sh-step-item is-${status}${locked ? " is-locked" : ""}`}
+                  role="presentation"
+                >
+                  <button
+                    type="button"
+                    ref={(el) => {
+                      buttons.current[i] = el;
+                    }}
+                    className="sh-step"
+                    data-status={status}
+                    data-region={i === 0 ? "stageCard" : undefined}
+                    aria-current={current ? "step" : undefined}
+                    aria-disabled={selectable ? undefined : true}
+                    aria-label={`Step ${i + 1}, ${s.title}, ${word}`}
+                    tabIndex={i === focusIndex ? 0 : -1}
+                    onFocus={() => setFocusIndex(i)}
+                    onClick={() => {
+                      if (selectable) onStepChange(i);
+                    }}
+                  >
+                    <span className="sh-step-pic" aria-hidden="true">
+                      {thumb ? (
+                        <img src={thumb} alt="" draggable={false} />
+                      ) : (
+                        <span className="sh-ring">{i + 1}</span>
+                      )}
                     </span>
-                  )}
-                  {status === "lost" && (
-                    <span className="sh-step-mark is-lost">
-                      <MarkCross />
+                    <span className="sh-step-label sh-txt" aria-hidden="true">
+                      {thumb ? <b>{i + 1}.</b> : null}
+                      <span>{s.title}</span>
                     </span>
-                  )}
-                </span>
-                <span className="sh-step-label" aria-hidden="true">
-                  {s.title}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                    {status === "done" && (
+                      <span className="sh-step-mark is-done" aria-hidden="true">
+                        <MarkTick />
+                      </span>
+                    )}
+                    {status === "lost" && (
+                      <span className="sh-step-mark is-lost" aria-hidden="true">
+                        <MarkCross />
+                      </span>
+                    )}
+                    {locked && (
+                      <span className="sh-step-lock" aria-hidden="true">
+                        <IconLock />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <span ref={cursor} className="sh-cursor" aria-hidden="true">
+            <IconChevronRight />
+          </span>
+        </div>
+        <button
+          type="button"
+          className="sh-nav-btn"
+          data-region="prev"
+          aria-label="Previous stage"
+          disabled={!prevOk}
+          onClick={() => onStepChange(stepIndex - 1)}
+        >
+          <IconChevronLeft />
+        </button>
+        <button
+          type="button"
+          className="sh-nav-btn sh-nav-primary"
+          data-region="next"
+          aria-label="Next stage"
+          disabled={!nextOk}
+          onClick={() => onStepChange(stepIndex + 1)}
+        >
+          <IconChevronRight />
+        </button>
+      </div>
     </nav>
   );
 }
