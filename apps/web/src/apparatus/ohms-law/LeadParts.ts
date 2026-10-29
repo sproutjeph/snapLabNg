@@ -195,6 +195,8 @@ export function makeCrocClipGeometries(): {
 // Change these with the parts.
 
 export interface BenchFootprint {
+  /** The bench slot this footprint belongs to (a meter has two: its case and its ledge). */
+  slot: BenchSlot;
   cx: number;
   cz: number;
   /** Half the width (x) and half the depth (z). */
@@ -219,6 +221,7 @@ const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number, num
 
 export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(
   ([slot, w, h, d, dz]) => ({
+    slot,
     cx: OHMS_LAW_LAYOUT[slot].position[0],
     cz: OHMS_LAW_LAYOUT[slot].position[2] + dz,
     hx: w / 2,

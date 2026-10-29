@@ -2,20 +2,22 @@ import { type ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
+import {
+  bevelBox,
+  bevelSegments,
+  boxProjectUV,
+  brassSurface,
+  disposeKitBag,
+  kitLabel,
+  kitTexture,
+  mergePieces,
+  paintMaterial,
+  paperMaterial,
+  woodMaterial,
+} from "../materials";
 import { PLUG_BOX_DIMS, plugPositions } from "../meter-bridge/dimensions";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
-import {
-  brassMaterial,
-  COLOURS,
-  canvasTexture,
-  disposeAll,
-  hitMaterial,
-  jitterColour,
-  makeCanvas,
-  matte,
-  mergeStatic,
-  seeded,
-} from "./MeterMaterials";
+import { canvasTexture, hitMaterial, makeCanvas } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
 
 export interface ResistanceBoxProps extends PartProps {
@@ -49,40 +51,11 @@ const SEAT_Y = TOP_Y + 0.001;
 const OUT_Z = D.depth / 2 + 0.012;
 const NUT_X = WIDTH / 2 - 0.02; // on the end blocks; 0.036 m from the nearest slot
 
-function woodTexture(rnd: () => number, w: number, h: number) {
-  const { canvas, ctx } = makeCanvas(w, h);
-  if (ctx) {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, w, h);
-    const lines = Math.round(h * 0.7);
-    for (let i = 0; i < lines; i++) {
-      const y0 = rnd() * h;
-      const dark = rnd() < 0.65;
-      ctx.strokeStyle = dark
-        ? `rgba(60,30,12,${0.05 + rnd() * 0.16})`
-        : `rgba(255,235,210,${0.04 + rnd() * 0.1})`;
-      ctx.lineWidth = 0.6 + rnd() * 2.4;
-      const amp = 1 + rnd() * 5;
-      const freq = 0.004 + rnd() * 0.01;
-      const phase = rnd() * 6.28;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 8) {
-        const y = y0 + Math.sin(x * freq + phase) * amp;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  }
-  return canvasTexture(canvas, 4);
-}
-
-function topTexture(coils: readonly number[], xs: readonly number[], w: number, bg: string) {
+function topTexture(coils: readonly number[], xs: readonly number[], w: number) {
   const h = Math.round((w * D.depth) / WIDTH);
   const { canvas, ctx } = makeCanvas(w, h);
   if (ctx) {
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
+    ctx.clearRect(0, 0, w, h);
     const sx = w / WIDTH;
     const sz = h / D.depth;
     ctx.textAlign = "center";
@@ -134,22 +107,32 @@ export function ResistanceBox({
   const coilsKey = coilsOhm.join(",");
 
   const res = useMemo(() => {
-    const rnd = seeded(53);
+    const bs = bevelSegments(quality);
     const seg = low ? 10 : 20;
-    const woodTex = woodTexture(rnd, low ? 256 : 512, low ? 128 : 256);
-    const ebonite = jitterColour(COLOURS.ebonite, rnd);
-    const topTex = topTexture(
-      coilsKey ? coilsKey.split(",").map(Number) : [],
-      xs,
-      low ? 512 : 1024,
-      `#${ebonite.getHexString()}`,
+    const coils = coilsKey ? coilsKey.split(",").map(Number) : [];
+    const woodTex = kitTexture("mahogany", quality);
+    const brassTex = kitTexture("brass", quality);
+    const topTex = topTexture(coils, xs, low ? 512 : 1024);
+    // The strip of paper on the front, with the coil values as the maker printed them.
+    const frontTex = kitLabel(
+      {
+        lines: ["RESISTANCE BOX", `${coils.join("   ")}   \u03a9`],
+        width: 0.19,
+        height: 0.034,
+        seed: 57,
+      },
+      quality,
     );
-    const eboniteMat = matte(COLOURS.ebonite, rnd, { roughness: 0.7 });
-    eboniteMat.color.copy(ebonite);
-    // The engraving is a plate lying on the ebonite top, painted the same dark colour.
-    const labelMat = matte("#ffffff", rnd, { roughness: 0.7, map: topTex, amount: 0.002 });
+    // The engraving is a plate lying on the ebonite top, drawn on a transparent ground.
+    const labelMat = new THREE.MeshStandardMaterial({
+      map: topTex,
+      transparent: true,
+      depthWrite: false,
+      roughness: 0.9,
+    });
     const labelGeo = new THREE.PlaneGeometry(WIDTH - 0.004, D.depth - 0.004);
     labelGeo.rotateX(-Math.PI / 2);
+    const frontGeo = new THREE.PlaneGeometry(0.19, 0.034);
     // Blocks run between slots; the first and last carry the terminals.
     const halfW = WIDTH / 2 - 0.008;
     const blocks: Array<{ x: number; w: number }> = [];
@@ -158,30 +141,55 @@ export function ResistanceBox({
       const right = i === xs.length ? halfW : (xs[i] ?? 0) - GAP / 2;
       blocks.push({ x: (left + right) / 2, w: Math.max(0.006, right - left) });
     }
-    // Plugs are drawn as two instanced meshes (brass shafts, ebonite heads), one matrix each.
+    const blocksGeo = mergePieces(
+      blocks.map((b) =>
+        bevelBox(b.w, D.blockHeight, D.blockDepth, 0.0015, bs).translate(
+          b.x,
+          TOP_Y + D.blockHeight / 2,
+          BLOCK_Z,
+        ),
+      ),
+    );
+    boxProjectUV(blocksGeo, [0.2, 0.2]);
+    const bodyGeo = bevelBox(WIDTH - 0.004, BODY_H, D.depth - 0.004, 0.004, bs);
+    boxProjectUV(bodyGeo, [0.3, 0.15]);
+    const topGeo = bevelBox(WIDTH, D.topThickness, D.depth, 0.0016, bs);
+    boxProjectUV(topGeo, [0.12, 0.12]);
+    // Plugs are drawn as two instanced meshes (brass shafts, black bakelite knobs), one matrix each.
     const shaftGeo = new THREE.CylinderGeometry(SHAFT_R_TOP, SHAFT_R_BOT, SHAFT_H, seg);
     shaftGeo.translate(0, SHAFT_H / 2, 0);
-    const headGeo = new THREE.CylinderGeometry(HEAD_R, HEAD_R * 0.9, HEAD_H, seg);
-    headGeo.translate(0, SHAFT_H + HEAD_H / 2, 0);
+    const k = HEAD_H / 0.0165;
+    const knob = [
+      [0, 0],
+      [0.0072, 0],
+      [0.0076, 0.0018],
+      [0.0062, 0.0055],
+      [0.0051, 0.0105],
+      [0.0063, 0.0138],
+      [0.006, 0.0161],
+      [0.0035, 0.0165],
+      [0, 0.0165],
+    ].map(([r, y]) => new THREE.Vector2((r ?? 0) * (HEAD_R / 0.007), (y ?? 0) * k));
+    const headGeo = new THREE.LatheGeometry(knob, seg);
+    headGeo.translate(0, SHAFT_H, 0);
     const hitGeo = new THREE.SphereGeometry(0.0125, 8, 6);
     return {
       woodTex,
+      brassTex,
       topTex,
-      woodMat: matte("#7a4326", rnd, { roughness: 0.7, map: woodTex, amount: 0.04 }),
-      eboniteMat,
+      frontTex,
+      woodMat: woodMaterial(53, { map: woodTex }),
+      eboniteMat: paintMaterial("#1c1a19", 56, { amount: 0.02 }),
       labelMat,
       labelGeo,
-      brassMat: brassMaterial(rnd),
-      headMat: matte("#111111", rnd, { roughness: 0.7 }),
+      frontGeo,
+      frontMat: paperMaterial(57, { map: frontTex }),
+      brassMat: brassSurface(58, { map: brassTex }),
+      headMat: paintMaterial("#151312", 59),
       hitMat: hitMaterial(),
-      bodyGeo: new THREE.BoxGeometry(WIDTH - 0.004, BODY_H, D.depth - 0.004),
-      topGeo: new THREE.BoxGeometry(WIDTH, D.topThickness, D.depth),
-      blocksGeo: mergeStatic(
-        blocks.map((b) => ({
-          geo: new THREE.BoxGeometry(b.w, D.blockHeight, D.blockDepth),
-          place: (g: THREE.BufferGeometry) => g.translate(b.x, TOP_Y + D.blockHeight / 2, BLOCK_Z),
-        })),
-      ),
+      bodyGeo,
+      topGeo,
+      blocksGeo,
       shaftGeo,
       headGeo,
       hitGeo,
@@ -189,9 +197,9 @@ export function ResistanceBox({
       // Plug positions, 0 = out, 1 = in, eased; -1 until the first frame sets it.
       ease: new Float32Array(n).fill(-1),
     };
-  }, [low, xs, coilsKey, n]);
+  }, [low, quality, xs, coilsKey, n]);
 
-  useEffect(() => () => disposeAll({ ...res, dummy: null, ease: null }), [res]);
+  useEffect(() => () => disposeKitBag({ ...res, dummy: null, ease: null }), [res]);
 
   useFrame((_, dt) => {
     const shafts = shaftsRef.current;
@@ -255,7 +263,19 @@ export function ResistanceBox({
           castShadow={cast}
           receiveShadow={cast}
         />
-        <mesh geometry={res.labelGeo} material={res.labelMat} position={[0, TOP_Y + 0.0003, 0]} />
+        <mesh
+          geometry={res.labelGeo}
+          material={res.labelMat}
+          position={[0, TOP_Y + 0.0003, 0]}
+          renderOrder={2}
+        />
+      </InkGroup>
+      <InkGroup id={ids + 4} thin>
+        <mesh
+          geometry={res.frontGeo}
+          material={res.frontMat}
+          position={[0, BODY_H * 0.5, (D.depth - 0.004) / 2 + 0.0003]}
+        />
       </InkGroup>
       <InkGroup id={ids + 2}>
         <mesh
