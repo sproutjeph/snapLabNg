@@ -83,7 +83,7 @@ export function Player({ director }: PlayerProps) {
   const muteButton = handle ? (
     <button
       type="button"
-      className="dp-btn"
+      className="dp-btn dp-mute"
       aria-pressed={muted}
       aria-label={muted ? "Unmute the voice and sounds" : "Mute the voice and sounds"}
       onClick={toggleMute}
@@ -116,15 +116,14 @@ export function Player({ director }: PlayerProps) {
       <div className="dp-card" data-region="player">
         {s.mode === "watch" ? (
           <>
+            {/* The five transport buttons, then mute: the order the plan lists them in. On a phone
+                the card holds only the five (six 44 px targets do not fit in Backcountry's 243 px
+                pill) and mute is a card of its own beside it, still last in the tab order. */}
             <div className="dp-group">
               <button type="button" className="dp-btn" onClick={() => director.seek(0)}>
                 <IconRestart />
                 <span className="dp-label">Restart</span>
               </button>
-              {muteButton}
-            </div>
-            <span className="dp-divider" aria-hidden="true" />
-            <div className="dp-group">
               <button type="button" className="dp-btn" onClick={() => director.prev()}>
                 <IconSkipBack />
                 <span className="dp-label">Previous</span>
@@ -148,6 +147,12 @@ export function Player({ director }: PlayerProps) {
                 {speedLabel(s.speed)}
               </button>
             </div>
+            {muteButton ? (
+              <>
+                <span className="dp-divider" aria-hidden="true" />
+                {muteButton}
+              </>
+            ) : null}
           </>
         ) : (
           <div className="dp-group">

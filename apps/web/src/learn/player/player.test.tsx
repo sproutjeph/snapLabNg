@@ -81,6 +81,36 @@ function labelRules(): Array<[string, string]> {
   return rules;
 }
 
+/** player.css's rules, comments out and @media blocks flattened, each with the query it sits in. */
+function playerRules(): Array<{ media: string; selector: string; body: string }> {
+  const css = readFileSync(fileURLToPath(new URL("./player.css", import.meta.url)), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const rules: Array<{ media: string; selector: string; body: string }> = [];
+  const walk = (src: string, media: string) => {
+    let pos = 0;
+    while (pos < src.length) {
+      const open = src.indexOf("{", pos);
+      if (open < 0) break;
+      let depth = 1;
+      let close = open + 1;
+      while (close < src.length && depth > 0) {
+        if (src[close] === "{") depth++;
+        else if (src[close] === "}") depth--;
+        close++;
+      }
+      const head = src.slice(pos, open).trim().replace(/\s+/g, " ");
+      const inner = src.slice(open + 1, close - 1);
+      if (head.startsWith("@media")) walk(inner, head.slice("@media".length).trim());
+      else if (!head.startsWith("@")) rules.push({ media, selector: head, body: inner });
+      pos = close;
+    }
+  };
+  walk(css, "");
+  return rules;
+}
+
 describe("stages", () => {
   it("the sample script has the question's eleven stages, in order", () => {
     const stages = stagesOf(SAMPLE_SCRIPT);
@@ -197,6 +227,52 @@ describe("Player markup", () => {
     for (const text of ["Join the cells", "Stage 1", "Show me", "dp-caption", "dp-panel", "Next"]) {
       expect(out).not.toContain(text);
     }
+  });
+
+  it("Watch keeps the five transport buttons in one group, with mute after the speed button", () => {
+    // Six 44 px targets do not fit Backcountry's 243 px pill on a phone, so the phone's card holds
+    // the five and mute stands beside it; mute is last in the page too, so the tab order follows.
+    const out = html("watch", SAMPLE_SCRIPT, 4);
+    const group = out.match(/<div class="dp-group">(.*?)<\/div>/s)?.[1] ?? "";
+    expect(group.match(/<button/g)).toHaveLength(5);
+    expect(group).not.toContain("Mute the voice");
+    const speed = out.indexOf("Speed 1x");
+    const divider = out.indexOf('class="dp-divider"');
+    const mute = out.indexOf("Mute the voice and sounds");
+    expect(speed).toBeGreaterThan(-1);
+    expect(divider).toBeGreaterThan(speed);
+    expect(mute).toBeGreaterThan(divider);
+  });
+});
+
+describe("player.css", () => {
+  const rules = playerRules();
+  const rule = (selector: string, media = "") =>
+    rules.find((r) => r.media === media && r.selector === selector);
+  const tap44 = /min-width:\s*calc\(var\(--tap\)\s*\/\s*var\(--ui,\s*1\)\)/;
+
+  it("every button is a 44 px target on a touch screen, on every layout", () => {
+    // The card is anchored on its right edge, so the wider buttons grow it to the left. A mouse on
+    // a laptop keeps Backcountry's sizes.
+    expect(rule(".dp .dp-btn", "(pointer: coarse)")?.body).toMatch(tap44);
+    expect(rule(".dp .dp-btn")).toBeUndefined();
+  });
+
+  it("a phone-sized window gets 44 px buttons whatever the pointer", () => {
+    const phone = rule('.dp[data-layout="portrait"] .dp-btn, .dp[data-layout="short"] .dp-btn');
+    expect(phone?.body).toMatch(tap44);
+  });
+
+  it("Watch held upright is Backcountry's 268 px pill, with mute a card of its own beside it", () => {
+    expect(rule('.dp.dp-watch[data-layout="portrait"] .dp-card')?.body).toMatch(
+      /min-width:\s*268px/,
+    );
+    const mute = rule('.dp.dp-watch[data-layout="portrait"] .dp-mute')?.body ?? "";
+    expect(mute).toMatch(/position:\s*absolute/);
+    expect(mute).toMatch(/left:\s*calc\(100%/);
+    expect(mute).toMatch(/width:\s*calc\(var\(--tap\)/);
+    // The pill stays centred under the brand whether or not the Compare button is beside it.
+    expect(rules.some((r) => r.selector.includes("data-compare"))).toBe(false);
   });
 });
 
