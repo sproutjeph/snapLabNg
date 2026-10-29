@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { ROUTES, withParam } from "./links";
+import { practicalIn, ROUTES, withParam } from "./links";
 
 describe("home links", () => {
   it("defines standard route paths", () => {
     expect(ROUTES.snap).toBe("/?flow=1");
     expect(ROUTES.demo).toBe("/?flow=1&golden=note1");
     expect(ROUTES.ohmsLaw).toBe("/?learn=ohms-law");
+    expect(ROUTES.practical).toBe("/?practical=ohms-law");
+  });
+
+  it("opens the V–I practical in each mode", () => {
+    expect(practicalIn("watch")).toBe("/?practical=ohms-law&mode=watch");
+    expect(practicalIn("practice")).toBe("/?practical=ohms-law&mode=practice");
+    expect(practicalIn("exam")).toBe("/?practical=ohms-law&mode=exam");
   });
 
   it("adds a query param to an existing query string", () => {
