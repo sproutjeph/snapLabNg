@@ -9,11 +9,12 @@ import { type BenchSlot, OHMS_LAW_LAYOUT } from "./layout";
 // colour jitter, geometry helpers, and the banana plug and crocodile clip shapes. Sizes in metres.
 
 /**
- * Cable radius. A real flexible lead is a 3 mm tube (radius 1.5 mm); the bench draws it 1.75 times
- * as thick, as chunky as Backcountry 101's cables (docs/plans/asset-pass.md, "Backcountry side by
- * side"), so it still reads at the whole-bench scale on a phone.
+ * Cable radius. A real flexible lead is a 3 mm tube (radius 1.5 mm); the bench draws it 1.9 times
+ * as thick, and its plug 1.5 times as wide as a real 4 mm plug's sleeve (5.8 mm in radius), as
+ * chunky as Backcountry 101's cables (docs/plans/asset-pass.md, "Backcountry side by side"), so
+ * they still read at the whole-bench scale on a phone.
  */
-export const LEAD_RADIUS_M = 0.0026;
+export const LEAD_RADIUS_M = 0.0029;
 /** Height of a banana plug standing on a nut: the pin foot is at 0, the cable leaves at the top. */
 export const PLUG_HEIGHT_M = 0.04;
 /**
@@ -23,7 +24,7 @@ export const PLUG_HEIGHT_M = 0.04;
  */
 export const CABLE_SEAT_M = PLUG_HEIGHT_M - 0.005;
 /** The widest the plug gets: the crests of its ribbed grip. */
-export const PLUG_RADIUS_M = 0.0072;
+export const PLUG_RADIUS_M = 0.0086;
 /** How far the plug's brass pin reaches below its foot, into the nut. */
 export const PIN_LENGTH_M = 0.016;
 
@@ -375,7 +376,9 @@ export function makePlugGeometries(quality: QualityTier): {
 } {
   const low = quality === "low";
   const seg = low ? 7 : 10;
-  const collarTop = 0.0028;
+  // Radii below were drawn for a 7.2 mm sleeve; r() scales them to PLUG_RADIUS_M.
+  const r = (v: number) => v * (PLUG_RADIUS_M / 0.0072);
+  const collarTop = 0.0042;
   const gripTop = 0.0268;
   // Fine ribs (20 teeth, a shallow 7% root): the ink pass draws each crease as a hatch line.
   const grip = knurledDisc(PLUG_RADIUS_M, gripTop - collarTop, low ? 8 : 20, 0.93);
@@ -384,24 +387,24 @@ export function makePlugGeometries(quality: QualityTier): {
   const boot = revolve(
     low
       ? [
-          [0.0066, gripTop],
-          [0.0056, 0.029],
-          [0.0056, 0.0322],
-          [0.0034, 0.0385],
+          [r(0.0066), gripTop],
+          [r(0.0056), 0.029],
+          [r(0.0056), 0.0322],
+          [r(0.0034), 0.0385],
           [0, PLUG_HEIGHT_M],
         ]
       : [
-          [0.0066, gripTop],
-          [0.0066, 0.0276],
-          [0.0057, 0.0283],
-          [0.0057, 0.0303],
-          [0.005, 0.0307],
-          [0.0054, 0.0311],
-          [0.0054, 0.0331],
-          [0.0045, 0.0337],
-          [0.0036, 0.0372],
-          [0.0033, 0.0389, true],
-          [0.002, 0.0398, true],
+          [r(0.0066), gripTop],
+          [r(0.0066), 0.0276],
+          [r(0.0057), 0.0283],
+          [r(0.0057), 0.0303],
+          [r(0.005), 0.0307],
+          [r(0.0054), 0.0311],
+          [r(0.0054), 0.0331],
+          [r(0.0045), 0.0337],
+          [r(0.0036), 0.0372],
+          [r(0.0033), 0.0389, true],
+          [r(0.002), 0.0398, true],
           [0, PLUG_HEIGHT_M],
         ],
     seg,
@@ -410,7 +413,8 @@ export function makePlugGeometries(quality: QualityTier): {
   boxProjectUV(body, [PLUG_SKIN_TILE_M, PLUG_SKIN_TILE_M]);
   const pinSeg = low ? 7 : 8;
   const pin = mergeAll([
-    // The shank with a bullet nose, ending inside the collar.
+    // The shank with a bullet nose, ending inside the collar. It is a 4 mm plug's pin, whatever
+    // the sleeve's size, because the socket it goes into is a 4 mm one.
     revolve(
       low
         ? [
@@ -426,17 +430,18 @@ export function makePlugGeometries(quality: QualityTier): {
           ],
       pinSeg,
     ),
-    // The collar: a short brass ring, chamfered at the top, where the sleeve meets the nut.
+    // The collar: a brass band, chamfered at the top, where the sleeve meets the nut. It is the
+    // gold the reference's plugs show, left in view when the plug is seated.
     revolve(
       low
         ? [
-            [0.0054, 0],
-            [0.0054, collarTop],
+            [r(0.0054), 0],
+            [r(0.0054), collarTop],
           ]
         : [
-            [0.0054, 0],
-            [0.0054, 0.0024],
-            [0.0049, collarTop],
+            [r(0.0054), 0],
+            [r(0.0054), collarTop - 0.0005],
+            [r(0.0049), collarTop],
           ],
       seg,
     ),
