@@ -38,6 +38,8 @@ import {
   type KitPlan,
   type KitShot,
   kitCovered,
+  MACRO_LIFT_M,
+  macroFreeEnd,
   parseKitParams,
   planKit,
   referenceFile,
@@ -92,15 +94,6 @@ const SHADOW_KICK_FRAMES = 45;
 /** Frame at which the terminal dump is taken, after the ready signal's second frame. */
 const DUMP_FRAME = 4;
 const DUMP_GIVE_UP_FRAME = 240;
-/** The macro looks at the nut's top, a little above where a plug seats. */
-const MACRO_LIFT_M = 0.01;
-/**
- * The macro's lead runs on to a free plug this far out to the side of the nut and this far toward
- * the student: past the edge of the frame, so the shot shows the nut, its plug and the cable
- * leaving, not a plug held in the air.
- */
-const MACRO_REACH_M = 0.17;
-const MACRO_FRONT_M = 0.07;
 
 /** Blob shadows under each V–I part: x offsets from the part and a radius, in metres. Long parts get a row. */
 const BLOBS: Readonly<Record<BenchSlot, { dx: readonly number[]; r: number }>> = {
@@ -202,7 +195,11 @@ function KitCamera({
   return <LookCamera shot={shot} covered={covered} drag reducedMotion={!settled} />;
 }
 
-/** `part=terminal`: aims the shot at the nut once it is mounted, and lays the lead's free plug beside it. */
+/**
+ * `part=terminal`: aims the shot at the nut once it is mounted, and lays the lead's free plug out
+ * past the edge of the canvas (macroFreeEnd), so the shot shows the nut, its plug and the cable
+ * leaving, not a plug held in the air.
+ */
 function MacroAim({
   id,
   shot,
@@ -222,9 +219,8 @@ function MacroAim({
     shot.focus[2] = at.z;
     if (aimed.current) return;
     aimed.current = true;
-    // The cable leaves toward the side the nut is on, and a little toward the student.
-    const side = at.x >= OHMS_LAW_LAYOUT[TERMINAL_PART[id]].position[0] ? 1 : -1;
-    state.current.pointer.set(at.x + side * MACRO_REACH_M, 0, at.z + MACRO_FRONT_M);
+    // The cable leaves toward the side the nut is on, and toward the student.
+    macroFreeEnd(at, OHMS_LAW_LAYOUT[TERMINAL_PART[id]].position[0], state.current.pointer);
   }, -2);
   return null;
 }

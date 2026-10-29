@@ -19,6 +19,8 @@ import {
   KIT_SUBJECTS,
   type KitParams,
   kitCovered,
+  MACRO_LIFT_M,
+  macroFreeEnd,
   parseKitParams,
   parseSubject,
   parseTerminalId,
@@ -32,6 +34,7 @@ import {
   terminalPositions,
   turnAzimuth,
 } from "./kitParams";
+import { PLUG_HEIGHT_M } from "./LeadParts";
 import { INK_IDS, OHMS_LAW_LAYOUT } from "./layout";
 
 const DEG = Math.PI / 180;
@@ -416,6 +419,107 @@ describe("the shot", () => {
     expect(span("box")).toBeGreaterThan(span("key"));
     const bench = shotFor(planKit(params("?kit=ohms-law")).bounds, 45, "bench").spanM;
     expect(bench).toBeGreaterThan(span("wire"));
+  });
+
+  describe("the terminal macro's free plug", () => {
+    // Lead holds a carried plug 2.2 cm off the paper, its pin 1.2 cm below the sleeve and the
+    // sleeve 6 mm in radius. This asks for more of each (3 cm, 2 cm, 1.2 cm), so a plug twice as
+    // thick and 2 cm higher, which the asset pass may bring, still clears.
+    const CARRY_M = 0.03;
+    const PIN_M = -0.02;
+    const SLEEVE_R_M = 0.012;
+    // The lowest nut on the bench is a meter's, 3.57 cm up (the dump=1 baseline). A lower nut puts
+    // the focus lower and the plug higher on the screen, the worst case for the canvas's edges.
+    const NUT_Y_M = 0.03;
+    // The turn=1 sweep reaches 30 degrees either way of 45, and she can drag 25 degrees past it.
+    const SWEEP_DEG = Array.from({ length: 13 }, (_, i) => 15 + 5 * i);
+    const DRAG_DEG = [-25, 0, 25];
+    const MARGIN_PX = 30;
+    const macro = planKit(params("?part=terminal")).bounds;
+    const free = new THREE.Vector3();
+
+    /** The plug's offset from the shot's focus (the nut's top) for a nut on one side of its part. */
+    function plugOffset(side: 1 | -1) {
+      const nut = { x: side * 0.05, z: 0.1 };
+      macroFreeEnd(nut, 0, free);
+      return {
+        x: free.x - nut.x,
+        y: free.y + CARRY_M - (NUT_Y_M + MACRO_LIFT_M),
+        z: free.z - nut.z,
+      };
+    }
+
+    /**
+     * How far, in CSS px, the plug's projected box lies outside the whole canvas (positive means
+     * clear of it). The shot is fitted at `shotAz`; the camera itself is turned to `camAz`, which
+     * differs by a drag. The focus is the middle of the canvas, as the covered strips are equal.
+     */
+    function gapPx(
+      view: { w: number; h: number },
+      shotAz: number,
+      camAz: number,
+      d: { x: number; y: number; z: number },
+    ): number {
+      const covered = kitCovered(view.w, view.h);
+      const shot = shotFor(macro, shotAz, "terminal");
+      const f = fitShot(shot.spanM, covered, view.w, view.h, shotAz * DEG, frustum());
+      const ext = screenExtents(macro, shotAz, { right: 0, up: 0 });
+      const pxPerM =
+        (view.w / (2 * f.halfW)) * fillZoom(ext, f.halfW, f.halfH, covered, view.w, view.h);
+      const az = camAz * DEG;
+      const el = LOOK_ELEVATION_DEG * DEG;
+      let minX = Number.POSITIVE_INFINITY;
+      let maxX = Number.NEGATIVE_INFINITY;
+      let minY = Number.POSITIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          for (const y of [PIN_M, PLUG_HEIGHT_M + 0.01]) {
+            const px = d.x + sx * SLEEVE_R_M;
+            const py = d.y + y;
+            const pz = d.z + sz * SLEEVE_R_M;
+            const right = Math.cos(az) * px - Math.sin(az) * pz;
+            const up =
+              -Math.sin(el) * Math.sin(az) * px +
+              Math.cos(el) * py -
+              Math.sin(el) * Math.cos(az) * pz;
+            const x = view.w / 2 + right * pxPerM;
+            const yy = view.h / 2 - up * pxPerM;
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, yy);
+            maxY = Math.max(maxY, yy);
+          }
+        }
+      }
+      return Math.max(-maxX, minX - view.w, -maxY, minY - view.h);
+    }
+
+    it(`lies at least ${MARGIN_PX} px past the whole canvas, on a phone and a laptop, from every azimuth she can see it from`, () => {
+      let worst = { gap: Number.POSITIVE_INFINITY, at: "" };
+      for (const view of views) {
+        for (const az of SWEEP_DEG) {
+          for (const drag of DRAG_DEG) {
+            for (const side of [1, -1] as const) {
+              const gap = gapPx(view, az, az + drag, plugOffset(side));
+              if (gap < worst.gap) {
+                worst = { gap, at: `${view.name}, azimuth ${az} dragged ${drag}, side ${side}` };
+              }
+            }
+          }
+        }
+      }
+      expect(worst.gap, worst.at).toBeGreaterThan(MARGIN_PX);
+    });
+
+    it("would hang in the air on a phone if it were only past the free area, as 17 cm out and 7 cm toward her was", () => {
+      // The free area is a strip about 430 px tall in the middle of the 844 px canvas; the strips
+      // above and below it are still drawn.
+      const phone = views.find((v) => v.name === "phone");
+      if (!phone) throw new Error("no phone view");
+      const old = { x: 0.17, y: CARRY_M - (NUT_Y_M + MACRO_LIFT_M), z: 0.07 };
+      expect(gapPx(phone, 75, 75, old)).toBeLessThan(0);
+    });
   });
 });
 

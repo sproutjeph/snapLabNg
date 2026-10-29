@@ -183,6 +183,32 @@ const DESK_TOP_M = 0.02;
 const MACRO_WIDTH_M = 0.09;
 const MACRO_DEPTH_M = 0.05;
 const MACRO_TOP_M = 0.07;
+/** The macro looks at the nut's top, a little above where a plug seats. */
+export const MACRO_LIFT_M = 0.01;
+/**
+ * The macro's lead runs on to a free plug this far out to the side of the nut and this far toward
+ * the student. That plug must land past the edge of the whole canvas, not only of the free area:
+ * a phone still draws the strips above and below the free area (kitCovered), and Lead holds a
+ * carried plug 2.2 cm off the paper, so a plug inside the canvas hangs in the air. At 390 x 844 and
+ * 1440 x 900 this keeps the plug out of the canvas from every azimuth of the turn=1 sweep (15 to
+ * 75) and from 25 degrees of drag beyond it: by 100 px with Lead's plug, and by 50 px with one
+ * twice as thick and 2 cm higher (kitParams.test.ts pins the second, with 30 px to spare).
+ */
+export const MACRO_REACH_M = 0.3;
+export const MACRO_FRONT_M = 0.18;
+
+/**
+ * Writes into `out` where the macro lead's free plug is laid, on the paper: out to the side of its
+ * part that the nut is on, and toward the student. Allocates nothing.
+ */
+export function macroFreeEnd(
+  nut: { x: number; z: number },
+  partX: number,
+  out: THREE.Vector3,
+): THREE.Vector3 {
+  const side = nut.x >= partX ? 1 : -1;
+  return out.set(nut.x + side * MACRO_REACH_M, 0, nut.z + MACRO_FRONT_M);
+}
 
 function union(boxes: readonly Bounds[]): Bounds {
   return {
