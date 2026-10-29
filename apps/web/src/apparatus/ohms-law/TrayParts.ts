@@ -97,13 +97,16 @@ class Acc {
 
 /**
  * Rewrites a wooden piece's uv so the grain runs along its long axis (`alongZ` or x), at `tile`
- * metres a tile, from a different place in the texture per `shift`. The piece is centred on the origin.
+ * metres a tile, centred on (`u0`, `v0`) in the texture: a different place for each board, and
+ * inside one tile, so the kit's mahogany (which does not tile without a seam) is never wrapped. The
+ * piece is centred on the origin.
  */
 function grainUV(
   geo: THREE.BufferGeometry,
   tile: readonly [number, number],
   alongZ: boolean,
-  shift: number,
+  u0: number,
+  v0: number,
 ): THREE.BufferGeometry {
   const pos = geo.getAttribute("position");
   const nor = geo.getAttribute("normal");
@@ -130,8 +133,8 @@ function grainUV(
       u = across;
       v = y;
     }
-    uv[i * 2] = u / tile[0] + shift;
-    uv[i * 2 + 1] = v / tile[1] + shift * 0.37;
+    uv[i * 2] = u / tile[0] + u0;
+    uv[i * 2 + 1] = v / tile[1] + v0;
   }
   geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   return geo;
@@ -214,7 +217,8 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   const at = new THREE.Vector3();
 
   // ---- The tray: a shallow mahogany box, its boards rounded and the grain along each board ----
-  const tile: readonly [number, number] = [0.6, 0.22];
+  // The floor is 0.26 m across: its tile is wider than that, so it never wraps. Each wall takes
+  // its own slice of the texture (`v0`), so no two boards show the same grain.
   const board = (
     w: number,
     h: number,
@@ -224,24 +228,91 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     y: number,
     z: number,
     alongZ: boolean,
-    shift: number,
-  ) => grainUV(bevelBox(w, h, d, r, Math.max(1, bs - 1)), tile, alongZ, shift).translate(x, y, z);
+    tile: readonly [number, number],
+    u0: number,
+    v0: number,
+  ) => grainUV(bevelBox(w, h, d, r, Math.max(1, bs - 1)), tile, alongZ, u0, v0).translate(x, y, z);
+  const wallTile: readonly [number, number] = [0.6, 0.22];
+  const floorTile: readonly [number, number] = [0.6, 0.3];
   const hx = TRAY_SIZE.x / 2;
   const hz = TRAY_SIZE.z / 2;
-  const shortLen = TRAY_SIZE.x - 2 * WALL_T + 0.002;
+  // Every board is a fifth of a millimetre short of the next one's face (and the short walls a
+  // fifth of a millimetre lower), so no two faces ever lie in one plane to fight over the pixel.
+  const eps = 0.0002;
+  const shortH = WALL_H - eps;
   acc.add(
     null,
     0,
     false,
     "wood",
     mergeAll([
-      board(TRAY_SIZE.x, FLOOR_Y, TRAY_SIZE.z, 0.0013, 0, FLOOR_Y / 2, 0, true, 0.1),
-      // The long walls, down the sides.
-      board(WALL_T, WALL_H, TRAY_SIZE.z, 0.003, hx - WALL_T / 2, WALL_H / 2, 0, true, 0.33),
-      board(WALL_T, WALL_H, TRAY_SIZE.z, 0.003, -hx + WALL_T / 2, WALL_H / 2, 0, true, 0.71),
-      // The short walls, front and back, between them.
-      board(shortLen, WALL_H, WALL_T, 0.003, 0, WALL_H / 2, hz - WALL_T / 2, false, 0.52),
-      board(shortLen, WALL_H, WALL_T, 0.003, 0, WALL_H / 2, -hz + WALL_T / 2, false, 0.9),
+      board(
+        TRAY_SIZE.x - 4 * eps,
+        FLOOR_Y,
+        TRAY_SIZE.z - 4 * eps,
+        0.0013,
+        0,
+        FLOOR_Y / 2,
+        0,
+        true,
+        floorTile,
+        0.5,
+        0.5,
+      ),
+      // The long walls, down the sides, the full length...
+      board(
+        WALL_T,
+        WALL_H,
+        TRAY_SIZE.z - 2 * eps,
+        0.003,
+        hx - WALL_T / 2,
+        WALL_H / 2,
+        0,
+        true,
+        wallTile,
+        0.45,
+        0.2,
+      ),
+      board(
+        WALL_T,
+        WALL_H,
+        TRAY_SIZE.z - 2 * eps,
+        0.003,
+        -hx + WALL_T / 2,
+        WALL_H / 2,
+        0,
+        true,
+        wallTile,
+        0.55,
+        0.7,
+      ),
+      // ...and the short walls, front and back, the full width across their ends: a frame.
+      board(
+        TRAY_SIZE.x - 2 * eps,
+        shortH,
+        WALL_T,
+        0.003,
+        0,
+        shortH / 2,
+        hz - WALL_T / 2,
+        false,
+        wallTile,
+        0.5,
+        0.4,
+      ),
+      board(
+        TRAY_SIZE.x - 2 * eps,
+        shortH,
+        WALL_T,
+        0.003,
+        0,
+        shortH / 2,
+        -hz + WALL_T / 2,
+        false,
+        wallTile,
+        0.5,
+        0.85,
+      ),
     ]),
   );
 
@@ -403,6 +474,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     false,
     "ceramic",
     along(new THREE.CylinderGeometry(0.0185, 0.0185, 0.2, rseg), tubeY, 0),
+    [0.06, 0.06],
   );
   const caps: THREE.BufferGeometry[] = [];
   const hardware: THREE.BufferGeometry[] = [];
@@ -455,10 +527,10 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   // Built along +x with its frame bulging toward +z, then centred in its tap box and yawed a little.
   {
     const mseg = low ? 10 : 20;
-    const axisY = 0.0105;
-    const frameH = 0.021;
+    const frameH = 0.026;
+    const axisY = frameH / 2;
     const rc = 0.027; // the C's middle radius
-    const t = 0.0105; // the frame's thickness
+    const t = 0.013; // the frame's thickness
     const tipAngle = (15 * Math.PI) / 180;
     const cy = -rc * Math.sin(tipAngle);
     const shape = new THREE.Shape();
@@ -486,18 +558,18 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       return placeAt(g, (x0 + x1) / 2, axisY, 0);
     };
     const steel = mergeAll([
-      axis(0.0038, 0.0038, -tipX - 0.002, -tipX + 0.014, mseg),
-      axis(0.003, 0.003, tipX - 0.027, tipX + 0.004, mseg),
-      axis(0.0064, 0.0064, tipX - 0.002, tipX + 0.03, mseg),
+      axis(0.0042, 0.0042, -tipX - 0.002, -tipX + 0.014, mseg),
+      axis(0.0034, 0.0034, tipX - 0.027, tipX + 0.004, mseg),
+      axis(0.0068, 0.0068, tipX - 0.002, tipX + 0.03, mseg),
     ]);
     // The thimble (brass, with its edge turned and a groove), and the ratchet knob beyond it.
     const thimbleProfile = [
       [0.0, 0.0],
-      [0.0088, 0.0],
-      [0.0098, 0.0035],
-      [0.0108, 0.01],
-      [0.0108, 0.028],
-      [0.0102, 0.029],
+      [0.0096, 0.0],
+      [0.0108, 0.0035],
+      [0.0118, 0.01],
+      [0.0118, 0.028],
+      [0.0112, 0.029],
       [0.0, 0.029],
     ].map(([r, x]) => new THREE.Vector2(r ?? 0, x ?? 0));
     const thimble = new THREE.LatheGeometry(thimbleProfile, mseg);
@@ -507,7 +579,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     const teeth = low ? 8 : 14;
     for (let i = 0; i < teeth * 2; i++) {
       const ang = (i / (teeth * 2)) * Math.PI * 2;
-      const r = i % 2 === 0 ? 0.0082 : 0.0072;
+      const r = i % 2 === 0 ? 0.0088 : 0.0078;
       if (i === 0) knob.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
       else knob.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
     }
@@ -528,7 +600,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     const settle = (g: THREE.BufferGeometry) => {
       g.translate(-centre.x, 0, -centre.z);
       g.rotateY(yaw);
-      g.scale(0.92, 0.92, 0.92);
+      g.scale(0.9, 0.9, 0.9);
       return g.translate(0.07, FLOOR_Y, -0.125);
     };
     acc.add("micrometer", 8, false, "frame", settle(frame), [0.12, 0.12]);

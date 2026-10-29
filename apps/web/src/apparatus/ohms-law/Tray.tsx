@@ -13,7 +13,7 @@ import {
 import { LEAD_BASE_COLOURS, seeded } from "./LeadParts";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { buildTray, type TrayItemKey, type TrayMat } from "./TrayParts";
-import { makeBrassTexture, makeGritTexture } from "./WireBoardTextures";
+import { makeBrassTexture, makeCeramicTexture, makeGritTexture } from "./WireBoardTextures";
 
 export type TrayItem = "leads" | "sandpaper" | "rheostat" | "micrometer";
 
@@ -35,6 +35,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
     const woodTex = kitTexture("mahogany", quality);
     const bakeTex = kitTexture("bakelite", quality);
     const brassTex = makeBrassTexture(quality, 0x7a49);
+    const ceramicTex = makeCeramicTexture(quality);
     const grit = makeGritTexture(rng);
     const mats: Record<TrayMat, THREE.MeshStandardMaterial> = {
       wood: woodMaterial(0x7a41, { map: woodTex }),
@@ -46,7 +47,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       brass: brassSurface(0x7a47, { map: brassTex }),
       steel: brassSurface(0x7a48, { tint: "#a3a7ac" }),
       grit: paperMaterial(0x7a4a, { map: grit }),
-      ceramic: paintMaterial("#d8d0c0", 0x7a4b),
+      ceramic: paintMaterial("#ffffff", 0x7a4b, { map: ceramicTex }),
       ebonite: bakeliteMaterial(0x7a4c, { map: bakeTex }),
       frame: bakeliteMaterial(0x7a4d, { map: bakeTex }),
     };
@@ -64,6 +65,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       woodTex,
       bakeTex,
       brassTex,
+      ceramicTex,
       grit,
       mats,
       matList: Object.values(mats),
@@ -81,7 +83,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       // The instanced coil owns no geometry or material of its own beyond these two.
       res.coil.dispose();
       disposeKitBag({
-        textures: [res.woodTex, res.bakeTex, res.brassTex, res.grit],
+        textures: [res.woodTex, res.bakeTex, res.brassTex, res.ceramicTex, res.grit],
         materials: res.matList,
         geometries: res.partGeos,
         coilMat: res.coilMat,
