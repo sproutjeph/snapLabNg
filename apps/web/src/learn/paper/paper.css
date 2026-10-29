@@ -130,6 +130,9 @@
   margin: 0 -3px;
   border-radius: 3px 8px 4px 9px;
   background: var(--xp-marker);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }

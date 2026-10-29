@@ -86,7 +86,9 @@ export function checkRows(record: OhmsLawRecord, checks: readonly ReadingCheck[]
 /** The box settings she wrote that she never read the meters at. */
 export function unreadSettings(rows: readonly CheckRow[]): string[] {
   return rows
-    .filter((r) => r.I.wrote !== "" && (r.I.showed === null || r.V.showed === null))
+    .filter(
+      (r) => (r.I.wrote !== "" || r.V.wrote !== "") && (r.I.showed === null || r.V.showed === null),
+    )
     .map((r) => r.box || "?");
 }
 

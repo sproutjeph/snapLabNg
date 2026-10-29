@@ -62,6 +62,17 @@ describe("the readings check", () => {
     expect(rows.find((r) => r.box === "20")?.ok).toBe(false);
   });
 
+  it("names a setting she wrote only a voltage for, if the meters were never read there", () => {
+    const rowsWritten = record.rows.map((r, i) =>
+      i === 2 ? { ...r, I: { ...r.I, text_as_written: "" } } : r,
+    );
+    const onlyV = { ...record, rows: rowsWritten };
+    const missing = log.filter((e) => e.boxOhm !== 5);
+    const rows = checkRows(onlyV, checkReadingsAgainstBench(onlyV, missing, divisions));
+    expect(rows.find((r) => r.box === "5")?.I.wrote).toBe("");
+    expect(unreadSettings(rows)).toEqual(["5"]);
+  });
+
   it("leaves out rows she left empty", () => {
     const empty = emptyOhmsLawRecord("practice");
     expect(checkRows(empty, checkReadingsAgainstBench(empty, [], divisions))).toEqual([]);

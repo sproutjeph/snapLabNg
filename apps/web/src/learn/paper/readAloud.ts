@@ -147,7 +147,8 @@ export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
     // No word event soon: estimate the position by the clock, sentence by sentence.
     wait = setTimeout(() => {
       if (g !== gen || view.instr !== i || view.word !== null) return;
-      let at = 0;
+      // The wait has already passed in silence: start the clock where the voice should be by now.
+      let at = (WORD_EVENT_WAIT_MS / 1000) * CHARS_PER_SECOND * voice.rate;
       timer = setInterval(() => {
         if (g !== gen) return;
         at += ((CHARS_PER_SECOND * voice.rate) / 1000) * TICK_MS;
@@ -199,10 +200,14 @@ export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
       });
     },
     stop() {
+      const mine = view.reading || view.instr !== null;
       gen += 1;
       clearClocks();
+      // The voice is shared: only cut it off if this reader is the one speaking. A reader that
+      // is idle (for example, one unmounting as the next mode starts its own speech) leaves it.
+      if (!mine) return;
       voice.stop();
-      if (view.reading || view.instr !== null) set(IDLE_VIEW);
+      set(IDLE_VIEW);
     },
   };
 }

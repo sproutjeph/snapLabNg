@@ -204,22 +204,21 @@ a.hp-open:hover .hp-name {
   line-height: var(--tap);
 }
 
-/* The drawings ink themselves on, then the colour washes in behind the line. */
-.il-ink {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: il-draw 0.9s ease-out both;
-  animation-delay: calc(var(--t, 0s) + var(--i, 0) * 0.09s);
+/* The entrance is one animation per card and per drawing, both on opacity and transform, which
+   the browser runs on the compositor. The drawings are painted once and stay static: an earlier
+   version drew every outline on with stroke-dashoffset, which repainted ~200 SVG paths a frame
+   (7 fps on a phone shot). */
+.pk-art {
+  animation: hp-pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 180ms);
 }
 
-.il-fill,
-.il-shadow {
-  animation: il-wash 0.6s ease-out both;
-  animation-delay: calc(var(--t, 0s) + 0.35s + var(--i, 0) * 0.09s);
+.hp-card:nth-child(2) .pk-art {
+  --i: 1;
 }
 
-.il-shadow {
-  animation-delay: calc(var(--i, 0) * 0.09s);
+.hp-card:nth-child(3) .pk-art {
+  --i: 2;
 }
 
 @keyframes hp-in {
@@ -229,15 +228,10 @@ a.hp-open:hover .hp-name {
   }
 }
 
-@keyframes il-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes il-wash {
+@keyframes hp-pop {
   from {
     opacity: 0;
+    transform: translateY(-10px) scale(0.94);
   }
 }
 
@@ -263,13 +257,7 @@ a.hp-open:hover .hp-name {
 
 @media (prefers-reduced-motion: reduce) {
   .hp-card,
-  .il-ink,
-  .il-fill,
-  .il-shadow {
+  .pk-art {
     animation: none;
-  }
-
-  .il-ink {
-    stroke-dashoffset: 0;
   }
 }

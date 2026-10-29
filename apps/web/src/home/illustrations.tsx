@@ -1,9 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 // The three picker illustrations: hand-inked, near-isometric (45° corner view, parallel edges), in
 // the lab's own palette (mahogany, pine, bakelite, brass, cream paper; blue-black ink outlines).
-// Procedural SVG, no images. The ink draws itself on and the colour washes in behind it
-// (home.css, .il-*). Decorative: each card carries its own title, so these are aria-hidden.
+// Procedural SVG, no images, painted once and static; home.css pops each drawing in.
+// Decorative: each card carries its own title, so these are aria-hidden.
 
 const INK = "#1d2430";
 const LEAD = "#2d3a55";
@@ -27,36 +27,26 @@ type Iso = ReturnType<typeof projector>;
 const path = (pts: readonly P2[]) =>
   `${pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ")}Z`;
 
-/** A face: its colour washes in, and its outline draws on. */
+/** A filled face with its ink outline. */
 function Face({ d, fill, w = 1.6 }: { d: string; fill: string; w?: number }) {
   return (
     <>
-      <path d={d} fill={fill} className="il-fill" />
-      <path
-        d={d}
-        pathLength={1}
-        fill="none"
-        stroke={INK}
-        strokeWidth={w}
-        strokeLinejoin="round"
-        className="il-ink"
-      />
+      <path d={d} fill={fill} />
+      <path d={d} fill="none" stroke={INK} strokeWidth={w} strokeLinejoin="round" />
     </>
   );
 }
 
-/** A line of ink that draws on. */
+/** A line of ink. */
 function Ink({ d, w = 1.4, c = INK }: { d: string; w?: number; c?: string }) {
   return (
     <path
       d={d}
-      pathLength={1}
       fill="none"
       stroke={c}
       strokeWidth={w}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="il-ink"
     />
   );
 }
@@ -115,7 +105,7 @@ function Shadows({
 }) {
   const grow = 5;
   return (
-    <g opacity={0.2} className="il-shadow">
+    <g opacity={0.2}>
       {feet.map(([x, y, w, d]) => (
         <path
           key={`${x},${y}`}
@@ -175,7 +165,6 @@ function Lead({ a, b, sag = 14 }: { a: P2; b: P2; sag?: number }) {
       stroke={INK}
       strokeWidth={1}
       strokeLinejoin="round"
-      className="il-fill"
     />
   );
   return (
@@ -221,7 +210,7 @@ function Dial({
     return `M${(cx + Math.cos(a) * r * 0.62).toFixed(2)} ${(cy - Math.sin(a) * r * 0.62).toFixed(2)}L${(cx + Math.cos(a) * r * 0.86).toFixed(2)} ${(cy - Math.sin(a) * r * 0.86).toFixed(2)}`;
   }).join("");
   return (
-    <g transform={`matrix(0.866 0.5 0 -1 ${e} ${f})`} className="il-fill">
+    <g transform={`matrix(0.866 0.5 0 -1 ${e} ${f})`}>
       <circle cx={cx} cy={cy} r={r + 2.2} fill={BRASS[1]} stroke={INK} strokeWidth={1.2} />
       <circle cx={cx} cy={cy} r={r} fill={CREAM} stroke={INK} strokeWidth={1} />
       <path d={ticks} stroke={INK} strokeWidth={0.9} fill="none" />
@@ -235,9 +224,6 @@ function Dial({
     </g>
   );
 }
-
-/** Time offset (the draw-on order): an object's ink starts this long after the card appears. */
-const at = (t: number) => ({ "--t": `${t}s` }) as CSSProperties;
 
 /** Card 1: an ammeter, a voltmeter and a resistance box joined with leads. */
 export function OhmsLawArt() {
@@ -270,7 +256,7 @@ export function OhmsLawArt() {
           [m2.x, m2.y, m2.w, m2.d],
         ]}
       />
-      <g style={at(0.1)}>
+      <g>
         <Box iso={iso} {...box} colours={MAHOGANY} />
         <Face d={plate} fill={BRASS[0]} w={1.2} />
         {plugs.map(([x, y]) => (
@@ -299,19 +285,19 @@ export function OhmsLawArt() {
         <Terminal at={t5} />
         <Terminal at={t6} />
       </g>
-      <g style={at(0.5)}>
+      <g>
         <Box iso={iso} {...m1} colours={BAKELITE} />
         <Dial iso={iso} x={m1.x} y={m1.y + m1.d} z={0} w={m1.w} h={m1.h} />
         <Terminal at={t1} />
         <Terminal at={t2} />
       </g>
-      <g style={at(0.8)}>
+      <g>
         <Box iso={iso} {...m2} colours={BAKELITE} />
         <Dial iso={iso} x={m2.x} y={m2.y + m2.d} z={0} w={m2.w} h={m2.h} />
         <Terminal at={t3} />
         <Terminal at={t4} />
       </g>
-      <g style={at(1.1)}>
+      <g>
         <Lead a={t2} b={t3} sag={9} />
         <Lead a={t1} b={t5} sag={-6} />
         <Lead a={t4} b={t6} sag={-4} />
@@ -355,26 +341,26 @@ export function MeterBridgeArt() {
           [blockB.x, blockB.y, blockB.w, blockB.d],
         ]}
       />
-      <g style={at(0.1)}>
+      <g>
         <Box iso={iso} {...blockA} colours={BAKELITE} />
         <Terminal at={ta} />
       </g>
-      <g style={at(0.3)}>
+      <g>
         <Box iso={iso} {...board} colours={PINE} />
         <Ink d={rule} w={1} />
       </g>
-      <g style={at(0.7)}>
+      <g>
         <Ink d={`M${p1[0]} ${p1[1]}L${w1[0]} ${w1[1]}`} w={2.6} c={BRASS[2]} />
         <Ink d={`M${p2[0]} ${p2[1]}L${w2[0]} ${w2[1]}`} w={2.6} c={BRASS[2]} />
         <Ink d={`M${w1[0]} ${w1[1]}L${w2[0]} ${w2[1]}`} w={2.4} c={BRASS[1]} />
         <Terminal at={w1} />
         <Terminal at={w2} />
       </g>
-      <g style={at(1)}>
+      <g>
         <Box iso={iso} {...jock} colours={BRASS} />
         <Ink d={`M${tipTop[0]} ${tipTop[1]}L${tipEnd[0]} ${tipEnd[1]}`} w={1.6} />
       </g>
-      <g style={at(1.2)}>
+      <g>
         <Box iso={iso} {...blockB} colours={BAKELITE} />
         <Terminal at={tb} />
         <Lead a={ta} b={w1} sag={-8} />
@@ -401,33 +387,25 @@ export function TitrationArt() {
   return (
     <Art label="titration" view="-14 -4 328 236">
       <Shadows iso={iso} feet={[[base.x, base.y, base.w, base.d]]} />
-      <g style={at(0.1)}>
+      <g>
         <Box iso={iso} {...base} colours={MAHOGANY} />
       </g>
-      <g style={at(0.4)}>
+      <g>
         <Face d={`M${rodX - 2.5} 190 V10 H${rodX + 2.5} V190Z`} fill={BAKELITE[1]} w={1.3} />
         <Face d={`M${bx + 8} 56 H${rodX - 2.5} V64 H${bx + 8}Z`} fill={BRASS[1]} w={1.2} />
         <Face d={`M${bx - 9} 52 H${bx + 9} V68 H${bx - 9}Z`} fill={BRASS[0]} w={1.2} />
-        <circle
-          cx={rodX}
-          cy={60}
-          r={5.5}
-          fill={BRASS[0]}
-          stroke={INK}
-          strokeWidth={1.2}
-          className="il-fill"
-        />
+        <circle cx={rodX} cy={60} r={5.5} fill={BRASS[0]} stroke={INK} strokeWidth={1.2} />
       </g>
-      <g style={at(0.7)}>
+      <g>
         <Face d={tube} fill="#f3f5ee" w={1.5} />
-        <path d={liquid} fill="#bcd5c2" className="il-fill" />
+        <path d={liquid} fill="#bcd5c2" />
         <Ink d={ticks} w={1} />
         <Face d={`M${bx - 9} 88H${bx + 9}V95H${bx - 9}Z`} fill={BRASS[1]} w={1.2} />
         <Ink d={`M${bx + 9} 91.5H${bx + 18}`} w={2.2} />
       </g>
-      <g style={at(1)}>
+      <g>
         <Face d={flask} fill="#f3f5ee" w={1.5} />
-        <path d={flaskLiquid} fill="#c3dac6" className="il-fill" />
+        <path d={flaskLiquid} fill="#c3dac6" />
         <Ink d={`M${bx - 8.5} 128H${bx + 8.5}`} w={1.6} />
       </g>
     </Art>

@@ -164,6 +164,33 @@ describe("Read it to me", () => {
     expect(reader.view).toEqual(IDLE_VIEW);
   });
 
+  it("does not cut off the shared voice when this reader is not reading", () => {
+    // At unmount the paper stops its reader; the next mode may already be speaking.
+    const { voice } = fakeVoice();
+    const stop = vi.spyOn(voice, "stop");
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+    });
+    reader.stop();
+    expect(stop).not.toHaveBeenCalled();
+    reader.start();
+    reader.stop();
+    expect(stop).toHaveBeenCalledTimes(1);
+    reader.stop();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts the estimated clock where the voice should be after the silent wait", () => {
+    const { reader, items } = setup();
+    reader.start();
+    // The 1.5 s wait at 14 characters a second is 21 characters already spoken, so the first tick
+    // passes "an ammeter" (at 22) and not yet "a voltmeter" (at 34).
+    vi.advanceTimersByTime(1500 + 120);
+    expect(items).toEqual(["ammeter"]);
+  });
+
   it("ignores events from a reading she stopped", () => {
     const { reader, said, items } = setup();
     reader.start();

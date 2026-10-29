@@ -52,6 +52,17 @@ function Score({ earned, available }: { earned: string; available: string }) {
   );
 }
 
+/** Each point with a key that stays unique when she plotted the same point twice. */
+function keyed<T extends { x_cm: number; y_cm: number }>(points: readonly T[]): [string, T][] {
+  const seen = new Map<string, number>();
+  return points.map((p) => {
+    const base = `${p.x_cm},${p.y_cm}`;
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    return [`${base}#${n}`, p];
+  });
+}
+
 /** Her graph in miniature, drawn from what she plotted. Nothing is added to it. */
 function GraphThumb({ graph }: { graph: OhmsLawGraph }) {
   const { width_cm: w, height_cm: h } = graph.sheet;
@@ -65,9 +76,9 @@ function GraphThumb({ graph }: { graph: OhmsLawGraph }) {
       aria-label="Your graph of V against I, as you drew it"
     >
       <path d="M14 8V76H122" className="rs-axes" />
-      {graph.points.map((p) => (
+      {keyed(graph.points).map(([key, p]) => (
         <path
-          key={`${p.x_cm},${p.y_cm}`}
+          key={key}
           d={`M${px(p.x_cm) - 2.5} ${py(p.y_cm) - 2.5}l5 5m0 -5l-5 5`}
           className="rs-pt"
         />
@@ -117,7 +128,7 @@ export function Results({ mode, sheet, checks, record, benchOhm, onAgain, onWatc
         <header className="rs-head">
           <div>
             <p className="xp-caps rs-caps">
-              Results <span className="rs-mode">{mode === "exam" ? "Exam" : "Practise"}</span>
+              Results <span className="rs-mode">{mode === "exam" ? "Exam" : "Practice"}</span>
             </p>
             <h1 id="rs-title" className="rs-title">
               Ohm's law (V–I)
