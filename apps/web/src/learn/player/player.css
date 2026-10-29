@@ -47,10 +47,6 @@
   right: 556px;
 }
 
-.dp[data-layout="compact"][data-credit="mark"] .dp-card {
-  right: 382px;
-}
-
 .dp[data-layout="short"] .dp-card {
   top: 4px;
   right: calc(var(--guide-w, 372px) + 20px);
@@ -61,6 +57,12 @@
   left: 50%;
   right: auto;
   transform: translateX(-50%);
+}
+
+/* Compact and narrow: the status card folds its credit to a mark, so the card sits against it.
+   (After short and portrait, so the rules run from least to most specific.) */
+.dp[data-layout="compact"][data-credit="mark"] .dp-card {
+  right: 382px;
 }
 
 /* A status card with no credit is narrower, so the card sits against it. */
@@ -113,9 +115,10 @@
   background: color-mix(in srgb, var(--line) 70%, var(--card));
 }
 
+/* 2 CSS px on screen: the card is zoomed by --ui, so the width is divided by it. */
 .dp-btn:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: calc(2px / var(--ui, 1)) solid var(--ink);
+  outline-offset: calc(2px / var(--ui, 1));
 }
 
 .dp-btn:disabled {
@@ -160,6 +163,15 @@
   font: 600 15px / 1 var(--f-cond);
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+/* Practise and Exam have room on a phone, so their buttons are 44 px wide there too (Watch's six
+   keep Backcountry's size; they get a 44 px tall hit area below). */
+.dp.dp-practice[data-layout="portrait"] .dp-btn,
+.dp.dp-practice[data-layout="short"] .dp-btn,
+.dp.dp-exam[data-layout="portrait"] .dp-btn,
+.dp.dp-exam[data-layout="short"] .dp-btn {
+  min-width: calc(var(--tap) / var(--ui, 1));
 }
 
 /* Hit area: the visual size is the design's; a pseudo-element brings the height to 44 px. */
