@@ -39,7 +39,8 @@ const SETTINGS: Record<QualityTier, QualitySettings> = {
   mid: {
     dpr: [1, 1.5],
     bloom: true,
-    shadows: false,
+    // Real soft shadows on mid too (docs/plans/exam-redesign.md, "The look": 1024 on mid).
+    shadows: true,
     maxParticles: 400,
     physicalGlass: false,
     segments: 0.75,
@@ -104,19 +105,78 @@ export interface OutlineSettings {
   mode: OutlineMode;
   scale: number;
   /**
-   * MSAA samples for the composer's scene buffer. 0 on every tier: each geometric edge carries
-   * an ink line, so 4× MSAA changed nothing visible and cost about a third of the frame in the
-   * headless shot (high: 30 → 45 fps phone, 10 → 15 laptop).
+   * MSAA samples for the composer's scene buffer (WebGL2). On since the user's golden-frame
+   * review (Oct 30, "looking pixelated"): 4× on high; none on mid, where the 3 px lines cover
+   * every silhouette and FXAA smooths them, and the resolve copy would cost the bandwidth that
+   * limits mid phones. Low has no composer; the canvas's own antialias (MSAA on the default
+   * framebuffer) smooths its hull lines.
    */
   multisampling: number;
+  /** FXAA after the ink pass, so the ink lines (drawn per pixel, after MSAA) get smooth edges. */
+  fxaa: boolean;
 }
 
 const OUTLINE: Record<QualityTier, OutlineSettings> = {
-  low: { mode: "hull", scale: 1, multisampling: 0 },
-  mid: { mode: "ink", scale: 0.75, multisampling: 0 },
-  high: { mode: "ink", scale: 1, multisampling: 0 },
+  low: { mode: "hull", scale: 1, multisampling: 0, fxaa: false },
+  mid: { mode: "ink", scale: 1, multisampling: 0, fxaa: true },
+  high: { mode: "ink", scale: 1, multisampling: 4, fxaa: true },
 };
 
 export function outlineFor(tier: QualityTier): OutlineSettings {
   return { ...OUTLINE[tier] };
+}
+
+/**
+ * The look recipe per tier (docs/plans/exam-redesign.md, "The look" and "Performance"): the
+ * shadow map's size and the pixel-ratio ladder, which QualitySettings does not carry. Real soft
+ * shadows on mid (1024) and high (2048), matching `shadows`; low has none (blob shadows only).
+ */
+export interface LookSettings {
+  /** Side of the key light's shadow map; 0 means no shadow map. */
+  shadowMapSize: number;
+  /** The pixel-ratio ladder from the top rung down; the canvas starts on the first rung. */
+  dprLadder: readonly number[];
+}
+
+/** Backcountry 101's pixel-ratio ladder (research report 2). */
+export const DPR_LADDER: readonly number[] = [2, 1.5, 1.25, 1];
+/** A frame slower than this counts against the current rung. */
+export const DPR_SLOW_FRAME_MS = 25;
+/** Frames judged together. */
+export const DPR_WINDOW_FRAMES = 90;
+/** More slow frames than this in one window steps the ratio down a rung. */
+export const DPR_SLOW_LIMIT = 60;
+
+const LOOK: Record<QualityTier, { shadowMapSize: number; maxDpr: number }> = {
+  low: { shadowMapSize: 0, maxDpr: 1 },
+  mid: { shadowMapSize: 1024, maxDpr: 1.5 },
+  high: { shadowMapSize: 2048, maxDpr: 2 },
+};
+
+/** On mid and high the ladder never steps below min(device ratio, this). */
+export const DPR_FLOOR_SHARP = 1.5;
+
+/**
+ * The look settings for `tier`. The ladder starts at the tier's top, capped at the device's own
+ * ratio, and never goes below 1, nor on mid and high below min(device ratio, 1.5), so a slow
+ * frame never makes a Retina phone render soft.
+ */
+export function lookFor(tier: QualityTier, devicePixelRatio = 2): LookSettings {
+  const { shadowMapSize, maxDpr } = LOOK[tier];
+  const device = Math.max(1, devicePixelRatio);
+  const top = Math.max(1, Math.min(maxDpr, device));
+  const floor = tier === "low" ? 1 : Math.min(top, Math.max(1, Math.min(device, DPR_FLOOR_SHARP)));
+  const rungs = DPR_LADDER.filter((d) => d <= top && d >= floor);
+  const dprLadder = rungs[0] === top ? rungs : [top, ...rungs];
+  return { shadowMapSize, dprLadder };
+}
+
+/**
+ * The rung after one window of frames: one step down when more than DPR_SLOW_LIMIT of
+ * DPR_WINDOW_FRAMES were slow, otherwise the same. Never below the last rung, never back up.
+ */
+export function nextDprRung(ladder: readonly number[], rung: number, slowFrames: number): number {
+  const last = Math.max(0, ladder.length - 1);
+  const current = Math.max(0, Math.min(last, rung));
+  return slowFrames > DPR_SLOW_LIMIT ? Math.min(last, current + 1) : current;
 }

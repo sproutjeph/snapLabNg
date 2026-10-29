@@ -37,12 +37,45 @@ export function skipsInk(object: THREE.Object3D, material: THREE.Material | unde
   return false;
 }
 
-/** id * 2 + thin: one exact half-float channel. Untagged meshes are id 0. */
-export function inkCode(object: THREE.Object3D): number {
+/**
+ * Per-mesh ink controls (docs/plans/exam-redesign.md, "The look"), read from `userData` on the
+ * mesh or its nearest ancestor that sets them, so a part sets them once on its group:
+ *   - `inkStrength` (0–1, default 1): how dark its lines are (a glass face .3, a label 0).
+ *   - `inkFlat` (boolean): creases from facet normals, for chiselled or bevelled shapes.
+ */
+export const INK_STRENGTH = "inkStrength";
+export const INK_FLAT = "inkFlat";
+
+/** How far up the tree a control is looked for (a part's group is a few levels up). */
+const CONTROL_DEPTH = 8;
+
+function inherited(object: THREE.Object3D, key: string): unknown {
+  let o: THREE.Object3D | null = object;
+  for (let i = 0; o && i < CONTROL_DEPTH; i++) {
+    const v = o.userData[key];
+    if (v !== undefined) return v;
+    o = o.parent;
+  }
+  return undefined;
+}
+
+/** What the ink-ID pass writes for one mesh. Untagged meshes are id 0. */
+export interface InkCode {
+  id: number;
+  thin: boolean;
+  strength: number;
+  flat: boolean;
+}
+
+/** Fills `out` for `object` and returns it; allocates nothing. */
+export function inkCode(object: THREE.Object3D, out: InkCode): InkCode {
   const tag = readInk(object);
-  if (!tag) return 0;
-  const id = Math.max(0, Math.min(255, Math.round(tag.id)));
-  return id * 2 + (tag.thin ? 1 : 0);
+  out.id = tag ? Math.max(0, Math.min(255, Math.round(tag.id))) : 0;
+  out.thin = tag?.thin === true;
+  const s = inherited(object, INK_STRENGTH);
+  out.strength = typeof s === "number" && Number.isFinite(s) ? Math.max(0, Math.min(1, s)) : 1;
+  out.flat = inherited(object, INK_FLAT) === true;
+  return out;
 }
 
 type Clippable = THREE.Material & {
@@ -91,14 +124,27 @@ function createInkIdMaterial(name: string): THREE.ShaderMaterial {
     name,
     vertexShader,
     fragmentShader,
-    uniforms: { inkCode: { value: 0 } },
+    uniforms: {
+      inkId: { value: 0 },
+      inkStrength: { value: 1 },
+      inkThin: { value: 0 },
+      inkFlat: { value: 0 },
+    },
     blending: THREE.NoBlending,
     clipping: true,
   });
-  const code = material.uniforms.inkCode as { value: number };
+  const u = material.uniforms as Record<
+    "inkId" | "inkStrength" | "inkThin" | "inkFlat",
+    { value: number }
+  >;
+  const code: InkCode = { id: 0, thin: false, strength: 1, flat: false };
   material.onBeforeRender = (renderer, _scene, camera, _geometry, object) => {
     const source = object.userData[SOURCE] as Clippable | null | undefined;
-    code.value = inkCode(object);
+    inkCode(object, code);
+    u.inkId.value = code.id;
+    u.inkStrength.value = code.strength;
+    u.inkThin.value = code.thin ? 1 : 0;
+    u.inkFlat.value = code.flat ? 1 : 0;
     // Cull like the object does, so faces the scene never shows (the underside of a part that
     // is still below its clip line) draw no ink either. A side change needs no new program.
     material.side = source?.side ?? THREE.FrontSide;

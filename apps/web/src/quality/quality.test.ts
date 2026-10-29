@@ -103,10 +103,12 @@ describe("settingsFor", () => {
       physicalGlass: false,
       segments: 0.5,
     });
+    // Mid casts real shadows (1024 map) since the exam redesign (docs/plans/exam-redesign.md,
+    // "The look" and the W1-look row).
     expect(settingsFor("mid")).toEqual({
       dpr: [1, 1.5],
       bloom: true,
-      shadows: false,
+      shadows: true,
       maxParticles: 400,
       physicalGlass: false,
       segments: 0.75,

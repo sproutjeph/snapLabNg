@@ -1,10 +1,11 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { EffectComposer, EffectPass, RenderPass } from "postprocessing";
+import { EffectComposer, EffectPass, FXAAEffect, RenderPass } from "postprocessing";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { outlineFor } from "../../quality/tier";
 import { InkEffect } from "./InkEffect";
+import { type InkFocusFade, inkFocusFor, releaseInkFocus } from "./inkFocus";
 import { useInkHulls } from "./inkHull";
 
 export interface InkComposerProps {
@@ -16,6 +17,7 @@ export interface InkComposerProps {
 interface Stack {
   composer: EffectComposer;
   effect: InkEffect;
+  focus: InkFocusFade;
   width: number;
   height: number;
   pixelRatio: number;
@@ -23,8 +25,10 @@ interface Stack {
 
 /**
  * The post-processing stack for every canvas (docs/plans/ink-look.md). No bloom.
- *   - High and mid: the scene, then the ink outline effect (depth, normal and ink-ID edges; the
- *     ID target at full and 0.75× size). It takes over the render loop (useFrame priority 1).
+ *   - High and mid: the scene (MSAA 4× on high only), then the ink outline effect (depth,
+ *     normal and ink-ID edges; the ID target at full size on both, as a 0.75× target made
+ *     hairy lines at DPR 1.5), then FXAA over the ink. It takes over the render loop
+ *     (useFrame priority 1).
  *   - Low (and any device that cannot render to half-float targets): no post pass at all;
  *     inverted-hull lines on the parts (inkHull.ts), and r3f renders.
  * Tone mapping is off on every tier, so the paper is exactly --paper. The props are frozen.
@@ -37,7 +41,7 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
   const camera = useThree((s) => s.camera);
   const stack = useRef<Stack | null>(null);
   const outline = outlineFor(quality);
-  const { scale, multisampling } = outline;
+  const { scale, multisampling, fxaa } = outline;
   // The ID target is half float; without float colour-buffer targets, fall back to the hulls.
   const floatTargets = useMemo(
     () =>
@@ -67,22 +71,36 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
       // No bloom and no tone mapping, so no HDR to keep: 8-bit (sRGB-encoded) scene buffers.
       frameBufferType: THREE.UnsignedByteType,
     });
+    // The composer clones the scene buffer's sample count into its output buffer, but only the
+    // scene pass needs MSAA: the ink and FXAA passes draw full-screen quads, so a multisampled
+    // output would be resolved for nothing. (render() swaps the two locally, so the scene pass
+    // always gets the multisampled input buffer.)
+    composer.outputBuffer.samples = 0;
+    composer.outputBuffer.dispose();
     const effect = new InkEffect(scene, camera, scale);
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new EffectPass(camera, effect));
-    stack.current = { composer, effect, width: -1, height: -1, pixelRatio: -1 };
+    // FXAA in its own pass after the ink: it smooths the ink lines, which are drawn per pixel
+    // after the scene's MSAA has resolved. (A convolution effect, so it cannot share the ink's pass.)
+    if (fxaa) composer.addPass(new EffectPass(camera, new FXAAEffect()));
+    const focus = inkFocusFor(scene);
+    stack.current = { composer, effect, focus, width: -1, height: -1, pixelRatio: -1 };
     return () => {
       stack.current = null;
       // Disposes the passes, the effect's target and material, and the composer's buffers.
       composer.dispose();
       gl.autoClear = autoClear;
     };
-  }, [gl, scene, camera, post, scale, multisampling]);
+  }, [gl, scene, camera, post, scale, multisampling, fxaa]);
+
+  // This canvas's focus fade (inkFocus.ts) lives as long as the composer.
+  useEffect(() => () => releaseInkFocus(scene), [scene]);
 
   useFrame(
     (state, delta) => {
       const s = stack.current;
       if (!s) return;
+      s.focus.advance(delta);
       const { width, height } = state.size;
       const pixelRatio = state.gl.getPixelRatio();
       if (width !== s.width || height !== s.height || pixelRatio !== s.pixelRatio) {

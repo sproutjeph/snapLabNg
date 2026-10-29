@@ -10,7 +10,7 @@ import { INK_HEX, PAPER_HEX } from "./palette";
 // Low-tier ink (docs/plans/ink-look.md): no post pass. Every inkable mesh gets a child "hull"
 // with its shape, facing backwards and pushed out by a constant pixel width, so a pen line shows
 // round the part. Chosen over depth-only edges at 0.5× because it held the frame rate in the
-// headless shot (see quality/tier.ts). `thin` parts get a lighter line. Instanced parts get an
+// headless shot (see quality/tier.ts). `thin` parts get a shade lighter line. Instanced parts get an
 // instanced hull that shares their instanceMatrix and count. Geometry rewritten in place (a lead
 // that follows the jockey) is followed every frame through its attribute versions.
 
@@ -193,7 +193,8 @@ export function createHullRegistry(widthPx: number): HullRegistry {
     inkReveal: { value: 1 },
   };
   const ink = new THREE.Color(INK_HEX);
-  const thinInk = new THREE.Color(INK_HEX).lerp(new THREE.Color(PAPER_HEX), 0.5);
+  // In step with the outline effect's INK_THIN_ALPHA (0.9): only a shade lighter, never a grey halo.
+  const thinInk = new THREE.Color(INK_HEX).lerp(new THREE.Color(PAPER_HEX), 0.1);
   // One material per program (plain or instanced, full or thin), so draws never switch.
   const materials = {
     plain: hullMaterial("InkHull", ink, shared),

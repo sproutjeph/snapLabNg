@@ -2,27 +2,43 @@ import { Effect, EffectAttribute } from "postprocessing";
 import * as THREE from "three";
 import inkEdgesFrag from "./ink-edges.frag.glsl?raw";
 import inkSweepGlsl from "./ink-sweep.glsl?raw";
+import { FOCUS_FADE_INK, FOCUS_FADE_PAPER, inkFocusFor } from "./inkFocus";
 import { InkIdPass } from "./inkPass";
 import { inkSweepUniforms } from "./inkSweep";
-import { INK_HEX } from "./palette";
+import { INK_HEX, PAPER_HEX } from "./palette";
 
-/** Line width in CSS pixels, scaled by the device pixel ratio. */
-export const INK_THICKNESS_PX = 2.3;
-/** Relative depth jump that draws a silhouette. */
+// Numbers from Backcountry 101's ink pass (docs/plans/exam-redesign-brief.md, research report 2).
+
+/**
+ * Line width in CSS pixels, scaled by the device pixel ratio so it looks the same at DPR 1, 2
+ * and 3. 3 px, bolder than Backcountry 101's 2.1, at the user's golden-frame review (Oct 30).
+ */
+export const INK_THICKNESS_PX = 3;
+/**
+ * `thin` parts (plugs, needles) draw their outline at this strength: a shade lighter. At 3 px,
+ * 0.6 read as a grey halo round the plugs (round-4 review), so it is nearly full ink now.
+ */
+export const INK_THIN_ALPHA = 0.9;
+/** Relative depth jump that draws a silhouette (perspective camera). */
 export const INK_DEPTH_THRESHOLD = 0.045;
+/** Depth jump in metres that draws a silhouette (orthographic camera). */
+export const INK_DEPTH_THRESHOLD_M = 0.006;
 /** Change in the view-space normal (distance between unit normals) that draws a crease. */
 export const INK_CREASE_THRESHOLD = 0.35;
-/** `thin` parts draw at this strength. */
-export const INK_THIN_ALPHA = 0.5;
+/** Creases (folds within one part) draw at this fraction of a silhouette. */
+export const INK_CREASE_WEIGHT = 0.4;
 /** Ink strength of a full line. */
 export const INK_OPACITY = 0.92;
+/** The grade on inked parts; paper is never graded. */
+export const INK_SATURATION = 1.1;
 
 /**
  * The ink outline as a postprocessing Effect (high and mid tiers). It reads the composer's
  * depth texture (EffectAttribute.DEPTH) and, in `update()`, draws its own ink-ID target at
  * `scale` × the drawing-buffer size with the ID materials of inkPass.ts. The fragment
  * shader samples both in 8 directions. While `reveal` < 1 the lines show only where the
- * draw-on sweep (ink-sweep.glsl) has passed, found from each pixel's world position.
+ * draw-on sweep (ink-sweep.glsl) has passed, found from each pixel's world position. The
+ * focus fade (inkFocus.ts) is read per ink id from the scene's own 256 × 1 texture.
  * Uniforms are made once; `update()` allocates nothing.
  */
 export class InkEffect extends Effect {
@@ -58,13 +74,20 @@ export class InkEffect extends Effect {
       attributes: EffectAttribute.DEPTH,
       uniforms: new Map<string, THREE.Uniform>([
         ["inkColour", new THREE.Uniform(new THREE.Color(INK_HEX))],
+        ["inkPaper", new THREE.Uniform(new THREE.Color(PAPER_HEX))],
         ["inkOpacity", new THREE.Uniform(INK_OPACITY)],
         ["inkReveal", reveal],
         ["inkBuffer", new THREE.Uniform(inkTarget.texture)],
+        ["inkFocusMap", new THREE.Uniform(inkFocusFor(scene).texture)],
         ["inkRadius", radius],
-        ["depthThreshold", new THREE.Uniform(INK_DEPTH_THRESHOLD)],
-        ["creaseThreshold", new THREE.Uniform(INK_CREASE_THRESHOLD)],
         ["thinAlpha", new THREE.Uniform(INK_THIN_ALPHA)],
+        ["depthThreshold", new THREE.Uniform(INK_DEPTH_THRESHOLD)],
+        ["depthThresholdM", new THREE.Uniform(INK_DEPTH_THRESHOLD_M)],
+        ["creaseThreshold", new THREE.Uniform(INK_CREASE_THRESHOLD)],
+        ["creaseWeight", new THREE.Uniform(INK_CREASE_WEIGHT)],
+        ["inkSaturation", new THREE.Uniform(INK_SATURATION)],
+        ["focusPaper", new THREE.Uniform(FOCUS_FADE_PAPER)],
+        ["focusInk", new THREE.Uniform(FOCUS_FADE_INK)],
         ["inkProjInverse", projInverse],
         ["inkCameraWorld", cameraWorld],
         ["inkSweepOrigin", inkSweepUniforms.inkSweepOrigin],
@@ -88,7 +111,9 @@ export class InkEffect extends Effect {
 
   override update(renderer: THREE.WebGLRenderer): void {
     // One full line width, on the far side of an edge; device pixels, so lines keep their CSS width.
-    this.radius.value = INK_THICKNESS_PX * renderer.getPixelRatio();
+    // Rounded to whole pixels: at DPR 1.5 a 4.5 px tap fell between two ID texels and the
+    // blended ID made the lines hairy.
+    this.radius.value = Math.max(1, Math.round(INK_THICKNESS_PX * renderer.getPixelRatio()));
     // The scene pass has just rendered, so the camera's matrices are this frame's.
     this.projInverse.value.copy(this.camera.projectionMatrixInverse);
     this.cameraWorld.value.copy(this.camera.matrixWorld);
