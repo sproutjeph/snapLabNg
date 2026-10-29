@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useReducer, useRef } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useReducer, useRef } from "react";
 import type { Director } from "../script/types";
 import { ActGlyph, IconChevron, IconTick } from "./icons";
 import "./player.css";
@@ -22,6 +22,8 @@ const reducedMotion = () =>
 export function StageChecklist({ director, stageTitles }: StageChecklistProps) {
   const handle = handleOf(director);
   const [, bump] = useReducer((n: number) => n + 1, 0);
+  const list = useRef<HTMLOListElement>(null);
+  const cursor = useRef<HTMLLIElement>(null);
   const nowRow = useRef<HTMLLIElement>(null);
   const nowRing = useRef<HTMLSpanElement>(null);
   const s = director.state;
@@ -48,6 +50,30 @@ export function StageChecklist({ director, stageTitles }: StageChecklistProps) {
     return () => cancelAnimationFrame(frame);
   }, [handle, playing, beat, finished]);
 
+  // The cursor sits on the row she is on, whatever its height: in a narrow guide the words wrap
+  // to more lines, so the rows are not all one height and the stylesheet's fixed step (--i) only
+  // guesses. Written straight onto the cursor, on a new beat and when the list is resized (no
+  // React state). With no row to measure (server render, nothing to show) the stylesheet's guess
+  // stands.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: beat, finished and the mode (the list is not there in Exam) are what move or mount the current row.
+  useLayoutEffect(() => {
+    const box = list.current;
+    const mark = cursor.current;
+    if (!box || !mark) return;
+    const place = () => {
+      const rows = box.querySelectorAll<HTMLElement>(".sc-row");
+      const on = nowRow.current ?? rows[rows.length - 1];
+      if (!on) return;
+      mark.style.height = `${on.offsetHeight}px`;
+      mark.style.transform = `translateY(${on.offsetTop}px)`;
+    };
+    place();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(place);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [beat, finished, s.mode]);
+
   // A long stage keeps the row she is on in view.
   // biome-ignore lint/correctness/useExhaustiveDependencies: beat and finished are what moves the current row.
   useEffect(() => {
@@ -68,6 +94,7 @@ export function StageChecklist({ director, stageTitles }: StageChecklistProps) {
 
   return (
     <ol
+      ref={list}
       className="sc-list"
       aria-label={`Steps for ${title}`}
       style={{ "--i": Math.min(at, beats.length - 1) } as CSSProperties}
@@ -105,7 +132,7 @@ export function StageChecklist({ director, stageTitles }: StageChecklistProps) {
           </li>
         );
       })}
-      <li className="sc-cursor" aria-hidden="true">
+      <li ref={cursor} className="sc-cursor" aria-hidden="true">
         <IconChevron />
       </li>
     </ol>
