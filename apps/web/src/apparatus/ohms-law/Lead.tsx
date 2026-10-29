@@ -4,13 +4,15 @@ import * as THREE from "three";
 import { useTerminalRegistry } from "../../learn/terminals";
 import type { LeadColour, OhmsLawVisualState, TerminalId } from "../../learn/types";
 import { inkTag } from "../../scene/ink/ink";
+import { acquireTexture, brassSurface, releaseTexture } from "../materials";
 import type { QualityTier } from "../meter-bridge/types";
 import {
+  CABLE_SEAT_M,
   floorAt,
   hashString,
   jitterColour,
-  LEAD_BASE_COLOURS,
   LEAD_RADIUS_M,
+  leadTexture,
   makePlugGeometries,
   PLUG_HEIGHT_M,
   seeded,
@@ -140,10 +142,15 @@ const _axis = new THREE.Vector3();
 const _upY = new THREE.Vector3(0, 1, 0);
 const _upX = new THREE.Vector3(1, 0, 0);
 
+/** One tile of the cable's speckle skin along its length, in metres. */
+const SKIN_TILE_M = 0.05;
+
 /**
  * Writes a tube of `radius` around the polyline `c` (n + 1 points, xyz packed) into a
  * TubeGeometry's own buffers, with a parallel-transported frame (the same idea as the metre
- * bridge's TubeWire). Allocation-free, so it runs on the frame the ends move.
+ * bridge's TubeWire). The uv runs along the cable in metres (SKIN_TILE_M a tile) and once round,
+ * so the speckle keeps its size whatever the cable's length. Allocation-free, so it runs on the
+ * frame the ends move.
  */
 function writeTube(
   geo: THREE.TubeGeometry,
@@ -154,8 +161,17 @@ function writeTube(
 ): void {
   const pos = geo.getAttribute("position") as THREE.BufferAttribute;
   const nor = geo.getAttribute("normal") as THREE.BufferAttribute;
+  const uv = geo.getAttribute("uv") as THREE.BufferAttribute;
   const stride = radial + 1;
+  let along = 0;
   for (let i = 0; i <= n; i++) {
+    if (i > 0) {
+      along += Math.hypot(
+        (c[i * 3] ?? 0) - (c[i * 3 - 3] ?? 0),
+        (c[i * 3 + 1] ?? 0) - (c[i * 3 - 2] ?? 0),
+        (c[i * 3 + 2] ?? 0) - (c[i * 3 - 1] ?? 0),
+      );
+    }
     const i0 = Math.max(0, i - 1) * 3;
     const i1 = Math.min(n, i + 1) * 3;
     _tan
@@ -192,15 +208,25 @@ function writeTube(
       const k = i * stride + j;
       pos.setXYZ(k, cx + radius * nx, cy + radius * ny, cz + radius * nz);
       nor.setXYZ(k, nx, ny, nz);
+      uv.setXY(k, along / SKIN_TILE_M, j / radial);
     }
   }
   pos.needsUpdate = true;
   nor.needsUpdate = true;
+  uv.needsUpdate = true;
   geo.computeBoundingSphere();
 }
 
-/** Sets the curve's control points: a drooping cable from plug top `s` to plug top `e`. */
-function shapeCable(pts: THREE.Vector3[], s: THREE.Vector3, e: THREE.Vector3, bulge: number): void {
+/**
+ * Sets the curve's control points: a drooping cable from plug top `s` to plug top `e`. Exported
+ * so the kit's tests use this path, not a copy of it; its shape is frozen with them.
+ */
+export function shapeCable(
+  pts: THREE.Vector3[],
+  s: THREE.Vector3,
+  e: THREE.Vector3,
+  bulge: number,
+): void {
   const dx = e.x - s.x;
   const dz = e.z - s.z;
   const d = Math.hypot(dx, dz);
@@ -239,6 +265,8 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
   const root = useRef<THREE.Group>(null);
   const plugA = useRef<THREE.Group>(null);
   const plugB = useRef<THREE.Group>(null);
+  const pinsA = useRef<THREE.Group>(null);
+  const pinsB = useRef<THREE.Group>(null);
   const tagged = useRef<THREE.Group>(null);
   const plugs = useRef<THREE.Group>(null);
   const hitMesh = useRef<THREE.Mesh>(null);
@@ -247,26 +275,30 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     const low = quality === "low";
     const rng = seeded(hashString(`lead-${from}-${to}-${colour}`));
     const mainN = low ? 28 : 56;
-    const radial = low ? 6 : 10;
+    const radial = low ? 6 : quality === "mid" ? 10 : 12;
     const hitN = low ? 10 : 18;
     const pts = CTRL_T.map((t) => new THREE.Vector3(t, 0, 0));
     const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
     const tube = new THREE.TubeGeometry(curve, mainN, LEAD_RADIUS_M, radial, false);
     const hit = new THREE.TubeGeometry(curve, hitN, HIT_RADIUS_M, 5, false);
     const plug = makePlugGeometries(quality);
+    // The speckled rubber skin is one texture per colour, shared by every lead of that colour.
+    // The material's colour only tints it a hair, per lead, so no two leads are quite alike.
+    const skin = acquireTexture(`lead-skin:${colour}:${quality}`, () =>
+      leadTexture(colour, quality),
+    );
     const cableMat = new THREE.MeshStandardMaterial({
-      color: jitterColour(LEAD_BASE_COLOURS[colour], rng, 0.04),
-      roughness: 0.78,
+      map: skin,
+      color: jitterColour("#f6f6f6", rng, 0.05),
+      roughness: 0.9,
     });
     const plugMat = new THREE.MeshStandardMaterial({
-      color: jitterColour(LEAD_BASE_COLOURS[colour], rng, 0.04),
-      roughness: 0.7,
+      map: skin,
+      color: jitterColour("#f6f6f6", rng, 0.05),
+      roughness: 0.86,
     });
-    const pinMat = new THREE.MeshStandardMaterial({
-      color: jitterColour("#b08d3c", rng),
-      roughness: 0.6,
-      metalness: 0.2,
-    });
+    // The pin's brass: the kit's own, warm and a little rough.
+    const pinMat = brassSurface(hashString(`pin-${from}-${to}-${colour}`));
     const hitMat = new THREE.MeshBasicMaterial();
     // A stable, hash-chosen sideways bulge, so two leads between the same neighbours part.
     const bulge = (rng() - 0.5) * 2;
@@ -279,6 +311,7 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       hitN,
       radial,
       plug,
+      skin,
       cableMat,
       plugMat,
       pinMat,
@@ -308,6 +341,7 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       res.plugMat.dispose();
       res.pinMat.dispose();
       res.hitMat.dispose();
+      releaseTexture(res.skin);
     },
     [res],
   );
@@ -364,6 +398,11 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     const ink = INK_IDS.leadBase + (upto % 20);
     if (ink !== res.ink) {
       res.ink = ink;
+      // The brass pins get another id from the lead block, ten along (leads number seven), so a
+      // line is drawn where brass meets sleeve; the cable shares the sleeve's id, no line between.
+      const pinInk = INK_IDS.leadBase + ((upto + 10) % 20);
+      if (pinsA.current) inkTag(pinsA.current, { id: pinInk, thin: true });
+      if (pinsB.current) inkTag(pinsB.current, { id: pinInk, thin: true });
       if (plugs.current) inkTag(plugs.current, { id: ink, thin: true });
       if (tagged.current) inkTag(tagged.current, { id: ink, thin: false });
     }
@@ -408,8 +447,8 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     const cable = tagged.current?.children[0];
     if (cable) cable.visible = d01 > 0.002;
 
-    res.s.set(_a.x, _a.y + liftA + PLUG_HEIGHT_M, _a.z);
-    res.e.set(_b.x, _b.y + liftB + PLUG_HEIGHT_M, _b.z);
+    res.s.set(_a.x, _a.y + liftA + CABLE_SEAT_M, _a.z);
+    res.e.set(_b.x, _b.y + liftB + CABLE_SEAT_M, _b.z);
     shapeCable(res.pts, res.s, res.e, res.bulge);
     for (let i = 0; i <= res.mainN; i++) {
       res.curve.getPoint((i / res.mainN) * d01, _pt);
@@ -448,11 +487,15 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
         <group ref={plugs}>
           <group ref={plugA}>
             <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
-            <mesh geometry={res.plug.pin} material={res.pinMat} />
+            <group ref={pinsA}>
+              <mesh geometry={res.plug.pin} material={res.pinMat} castShadow />
+            </group>
           </group>
           <group ref={plugB}>
             <mesh geometry={res.plug.body} material={res.plugMat} castShadow />
-            <mesh geometry={res.plug.pin} material={res.pinMat} />
+            <group ref={pinsB}>
+              <mesh geometry={res.plug.pin} material={res.pinMat} castShadow />
+            </group>
           </group>
         </group>
       </group>
