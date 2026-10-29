@@ -5,6 +5,7 @@ import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { outlineFor } from "../../quality/tier";
 import { InkEffect } from "./InkEffect";
+import { advanceInkFocus } from "./inkFocus";
 import { useInkHulls } from "./inkHull";
 
 export interface InkComposerProps {
@@ -83,6 +84,7 @@ export function InkComposer({ quality, reveal }: InkComposerProps) {
     (state, delta) => {
       const s = stack.current;
       if (!s) return;
+      advanceInkFocus(delta);
       const { width, height } = state.size;
       const pixelRatio = state.gl.getPixelRatio();
       if (width !== s.width || height !== s.height || pixelRatio !== s.pixelRatio) {

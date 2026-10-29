@@ -1,11 +1,13 @@
-// Ink-ID pass, vertex: view-space normal for the crease test. Three's chunks keep instancing
-// and clipping planes (the hero's rise) working under the override material. The normal is
-// transformed by hand (not defaultnormal_vertex), so it never depends on FLIP_SIDED: the pass
-// takes each object's own side per draw, and the fragment shader faces the normal to the camera.
+// Ink-ID pass, vertex: view-space normal for the crease test, and the view position for
+// `inkFlat` facet normals. Three's chunks keep instancing and clipping planes (the hero's rise)
+// working under the override material. The normal is transformed by hand (not
+// defaultnormal_vertex), so it never depends on FLIP_SIDED: the pass takes each object's own side
+// per draw, and the fragment shader faces the normal to the camera.
 #include <common>
 #include <clipping_planes_pars_vertex>
 
 varying vec3 vInkNormal;
+varying vec3 vInkViewPos;
 
 void main() {
   vec3 objectNormal = vec3(normal);
@@ -17,5 +19,6 @@ void main() {
   vInkNormal = normalMatrix * objectNormal;
   #include <begin_vertex>
   #include <project_vertex>
+  vInkViewPos = mvPosition.xyz;
   #include <clipping_planes_vertex>
 }
