@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { bevelBox, bevelSegments, boxProjectUV } from "../materials";
 import type { QualityTier } from "../meter-bridge/types";
 import {
   makeCrocClipGeometries,
@@ -11,23 +13,29 @@ import {
 
 // The geometry of the side tray, built once and merged per (item, ink id, material). Metres,
 // local to the tray: x right, z toward the student, y up from the desk. The tray floor is at
-// FLOOR_Y. Ink ids use the tray's block (INK_IDS.tray + offset).
+// FLOOR_Y. Ink ids use the tray's block of ten (INK_IDS.tray + offset, offset 0 to 9):
+//   0 the wooden tray        1 red and yellow cable   2 black cable   3 clips and plugs (thin)
+//   4 sandpaper              5 rheostat's ceramic     6 winding       7 its brass hardware
+//   8 micrometer's frame     9 its steel and brass
+// Touching parts carry different ids, so a line is drawn where they meet.
 
 export type TrayItemKey = "leads" | "sandpaper" | "rheostat" | "micrometer";
 export type TrayMat =
-  | "tray"
+  | "wood"
   | "red"
   | "black"
   | "yellow"
+  | "bootRed"
+  | "bootBlack"
   | "brass"
   | "steel"
-  | "jaw"
-  | "boot"
   | "grit"
   | "ceramic"
   | "ebonite"
-  | "microSteel"
-  | "microDark";
+  | "frame";
+
+/** How a merged part's uv is made: a tile size for box projection, or `keep` (the pieces did it). */
+export type TrayUv = "keep" | readonly [number, number];
 
 export interface TrayPart {
   /** The tappable item this belongs to; null for the tray itself. */
@@ -42,7 +50,10 @@ export interface TrayPart {
 export const TRAY_SIZE = { x: 0.26, z: 0.34 } as const;
 export const FLOOR_Y = 0.004;
 const WALL_H = 0.014;
+const WALL_T = 0.016;
 const RHEO_X = -0.075;
+/** A lead's cable radius on the tray: 1.5 times the 3 mm lead of the bench, so it reads from afar. */
+const CABLE_R = 0.0022;
 
 export interface TrayBuild {
   parts: TrayPart[];
@@ -58,256 +69,472 @@ export interface TrayBuild {
 }
 
 class Acc {
-  private map = new Map<string, { part: Omit<TrayPart, "geo">; geos: THREE.BufferGeometry[] }>();
+  private map = new Map<
+    string,
+    { part: Omit<TrayPart, "geo">; uv: TrayUv; geos: THREE.BufferGeometry[] }
+  >();
   add(
     item: TrayItemKey | null,
     ink: number,
     thin: boolean,
     mat: TrayMat,
     geo: THREE.BufferGeometry,
+    uv: TrayUv = "keep",
   ) {
     const key = `${item}|${ink}|${thin}|${mat}`;
-    const e = this.map.get(key) ?? { part: { item, ink, thin, mat }, geos: [] };
+    const e = this.map.get(key) ?? { part: { item, ink, thin, mat }, uv, geos: [] };
     e.geos.push(geo);
     this.map.set(key, e);
   }
   done(): TrayPart[] {
-    return [...this.map.values()].map((e) => ({ ...e.part, geo: mergeAll(e.geos) }));
+    return [...this.map.values()].map((e) => {
+      const geo = mergeAll(e.geos);
+      if (e.uv !== "keep") boxProjectUV(geo, e.uv);
+      return { ...e.part, geo };
+    });
   }
 }
 
-/** A loose spiral on the tray floor: a lead coiled up, as spare leads are kept. */
-function spiral(
-  rng: () => number,
-  cx: number,
-  cz: number,
-  r0: number,
-  r1: number,
-  turns: number,
-  phase: number,
-  y0: number,
-): THREE.Vector3[] {
-  const n = Math.round(turns * 14);
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i <= n; i++) {
-    const u = i / n;
-    const a = phase + u * turns * Math.PI * 2;
-    const r = r0 + (r1 - r0) * u;
-    pts.push(
-      new THREE.Vector3(
-        cx + Math.cos(a) * r * 0.95 + (rng() - 0.5) * 0.002,
-        y0 + 0.0031 * u * turns,
-        cz + Math.sin(a) * r + (rng() - 0.5) * 0.002,
-      ),
-    );
+/**
+ * Rewrites a wooden piece's uv so the grain runs along its long axis (`alongZ` or x), at `tile`
+ * metres a tile, from a different place in the texture per `shift`. The piece is centred on the origin.
+ */
+function grainUV(
+  geo: THREE.BufferGeometry,
+  tile: readonly [number, number],
+  alongZ: boolean,
+  shift: number,
+): THREE.BufferGeometry {
+  const pos = geo.getAttribute("position");
+  const nor = geo.getAttribute("normal");
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const ax = Math.abs(nor.getX(i));
+    const ay = Math.abs(nor.getY(i));
+    const az = Math.abs(nor.getZ(i));
+    const along = alongZ ? z : x;
+    const across = alongZ ? x : z;
+    const longFace = alongZ ? ax >= az : az >= ax;
+    let u: number;
+    let v: number;
+    if (ay >= ax && ay >= az) {
+      u = along;
+      v = across;
+    } else if (longFace) {
+      u = along;
+      v = y;
+    } else {
+      u = across;
+      v = y;
+    }
+    uv[i * 2] = u / tile[0] + shift;
+    uv[i * 2 + 1] = v / tile[1] + shift * 0.37;
   }
-  return pts;
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return geo;
+}
+
+/** The two free ends of a lead: where the cable stops and the way a clip or plug points on from it. */
+interface LeadEnd {
+  at: THREE.Vector3;
+  dir: THREE.Vector3;
+}
+
+/**
+ * A lead coiled flat, as spare leads are kept: from its inner end, `turns` whole turns out round a
+ * middle of radius `a`, gaining `b` of radius a radian (so `2 pi b` between turns, more than a
+ * cable's width). The outer end leaves toward -z and bends away to the left; the inner end is
+ * carried out over the coil to the left, lifted clear of the turns. Both ends lie at the left of the
+ * coil, side by side, `rowGap` apart, which is how the pair of clips is left lying. The cable lies
+ * at height `y`; the ends come down to `endY`, where a clip lies on the floor.
+ */
+function coiledLead(o: {
+  cx: number;
+  cz: number;
+  a: number;
+  b: number;
+  turns: number;
+  y: number;
+  endY: number;
+  rowGap: number;
+  reach: number;
+  rng: () => number;
+}): { pts: THREE.Vector3[]; ends: [LeadEnd, LeadEnd] } {
+  const { cx, cz, a, b, turns, y, endY, rowGap, reach, rng } = o;
+  const thetaMax = turns * Math.PI * 2;
+  const n = Math.round(turns * 20);
+  const v = (x: number, yy: number, z: number) => new THREE.Vector3(x, yy, z);
+  const jig = () => (rng() - 0.5) * 0.0006;
+  const rOut = a + b * thetaMax;
+  const left = cx - rOut - reach;
+  // The coil: from the inner end (at angle pi, the left of the middle) round and out.
+  const spiral: THREE.Vector3[] = [];
+  for (let i = 0; i <= n; i++) {
+    const th = (i / n) * thetaMax;
+    const r = a + b * th;
+    const ang = Math.PI + th;
+    spiral.push(v(cx + Math.cos(ang) * r + jig(), y, cz + Math.sin(ang) * r + jig()));
+  }
+  const over = y + 2 * CABLE_R + 0.0006;
+  // The inner end's way out: up over the turns, straight to the left, and down to the floor.
+  const crossing = [
+    v(left, endY, cz),
+    v(left + 0.012, y + 0.002, cz),
+    v(cx - rOut - 0.006, over, cz),
+    v(cx - a - rOut * 0.5, over, cz),
+    v(cx - a * 1.2, over - 0.002, cz),
+    v(cx - a, y, cz),
+  ];
+  // The outer end: away from the coil, bending left to lie beside the other end.
+  const px = cx - rOut;
+  const tail = [
+    v(px - 0.001, y, cz - 0.004),
+    v(px - 0.006, y, cz - rowGap * 0.6),
+    v(px - 0.014, y * 0.5 + endY * 0.5, cz - rowGap),
+    v(left, endY, cz - rowGap),
+  ];
+  const pts = [...crossing, ...spiral.slice(1), ...tail];
+  return {
+    pts,
+    ends: [
+      { at: v(left, endY, cz), dir: v(-1, 0, 0) },
+      { at: v(left, endY, cz - rowGap), dir: v(-1, 0, 0) },
+    ],
+  };
 }
 
 export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   const low = quality === "low";
+  const bs = bevelSegments(quality);
   const acc = new Acc();
   const dir = new THREE.Vector3();
   const at = new THREE.Vector3();
 
-  // The tray: a shallow enamelled pan.
+  // ---- The tray: a shallow mahogany box, its boards rounded and the grain along each board ----
+  const tile: readonly [number, number] = [0.6, 0.22];
+  const board = (
+    w: number,
+    h: number,
+    d: number,
+    r: number,
+    x: number,
+    y: number,
+    z: number,
+    alongZ: boolean,
+    shift: number,
+  ) => grainUV(bevelBox(w, h, d, r, Math.max(1, bs - 1)), tile, alongZ, shift).translate(x, y, z);
+  const hx = TRAY_SIZE.x / 2;
+  const hz = TRAY_SIZE.z / 2;
+  const shortLen = TRAY_SIZE.x - 2 * WALL_T + 0.002;
   acc.add(
     null,
     0,
     false,
-    "tray",
+    "wood",
     mergeAll([
-      placeAt(new THREE.BoxGeometry(TRAY_SIZE.x, 0.004, TRAY_SIZE.z), 0, 0.002, 0),
-      placeAt(
-        new THREE.BoxGeometry(TRAY_SIZE.x, WALL_H, 0.004),
-        0,
-        WALL_H / 2,
-        TRAY_SIZE.z / 2 - 0.002,
-      ),
-      placeAt(
-        new THREE.BoxGeometry(TRAY_SIZE.x, WALL_H, 0.004),
-        0,
-        WALL_H / 2,
-        -TRAY_SIZE.z / 2 + 0.002,
-      ),
-      placeAt(
-        new THREE.BoxGeometry(0.004, WALL_H, TRAY_SIZE.z),
-        TRAY_SIZE.x / 2 - 0.002,
-        WALL_H / 2,
-        0,
-      ),
-      placeAt(
-        new THREE.BoxGeometry(0.004, WALL_H, TRAY_SIZE.z),
-        -TRAY_SIZE.x / 2 + 0.002,
-        WALL_H / 2,
-        0,
-      ),
+      board(TRAY_SIZE.x, FLOOR_Y, TRAY_SIZE.z, 0.0013, 0, FLOOR_Y / 2, 0, true, 0.1),
+      // The long walls, down the sides.
+      board(WALL_T, WALL_H, TRAY_SIZE.z, 0.003, hx - WALL_T / 2, WALL_H / 2, 0, true, 0.33),
+      board(WALL_T, WALL_H, TRAY_SIZE.z, 0.003, -hx + WALL_T / 2, WALL_H / 2, 0, true, 0.71),
+      // The short walls, front and back, between them.
+      board(shortLen, WALL_H, WALL_T, 0.003, 0, WALL_H / 2, hz - WALL_T / 2, false, 0.52),
+      board(shortLen, WALL_H, WALL_T, 0.003, 0, WALL_H / 2, -hz + WALL_T / 2, false, 0.9),
     ]),
   );
 
-  // Spare leads: two coiled with crocodile clips at both ends, one with banana plugs.
+  // ---- Spare leads: red and black coiled with a crocodile clip on each end, yellow loose ----
   const clipProto = makeCrocClipGeometries();
   const plugProto = makePlugGeometries(quality);
-  const leadSpecs: Array<{ pts: THREE.Vector3[]; mat: TrayMat; clips: boolean; ink: number }> = [
+  const clipScale = 0.8;
+  const clipY = FLOOR_Y + 0.0056 * clipScale;
+  const cableY = FLOOR_Y + CABLE_R;
+  const segsPerM = low ? 120 : 250;
+  const tubeOf = (pts: THREE.Vector3[]) => {
+    const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+    const len = curve.getLength();
+    return {
+      curve,
+      geo: new THREE.TubeGeometry(
+        curve,
+        Math.max(12, Math.round(len * segsPerM)),
+        CABLE_R,
+        low ? 5 : 6,
+        false,
+      ),
+    };
+  };
+  // Two coils, the black one on top of the red; their four clips lie in a row at the coils' left.
+  const coils = [
     {
-      pts: spiral(rng, 0.058, 0.092, 0.047, 0.035, 1.6, 0.4, FLOOR_Y + 0.0017),
-      mat: "red",
-      clips: true,
+      lead: coiledLead({
+        cx: 0.09,
+        cz: 0.068,
+        a: 0.006,
+        b: 0.0012,
+        turns: 3,
+        y: cableY,
+        endY: clipY,
+        rowGap: 0.012,
+        reach: 0.013,
+        rng,
+      }),
+      mat: "red" as const,
+      boot: "bootRed" as const,
       ink: 1,
     },
     {
-      pts: spiral(rng, 0.064, 0.088, 0.034, 0.024, 1.5, 2.5, FLOOR_Y + 0.0052),
-      mat: "black",
-      clips: true,
+      lead: coiledLead({
+        cx: 0.092,
+        cz: 0.094,
+        a: 0.006,
+        b: 0.0014,
+        turns: 2,
+        y: cableY + 2 * CABLE_R,
+        endY: clipY,
+        rowGap: 0.012,
+        reach: 0.013,
+        rng,
+      }),
+      mat: "black" as const,
+      boot: "bootBlack" as const,
       ink: 2,
     },
-    {
-      pts: [
-        new THREE.Vector3(0.012, FLOOR_Y + 0.0017, 0.0),
-        new THREE.Vector3(0.04, FLOOR_Y + 0.0017, 0.013),
-        new THREE.Vector3(0.072, FLOOR_Y + 0.0017, -0.011),
-        new THREE.Vector3(0.1, FLOOR_Y + 0.0017, 0.004),
-      ],
-      mat: "yellow",
-      clips: false,
-      ink: 1,
-    },
   ];
-  for (const spec of leadSpecs) {
-    const curve = new THREE.CatmullRomCurve3(spec.pts, false, "centripetal");
-    const tube = new THREE.TubeGeometry(curve, low ? 50 : 100, 0.0015, low ? 5 : 7, false);
-    acc.add("leads", spec.ink, false, spec.mat, tube);
-    for (const end of [0, 1]) {
-      curve.getPoint(end, at);
-      curve.getTangent(end, dir);
-      if (end === 0) dir.negate(); // outward from the lead
-      if (spec.clips) {
-        acc.add("leads", 3, true, "boot", placeAlong(clipProto.boot.clone(), at, dir));
-        acc.add("leads", 3, true, "jaw", placeAlong(clipProto.jaws.clone(), at, dir));
-      } else {
-        // A plug lies with its pin along `dir` and its cable entry at the lead's end.
-        const origin = at.clone().addScaledVector(dir, PLUG_HEIGHT_M);
-        const inward = dir.clone().negate();
-        acc.add("leads", 3, true, spec.mat, placeAlong(plugProto.body.clone(), origin, inward));
-        acc.add("leads", 3, true, "brass", placeAlong(plugProto.pin.clone(), origin, inward));
-      }
+  for (const c of coils) {
+    const { geo } = tubeOf(c.lead.pts);
+    acc.add("leads", c.ink, false, c.mat, geo);
+    for (const end of c.lead.ends) {
+      acc.add(
+        "leads",
+        3,
+        true,
+        c.boot,
+        placeAlong(clipProto.boot.clone(), end.at, end.dir, clipScale),
+      );
+      acc.add(
+        "leads",
+        3,
+        true,
+        "brass",
+        placeAlong(clipProto.jaws.clone(), end.at, end.dir, clipScale),
+        [0.04, 0.04],
+      );
     }
   }
   clipProto.boot.dispose();
   clipProto.jaws.dispose();
+  // The yellow lead is folded back on itself along the front, a banana plug on each end.
+  {
+    const py = FLOOR_Y + 0.0058;
+    const pts = [
+      new THREE.Vector3(0.05, py, 0.145),
+      new THREE.Vector3(0.075, cableY, 0.145),
+      new THREE.Vector3(0.1, cableY, 0.142),
+      new THREE.Vector3(0.112, cableY, 0.135),
+      new THREE.Vector3(0.1, cableY, 0.128),
+      new THREE.Vector3(0.075, cableY, 0.126),
+      new THREE.Vector3(0.05, py, 0.126),
+    ];
+    const { curve, geo } = tubeOf(pts);
+    acc.add("leads", 1, false, "yellow", geo);
+    for (const end of [0, 1]) {
+      curve.getPoint(end, at);
+      curve.getTangent(end, dir);
+      if (end === 0) dir.negate(); // outward from the lead
+      // A plug lies with its pin along `dir` and its cable entry at the lead's end.
+      const origin = at.clone().addScaledVector(dir, PLUG_HEIGHT_M);
+      const inward = dir.clone().negate();
+      acc.add("leads", 3, true, "yellow", placeAlong(plugProto.body.clone(), origin, inward));
+      acc.add(
+        "leads",
+        3,
+        true,
+        "brass",
+        placeAlong(plugProto.pin.clone(), origin, inward),
+        [0.04, 0.04],
+      );
+    }
+  }
   plugProto.body.dispose();
   plugProto.pin.dispose();
 
-  // Sandpaper: a thin strip, a little askew.
-  acc.add(
-    "sandpaper",
-    4,
-    false,
-    "grit",
-    placeAt(
-      new THREE.BoxGeometry(0.09, 0.0012, 0.045),
-      0.065,
-      FLOOR_Y + 0.0006,
-      -0.052,
-      0,
-      0.14,
-      0,
-    ),
-  );
-
-  // Rheostat: a ceramic tube wound with resistance wire, on two ebonite end blocks, with a
-  // sliding contact on a bar above. Identify only: it is not part of the circuit.
-  const seg = low ? 12 : 24;
-  const tubeY = FLOOR_Y + 0.032;
-  const tube = new THREE.CylinderGeometry(0.017, 0.017, 0.216, seg);
-  tube.rotateX(Math.PI / 2);
-  acc.add("rheostat", 5, false, "ceramic", placeAt(tube, RHEO_X, tubeY, 0));
-  const blocks: THREE.BufferGeometry[] = [];
-  const bolts: THREE.BufferGeometry[] = [];
-  for (const sz of [-1, 1]) {
-    blocks.push(
-      placeAt(new THREE.BoxGeometry(0.044, 0.07, 0.012), RHEO_X, FLOOR_Y + 0.035, sz * 0.114),
-    );
-    bolts.push(
-      placeAt(
-        new THREE.CylinderGeometry(0.0048, 0.0048, 0.01, low ? 8 : 12),
-        RHEO_X,
-        FLOOR_Y + 0.075,
-        sz * 0.114,
-      ),
-    );
+  // ---- Sandpaper: a strip with torn ends, a little askew ----
+  {
+    const w = 0.084;
+    const d = 0.042;
+    const shape = new THREE.Shape();
+    shape.moveTo(-w / 2, -d / 2);
+    shape.lineTo(w / 2, -d / 2);
+    // The torn right end, then the torn left end, in small teeth.
+    for (let i = 0; i <= 8; i++) {
+      shape.lineTo(w / 2 + (i % 2 === 0 ? 0 : -0.0016), -d / 2 + (i / 8) * d);
+    }
+    shape.lineTo(-w / 2, d / 2);
+    for (let i = 8; i >= 0; i--) {
+      shape.lineTo(-w / 2 + (i % 2 === 0 ? 0 : 0.0016), -d / 2 + (i / 8) * d);
+    }
+    shape.closePath();
+    const paper = new THREE.ExtrudeGeometry(shape, { depth: 0.0014, bevelEnabled: false });
+    paper.rotateX(-Math.PI / 2);
+    // Grit across the whole face: one texture over the strip.
+    const pos = paper.getAttribute("position");
+    const uv = new Float32Array(pos.count * 2);
+    for (let i = 0; i < pos.count; i++) {
+      uv[i * 2] = pos.getX(i) / w + 0.5;
+      uv[i * 2 + 1] = pos.getZ(i) / d + 0.5;
+    }
+    paper.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    acc.add("sandpaper", 4, false, "grit", placeAt(paper, 0.065, FLOOR_Y, -0.052, 0, 0.06, 0));
   }
-  acc.add("rheostat", 7, false, "ebonite", mergeAll(blocks));
-  const rod = new THREE.CylinderGeometry(0.0028, 0.0028, 0.24, low ? 8 : 10);
-  rod.rotateX(Math.PI / 2);
-  bolts.push(placeAt(rod, RHEO_X, FLOOR_Y + 0.064, 0));
-  // Slider: a carriage on the bar, a brass contact down to the winding, an ebonite knob.
-  const sliderZ = 0.036;
-  bolts.push(
-    placeAt(new THREE.BoxGeometry(0.008, 0.01, 0.012), RHEO_X, FLOOR_Y + 0.0525, sliderZ),
-    placeAt(new THREE.BoxGeometry(0.02, 0.016, 0.022), RHEO_X, FLOOR_Y + 0.0655, sliderZ),
-  );
-  acc.add("rheostat", 7, true, "brass", mergeAll(bolts));
+
+  // ---- Rheostat: a ceramic tube wound with wire, brass end caps, and a slider on a rod above ----
+  // Identify only: it is not part of the circuit. It lies along z, so its tube sits on the floor.
+  const tubeY = FLOOR_Y + 0.0215;
+  const rodY = tubeY + 0.046;
+  const rseg = low ? 12 : 24;
+  const along = (g: THREE.BufferGeometry, y: number, z: number, x = RHEO_X) =>
+    placeAt(g.rotateX(Math.PI / 2), x, y, z);
   acc.add(
     "rheostat",
-    7,
+    5,
+    false,
+    "ceramic",
+    along(new THREE.CylinderGeometry(0.0185, 0.0185, 0.2, rseg), tubeY, 0),
+  );
+  const caps: THREE.BufferGeometry[] = [];
+  const hardware: THREE.BufferGeometry[] = [];
+  for (const sz of [-1, 1]) {
+    // A brass cap on each end of the tube and an upright to the rod (heavy), a terminal post out
+    // of the cap (small).
+    caps.push(
+      along(new THREE.CylinderGeometry(0.0215, 0.0215, 0.014, rseg), tubeY, sz * 0.098),
+      placeAt(new THREE.BoxGeometry(0.008, 0.034, 0.008), RHEO_X, tubeY + 0.03, sz * 0.1),
+    );
+    hardware.push(
+      along(new THREE.CylinderGeometry(0.0055, 0.0055, 0.016, low ? 8 : 12), tubeY, sz * 0.112),
+      along(new THREE.CylinderGeometry(0.0085, 0.0085, 0.005, 6), tubeY, sz * 0.113),
+    );
+  }
+  hardware.push(along(new THREE.CylinderGeometry(0.0028, 0.0028, 0.208, low ? 8 : 10), rodY, 0));
+  // The slider: a carriage round the rod and a foot reaching down to touch the winding.
+  const sliderZ = 0.03;
+  hardware.push(
+    placeAt(new THREE.BoxGeometry(0.016, 0.012, 0.016), RHEO_X, rodY, sliderZ),
+    placeAt(new THREE.BoxGeometry(0.004, 0.02, 0.012), RHEO_X, rodY - 0.012, sliderZ),
+    placeAt(new THREE.BoxGeometry(0.009, 0.002, 0.012), RHEO_X, tubeY + 0.0203, sliderZ),
+  );
+  acc.add("rheostat", 7, false, "brass", mergeAll(caps), [0.04, 0.04]);
+  acc.add("rheostat", 7, true, "brass", mergeAll(hardware), [0.04, 0.04]);
+  acc.add(
+    "rheostat",
+    5,
     false,
     "ebonite",
     placeAt(
-      new THREE.CylinderGeometry(0.0075, 0.0085, 0.012, low ? 8 : 14),
+      new THREE.CylinderGeometry(0.0078, 0.0088, 0.014, low ? 10 : 16),
       RHEO_X,
-      FLOOR_Y + 0.0795,
+      rodY + 0.013,
       sliderZ,
     ),
+    [0.12, 0.12],
   );
 
-  // The winding: one torus, instanced along the tube.
-  const coilGeo = new THREE.TorusGeometry(0.0178, 0.001, 4, low ? 10 : 18);
-  const coilN = low ? 22 : 42;
+  // The winding: one torus, instanced along the tube between two bare bands of ceramic.
+  const coilGeo = new THREE.TorusGeometry(0.0199, 0.0015, low ? 3 : 4, low ? 10 : 14);
+  const coilN = low ? 20 : 38;
   const coilMatrices: THREE.Matrix4[] = [];
   for (let i = 0; i < coilN; i++) {
-    const z = -0.097 + (0.194 * i) / (coilN - 1);
+    const z = -0.074 + (0.148 * i) / (coilN - 1);
     coilMatrices.push(new THREE.Matrix4().makeTranslation(RHEO_X, tubeY, z));
   }
 
-  // Micrometer screw gauge, low detail: a U frame, anvil, spindle, barrel, thimble and ratchet.
-  const mseg = low ? 10 : 18;
-  const frameShape = new THREE.Shape();
-  frameShape.absarc(0, 0, 0.03, Math.PI, 2 * Math.PI, false);
-  frameShape.absarc(0, 0, 0.024, 2 * Math.PI, Math.PI, true);
-  frameShape.closePath();
-  const frame = new THREE.ExtrudeGeometry(frameShape, {
-    depth: 0.012,
-    bevelEnabled: false,
-    curveSegments: low ? 8 : 16,
-  });
-  frame.rotateX(-Math.PI / 2);
-  const axis = (r0: number, r1: number, x0: number, x1: number, segs: number) => {
-    const g = new THREE.CylinderGeometry(r1, r0, x1 - x0, segs);
-    g.rotateZ(Math.PI / 2);
-    return placeAt(g, (x0 + x1) / 2, 0.006, 0);
-  };
-  const microFrame = mergeAll([
-    frame,
-    placeAt(new THREE.BoxGeometry(0.008, 0.012, 0.012), -0.0265, 0.006, 0),
-    placeAt(new THREE.BoxGeometry(0.008, 0.012, 0.012), 0.0265, 0.006, 0),
-  ]);
-  const microSteel = mergeAll([
-    axis(0.0035, 0.0035, -0.03, -0.008, mseg),
-    axis(0.0028, 0.0028, -0.002, 0.03, mseg),
-    axis(0.0055, 0.0055, 0.03, 0.075, mseg),
-  ]);
-  const microDark = mergeAll([
-    axis(0.0095, 0.0095, 0.05, 0.088, mseg),
-    axis(0.0075, 0.0078, 0.088, 0.1, mseg),
-  ]);
-  const place = (g: THREE.BufferGeometry) => {
-    g.scale(0.85, 0.85, 0.85);
-    return placeAt(g, 0.0375, FLOOR_Y, -0.125, 0, -0.06, 0);
-  };
-  acc.add("micrometer", 8, false, "microSteel", place(microFrame));
-  acc.add("micrometer", 9, false, "microSteel", place(microSteel));
-  acc.add("micrometer", 9, false, "microDark", place(microDark));
+  // ---- Micrometer screw gauge: a black C-frame, a steel anvil and spindle, a brass thimble ----
+  // Built along +x with its frame bulging toward +z, then centred in its tap box and yawed a little.
+  {
+    const mseg = low ? 10 : 20;
+    const axisY = 0.0105;
+    const frameH = 0.021;
+    const rc = 0.027; // the C's middle radius
+    const t = 0.0105; // the frame's thickness
+    const tipAngle = (15 * Math.PI) / 180;
+    const cy = -rc * Math.sin(tipAngle);
+    const shape = new THREE.Shape();
+    // An arc from 15 degrees past the horizontal on one side, round the bottom, to the other side.
+    shape.absarc(0, cy, rc + t / 2, Math.PI + tipAngle, 2 * Math.PI - tipAngle, false);
+    shape.absarc(0, cy, rc - t / 2, 2 * Math.PI - tipAngle, Math.PI + tipAngle, true);
+    shape.closePath();
+    const frame = new THREE.ExtrudeGeometry(shape, {
+      depth: frameH - 0.003,
+      bevelEnabled: true,
+      bevelThickness: 0.0015,
+      bevelSize: 0.0012,
+      bevelSegments: low ? 1 : 2,
+      curveSegments: low ? 10 : 22,
+    });
+    // Extrusion runs along z: stand it up so the extrusion becomes the height, the arc lying flat.
+    frame.rotateX(-Math.PI / 2);
+    frame.translate(0, 0.0015, 0);
+    toCreasedNormals(frame, 0.7);
+    const tipX = rc * Math.cos(tipAngle);
+    // The tips are at (+-tipX, axisZ = 0) once the arc is stood up (the shape's y runs to -z).
+    const axis = (r0: number, r1: number, x0: number, x1: number, segs: number) => {
+      const g = new THREE.CylinderGeometry(r1, r0, x1 - x0, segs);
+      g.rotateZ(-Math.PI / 2);
+      return placeAt(g, (x0 + x1) / 2, axisY, 0);
+    };
+    const steel = mergeAll([
+      axis(0.0038, 0.0038, -tipX - 0.002, -tipX + 0.014, mseg),
+      axis(0.003, 0.003, tipX - 0.027, tipX + 0.004, mseg),
+      axis(0.0064, 0.0064, tipX - 0.002, tipX + 0.03, mseg),
+    ]);
+    // The thimble (brass, with its edge turned and a groove), and the ratchet knob beyond it.
+    const thimbleProfile = [
+      [0.0, 0.0],
+      [0.0088, 0.0],
+      [0.0098, 0.0035],
+      [0.0108, 0.01],
+      [0.0108, 0.028],
+      [0.0102, 0.029],
+      [0.0, 0.029],
+    ].map(([r, x]) => new THREE.Vector2(r ?? 0, x ?? 0));
+    const thimble = new THREE.LatheGeometry(thimbleProfile, mseg);
+    thimble.rotateZ(-Math.PI / 2);
+    placeAt(thimble, tipX + 0.024, axisY, 0);
+    const knob = new THREE.Shape();
+    const teeth = low ? 8 : 14;
+    for (let i = 0; i < teeth * 2; i++) {
+      const ang = (i / (teeth * 2)) * Math.PI * 2;
+      const r = i % 2 === 0 ? 0.0082 : 0.0072;
+      if (i === 0) knob.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+      else knob.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    }
+    knob.closePath();
+    const ratchet = new THREE.ExtrudeGeometry(knob, { depth: 0.015, bevelEnabled: false });
+    ratchet.rotateY(Math.PI / 2);
+    placeAt(ratchet, tipX + 0.053, axisY, 0);
+    const brass = mergeAll([thimble, ratchet]);
+
+    // Centre the whole gauge in its tap box and yaw it a little, as it was put down.
+    const all = new THREE.Box3();
+    for (const g of [frame, steel, brass]) {
+      g.computeBoundingBox();
+      if (g.boundingBox) all.union(g.boundingBox);
+    }
+    const centre = all.getCenter(new THREE.Vector3());
+    const yaw = -0.05;
+    const settle = (g: THREE.BufferGeometry) => {
+      g.translate(-centre.x, 0, -centre.z);
+      g.rotateY(yaw);
+      g.scale(0.92, 0.92, 0.92);
+      return g.translate(0.07, FLOOR_Y, -0.125);
+    };
+    acc.add("micrometer", 8, false, "frame", settle(frame), [0.12, 0.12]);
+    acc.add("micrometer", 9, false, "steel", settle(steel));
+    acc.add("micrometer", 9, false, "brass", settle(brass), [0.04, 0.04]);
+  }
 
   return {
     parts: acc.done(),
@@ -319,4 +546,22 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       { item: "sandpaper", centre: [0.065, 0.008, -0.052], size: [0.09, 0.016, 0.05] },
     ],
   };
+}
+
+/** The box round everything of one item (the winding included for the rheostat), tray-local. */
+export function itemBounds(build: TrayBuild, item: TrayItemKey | null): THREE.Box3 {
+  const box = new THREE.Box3();
+  for (const p of build.parts) {
+    if (p.item !== item) continue;
+    p.geo.computeBoundingBox();
+    if (p.geo.boundingBox) box.union(p.geo.boundingBox);
+  }
+  if (item === "rheostat") {
+    build.coilGeo.computeBoundingBox();
+    const cb = build.coilGeo.boundingBox;
+    if (cb) {
+      for (const m of build.coilMatrices) box.union(cb.clone().applyMatrix4(m));
+    }
+  }
+  return box;
 }

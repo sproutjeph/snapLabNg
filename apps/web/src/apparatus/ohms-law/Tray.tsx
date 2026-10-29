@@ -1,10 +1,19 @@
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
-import { jitterColour, LEAD_BASE_COLOURS, seeded } from "./LeadParts";
+import {
+  bakeliteMaterial,
+  brassSurface,
+  disposeKitBag,
+  kitTexture,
+  paintMaterial,
+  paperMaterial,
+  woodMaterial,
+} from "../materials";
+import { LEAD_BASE_COLOURS, seeded } from "./LeadParts";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { buildTray, type TrayItemKey, type TrayMat } from "./TrayParts";
-import { makeGritTexture } from "./WireBoardTextures";
+import { makeBrassTexture, makeGritTexture } from "./WireBoardTextures";
 
 export type TrayItem = "leads" | "sandpaper" | "rheostat" | "micrometer";
 
@@ -15,36 +24,33 @@ export interface TrayProps extends PartProps {
 const ITEMS: TrayItemKey[] = ["leads", "sandpaper", "rheostat", "micrometer"];
 
 /**
- * The side tray: spare leads (two with crocodile clips), a sandpaper strip, and the rheostat
- * and micrometer screw gauge (Identify only). Tapping an item calls `onItemTap`.
+ * The side tray: a mahogany tray holding spare leads (two with crocodile clips), a sandpaper
+ * strip, and the rheostat and micrometer screw gauge (Identify only). Tapping an item calls
+ * `onItemTap`. Nothing on it carries a name or a rating: the student identifies it by sight.
  */
 export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps) {
   const res = useMemo(() => {
     const rng = seeded(0x7a4);
     const build = buildTray(quality, rng);
+    const woodTex = kitTexture("mahogany", quality);
+    const bakeTex = kitTexture("bakelite", quality);
+    const brassTex = makeBrassTexture(quality, 0x7a49);
     const grit = makeGritTexture(rng);
-    const mk = (hex: string, rough: number, metal = 0) =>
-      new THREE.MeshStandardMaterial({
-        color: jitterColour(hex, rng),
-        roughness: rough,
-        metalness: metal,
-      });
     const mats: Record<TrayMat, THREE.MeshStandardMaterial> = {
-      tray: mk("#b4bfb9", 0.8),
-      red: mk(LEAD_BASE_COLOURS.red, 0.78),
-      black: mk(LEAD_BASE_COLOURS.black, 0.78),
-      yellow: mk(LEAD_BASE_COLOURS.yellow, 0.78),
-      brass: mk("#b08d3c", 0.6, 0.2),
-      steel: mk("#8d9094", 0.62, 0.3),
-      jaw: mk("#9a9da1", 0.6, 0.3),
-      boot: mk("#2b2b2e", 0.8),
-      grit: new THREE.MeshStandardMaterial({ map: grit, roughness: 0.95 }),
-      ceramic: mk("#c58a5d", 0.8),
-      ebonite: mk("#1d1c1e", 0.7),
-      microSteel: mk("#a3a6aa", 0.6, 0.3),
-      microDark: mk("#55595e", 0.65, 0.2),
+      wood: woodMaterial(0x7a41, { map: woodTex }),
+      red: paintMaterial(LEAD_BASE_COLOURS.red, 0x7a42),
+      black: paintMaterial(LEAD_BASE_COLOURS.black, 0x7a43),
+      yellow: paintMaterial(LEAD_BASE_COLOURS.yellow, 0x7a44),
+      bootRed: paintMaterial("#8c2119", 0x7a45),
+      bootBlack: paintMaterial("#1e1e22", 0x7a46),
+      brass: brassSurface(0x7a47, { map: brassTex }),
+      steel: brassSurface(0x7a48, { tint: "#a3a7ac" }),
+      grit: paperMaterial(0x7a4a, { map: grit }),
+      ceramic: paintMaterial("#d8d0c0", 0x7a4b),
+      ebonite: bakeliteMaterial(0x7a4c, { map: bakeTex }),
+      frame: bakeliteMaterial(0x7a4d, { map: bakeTex }),
     };
-    const coilMat = mk("#4d4b48", 0.7, 0.3);
+    const coilMat = brassSurface(0x7a4e, { tint: "#b8693b" });
     const coil = new THREE.InstancedMesh(build.coilGeo, coilMat, build.coilMatrices.length);
     build.coilMatrices.forEach((m, i) => {
       coil.setMatrixAt(i, m);
@@ -53,18 +59,36 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
     coil.castShadow = true;
     coil.frustumCulled = false;
     const hitGeos = build.hits.map((h) => ({ ...h, geo: new THREE.BoxGeometry(...h.size) }));
-    return { build, grit, mats, coilMat, coil, hitGeos, hitMat: new THREE.MeshBasicMaterial() };
+    return {
+      build,
+      woodTex,
+      bakeTex,
+      brassTex,
+      grit,
+      mats,
+      matList: Object.values(mats),
+      coilMat,
+      coil,
+      partGeos: build.parts.map((p) => p.geo),
+      coilGeo: build.coilGeo,
+      hitGeos,
+      hitGeoList: hitGeos.map((h) => h.geo),
+      hitMat: new THREE.MeshBasicMaterial(),
+    };
   }, [quality]);
   useEffect(
     () => () => {
-      for (const p of res.build.parts) p.geo.dispose();
-      res.build.coilGeo.dispose();
-      for (const m of Object.values(res.mats)) m.dispose();
-      res.grit.dispose();
-      res.coilMat.dispose();
+      // The instanced coil owns no geometry or material of its own beyond these two.
       res.coil.dispose();
-      for (const g of res.hitGeos) g.geo.dispose();
-      res.hitMat.dispose();
+      disposeKitBag({
+        textures: [res.woodTex, res.bakeTex, res.brassTex, res.grit],
+        materials: res.matList,
+        geometries: res.partGeos,
+        coilMat: res.coilMat,
+        coilGeo: res.coilGeo,
+        hits: res.hitGeoList,
+        hitMat: res.hitMat,
+      });
     },
     [res],
   );
