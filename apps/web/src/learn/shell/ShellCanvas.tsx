@@ -29,7 +29,7 @@ export interface ShellCanvasProps {
   /** The part of the canvas the cards cover, from playerCovered. */
   covered: Covered;
   quality: QualityTier;
-  /** Pins the pixel ratio (shots at the device's), instead of 1 to 2. */
+  /** Pins the pixel ratio (shots at the device's), instead of the tier's own (below). */
   dpr: number | null;
 }
 
@@ -74,10 +74,13 @@ function Rig({
 
 export default function ShellCanvas({ bench, director, covered, quality, dpr }: ShellCanvasProps) {
   const look = useMemo(() => lookFor(quality, window.devicePixelRatio || 1), [quality]);
+  // The tier's top pixel ratio (the device's, capped at 1 on low, 1.5 on mid, 2 on high): a fixed
+  // 1 to 2 rendered the low tier at 2 on a Retina screen, four times the pixels it is meant to draw.
+  const pixelRatio = dpr ?? look.dprLadder[0] ?? 1;
   return (
     <Canvas
       shadows={look.shadowMapSize > 0 ? "percentage" : false}
-      dpr={dpr ?? [1, 2]}
+      dpr={pixelRatio}
       gl={{ antialias: true }}
     >
       <LookTier.Provider value={quality}>
