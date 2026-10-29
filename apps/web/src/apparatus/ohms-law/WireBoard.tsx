@@ -49,6 +49,8 @@ const RULE_HIT = { height: 0.008, depth: 0.05, y: BOARD.height + 0.005, z: 0.019
 const BLOCK = { width: 0.04, height: 0.014, depth: 0.034 } as const;
 const WIRE = { z: -0.015, radius: 0.0011, y: BOARD.height + 0.007 } as const;
 const NUT_Y = BOARD.height + BLOCK.height;
+/** How far past its block, along the wire's line, each letter is written on the board (m). */
+const LETTER_X_OFFSET = 0.038;
 /** One tile of pine along the board (m): two tiles make the board, and the texture tiles across u. */
 const PINE_TILE_M = 0.55;
 
@@ -180,8 +182,9 @@ export function WireBoard({
     const ruleGeos = segments.map((s) =>
       new THREE.PlaneGeometry(s.lengthM, RULE_PRINT_DEPTH_M).rotateX(-Math.PI / 2),
     );
-    const ruleMats = ruleTexes.map((map, i) => {
-      const m = paperMaterial(0x5ee3 + i, { map });
+    const ruleMats = ruleTexes.map((map) => {
+      // One seed for all four pieces, so no piece is a shade off its neighbour.
+      const m = paperMaterial(0x5ee3, { map });
       m.polygonOffset = true;
       m.polygonOffsetFactor = -1;
       m.polygonOffsetUnits = -1;
@@ -194,7 +197,7 @@ export function WireBoard({
     });
 
     const letterBlock = new THREE.PlaneGeometry(0.0125, 0.0125);
-    const letterBoard = new THREE.PlaneGeometry(0.024, 0.024).rotateX(-Math.PI / 2);
+    const letterBoard = new THREE.PlaneGeometry(0.03, 0.03).rotateX(-Math.PI / 2);
     // A printed letter: no depth write, so the ink pass leaves its quad alone (skipsInk).
     const decal = (map: THREE.Texture) => {
       const m = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false });
@@ -249,15 +252,17 @@ export function WireBoard({
           castShadow
           receiveShadow
         />
+        {/* The letters are written on the board past each block, outside the wire, where nothing
+            stands in front of them. */}
         <mesh
           geometry={res.letterBoard}
           material={res.letterXMat}
-          position={[xX, lettersY, -0.0475]}
+          position={[xX - LETTER_X_OFFSET, lettersY, WIRE.z]}
         />
         <mesh
           geometry={res.letterBoard}
           material={res.letterYMat}
-          position={[xY, lettersY, -0.0475]}
+          position={[xY + LETTER_X_OFFSET, lettersY, WIRE.z]}
         />
       </InkGroup>
       <InkGroup id={INK_IDS.wire + 1}>

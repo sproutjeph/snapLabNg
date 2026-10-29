@@ -145,7 +145,7 @@ export function makeRuleSegmentTexture(index: number, quality: QualityTier): THR
   const seg = ruleSegments(quality)[index];
   if (!seg) throw new Error(`no rule segment ${index}`);
   const [c, ctx] = canvas(seg.widthPx, seg.heightPx);
-  const paint = () => paintRuleSegment(ctx, seg, quality, index);
+  const paint = () => paintRuleSegment(ctx, seg, quality);
   paint();
   const tex = finish(c, 8);
   tex.userData.repaint = paint;
@@ -156,11 +156,11 @@ function paintRuleSegment(
   ctx: CanvasRenderingContext2D,
   seg: RuleSegment,
   quality: QualityTier,
-  index: number,
 ): void {
   const { widthPx: w, heightPx: h } = seg;
   const pxMm = rulePxPerCm(quality) / 10;
-  const rnd = seededRandom(0xa11 + index * 17);
+  // The same fibres in every piece, dead level, so they run on across the cuts unbroken.
+  const rnd = seededRandom(0xa11);
   // Pale boxwood with a few faint fibres. The albedo is a touch grey: the look's light lifts it
   // to a warm cream, where a brighter paint would burn out to lemon.
   ctx.fillStyle = "#d9d1bf";
@@ -171,7 +171,7 @@ function paintRuleSegment(
     ctx.strokeStyle = rnd() < 0.55 ? "rgba(140,104,56,0.12)" : "rgba(255,246,214,0.3)";
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(w, y + (rnd() - 0.5) * pxMm * 1.5);
+    ctx.lineTo(w, y);
     ctx.stroke();
   }
   // The long line the ticks hang from, along the back edge.
@@ -483,6 +483,67 @@ export function makeBrassTexture(quality: QualityTier, seed = 0xb7a55): THREE.Ca
     }
   }
   return finish(c, 8, THREE.RepeatWrapping, THREE.RepeatWrapping);
+}
+
+/**
+ * Glazed ceramic for the rheostat's tube: a warm white with soft mottling, pinholes and a few
+ * crazing hairlines. It tiles across u and v; a tile is 6 cm square.
+ */
+export function makeCeramicTexture(quality: QualityTier): THREE.CanvasTexture {
+  const n = quality === "low" ? 128 : 256;
+  const k = n / 256;
+  const [c, ctx] = canvas(n, n);
+  const rnd = seededRandom(0xce4a);
+  const wraps = [-n, 0, n];
+  ctx.fillStyle = "#d8d0c2";
+  ctx.fillRect(0, 0, n, n);
+  for (let i = 0; i < 22; i++) {
+    const x = rnd() * n;
+    const y = rnd() * n;
+    const r = (20 + rnd() * 50) * k;
+    const warm = rnd() < 0.5;
+    const col = warm ? "190,150,100" : "255,250,238";
+    for (const dx of wraps) {
+      for (const dy of wraps) {
+        const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+        g.addColorStop(0, `rgba(${col},${warm ? 0.16 : 0.22})`);
+        g.addColorStop(1, `rgba(${col},0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(x + dx - r, y + dy - r, 2 * r, 2 * r);
+      }
+    }
+  }
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(96,76,52,0.2)";
+  ctx.lineWidth = 0.8 * k + 0.2;
+  for (let i = 0; i < 9; i++) {
+    const x = rnd() * n;
+    const y = rnd() * n;
+    const a = rnd() * Math.PI;
+    const len = (14 + rnd() * 30) * k;
+    for (const dx of wraps) {
+      for (const dy of wraps) {
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y + dy);
+        ctx.lineTo(x + dx + Math.cos(a) * len, y + dy + Math.sin(a) * len);
+        ctx.stroke();
+      }
+    }
+  }
+  for (let i = 0; i < (quality === "low" ? 30 : 90); i++) {
+    const x = rnd() * n;
+    const y = rnd() * n;
+    ctx.fillStyle = `rgba(80,62,44,${(0.25 + rnd() * 0.3).toFixed(2)})`;
+    const r = (0.5 + rnd() * 0.6) * k + 0.2;
+    for (const dx of wraps) {
+      for (const dy of wraps) {
+        ctx.beginPath();
+        ctx.arc(x + dx, y + dy, r, 0, TAU);
+        ctx.fill();
+      }
+    }
+  }
+  return finish(c, 4, THREE.RepeatWrapping, THREE.RepeatWrapping);
 }
 
 // ---- Letters and the sandpaper ----------------------------------------------------------------
