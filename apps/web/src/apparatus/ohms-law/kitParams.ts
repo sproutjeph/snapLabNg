@@ -187,21 +187,24 @@ const MACRO_TOP_M = 0.07;
 export const MACRO_LIFT_M = 0.01;
 
 /**
- * Where a terminal's macro lead ends, as a heading from its nut. Two things decide it.
+ * Where a terminal's macro lead ends, as a heading from its nut. Three things decide it.
+ *
+ * The lead lies down. Its free end is on the paper (a carried plug is Lead's own 2.2 cm above it)
+ * and its cable lies on whatever is under it, as it does on the bench; nothing holds it up.
  *
  * The free plug must land past the edge of the whole canvas, not only of the free area: a phone
- * still draws the strips above and below the free area (kitCovered), and Lead holds a carried plug
- * 2.2 cm off the paper, so a plug inside the canvas hangs in the air. At 390 x 844 and 1440 x 900
- * every end here is out of the canvas from every azimuth of the turn=1 sweep (15 to 75) and from
- * 25 degrees of drag beyond it, with 30 px to spare for a plug twice as thick, longer and carried
- * higher than Lead's (kitParams.test.ts pins that).
+ * still draws the strips above and below the free area (kitCovered), and a plug inside the canvas
+ * hangs in the air. At 390 x 844 and 1440 x 900 every end here is out of the canvas from every
+ * azimuth of the turn=1 sweep (15 to 75) and from 25 degrees of drag beyond it, with 30 px to
+ * spare for a plug twice as thick, longer and carried higher than Lead's (kitParams.test.ts pins
+ * that).
  *
  * And the cable must touch nothing the shot does not show. Lead rests its cable on every footprint
- * in BENCH_FOOTPRINTS (floorAt), but `part=terminal` hides every part except the nut's own, so a
- * cable lifted onto a hidden one floats 1.4 to 2.3 cm over bare paper. Lead also bulges the cable
- * sideways by up to min(d, 0.5) x 0.22 of its span d, 7.7 cm at 0.35 m, a hash-chosen side and
- * amount, so every heading below keeps that whole band clear of the other parts, of the taller
- * body of its own part (a meter's case), and of its part's other nut.
+ * in BENCH_FOOTPRINTS (floorAt), but `part=terminal` hides every part except the nut's own and the
+ * ones in MACRO_RESTS_ON, so a cable lifted onto a hidden one floats 1.4 to 2.3 cm over bare
+ * paper. Lead also bulges the cable sideways by up to min(d, 0.5) x 0.22 of its span d, 7.7 cm at
+ * 0.35 m, a hash-chosen side and amount, so every heading below keeps that whole band clear of the
+ * hidden parts, of the taller body of its own part (a meter's case), and of the nuts in view.
  */
 interface MacroLead {
   /**
@@ -209,23 +212,12 @@ interface MacroLead {
    * 180 her left, 270 away from her.
    */
   deg: number;
-  /** Metres from the nut, level. */
+  /** Metres from the nut, along the paper. */
   reach: number;
-  /** Metres above the paper. */
-  up: number;
 }
 
 /** A lead that lies on the paper out to a plug past the canvas. */
-const LAID = { reach: 0.35, up: 0 } as const;
-/**
- * A lead held up out of the frame. The voltmeter's nuts have no way across the paper: the wire
- * board's footprint and ramp start 3 cm in front of them, their own case is just behind, and the
- * tray is 6 cm to the right of V+, so a cable on the paper is lifted onto one of them whichever
- * way it leaves. Held 0.4 m up and 0.1 m out, it keeps well clear of all three, and the short span
- * keeps its sideways bulge to 2 cm. (Up and out it must not also come toward her: seen from the
- * front, a plug that far up but near her lands back inside the frame.)
- */
-const HELD = { reach: 0.1, up: 0.4 } as const;
+const LAID = { reach: 0.35 } as const;
 
 /**
  * Each nut's lead. The front row (cells, key, ammeter, box) leaves toward her, splayed away from
@@ -233,6 +225,15 @@ const HELD = { reach: 0.1, up: 0.4 } as const;
  * board, as the ammeter and the box in front of it leave only 3 cm clear between their ramps, and
  * Y out to her right and a little toward her, off the board's front edge, with the tray behind it
  * and 9 cm between the key and the cells ahead.
+ *
+ * The voltmeter's nuts have no way across bare paper: the wire board's footprint and ramp start
+ * 3 cm in front of them, their own case is 2 cm behind, and the tray is 6 cm to the right of V+, so
+ * a cable on the paper is lifted onto one of them whichever way it leaves, and holding it up in the
+ * air (as this table once did) is not a lead on a bench. So they lead where the real ones go, over
+ * the wire board (DIAGRAM_LEADS runs V+ to X and V- to Y), which MACRO_RESTS_ON draws. V+ leaves
+ * toward her and a little to the left, its cable passing 3 cm from V-'s axis and at least 5 cm
+ * clear of the tray's and the key's ramps; V- fans out farther left, at least 7 cm clear of every
+ * hidden part and 12 cm from X, to the paper in front of the board.
  */
 const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
   "E+": { deg: 90, ...LAID },
@@ -241,8 +242,8 @@ const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
   K2: { deg: 120, ...LAID },
   "A+": { deg: 60, ...LAID },
   "A-": { deg: 120, ...LAID },
-  "V+": { deg: 0, ...HELD },
-  "V-": { deg: 180, ...HELD },
+  "V+": { deg: 115, ...LAID },
+  "V-": { deg: 140, ...LAID },
   R1: { deg: 120, ...LAID },
   R2: { deg: 150, ...LAID },
   X: { deg: 300, ...LAID },
@@ -250,17 +251,28 @@ const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
 };
 
 /**
- * Writes into `out` where terminal `id`'s macro lead has its free plug: MACRO_LEADS' heading,
- * reach and height from the nut at `nut`. Allocates nothing.
+ * The parts besides its own that a macro's cable lies on, so the shot draws them (faded, as the
+ * leads shot draws the parts it joins) instead of hiding them and leaving the cable floating over
+ * bare paper. Only the voltmeter's nuts need one (see MACRO_LEADS); kitParams.test.ts checks that
+ * no hidden part lifts any of the twelve cables.
+ */
+const MACRO_RESTS_ON: Readonly<Partial<Record<TerminalId, readonly BenchSlot[]>>> = {
+  "V+": ["wire"],
+  "V-": ["wire"],
+};
+
+/**
+ * Writes into `out` where terminal `id`'s macro lead has its free plug: MACRO_LEADS' heading and
+ * reach from the nut at `nut`, on the paper. Allocates nothing.
  */
 export function macroFreeEnd(
   id: TerminalId,
   nut: { x: number; z: number },
   out: THREE.Vector3,
 ): THREE.Vector3 {
-  const { deg, reach, up } = MACRO_LEADS[id];
+  const { deg, reach } = MACRO_LEADS[id];
   const a = (deg * Math.PI) / 180;
-  return out.set(nut.x + reach * Math.cos(a), up, nut.z + reach * Math.sin(a));
+  return out.set(nut.x + reach * Math.cos(a), 0, nut.z + reach * Math.sin(a));
 }
 
 function union(boxes: readonly Bounds[]): Bounds {
@@ -342,7 +354,8 @@ const WIRED_SLOTS = Object.keys(PART_TERMINALS) as BenchSlot[];
  *  - a part alone: only that part is drawn (the rest hidden, still registered); with `leads` or
  *    `pen` the whole bench is drawn, the part and the leads in full ink, the rest faded;
  *  - `leads`: the six parts the leads join, faded, and the leads in full ink;
- *  - `terminal`: the part owning the nut, and a plug in the nut;
+ *  - `terminal`: the part owning the nut, and a plug in the nut; with the parts its cable lies on,
+ *    faded, where it cannot lie on the paper (MACRO_RESTS_ON);
  *  - `desk`: the desk things alone;
  *  - none: the whole bench and the desk things.
  */
@@ -360,13 +373,15 @@ export function planKit(p: KitParams): KitPlan {
   }
   if (subject === "terminal") {
     const owner = TERMINAL_PART[p.terminal];
+    const rests = MACRO_RESTS_ON[p.terminal] ?? [];
     const [x, , z] = OHMS_LAW_LAYOUT[owner].position;
     return {
-      parts: only([owner]),
+      parts: only([owner, ...rests]),
       desk: false,
       leads: false,
       macro: p.terminal,
-      focusIds: null,
+      // The parts the cable lies on fade back, so the nut and its lead stay the picture.
+      focusIds: rests.length > 0 ? new Set([...partInkIds(owner), ...leadInkIds()]) : null,
       bounds: {
         x0: x - MACRO_WIDTH_M / 2,
         x1: x + MACRO_WIDTH_M / 2,

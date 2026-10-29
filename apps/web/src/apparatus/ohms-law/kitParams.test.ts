@@ -41,7 +41,7 @@ import {
   LEAD_RADIUS_M,
   PLUG_HEIGHT_M,
 } from "./LeadParts";
-import { INK_IDS, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
+import { type BenchSlot, INK_IDS, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
 
 const DEG = Math.PI / 180;
 const params = (search: string): KitParams => parseKitParams(search);
@@ -284,9 +284,36 @@ describe("what each subject mounts", () => {
     for (const [part, ids] of Object.entries(PART_TERMINALS)) {
       for (const id of ids) {
         const p = plan(`?part=terminal&id=${encodeURIComponent(id)}`);
-        expect(shown(p)).toEqual([part]);
+        // The voltmeter's nuts have no way across bare paper, so their cable lies on the wire board.
+        const lyingOn = id === "V+" || id === "V-" ? ["wire"] : [];
+        expect(shown(p), id).toEqual([part, ...lyingOn].sort());
         expect(p.macro).toBe(id);
       }
+    }
+  });
+
+  it("fades the wire board a voltmeter nut's cable lies on, and keeps the nut and its lead in full ink", () => {
+    for (const id of ["V+", "V-"] as const) {
+      const p = plan(`?part=terminal&id=${encodeURIComponent(id)}`);
+      expect(p.focusIds, id).not.toBeNull();
+      for (let i = 0; i < 10; i++) expect(p.focusIds?.has(INK_IDS.voltmeter + i), id).toBe(true);
+      for (const nut of ["V+", "V-"] as const) {
+        expect(p.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf(nut)), `${id}: ${nut}`).toBe(
+          true,
+        );
+      }
+      for (let i = 0; i < 20; i++) expect(p.focusIds?.has(INK_IDS.leadBase + i), id).toBe(true);
+      // The board and its two nuts fade back.
+      for (let i = 0; i < 10; i++) expect(p.focusIds?.has(INK_IDS.wire + i), id).toBe(false);
+      for (const nut of ["X", "Y"] as const) {
+        expect(p.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf(nut)), `${id}: ${nut}`).toBe(
+          false,
+        );
+      }
+    }
+    // Every other terminal shows its part alone, all in ink.
+    for (const id of TERMINAL_IDS.filter((t) => t !== "V+" && t !== "V-")) {
+      expect(plan(`?part=terminal&id=${encodeURIComponent(id)}`).focusIds, id).toBeNull();
     }
   });
 
@@ -589,12 +616,23 @@ describe("the shot", () => {
       return d < RAMP_M ? f.top * (1 - d / RAMP_M) : 0;
     }
 
+    /** The parts the shot for terminal `id` draws. */
+    function drawnFor(id: TerminalId): BenchSlot[] {
+      const { parts } = planKit(params(`?part=terminal&id=${encodeURIComponent(id)}`));
+      return SLOT_SUBJECTS.filter((s) => parts[s]);
+    }
+
     /**
-     * The most a hidden part (any footprint but the nut's own part's) would raise the cable above
-     * where it would lie on bare paper, over every bulge: what Lead's restOnBench does to a point.
+     * The most a hidden part (any footprint but a drawn part's, by default the nut's own part's)
+     * would raise the cable above where it would lie on bare paper, over every bulge: what Lead's
+     * restOnBench does to a point.
      */
-    function hiddenLift(id: TerminalId, end: THREE.Vector3): { lift: number; at: string } {
-      const hidden = BENCH_FOOTPRINTS.filter((f) => f.slot !== TERMINAL_PART[id]);
+    function hiddenLift(
+      id: TerminalId,
+      end: THREE.Vector3,
+      drawn: readonly BenchSlot[] = [TERMINAL_PART[id]],
+    ): { lift: number; at: string } {
+      const hidden = BENCH_FOOTPRINTS.filter((f) => !drawn.includes(f.slot));
       let worst = { lift: 0, at: "" };
       for (const bulge of BULGES) {
         for (const p of cablePath(id, end, bulge)) {
@@ -621,8 +659,34 @@ describe("the shot", () => {
 
     it("is never lifted off the paper by a part the shot hides, whichever way Lead bulges it", () => {
       for (const id of TERMINAL_IDS) {
-        const { lift, at } = hiddenLift(id, freeEnd(id));
+        const { lift, at } = hiddenLift(id, freeEnd(id), drawnFor(id));
         expect(lift, at).toBeLessThan(0.001);
+      }
+    });
+
+    it("draws a part besides its own only for the two nuts whose cable a hidden part would lift", () => {
+      for (const id of TERMINAL_IDS) {
+        const ownAlone = hiddenLift(id, freeEnd(id));
+        if (id === "V+" || id === "V-") {
+          // Across the wire board, hidden, the cable would float 1 to 2 cm over bare paper.
+          expect(ownAlone.lift, id).toBeGreaterThan(0.01);
+          expect(drawnFor(id), id).toEqual(["voltmeter", "wire"]);
+        } else {
+          expect(ownAlone.lift, ownAlone.at).toBeLessThan(0.001);
+          expect(drawnFor(id), id).toEqual([TERMINAL_PART[id]]);
+        }
+      }
+    });
+
+    it("lies on the paper: every free end is on the desk with nothing under it, none held up in the air", () => {
+      // The V+ and V- leads were once held 0.4 m up and 0.1 m out, rising over the dial.
+      for (const id of TERMINAL_IDS) {
+        const end = freeEnd(id);
+        expect(end.y, id).toBe(0);
+        expect(
+          floorAt(end.x, end.z),
+          `${id} free end at (${end.x.toFixed(3)}, ${end.z.toFixed(3)})`,
+        ).toBe(0);
       }
     });
 
@@ -636,7 +700,7 @@ describe("the shot", () => {
       }
     });
 
-    it("never climbs onto a taller part of its own part than the one its nut stands on, and clears the other nut", () => {
+    it("never climbs onto a taller part of its own part than the one its nut stands on, and clears the other nuts in view", () => {
       // A meter's nuts stand on its 1.2 cm ledge, with the 11.8 cm case behind them. A nut's body
       // is about 1.3 cm in radius, the cable 1.5 mm.
       const NUT_CLEAR_M = 0.015;
@@ -651,8 +715,9 @@ describe("the shot", () => {
             .map((f) => f.top),
         );
         expect(rest, `${id} stands on its own part`).toBeGreaterThan(0);
+        // Every other nut in the picture: the part's own, and the wire board's X and Y behind V+/V-.
         const others = TERMINAL_IDS.filter(
-          (o) => o !== id && TERMINAL_PART[o] === TERMINAL_PART[id],
+          (o) => o !== id && drawnFor(id).includes(TERMINAL_PART[o]),
         );
         for (const bulge of BULGES) {
           for (const p of cablePath(id, freeEnd(id), bulge)) {

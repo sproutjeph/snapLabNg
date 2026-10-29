@@ -63,7 +63,10 @@ import { WireBoard } from "./WireBoard";
 // every screen), LookLights, LookGround, BlobShadow under each part, InkComposer.
 //   &part=ammeter|voltmeter|cells|key|box|wire|tray   one part, alone on the paper
 //   &part=leads                                       the seven leads over their parts, faded
-//   &part=terminal&id=A%2B                            a macro of one nut with a plug seated in it
+//   &part=terminal&id=A%2B                            a macro of one nut with a plug seated in it,
+//                                                     its lead lying out of the frame (V+ and V-
+//                                                     also draw the wire board, faded, which theirs
+//                                                     lies across)
 //   &part=desk                                        the desk things alone
 //   (no part)                                         the whole bench and the desk things
 //   &az=<deg>                                         camera azimuth (default 45, the golden frame's)
@@ -196,9 +199,10 @@ function KitCamera({
 }
 
 /**
- * `part=terminal`: aims the shot at the nut once it is mounted, and puts the lead's free plug out
- * past the edge of the canvas (macroFreeEnd), so the shot shows the nut, its plug and the cable
- * leaving, not a plug held in the air, and no cable lifted over a part the shot hides.
+ * `part=terminal`: aims the shot at the nut once it is mounted, and puts the lead's free plug on the
+ * paper out past the edge of the canvas (macroFreeEnd), so the shot shows the nut, its plug and the
+ * cable lying down and leaving, not a plug held in the air, and no cable lifted over a part the
+ * shot hides.
  */
 function MacroAim({
   id,
