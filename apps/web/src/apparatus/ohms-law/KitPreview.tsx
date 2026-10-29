@@ -94,9 +94,13 @@ const DUMP_FRAME = 4;
 const DUMP_GIVE_UP_FRAME = 240;
 /** The macro looks at the nut's top, a little above where a plug seats. */
 const MACRO_LIFT_M = 0.01;
-/** The macro's free plug stands this far out to the side of the nut and this far toward the student. */
-const MACRO_REACH_M = 0.1;
-const MACRO_FRONT_M = 0.05;
+/**
+ * The macro's lead runs on to a free plug this far out to the side of the nut and this far toward
+ * the student: past the edge of the frame, so the shot shows the nut, its plug and the cable
+ * leaving, not a plug held in the air.
+ */
+const MACRO_REACH_M = 0.17;
+const MACRO_FRONT_M = 0.07;
 
 /** Blob shadows under each V–I part: x offsets from the part and a radius, in metres. Long parts get a row. */
 const BLOBS: Readonly<Record<BenchSlot, { dx: readonly number[]; r: number }>> = {
