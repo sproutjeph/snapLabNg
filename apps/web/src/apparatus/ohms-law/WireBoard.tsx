@@ -41,7 +41,7 @@ export interface WireBoardProps extends PartProps {
 // the footprints and the loupe's pose (learn/readings/poses.ts); only the look of them changes.
 const BOARD = { length: 1.1, height: 0.02, depth: 0.12 } as const;
 const BOARD_BEVEL = 0.005;
-/** The metre rule: a cream strip a little proud of the board, its back edge 3.5 mm in front of the blocks. */
+/** The metre rule: a cream strip a little proud of the board, its back edge 1.5 mm in front of the blocks. */
 const RULE = { length: RULE_LENGTH_M, thickness: 0.003, depth: RULE_DEPTH_M, z: 0.0265 } as const;
 /** The tap box over the rule: as it was, so a tap lands where it always did. */
 const RULE_HIT = { height: 0.008, depth: 0.05, y: BOARD.height + 0.005, z: 0.019 } as const;
