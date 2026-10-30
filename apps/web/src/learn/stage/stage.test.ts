@@ -9,6 +9,7 @@ import {
   benchBusy,
   createPoseMemo,
   createStageLoop,
+  identityKey,
   poseChanged,
   stageFocusIds,
 } from "./frameloop";
@@ -67,6 +68,17 @@ describe("DeskProps is gone", () => {
       .filter((f) => /\.(ts|tsx)$/.test(f) && !f.endsWith("stage.test.ts"))
       .filter((f) => /from\s+["'][^"']*\/DeskProps["']/.test(readFileSync(f, "utf8")));
     expect(importers).toEqual([]);
+  });
+});
+
+describe("the stage's per-run keys", () => {
+  it("gives the same object the same key and a new director or bench a new one, so a kept Canvas starts each run afresh", () => {
+    const a = {};
+    const b = {};
+    expect(identityKey(a)).toBe(identityKey(a));
+    expect(identityKey(b)).not.toBe(identityKey(a));
+    expect(identityKey(null)).toBe(0);
+    expect(identityKey(a)).toBeGreaterThan(0);
   });
 });
 

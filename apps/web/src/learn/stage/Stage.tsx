@@ -31,6 +31,7 @@ import {
   createPoseMemo,
   createStageLoop,
   IDLE_GAP_S,
+  identityKey,
   MAX_TICK_S,
   MOUNT_S,
   POINTER_S,
@@ -528,7 +529,14 @@ export function Stage({
         <LookGround />
         <Blobs motion={motion} />
         <TerminalProvider>
-          {motion ? <Choreo director={director} bench={bench} motion={motion} /> : null}
+          {motion ? (
+            <Choreo
+              key={`choreo-${identityKey(director)}`}
+              director={director}
+              bench={bench}
+              motion={motion}
+            />
+          ) : null}
           <BenchParts
             bench={bench}
             quality={quality}
@@ -538,6 +546,7 @@ export function Stage({
             {...(motion ? { drops: motion.parts } : {})}
           />
           <BenchWiring
+            key={`wiring-${identityKey(bench)}`}
             bench={bench}
             quality={quality}
             {...(audio ? { audio } : {})}

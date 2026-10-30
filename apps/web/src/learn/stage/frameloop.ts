@@ -151,3 +151,20 @@ export function stageFocusIds(parts: readonly StagePart[] | null | undefined): S
   ids.add(INK_IDS.pen);
   return ids;
 }
+
+/**
+ * A stable number per object (a director, a bench), for React keys: the page may keep the Canvas
+ * mounted across runs, and a new run's director or bench must start its scene state afresh (the
+ * Choreo's beat clock, BenchWiring's birth times and slam count), not inherit the last run's.
+ */
+const IDS = new WeakMap<object, number>();
+let nextId = 1;
+export function identityKey(o: object | null | undefined): number {
+  if (!o) return 0;
+  let id = IDS.get(o);
+  if (id === undefined) {
+    id = nextId++;
+    IDS.set(o, id);
+  }
+  return id;
+}
