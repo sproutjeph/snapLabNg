@@ -12,6 +12,7 @@ import {
   hashString,
   jitterColour,
   LEAD_RADIUS_M,
+  leadBulge,
   leadTexture,
   makePlugGeometries,
   PLUG_HEIGHT_M,
@@ -300,8 +301,9 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     // The pin's brass: the kit's own, warm and a little rough.
     const pinMat = brassSurface(hashString(`pin-${from}-${to}-${colour}`));
     const hitMat = new THREE.MeshBasicMaterial();
-    // A stable, hash-chosen sideways bulge, so two leads between the same neighbours part.
-    const bulge = (rng() - 0.5) * 2;
+    // A stable, hash-chosen sideways bulge, so two leads between the same neighbours part. It has
+    // its own stream, so it does not move with the colour draws above (see leadBulge).
+    const bulge = leadBulge(from, to, colour);
     return {
       curve,
       pts,

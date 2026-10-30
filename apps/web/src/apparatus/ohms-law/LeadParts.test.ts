@@ -9,6 +9,7 @@ import {
   knurledDisc,
   LEAD_BASE_COLOURS,
   LEAD_RADIUS_M,
+  leadBulge,
   makePlugGeometries,
   PIN_LENGTH_M,
   PLUG_HEIGHT_M,
@@ -59,6 +60,23 @@ function facingIn(g: THREE.BufferGeometry): number {
     if (face.dot(n) <= 0) bad++;
   }
   return bad;
+}
+
+/**
+ * Whether a camera ray from `from` along `dir` meets the front of any of `geos`. A back face is
+ * not seen (the materials draw the front side only), so a ray that gets in through a hole and
+ * leaves through the inside of the shell meets nothing: it is a see-through.
+ */
+function meetsFront(
+  geos: readonly THREE.BufferGeometry[],
+  from: THREE.Vector3,
+  dir: THREE.Vector3,
+): boolean {
+  const mat = new THREE.MeshBasicMaterial();
+  const meshes = geos.map((g) => new THREE.Mesh(g, mat));
+  const hits = new THREE.Raycaster(from, dir.clone().normalize()).intersectObjects(meshes, false);
+  mat.dispose();
+  return hits.length > 0;
 }
 
 describe("the banana plug", () => {
@@ -118,6 +136,43 @@ describe("the banana plug", () => {
       expect(facingIn(pin), `${tier} pin`).toBe(0);
     }
   });
+
+  it.each(TIERS)(
+    "is closed at the foot and under its grip, so a plug lying in the tray shows no open end, on the %s tier",
+    (tier) => {
+      const { body, pin } = makePlugGeometries(tier);
+      const from = new THREE.Vector3();
+      const dir = new THREE.Vector3();
+      const through: string[] = [];
+      // A camera looking at the foot end of the lying plug, up its axis, at points from 3 mm out
+      // (beside the pin's 2.3 mm shank) to 7 mm (under the ribs, whose roots are at 8 mm, and
+      // inside the low tier's seven-sided shoulder): the foot's ring and the shoulder under the
+      // grip must be in the way. Within the collar's 6.5 mm it also looks 40 degrees off the axis,
+      // from every side.
+      for (const rho of [0.003, 0.0045, 0.006, 0.007]) {
+        for (let k = 0; k < 8; k++) {
+          const a = 0.3 + (k / 8) * Math.PI * 2;
+          for (const tilt of rho < 0.0065 ? [0, (40 * Math.PI) / 180] : [0]) {
+            const lean = a + 1;
+            dir.set(
+              Math.sin(tilt) * Math.cos(lean),
+              Math.cos(tilt),
+              Math.sin(tilt) * Math.sin(lean),
+            );
+            // Aimed at (rho, a) on the foot's plane, from below.
+            from.set(rho * Math.sin(a), 0, rho * Math.cos(a)).addScaledVector(dir, -0.05);
+            if (!meetsFront([body, pin], from, dir)) {
+              const deg = Math.round((tilt * 180) / Math.PI);
+              through.push(`${(rho * 1000).toFixed(1)} mm out, ${deg} deg off the axis`);
+            }
+          }
+        }
+      }
+      expect(through, "camera rays that get in at the plug's foot and out of its inside").toEqual(
+        [],
+      );
+    },
+  );
 
   it("gives the sleeve a uv for the speckled skin, so a lead's plug and cable are one plastic", () => {
     const { body } = makePlugGeometries("high");
@@ -228,6 +283,36 @@ describe("the cable", () => {
   });
 });
 
+describe("a lead's sideways sag", () => {
+  // Recorded from main (0c3e53c), before the asset pass: there it was the seventh draw of the
+  // lead's seeded stream, after the cable, the plug and the pin had taken two draws each for their
+  // colours. Restyling the plug or the cable must not re-route any lead on the approved golden
+  // frame, where the seven diagram leads take red, black and yellow in turn.
+  const ON_MAIN = [
+    ["E+", "K1", "red", 0.22661736560985446],
+    ["K2", "A+", "black", 0.0013477322645485401],
+    ["A-", "R1", "yellow", 0.6730695436708629],
+    ["R2", "X", "red", 0.38626074185594916],
+    ["Y", "E-", "black", 0.5187595668248832],
+    ["V+", "X", "yellow", 0.5312229469418526],
+    ["V-", "Y", "red", 0.9643442616797984],
+    ["A+", "pointer", "red", -0.4707885002717376],
+    ["E-", "K2", "yellow", -0.8855370618402958],
+  ] as const;
+
+  it.each(ON_MAIN)("is where it was on main for %s to %s in %s", (from, to, colour, want) => {
+    expect(leadBulge(from, to, colour)).toBeCloseTo(want, 12);
+  });
+
+  it("is the same for the same lead every time, within -1 and 1, and parts leads that differ in colour", () => {
+    expect(leadBulge("E+", "K1", "red")).toBe(leadBulge("E+", "K1", "red"));
+    for (const [from, to, colour] of ON_MAIN) {
+      expect(Math.abs(leadBulge(from, to, colour))).toBeLessThanOrEqual(1);
+    }
+    expect(leadBulge("E+", "K1", "red")).not.toBe(leadBulge("E+", "K1", "black"));
+  });
+});
+
 describe("what a cable rests on, unchanged by the asset pass", () => {
   // The footprints' tops, from the Wave 1 table in LeadParts.ts (cells 4.6 cm, key 2.4, a meter's
   // case 11.8 and its nut ledge 1.2, box 6, wire board 2, tray 1.4); floorAt(x, z) is the highest
@@ -322,6 +407,46 @@ describe("the terminal nut", () => {
       }
     }
   });
+
+  it.each(TIERS)(
+    "shows no gap at the hex collar's foot, looked at from 41 degrees up on every side, on the %s tier",
+    (tier) => {
+      const EL = (41 * Math.PI) / 180;
+      const from = new THREE.Vector3();
+      const dir = new THREE.Vector3();
+      for (const cap of ["brass", "red"] as const) {
+        const g = makeNutGeometries(tier, cap, 9);
+        const geos = [g.base, g.knurl, ...(g.cap ? [g.cap] : [])];
+        // The washer's top: the plane its up-facing triangles lie in.
+        const pos = g.base.getAttribute("position");
+        const nor = g.base.getAttribute("normal");
+        let washerTop = 0;
+        for (let i = 0; i < pos.count; i++) {
+          if (nor.getY(i) > 0.99) washerTop = Math.max(washerTop, pos.getY(i));
+        }
+        expect(washerTop, "the washer has a top face").toBeGreaterThan(0.001);
+        // Every ray that lands on that plane between the stud and the washer's rim (9.5 mm, inside
+        // the low tier's eight-sided washer) meets the nut's front first. A hex collar's flats are
+        // nearer its axis than its corners, over a chamfer that faces down, so a washer ring that
+        // stops short of them leaves a crescent at the foot, six of them round the nut.
+        const through: string[] = [];
+        for (let v = 0; v < 12; v++) {
+          const view = (v / 12) * Math.PI * 2;
+          dir.set(-Math.cos(EL) * Math.sin(view), -Math.sin(EL), -Math.cos(EL) * Math.cos(view));
+          for (const rho of [0.005, 0.0065, 0.0075, 0.0082, 0.009, 0.0095]) {
+            for (let k = 0; k < 24; k++) {
+              const a = (k / 24) * Math.PI * 2;
+              from.set(rho * Math.sin(a), washerTop, rho * Math.cos(a)).addScaledVector(dir, -0.06);
+              if (!meetsFront(geos, from, dir)) {
+                through.push(`${cap}, view ${v * 30} deg, ${(rho * 1000).toFixed(1)} mm out`);
+              }
+            }
+          }
+        }
+        expect(through, `${cap}: rays that see through to the washer's inside`).toEqual([]);
+      }
+    },
+  );
 
   it("costs at most 1.3 times the nut it replaces (312 triangles on high, 180 on low)", () => {
     // Counted from the Wave 1 nut: washer, hex and neck cylinders, a knurled knob and a hole disc.

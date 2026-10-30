@@ -70,6 +70,19 @@ export function jitterColour(hex: string, rng: () => number, amount = 0.03): THR
 }
 
 /**
+ * A lead's sideways bulge, -1 to 1: fixed by its two ends and its colour, so two leads between the
+ * same neighbours part. It is the seventh draw of the lead's seeded stream, the draw it was when
+ * the cable, the plug and the pin each took two for their colours first. It is kept here, apart
+ * from however many draws the colours take, so a restyled lead is never re-routed: the sag of each
+ * lead is on the approved golden frame, and up to 11 cm of it moves with this number.
+ */
+export function leadBulge(from: string, to: string, colour: LeadColour): number {
+  const rng = seeded(hashString(`lead-${from}-${to}-${colour}`));
+  for (let i = 0; i < 6; i++) rng();
+  return (rng() - 0.5) * 2;
+}
+
+/**
  * Fills a disc of radius `r` at (x, y) in the current fill style, and again across each edge of
  * the `size` square it touches, so a canvas tile of speckle stays seamless when it repeats.
  */
@@ -381,7 +394,8 @@ export function makePlugGeometries(quality: QualityTier): {
   const collarTop = 0.0042;
   const gripTop = 0.0268;
   // Fine ribs (20 teeth, a shallow 7% root): the ink pass draws each crease as a hatch line.
-  const grip = knurledDisc(PLUG_RADIUS_M, gripTop - collarTop, low ? 8 : 20, 0.93);
+  const gripRoot = 0.93;
+  const grip = knurledDisc(PLUG_RADIUS_M, gripTop - collarTop, low ? 8 : 20, gripRoot);
   grip.translate(0, collarTop, 0);
   // The boot: a lip, then two stepped rings, tapering to a rounded neck the cable leaves from.
   const boot = revolve(
@@ -430,19 +444,18 @@ export function makePlugGeometries(quality: QualityTier): {
           ],
       pinSeg,
     ),
-    // The collar: a brass band, chamfered at the top, where the sleeve meets the nut. It is the
-    // gold the reference's plugs show, left in view when the plug is seated.
+    // The collar: a brass band where the sleeve meets the nut, the gold the reference's plugs show,
+    // left in view when the plug is seated. It also closes the plug's open end: a ring across the
+    // foot, from just inside the pin's shank (so no crack shows beside it) out to the band, and a
+    // shoulder under the grip, out to the roots of its ribs, because the grip has no underside of
+    // its own. A plug lying in the tray, end on to her, would otherwise show its hollow inside.
     revolve(
-      low
-        ? [
-            [r(0.0054), 0],
-            [r(0.0054), collarTop],
-          ]
-        : [
-            [r(0.0054), 0],
-            [r(0.0054), collarTop - 0.0005],
-            [r(0.0049), collarTop],
-          ],
+      [
+        [0.002, 0],
+        [r(0.0054), 0],
+        [r(0.0054), collarTop],
+        [PLUG_RADIUS_M * gripRoot, collarTop],
+      ],
       seg,
     ),
   ]);

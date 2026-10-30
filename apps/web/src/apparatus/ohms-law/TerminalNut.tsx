@@ -190,12 +190,15 @@ export function makeNutGeometries(quality: QualityTier, cap: NutCap, seed = 0): 
   const low = quality === "low";
   const rnd = seeded(seed);
   const turn = rnd() * Math.PI;
+  // The washer's top runs right in to the stud, under the hex collar. The hex's flats sit nearer
+  // the axis than its corners, above a chamfer that faces down, so a ring that stopped short of
+  // them would leave a see-through crescent at the hex's foot, six of them round the nut.
   const washer = revolve(
     [
       [WASHER_R, 0],
       [WASHER_R, 0.0016],
       [WASHER_R - 0.0009, WASHER_TOP],
-      [HEX_R - 0.0005, WASHER_TOP],
+      [STUD_R, WASHER_TOP],
     ],
     low ? 8 : 20,
   );
