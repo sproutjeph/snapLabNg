@@ -3,6 +3,7 @@ import { join } from "node:path";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { INK_IDS } from "../../apparatus/ohms-law/layout";
+import { playerCovered } from "../player/stages";
 import type { OhmsLawVisualState } from "../types";
 import {
   benchBusy,
@@ -40,16 +41,23 @@ function visual(over: Partial<OhmsLawVisualState> = {}): OhmsLawVisualState {
 }
 
 describe("the stage's chrome", () => {
-  // The free area (width minus left and right, height minus top and bottom) over the screen.
-  // Today's shell covers 59% of a phone (guide peek) and 47% of a laptop (the guide card); 2a-shell
-  // (Gemini) changes those values so only the always-on chrome counts. Turn this into a real test
-  // when 2a-shell merges:
-  //   const c = playerCovered(390, 844, { guide: "peek" });
-  //   expect(((390 - c.left - c.right) * (844 - c.top - c.bottom)) / (390 * 844)).toBeGreaterThanOrEqual(0.7);
-  //   and the same at 1728 × 907 with 0.85.
-  it.todo(
-    "playerCovered leaves at least 70% of a 390×844 phone and 85% of a 1728×907 laptop (waits on 2a-shell)",
-  );
+  // The free area (width minus left and right, height minus top and bottom) over the screen. Since
+  // the pop-up shell (PR #98) only the always-on chrome counts: pop-ups overlay the stage.
+  const freeShare = (w: number, h: number, c: ReturnType<typeof playerCovered>) =>
+    ((w - c.left - c.right) * (h - c.top - c.bottom)) / (w * h);
+
+  it("playerCovered leaves at least 70% of a 390×844 phone and 85% of a 1728×907 laptop", () => {
+    for (const guide of ["peek", "open"] as const) {
+      for (const caption of [false, true]) {
+        expect(
+          freeShare(390, 844, playerCovered(390, 844, { guide, caption })),
+        ).toBeGreaterThanOrEqual(0.7);
+        expect(
+          freeShare(1728, 907, playerCovered(1728, 907, { guide, caption })),
+        ).toBeGreaterThanOrEqual(0.85);
+      }
+    }
+  });
 });
 
 describe("DeskProps is gone", () => {
