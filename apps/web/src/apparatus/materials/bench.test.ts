@@ -30,15 +30,15 @@ import { KIT_SEEDS } from "./cache";
 
 // The nuts' feet in the world on main before the asset pass: the layout position of each part
 // plus where its nut stood (the terminal dump of ?kit=ohms-law&dump=1 less TerminalNut's 23.7 mm),
-// each moved with its part to layout v3 (layout.ts, Oct 30), so a nut's place on its part is as it
-// was.
+// each moved with its part to layout v3 and then to layout v4 (layout.ts, Oct 30, the beauty
+// pass's bench), so a nut's place on its part is as it was.
 const BASELINE_FEET: Record<string, readonly [number, number, number]> = {
-  "E+": [0.3318, 0.046, -0.06],
-  "E-": [0.4682, 0.046, -0.06],
-  K1: [0.031, 0.024, -0.06],
-  K2: [-0.031, 0.024, -0.06],
-  R1: [-0.25, 0.066, -0.066],
-  R2: [-0.51, 0.066, -0.066],
+  "E+": [0.3318, 0.046, 0.115],
+  "E-": [0.4682, 0.046, 0.115],
+  K1: [0.161, 0.024, 0.115],
+  K2: [0.099, 0.024, 0.115],
+  R1: [-0.2, 0.066, 0.115],
+  R2: [-0.46, 0.066, 0.115],
 };
 
 const feet = (

@@ -9,6 +9,7 @@ import {
   benchBusy,
   createPoseMemo,
   createStageLoop,
+  identityKey,
   poseChanged,
   stageFocusIds,
 } from "./frameloop";
@@ -70,6 +71,17 @@ describe("DeskProps is gone", () => {
   });
 });
 
+describe("the stage's per-run keys", () => {
+  it("gives the same object the same key and a new director or bench a new one, so a kept Canvas starts each run afresh", () => {
+    const a = {};
+    const b = {};
+    expect(identityKey(a)).toBe(identityKey(a));
+    expect(identityKey(b)).not.toBe(identityKey(a));
+    expect(identityKey(null)).toBe(0);
+    expect(identityKey(a)).toBeGreaterThan(0);
+  });
+});
+
 describe("the stage's focus", () => {
   it("keeps every terminal nut (100+) and every lead (140+) in focus with any part", () => {
     const ids = stageFocusIds(["ammeter"]);
@@ -78,6 +90,11 @@ describe("the stage's focus", () => {
     for (let i = 0; i < 20; i++) expect(ids?.has(INK_IDS.leadBase + i)).toBe(true);
     expect(ids?.has(INK_IDS.ammeter)).toBe(true);
     expect(ids?.has(INK_IDS.box)).toBe(false);
+  });
+
+  it("keeps the nut caps' own ink ids (nutBase + 20 + terminal index) in focus too", () => {
+    const ids = stageFocusIds(["box"]);
+    for (let i = 0; i < 12; i++) expect(ids?.has(INK_IDS.nutBase + 20 + i)).toBe(true);
   });
 
   it("puts everything in focus when no part is named", () => {

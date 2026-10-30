@@ -5,14 +5,16 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { routeCable } from "../../apparatus/ohms-law/Lead";
+import { ROUTE_POINTS, routeCable } from "../../apparatus/ohms-law/Lead";
 import { BENCH_FOOTPRINTS, CABLE_SEAT_M } from "../../apparatus/ohms-law/LeadParts";
+import { LEAD_REST, NUT_SEAT_M, nutFoot } from "../../apparatus/ohms-law/layout";
 import { fitShot, LOOK_DISTANCE_M, LOOK_ELEVATION_DEG } from "../../scene/look/LookCamera";
 import { OHMS_LAW_LESSON } from "../lessons/ohms-law/lesson";
 import { OHMS_LAW_SCRIPT } from "../lessons/ohms-law/script";
 import { emptyOhmsLawRecord } from "../readings/record";
 import { createDirector } from "../script/createDirector";
 import {
+  actDurationS,
   BEAT_GAP_S,
   ENTER_DROP_S,
   ENTER_STAGGER_S,
@@ -29,22 +31,28 @@ import { bigHitRadius, HIT_NEIGHBOUR_SHARE } from "../wiring/TerminalMarks";
 import { watchWrongTaps } from "../wiring/wrongTap";
 import { BenchTools } from "./BenchTools";
 import {
+  actTaps,
   DROP_HEIGHT_M,
   type DropPose,
   dropAt,
   dropStartS,
   ENTRANCE_DELAY_S,
+  ENTRANCE_MAX_S,
+  entranceEndS,
   entranceOrder,
+  fullEntranceEndS,
   inOutCubic,
   LEAD_DRAW_S,
   leadBeatS,
+  leadDropStartS,
   MAX_TWEEN_S,
+  PLUG_TAP_AT,
   STAGE_TWEENS,
   shakeAt,
   springStep,
 } from "./motion";
 import { BENCH_DRAG_DEG, BENCH_SHOT, spanAtAzimuth } from "./shots";
-import { chipSpecAt, DROP_SLOTS, stageBusy } from "./stageMotion";
+import { chipSpecAt, createEntrance, DROP_SLOTS, entranceFrame, stageBusy } from "./stageMotion";
 
 // Watch and Practise motion on the live stage (docs/plans/wave-2-lean.md, 2b-motion). No textbook
 // source: BC101's measured pace ("What we learned" 3) and screen choices, not science.
@@ -95,6 +103,76 @@ function lowestPx(slot: string, cam: THREE.Camera, height: number): number {
   return low;
 }
 
+describe("the leads' entrance and the plug's tap (docs/plans/beauty-pass.md B2)", () => {
+  it("leads drop one by one after the parts, and the entrance ends within 7 s", () => {
+    const parts = DROP_SLOTS.length;
+    const leads = LEAD_REST.length;
+    // The first lead leaves the sky only once the last part has landed.
+    expect(leadDropStartS(0, parts)).toBeGreaterThanOrEqual(entranceEndS(parts));
+    for (let j = 1; j < leads; j++) {
+      // One by one: each starts after the one before, never with it.
+      expect(leadDropStartS(j, parts) - leadDropStartS(j - 1, parts)).toBeGreaterThan(0.1);
+    }
+    expect(fullEntranceEndS(parts, leads)).toBeLessThanOrEqual(ENTRANCE_MAX_S);
+    expect(ENTRANCE_MAX_S).toBe(7);
+  });
+
+  it("keeps the enter action going until the last lead lands, so muted Watch drops every lead", () => {
+    // With no voice to wait on, the enter beat lasts its action plus the hold (BEAT_GAP_S). The
+    // drops start ENTRANCE_DELAY_S into the beat; the action covers everything after that.
+    const enter = OHMS_LAW_SCRIPT.beats[0]?.act;
+    expect(enter?.kind).toBe("enter");
+    if (enter?.kind !== "enter") return;
+    const parts = enter.parts.length;
+    const leads = LEAD_REST.length;
+    expect(actDurationS(enter)).toBeGreaterThanOrEqual(
+      fullEntranceEndS(parts, leads) - ENTRANCE_DELAY_S,
+    );
+    // Within the 7 s entrance, hold included.
+    expect(actDurationS(enter) + BEAT_GAP_S).toBeLessThanOrEqual(ENTRANCE_MAX_S);
+  });
+
+  it("under the paper, lays the leads only once every part is down, then lands them all", () => {
+    const e = createEntrance();
+    e.on = true;
+    const parts = Object.fromEntries(DROP_SLOTS.map((s) => [s, { heightM: 0, k: 0 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      DropPose
+    >;
+    const leads: DropPose[] = LEAD_REST.map(() => ({ heightM: 0, k: 0 }));
+    const order = entranceOrder(DROP_SLOTS);
+    let t = 0;
+    while (t < entranceEndS(DROP_SLOTS.length) - 0.05) {
+      entranceFrame(e, order, 1 / 60, parts, leads);
+      t += 1 / 60;
+      expect(leads.every((l) => l.k === 0)).toBe(true);
+    }
+    for (let i = 0; i < 60 * 8; i++) entranceFrame(e, order, 1 / 60, parts, leads);
+    expect(leads.every((l) => l.k === 1)).toBe(true);
+    expect(e.landed).toBe(true);
+  });
+
+  it("a plug beat taps the nib once, as the plug moves; the key once; a lead twice", () => {
+    const taps = (kind: string) => {
+      let n = 0;
+      let last = 0;
+      for (let i = 0; i <= 100; i++) {
+        const due = actTaps(kind, i / 100);
+        if (due > last) n += due - last;
+        last = due;
+      }
+      return n;
+    };
+    expect(taps("plug")).toBe(1);
+    expect(taps("key")).toBe(1);
+    expect(taps("lead")).toBe(2);
+    expect(taps("loupe")).toBe(0);
+    // The plug's tap comes after the nib has travelled to the box.
+    expect(actTaps("plug", PLUG_TAP_AT - 0.01)).toBe(0);
+    expect(actTaps("plug", PLUG_TAP_AT)).toBe(1);
+  });
+});
+
 describe("the entrance", () => {
   it("the entrance drops parts lowest on screen first, 0.10 s apart", () => {
     const order = entranceOrder(DROP_SLOTS);
@@ -106,9 +184,10 @@ describe("the entrance", () => {
     for (let i = 1; i < lows.length; i++) {
       expect(lows[i]).toBeLessThanOrEqual((lows[i - 1] ?? 0) + 1e-6);
     }
-    // The meters stand in the front row (layout v3): they drop first, the wire board last.
-    expect(order.slice(0, 2).sort()).toEqual(["ammeter", "voltmeter"]);
-    expect(order[order.length - 1]).toBe("wire");
+    // The series row stands nearest her (layout v4): its four parts drop first, then the wire
+    // board, and the voltmeter behind it last.
+    expect(order.slice(0, 4).sort()).toEqual(["ammeter", "box", "cells", "key"]);
+    expect(order.slice(4)).toEqual(["wire", "voltmeter"]);
     // 0.9 s after Watch starts, then 0.10 s apart.
     expect(dropStartS(0)).toBeCloseTo(ENTRANCE_DELAY_S, 9);
     expect(ENTRANCE_DELAY_S).toBe(0.9);
@@ -390,45 +469,43 @@ describe("the callout chip after a seek", () => {
 });
 
 describe("the leads round the meters", () => {
-  // Where each nut's top is, metres (kitParams.test.ts NUT_M, from ?kit=ohms-law&dump=1).
-  const NUT: Readonly<Record<string, readonly [number, number, number]>> = {
-    "E+": [0.3318, 0.0697, -0.06],
-    "E-": [0.4682, 0.0697, -0.06],
-    K1: [0.031, 0.0477, -0.06],
-    K2: [-0.031, 0.0477, -0.06],
-    "A+": [-0.115, 0.0357, 0.185],
-    "A-": [-0.185, 0.0357, 0.185],
-    "V+": [0.185, 0.0357, 0.185],
-    "V-": [0.115, 0.0357, 0.185],
-    R1: [-0.25, 0.0897, -0.066],
-    R2: [-0.51, 0.0897, -0.066],
-    X: [-0.256, 0.0577, -0.265],
-    Y: [0.2803, 0.0577, -0.265],
-  };
+  // Where each nut's top is: layout v4's own account of its nuts (layout.ts nutFoot), raised to
+  // where the terminal registry seats a plug (TerminalNut NUT_TOP_M), for the wire at the left and
+  // right ends of the rule and in the middle (the engine lays it from 1 to 99 cm).
+  const WIRES = [
+    { startCm: 1, lengthCm: 46 },
+    { startCm: 25, lengthCm: 60 },
+    { startCm: 53, lengthCm: 46 },
+  ];
   const cases = BENCH_FOOTPRINTS.filter(
     (f) => (f.slot === "ammeter" || f.slot === "voltmeter") && f.top > 0.05,
   );
-  const seat = (id: string) => {
-    const [x, y, z] = NUT[id] ?? [0, 0, 0];
-    return new THREE.Vector3(x, y + CABLE_SEAT_M, z);
-  };
 
   it("never lays a diagram lead over a meter's case (its dial), whichever end she taps first", () => {
-    for (const [a, b] of DIAGRAM_LEADS) {
-      for (const [from, to] of [
-        [a, b],
-        [b, a],
-      ] as const) {
-        for (const bulge of [-1, 0, 1]) {
-          const pts = Array.from({ length: 11 }, () => new THREE.Vector3());
-          routeCable(pts, seat(from), seat(to), bulge);
-          expect(pts[0]?.distanceTo(seat(from)), `${from}`).toBeCloseTo(0, 9);
-          expect(pts[10]?.distanceTo(seat(to)), `${to}`).toBeCloseTo(0, 9);
-          const path = new THREE.CatmullRomCurve3(pts, false, "centripetal").getPoints(200);
-          for (const p of path) {
-            for (const f of cases) {
-              const inside = Math.abs(p.x - f.cx) < f.hx && Math.abs(p.z - f.cz) < f.hz;
-              expect(inside, `${from}→${to} bulge ${bulge} over the ${f.slot}`).toBe(false);
+    for (const wire of WIRES) {
+      const seat = (id: TerminalId) => {
+        const [x, y, z] = nutFoot(id, wire);
+        return new THREE.Vector3(x, y + NUT_SEAT_M + CABLE_SEAT_M, z);
+      };
+      for (const [a, b] of DIAGRAM_LEADS) {
+        for (const [from, to] of [
+          [a, b],
+          [b, a],
+        ] as const) {
+          for (const bulge of [-1, 0, 1]) {
+            const routed = Array.from({ length: ROUTE_POINTS }, () => new THREE.Vector3());
+            const plain = Array.from({ length: 11 }, () => new THREE.Vector3());
+            const pts = routeCable(routed, plain, from, to, seat(from), seat(to), bulge)
+              ? routed
+              : plain;
+            expect(pts[0]?.distanceTo(seat(from)), `${from}`).toBeCloseTo(0, 9);
+            expect(pts[pts.length - 1]?.distanceTo(seat(to)), `${to}`).toBeCloseTo(0, 9);
+            const path = new THREE.CatmullRomCurve3(pts, false, "centripetal").getPoints(200);
+            for (const p of path) {
+              for (const f of cases) {
+                const inside = Math.abs(p.x - f.cx) < f.hx && Math.abs(p.z - f.cz) < f.hz;
+                expect(inside, `${from}→${to} bulge ${bulge} over the ${f.slot}`).toBe(false);
+              }
             }
           }
         }

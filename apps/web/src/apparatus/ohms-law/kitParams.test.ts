@@ -267,20 +267,20 @@ describe("what each subject mounts", () => {
     for (const [part, ids] of Object.entries(PART_TERMINALS)) {
       for (const id of ids) {
         const p = plan(`?part=terminal&id=${encodeURIComponent(id)}`);
-        // The key's nuts, behind the gap between the meters, lead back over the wire board.
-        const lyingOn = id === "K1" || id === "K2" ? ["wire"] : [];
+        // The voltmeter's nuts, facing the board 5 cm away (layout v4), lead over the wire board.
+        const lyingOn = id === "V+" || id === "V-" ? ["wire"] : [];
         expect(shown(p), id).toEqual([part, ...lyingOn].sort());
         expect(p.macro).toBe(id);
       }
     }
   });
 
-  it("fades the wire board a key nut's cable lies on, and keeps the nut and its lead in full ink", () => {
-    for (const id of ["K1", "K2"] as const) {
+  it("fades the wire board a voltmeter nut's cable lies on, and keeps the nut and its lead in full ink", () => {
+    for (const id of ["V+", "V-"] as const) {
       const p = plan(`?part=terminal&id=${encodeURIComponent(id)}`);
       expect(p.focusIds, id).not.toBeNull();
-      for (let i = 0; i < 10; i++) expect(p.focusIds?.has(INK_IDS.key + i), id).toBe(true);
-      for (const nut of ["K1", "K2"] as const) {
+      for (let i = 0; i < 10; i++) expect(p.focusIds?.has(INK_IDS.voltmeter + i), id).toBe(true);
+      for (const nut of ["V+", "V-"] as const) {
         expect(p.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf(nut)), `${id}: ${nut}`).toBe(
           true,
         );
@@ -295,7 +295,7 @@ describe("what each subject mounts", () => {
       }
     }
     // Every other terminal shows its part alone, all in ink.
-    for (const id of TERMINAL_IDS.filter((t) => t !== "K1" && t !== "K2")) {
+    for (const id of TERMINAL_IDS.filter((t) => t !== "V+" && t !== "V-")) {
       expect(plan(`?part=terminal&id=${encodeURIComponent(id)}`).focusIds, id).toBeNull();
     }
   });
@@ -450,22 +450,22 @@ describe("the shot", () => {
     const macro = planKit(params("?part=terminal")).bounds;
 
     // Where each nut is, in metres (x to her right, y up, z toward her): ?kit=ohms-law&dump=1 on
-    // the seam's commit, to 0.1 mm, each moved with its part to layout v3 (layout.ts, Oct 30; a
-    // nut's place on its part is unchanged). A restyle may move a nut by 2 mm
-    // (docs/plans/asset-pass.md, C8); nothing below is as tight as that.
+    // the seam's commit, to 0.1 mm, each moved with its part to layout v3 and then to layout v4
+    // (layout.ts, Oct 30, the beauty pass's bench; a nut's place on its part is unchanged). A
+    // restyle may move a nut by 2 mm (docs/plans/asset-pass.md, C8); nothing below is as tight.
     const NUT_M: Readonly<Record<TerminalId, readonly [number, number, number]>> = {
-      "E+": [0.3318, 0.0697, -0.06],
-      "E-": [0.4682, 0.0697, -0.06],
-      K1: [0.031, 0.0477, -0.06],
-      K2: [-0.031, 0.0477, -0.06],
-      "A+": [-0.115, 0.0357, 0.185],
-      "A-": [-0.185, 0.0357, 0.185],
-      "V+": [0.185, 0.0357, 0.185],
-      "V-": [0.115, 0.0357, 0.185],
-      R1: [-0.25, 0.0897, -0.066],
-      R2: [-0.51, 0.0897, -0.066],
-      X: [-0.256, 0.0577, -0.265],
-      Y: [0.2803, 0.0577, -0.265],
+      "E+": [0.3318, 0.0697, 0.115],
+      "E-": [0.4682, 0.0697, 0.115],
+      K1: [0.161, 0.0477, 0.115],
+      K2: [0.099, 0.0477, 0.115],
+      "A+": [-0.045, 0.0357, 0.115],
+      "A-": [-0.115, 0.0357, 0.115],
+      "V+": [0.185, 0.0357, -0.335],
+      "V-": [0.115, 0.0357, -0.335],
+      R1: [-0.2, 0.0897, 0.115],
+      R2: [-0.46, 0.0897, 0.115],
+      X: [-0.256, 0.0577, -0.21],
+      Y: [0.2803, 0.0577, -0.21],
     };
     const free = new THREE.Vector3();
 
@@ -668,10 +668,10 @@ describe("the shot", () => {
     it("draws a part besides its own only for the two nuts whose cable a hidden part would lift", () => {
       for (const id of TERMINAL_IDS) {
         const ownAlone = hiddenLift(id, freeEnd(id));
-        if (id === "K1" || id === "K2") {
+        if (id === "V+" || id === "V-") {
           // Across the wire board, hidden, the cable would float 1 to 2 cm over bare paper.
           expect(ownAlone.lift, id).toBeGreaterThan(0.01);
-          expect(drawnFor(id), id).toEqual(["key", "wire"]);
+          expect(drawnFor(id), id).toEqual(["voltmeter", "wire"]);
         } else {
           expect(ownAlone.lift, ownAlone.at).toBeLessThan(0.001);
           expect(drawnFor(id), id).toEqual([TERMINAL_PART[id]]);
@@ -691,12 +691,13 @@ describe("the shot", () => {
       }
     });
 
-    it("would be lifted 1 to 2 cm by a front-row meter if the key's leads ran straight toward her", () => {
-      // Layout v3: the voltmeter stands in front of the key, so the plain heading (toward her,
-      // 35 cm) is lifted, and the key's nuts lead back over the board instead.
-      for (const id of ["K1", "K2"] as const) {
+    it("would be lifted 1 to 2 cm by the board if the voltmeter's leads ran to her right along its back", () => {
+      // Layout v4: the voltmeter's nuts face the board's back 5 cm away, narrower than a cable's
+      // bulge band, so a lead along the board (to her right, 35 cm) is lifted onto it; the
+      // voltmeter's nuts lead over the board (drawn) toward her instead.
+      for (const id of ["V+", "V-"] as const) {
         const [x, , z] = NUT_M[id];
-        const end = new THREE.Vector3(x, 0, z + 0.35);
+        const end = new THREE.Vector3(x + 0.35, 0, z);
         expect(hiddenLift(id, end).lift, id).toBeGreaterThan(0.01);
       }
     });

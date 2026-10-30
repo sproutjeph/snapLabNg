@@ -1,6 +1,7 @@
+import { cmToX } from "../../apparatus/meter-bridge/dimensions";
 import { slotBounds } from "../../apparatus/ohms-law/kitParams";
-import { BENCH_FOOTPRINTS } from "../../apparatus/ohms-law/LeadParts";
-import type { BenchSlot } from "../../apparatus/ohms-law/layout";
+import { BENCH_FOOTPRINTS, PIN_LENGTH_M, PLUG_RADIUS_M } from "../../apparatus/ohms-law/LeadParts";
+import { type BenchSlot, LEAD_REST, OHMS_LAW_LAYOUT } from "../../apparatus/ohms-law/layout";
 import {
   type Frustum,
   fitShot,
@@ -51,10 +52,52 @@ export const SHOT_FOR_POSE: Readonly<
   phone: { bench: "bench", connect: "bench", wire: "board", readings: "meters", box: "boxKey" },
 };
 
-/** The shot for a step's pose; `portrait` is LookCamera's isPortrait for the free area. */
-export function shotForPose(pose: string | undefined, portrait: boolean): StageShotName {
-  return SHOT_FOR_POSE[portrait ? "phone" : "laptop"][pose ?? "bench"] ?? "bench";
+/**
+ * In Watch the actor reads a meter through the loupe (learn/readings/ReadingLoupe: the close-up
+ * camera flies in from the shot and back to it), so a reading takes no shot of its own: the stage
+ * holds the shot the step had (the bench on a laptop, the box and key, which hold both meters, on
+ * a phone), and the loupe is the only camera move (docs/plans/beauty-pass.md B2 item 9).
+ */
+export const WATCH_READINGS_SHOT: Readonly<Record<"laptop" | "phone", StageShotName>> = {
+  laptop: "bench",
+  phone: "boxKey",
+};
+
+/**
+ * The shot for a step's pose; `portrait` is LookCamera's isPortrait for the free area, and
+ * `watch` is true on the demonstration, where readings use the loupe (WATCH_READINGS_SHOT).
+ */
+export function shotForPose(
+  pose: string | undefined,
+  portrait: boolean,
+  watch = false,
+): StageShotName {
+  const screen = portrait ? "phone" : "laptop";
+  if (watch && pose === "readings") return WATCH_READINGS_SHOT[screen];
+  return SHOT_FOR_POSE[screen][pose ?? "bench"] ?? "bench";
 }
+
+/**
+ * Where the leads lie before they are connected (layout.ts LEAD_REST), plugs and pins included,
+ * so every shot of the whole bench holds them.
+ */
+export function restBounds(): { x0: number; x1: number; z0: number; z1: number; h: number } {
+  const reach = PIN_LENGTH_M + 0.002;
+  return {
+    x0: Math.min(...LEAD_REST.map((r) => r.x)) - PLUG_RADIUS_M,
+    x1: Math.max(...LEAD_REST.map((r) => r.x)) + PLUG_RADIUS_M,
+    z0: Math.min(...LEAD_REST.map((r) => r.z0)) - reach,
+    z1: Math.max(...LEAD_REST.map((r) => r.z1)) + reach,
+    h: 2 * PLUG_RADIUS_M,
+  };
+}
+
+/**
+ * How far either way of the board's middle a wire end, X or Y, can stand: the engine lays the wire
+ * anywhere from 1 cm to 99 cm on the 100 cm rule (packages/engine/src/ohms-law/params.ts,
+ * RULE_MARGIN_CM), and the nut's washer is 1.15 cm round (TerminalNut.tsx).
+ */
+const WIRE_END_REACH_M = Math.abs(cmToX(1)) + 0.0115;
 
 /** What a close shot must hold: these parts' footprints, this much above their tops, from here. */
 interface CloseFrame {
@@ -92,6 +135,12 @@ function benchShot(): LookShot {
     z0 = Math.min(z0, f.cz - f.hz);
     z1 = Math.max(z1, f.cz + f.hz);
   }
+  // The leads lying in front of the row are apparatus too.
+  const r = restBounds();
+  x0 = Math.min(x0, r.x0);
+  x1 = Math.max(x1, r.x1);
+  z0 = Math.min(z0, r.z0);
+  z1 = Math.max(z1, r.z1);
   // A shot fits a patch spanM wide and spanM × SHOT_DEPTH_RATIO deep: wide enough for both.
   const spanM = Math.max(x1 - x0, (z1 - z0) / SHOT_DEPTH_RATIO) + BENCH_MARGIN_M;
   return {
@@ -168,22 +217,24 @@ const PHONE_BENCH_SLOTS: readonly BenchSlot[] = [
 ];
 
 /**
- * The bench on a phone held upright, where the whole bench is a thin strip: every part, but the
- * wire board's ends are cropped to the width of the other parts (the box and the cells hold the
- * outermost terminals, R2 and E−, so all twelve stay in), and the bench is as big as the free area
- * allows rather than at the laptop's fixed span.
+ * The bench on a phone held upright, where the whole bench is a strip: every part and the leads
+ * lying in front, but the wire board's ends are cropped to the width of the other parts and of the
+ * farthest the wire's ends X and Y can stand (WIRE_END_REACH_M), so all twelve terminals stay in,
+ * and the bench is as big as the free area allows rather than at the laptop's fixed span.
  */
 export function phoneBenchCorners(): Array<[number, number, number]> {
   const others = PHONE_BENCH_SLOTS.filter((s) => s !== "wire").map((s) => slotBounds(s, 0.025));
-  const xMin = Math.min(...others.map((b) => b.x0)) - PAPER_M;
-  const xMax = Math.max(...others.map((b) => b.x1)) + PAPER_M;
-  return PHONE_BENCH_SLOTS.flatMap((slot) => {
-    const b = slotBounds(slot, 0.025);
+  const r = restBounds();
+  const wx = OHMS_LAW_LAYOUT.wire.position[0];
+  const xMin = Math.min(...others.map((b) => b.x0), r.x0, wx - WIRE_END_REACH_M) - PAPER_M;
+  const xMax = Math.max(...others.map((b) => b.x1), r.x1, wx + WIRE_END_REACH_M) + PAPER_M;
+  const box = (b: { x0: number; x1: number; z0: number; z1: number; h: number }) => {
     const xs = [Math.max(xMin, b.x0 - PAPER_M), Math.min(xMax, b.x1 + PAPER_M)];
     const zs = [b.z0 - PAPER_M, b.z1 + PAPER_M];
     const ys = [0, b.h];
     return xs.flatMap((x) => ys.flatMap((y) => zs.map((z): [number, number, number] => [x, y, z])));
-  });
+  };
+  return [...PHONE_BENCH_SLOTS.flatMap((slot) => box(slotBounds(slot, 0.025))), ...box(r)];
 }
 
 function fittedShot(
@@ -273,6 +324,24 @@ export function spanAtAzimuth(
 }
 
 /**
+ * The whole bench on a wide screen: every part (the tray stands behind, out of the shot) and the
+ * leads lying in front, with paper round them. Layout v4 is deeper than it is wide on screen, so
+ * BENCH_SHOT's square-ish patch would leave the parts small; this fits what is there.
+ */
+export function benchCorners(): Array<[number, number, number]> {
+  const box = (b: { x0: number; x1: number; z0: number; z1: number; h: number }) => {
+    const xs = [b.x0 - PAPER_M, b.x1 + PAPER_M];
+    const zs = [b.z0 - PAPER_M, b.z1 + PAPER_M];
+    const ys = [0, b.h];
+    return xs.flatMap((x) => ys.flatMap((y) => zs.map((z): [number, number, number] => [x, y, z])));
+  };
+  return [
+    ...PHONE_BENCH_SLOTS.flatMap((slot) => box(slotBounds(slot, 0.025))),
+    ...box(restBounds()),
+  ];
+}
+
+/**
  * The named shot for a canvas this size under these cards. `portrait` (LookCamera's isPortrait for
  * the free area: a phone held upright) crops the bench shot's sides (phoneBenchCorners).
  */
@@ -284,6 +353,8 @@ export function stageShot(
   portrait = false,
 ): LookShot {
   if (name !== "bench") return closeShot(name, covered, width, height);
-  if (!portrait) return BENCH_SHOT;
+  if (!portrait) {
+    return fittedShot("bench", benchCorners(), STAGE_AZIMUTH_DEG, covered, width, height);
+  }
   return fittedShot("bench", phoneBenchCorners(), STAGE_AZIMUTH_DEG, covered, width, height);
 }
