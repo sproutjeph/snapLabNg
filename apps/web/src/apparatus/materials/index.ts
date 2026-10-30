@@ -1,12 +1,15 @@
 // The apparatus materials kit: seeded textures, matte materials and bevelled boxes.
 
-export { latheOf, offsetUV, projectUVPerTriangle, scaleUV } from "./benchGeometry";
+export { helixTube, latheOf, offsetUV, projectUVPerTriangle, scaleUV } from "./benchGeometry";
 export {
   BOX_NUTS,
   boxCoilLabels,
   boxStripPlaces,
   boxStripText,
+  CELL_SPRING,
   CELLS_NUTS,
+  cellSpringSteps,
+  cellSpringTriangles,
   KEY_NUTS,
   OHM,
   type Vec3,
@@ -15,11 +18,20 @@ export {
   BENCH_SEEDS,
   BENCH_TILE_M,
   type BenchKind,
+  benchCellSteel,
+  benchCellWrapper,
   benchTag,
   benchTexture,
   brassBoldTexture,
+  CELL_BAND,
+  CELL_STEEL_SEED,
+  CELL_WRAPPER_SEED,
+  CELL_WRAPPER_TEXT,
+  cellSteelTexture,
+  cellWrapperTexture,
   eboniteTexture,
   mahoganyBoldTexture,
+  pineBoldTexture,
   type TagOptions,
   tagTexture,
   tileFbm,

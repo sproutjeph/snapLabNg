@@ -3,17 +3,29 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { plugPositions } from "../meter-bridge/dimensions";
 import { OHMS_LAW_LAYOUT } from "../ohms-law/layout";
-import { offsetUV, projectUVPerTriangle, scaleUV } from "./benchGeometry";
+import { helixTube, offsetUV, projectUVPerTriangle, scaleUV } from "./benchGeometry";
 import {
   BOX_NUTS,
   boxCoilLabels,
   boxStripPlaces,
   boxStripText,
+  CELL_SPRING,
   CELLS_NUTS,
+  cellSpringSteps,
+  cellSpringTriangles,
   KEY_NUTS,
   OHM,
 } from "./benchSpec";
-import { BENCH_SEEDS, tileFbm, tileNoise } from "./benchTextures";
+import {
+  BENCH_SEEDS,
+  BENCH_TILE_M,
+  CELL_BAND,
+  CELL_STEEL_SEED,
+  CELL_WRAPPER_SEED,
+  CELL_WRAPPER_TEXT,
+  tileFbm,
+  tileNoise,
+} from "./benchTextures";
 import { KIT_SEEDS } from "./cache";
 
 // The nuts' feet in the world on main before the asset pass: the layout position of each part
@@ -136,5 +148,65 @@ describe("the bench geometry helpers", () => {
       expect(Number.isFinite(uv.getY(i))).toBe(true);
     }
     flat.dispose();
+  });
+});
+
+describe("the cell holder's spring and wrapper", () => {
+  it("winds the springs with 8-sided wire or better on every tier, and builds what it counts", () => {
+    expect(CELL_SPRING.sides).toBeGreaterThanOrEqual(8);
+    for (const tier of ["low", "mid", "high"] as const) {
+      const geo = helixTube(
+        0.0105,
+        CELL_SPRING.turns[tier],
+        CELL_SPRING.coilR,
+        CELL_SPRING.wireR,
+        CELL_SPRING.perTurn[tier],
+        CELL_SPRING.sides,
+      );
+      const steps = cellSpringSteps(tier);
+      // A tube is two triangles for every step along it and every side round it.
+      expect((geo.index?.count ?? 0) / 3).toBe(steps * CELL_SPRING.sides * 2);
+      // The holder carries three of them.
+      expect(cellSpringTriangles(tier)).toBe(3 * ((geo.index?.count ?? 0) / 3));
+      geo.dispose();
+    }
+    // The lower tiers take fewer steps, never more.
+    expect(cellSpringTriangles("low")).toBeLessThanOrEqual(cellSpringTriangles("mid"));
+    expect(cellSpringTriangles("mid")).toBeLessThanOrEqual(cellSpringTriangles("high"));
+  });
+
+  it("keeps the coil inside its radius and its length, wire thickness apart", () => {
+    const len = 0.0105;
+    const geo = helixTube(len, 3.2, 0.0072, 0.0014, 14, 8);
+    geo.computeBoundingBox();
+    const box = geo.boundingBox ?? new THREE.Box3();
+    expect(box.min.x).toBeGreaterThanOrEqual(-0.0014 - 1e-9);
+    expect(box.max.x).toBeLessThanOrEqual(len + 0.0014 + 1e-9);
+    for (const v of [box.min.y, box.max.y, box.min.z, box.max.z]) {
+      expect(Math.abs(v)).toBeLessThanOrEqual(0.0072 + 0.0014 + 1e-9);
+    }
+    geo.dispose();
+  });
+
+  it("prints on a cell only its voltage rating, in a band that leaves the black body showing", () => {
+    expect(CELL_WRAPPER_TEXT).toBe("1.5 V");
+    const [from, to] = CELL_BAND;
+    expect(from).toBeGreaterThan(0.2);
+    expect(to).toBeLessThan(0.8);
+    expect(to - from).toBeGreaterThan(0.3);
+    expect(to - from).toBeLessThan(0.6);
+  });
+
+  it("gives the pine, the wrapper and the steel seeds of their own, and a tile for the pine", () => {
+    const all = [
+      ...Object.values(BENCH_SEEDS),
+      ...Object.values(KIT_SEEDS),
+      CELL_WRAPPER_SEED,
+      CELL_STEEL_SEED,
+    ];
+    expect(new Set(all).size).toBe(all.length);
+    expect(BENCH_SEEDS.pine).toBeDefined();
+    const [tu, tv] = BENCH_TILE_M.pine;
+    expect(tu).toBeGreaterThan(tv);
   });
 });

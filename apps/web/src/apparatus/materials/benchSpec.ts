@@ -49,3 +49,26 @@ export function boxStripPlaces(n: number, pitch: number): number[] {
   const total = n + 1;
   return Array.from({ length: total }, (_, i) => (i - (total - 1) / 2) * pitch);
 }
+
+/**
+ * The cell holder's three springs: round wire of 8 sides or more on every tier, a coil of
+ * `coilR` with wire of radius `wireR`, and how many turns and steps round each turn a tier takes
+ * (fewer on the lower ones, to stay within the triangle budget).
+ */
+export const CELL_SPRING = {
+  sides: 8,
+  coilR: 0.0072,
+  wireR: 0.0014,
+  turns: { low: 2.4, mid: 3.2, high: 3.2 },
+  perTurn: { low: 6, mid: 11, high: 14 },
+} as const;
+
+/** The steps along one spring at a tier. */
+export function cellSpringSteps(tier: "low" | "mid" | "high"): number {
+  return Math.round(CELL_SPRING.turns[tier] * CELL_SPRING.perTurn[tier]);
+}
+
+/** Triangles in the three springs a holder carries at a tier: two for every step and side. */
+export function cellSpringTriangles(tier: "low" | "mid" | "high"): number {
+  return 3 * cellSpringSteps(tier) * CELL_SPRING.sides * 2;
+}

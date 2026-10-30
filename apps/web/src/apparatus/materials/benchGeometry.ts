@@ -70,3 +70,35 @@ export function latheOf(
     segments,
   );
 }
+
+class HelixCurve extends THREE.Curve<THREE.Vector3> {
+  constructor(
+    private readonly length: number,
+    private readonly turns: number,
+    private readonly radius: number,
+  ) {
+    super();
+  }
+
+  override getPoint(t: number, target = new THREE.Vector3()): THREE.Vector3 {
+    const a = t * this.turns * Math.PI * 2;
+    return target.set(t * this.length, Math.cos(a) * this.radius, Math.sin(a) * this.radius);
+  }
+}
+
+/**
+ * A coil spring of round wire along +x from x = 0 to `length`: `turns` turns of radius `coilR`
+ * about the x axis, wire of radius `wireR` with `radial` sides round it (8 or more keeps it round
+ * under the ink pass), and `perTurn` steps along each turn. Starts at (0, coilR, 0).
+ */
+export function helixTube(
+  length: number,
+  turns: number,
+  coilR: number,
+  wireR: number,
+  perTurn: number,
+  radial: number,
+): THREE.TubeGeometry {
+  const steps = Math.max(4, Math.round(turns * perTurn));
+  return new THREE.TubeGeometry(new HelixCurve(length, turns, coilR), steps, wireR, radial, false);
+}
