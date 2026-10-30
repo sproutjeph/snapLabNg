@@ -37,23 +37,34 @@
   color: var(--paper);
 }
 
-/* Overlays sit in the part of the canvas the shell leaves uncovered (its --sh-* sizes). */
+/* The overlays (the toolbar, the note, the close-up bar and the graph paper) sit in the free part
+   of the stage, the part the shell's cards leave. The shell writes that part's edges on .sh-root
+   for each of its layouts (shell/shell.css, "The free stage's edges"; the CSS twins of coveredFor()
+   in shell/layout.ts), so nothing here reads the window's width:
+     --ui        CSS px per design px, the scale of the shell's cards
+     --sh-head   where the free stage starts, below the Compare button (a phone upright: below the
+                 player's row)
+     --sh-bar    how tall the step strip is (a phone upright: the strip and the guide)
+     --sh-guide  how much of the right the guide takes, with its gap to the edge (a phone upright: 0)
+   The rules without a layout are for a laptop (wide and compact: the Compare button top left, the
+   guide down the right). A phone held upright (portrait) and a phone on its side (short) change
+   them further down, each picked by the shell's data-layout. */
 .ol-tools {
   position: absolute;
   z-index: 2;
-  top: calc(var(--sh-head, 56px) + 12px);
-  left: calc(var(--sh-rail, 76px) + 12px);
+  top: calc(var(--sh-head) + 12px);
+  left: calc(24px * var(--ui));
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-width: calc(100% - var(--sh-rail, 76px) - 440px);
+  max-width: calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px);
 }
 
 .ol-loupe {
   position: absolute;
-  left: calc(var(--sh-rail, 76px) + 16px);
-  right: 432px;
-  bottom: calc(var(--sh-bar, 80px) + 16px);
+  left: 16px;
+  right: calc(var(--sh-guide) + 16px);
+  bottom: calc(var(--sh-bar) + 16px);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -85,9 +96,9 @@
 
 .ol-note {
   position: absolute;
-  left: calc(var(--sh-rail, 76px) + 12px);
-  top: calc(var(--sh-head, 56px) + 68px);
-  max-width: min(460px, calc(100% - var(--sh-rail, 76px) - 440px));
+  left: calc(24px * var(--ui));
+  top: calc(var(--sh-head) + 68px);
+  max-width: min(460px, calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px));
   margin: 0;
   padding: 10px 14px;
   border-left: 3px solid var(--accent);
@@ -199,25 +210,14 @@
   color: var(--red-ink);
 }
 
-@media (min-width: 641px) and (max-width: 900px) {
-  .ol-tools,
-  .ol-note {
-    max-width: calc(100% - var(--sh-rail, 76px) - 380px);
-  }
-
-  .ol-loupe {
-    right: 372px;
-  }
-}
-
-/* The graph paper covers the bench's uncovered area, under the toolbar. */
+/* The graph paper covers the free stage under the toolbar, left of the guide. */
 .ol-graph {
   position: absolute;
   z-index: 1;
-  top: calc(var(--sh-head, 56px) + 68px);
-  left: calc(var(--sh-rail, 76px) + 12px);
-  right: 428px;
-  bottom: calc(var(--sh-bar, 80px) + 12px);
+  top: calc(var(--sh-head) + 68px);
+  left: calc(24px * var(--ui));
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
   overflow: auto;
   padding: 12px;
   border: var(--rule);
@@ -226,59 +226,112 @@
   box-sizing: border-box;
 }
 
-@media (min-width: 641px) and (max-width: 900px) {
-  .ol-graph {
-    right: 368px;
-  }
-}
-
-/* The shell's diagram or Identify card floats top-left: the toolbar and note go bottom-left. */
+/* The shell's diagram or Identify card floats top left on a laptop, so the toolbar and the note go
+   bottom left. (A phone opens them as sheets and nothing floats there: the phone rules below
+   carry the layout in their selectors, so they are more specific and win.) */
 .ol-float-open .ol-tools {
   top: auto;
-  bottom: calc(var(--sh-bar, 80px) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
 }
 
 .ol-float-open .ol-note {
   top: auto;
-  bottom: calc(var(--sh-bar, 80px) + 68px);
+  bottom: calc(var(--sh-bar) + 68px);
 }
 
-/* Phone: no rail; a two-row header on top and the bottom sheet over the lower canvas. */
-@media (max-width: 640px) {
-  .ol-tools,
-  .ol-float-open .ol-tools {
-    top: 96px;
-    bottom: auto;
-    left: 12px;
-    right: 12px;
-    max-width: none;
-  }
+/* A phone held upright. The Compare button and the player share the row under the brand, and
+   --sh-head is the foot of that row, so the toolbar is a row of its own below it, edge to edge
+   (it wraps to a second row on a narrow screen). The note and the close-up bar sit at the foot of
+   the free stage, above the strip, and the graph paper fills the stage edge to edge. */
+.sh-root[data-layout="portrait"] .ol-tools {
+  top: calc(var(--sh-head) + 8px);
+  right: 12px;
+  bottom: auto;
+  left: 12px;
+  max-width: none;
+}
 
-  .ol-note,
-  .ol-float-open .ol-note {
-    top: 152px;
-    bottom: auto;
-    left: 12px;
-    right: 12px;
-    max-width: none;
-  }
+.sh-root[data-layout="portrait"] .ol-note {
+  top: auto;
+  right: 12px;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: 12px;
+  max-width: none;
+}
 
-  .ol-loupe {
-    top: 96px;
-    bottom: auto;
-    left: 12px;
-    right: 12px;
-  }
+.sh-root[data-layout="portrait"] .ol-loupe {
+  right: 12px;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: 12px;
+  max-width: none;
+  margin: 0;
+}
 
-  .ol-graph {
-    top: 152px;
-    left: 0;
-    right: 0;
-    bottom: calc(var(--sh-bar, 76px) + 120px);
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
-  }
+.sh-root[data-layout="portrait"] .ol-graph {
+  top: calc(var(--sh-head) + 64px);
+  right: 0;
+  bottom: var(--sh-bar);
+  left: 0;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+
+/* A phone on its side. No rail and no status card; the Compare button is a 44 px mark at (12, 68)
+   design px, so the toolbar sits beside it on the same row, and the guide runs down the right. */
+.sh-root[data-layout="short"] .ol-tools {
+  top: calc(68px * var(--ui));
+  bottom: auto;
+  left: calc(12px * var(--ui) + 52px);
+  max-width: calc(100% - 12px * var(--ui) - 52px - var(--sh-guide) - 12px);
+}
+
+.sh-root[data-layout="short"] .ol-note {
+  top: auto;
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+  max-width: min(460px, calc(100% - 12px * var(--ui) - var(--sh-guide) - 12px));
+}
+
+.sh-root[data-layout="short"] .ol-loupe {
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+}
+
+.sh-root[data-layout="short"] .ol-graph {
+  top: calc(var(--sh-head) + 8px);
+  right: calc(var(--sh-guide) + 12px);
+  bottom: calc(var(--sh-bar) + 12px);
+  left: calc(12px * var(--ui));
+}
+
+/* A phone held upright with the guide open. The stage window is only 234 px tall at 390 x 844
+   (192 px at 360 x 640), and the toolbar's two rows lay over the bench. So the toolbar moves up
+   onto the Compare button's row: this page has no player there, and the row ends at --sh-head,
+   where the free stage starts. It is one row of four buttons that share the width, a long label
+   wrapping to two lines, and the graph paper then starts at the top of the window. (With the guide
+   folded the window is 497 px tall and the toolbar's two rows clear the bench.) */
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-tools {
+  top: calc(78px * var(--ui) + (54px * var(--ui) - var(--tap)) / 2);
+  left: calc(14px * var(--ui) + var(--tap) + 8px);
+  max-width: 520px;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-tools .ol-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: clamp(11px, 3.4vw, 13px);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-graph {
+  top: calc(var(--sh-head) + 8px);
 }
 
 .ol-handed {
