@@ -37,15 +37,14 @@ import {
   type StagePart,
   stageFocusIds,
 } from "./frameloop";
-import { STAGE_SHOTS, type StageShotName } from "./shots";
+import { shotForPose, stageShot } from "./shots";
 
 // The live practical's stage (docs/plans/wave-2-lean.md, 2a-stage): the V–I bench through the
 // look that ?look=ohms-law signed off (scene/look/LookPreview.tsx), full-bleed behind the shell.
-//   - A fixed orthographic shot from the student's seat (shots.ts: the whole bench, or the two
-//     meters for a reading), fitted into the part of the
-//     canvas the page's cards leave free (`covered`); a drag turns the azimuth only and eases back.
-//     A free area taller than wide (a phone held upright) turns the camera steeper with the bench's
-//     long side up the screen, so the bench fills it.
+//   - A fixed orthographic shot from the student's seat, named per step (shots.ts: the whole
+//     bench, the two meters for a reading, and on a phone held upright the box and key or the
+//     wire board), fitted into the part of the canvas the page's cards leave free (`covered`); on
+//     the bench shot a drag turns the azimuth only and eases back.
 //   - LookLights (soft key shadows, the map re-rendered only when something moved), LookGround
 //     (the graph-paper desk), blob contact shadows under each part, and the ink pass.
 //   - The pixel-ratio ladder, and a demand frameloop (frameloop.ts) that keeps rendering only
@@ -96,8 +95,8 @@ export interface StageProps {
   focus?: readonly StagePart[] | null;
   /** Pins the pixel ratio (shots at the device's) instead of the ladder. */
   dpr?: number | null;
-  /** The named shot: the whole bench (default), or both meters big for a reading. */
-  shot?: StageShotName;
+  /** The step's camera pose (lesson.ts); shots.ts picks the named shot for it and the screen. */
+  pose?: string | undefined;
 }
 
 function prefersReducedMotion(): boolean {
@@ -112,11 +111,11 @@ function prefersReducedMotion(): boolean {
 function StageCamera({
   covered,
   loop,
-  shot,
+  pose,
 }: {
   covered: StageProps["covered"];
   loop: StageLoop;
-  shot: StageShotName;
+  pose: string | undefined;
 }) {
   const width = useThree((s) => s.size.width);
   const height = useThree((s) => s.size.height);
@@ -130,13 +129,15 @@ function StageCamera({
   const wasPortrait = useRef(false);
   const portrait = isPortrait(c, width, height, wasPortrait.current);
   wasPortrait.current = portrait;
+  const name = shotForPose(pose, portrait);
+  const shot = useMemo(() => stageShot(name, c, width, height), [name, c, width, height]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new fit is what the camera eases to.
   useEffect(() => loop.wake(RENDER_S), [loop, c.left, c.right, c.top, c.bottom]);
   return (
     <LookCamera
-      shot={STAGE_SHOTS[shot]}
+      shot={shot}
       covered={c}
-      drag={!portrait && shot === "bench"}
+      drag={!portrait && name === "bench"}
       reducedMotion={reducedMotion}
     />
   );
@@ -349,7 +350,7 @@ export function Stage({
   onLoupeReturned,
   focus = null,
   dpr: pinned = null,
-  shot = "bench",
+  pose,
 }: StageProps) {
   const look = useMemo(() => lookFor(quality, window.devicePixelRatio || 1), [quality]);
   // The ladder lives outside the Canvas, so a re-render keeps its rung (scene/look/dprLadder.ts).
@@ -370,7 +371,7 @@ export function Stage({
       gl={{ antialias: true }}
     >
       <LookTier.Provider value={quality}>
-        <StageCamera covered={covered} loop={loop} shot={shot} />
+        <StageCamera covered={covered} loop={loop} pose={pose} />
         <LookLights shadowsDirty={shadowsDirty} />
         <LookGround />
         <Blobs />
