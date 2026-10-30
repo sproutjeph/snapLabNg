@@ -22,8 +22,17 @@ export interface SnaplabE2E {
   /** The wire's true resistance in ohms (the answer her slope is checked against). For noleak only. */
   wireOhm(): number;
   handIn(): void;
-  /** After hand-in: total and max from markOhmsLaw, and the reading-check row count. */
-  result(): { total: number; max: number; checkRows: number } | null;
+  /**
+   * After hand-in: total and max from markOhmsLaw, the reading-check row count, and how many of
+   * those rows are marked ✓.
+   */
+  result(): { total: number; max: number; checkRows: number; checkOk: number } | null;
+  /** The same as tapping Start (or play) on the player. */
+  play(): void;
+  /** Sets the resistance box to `ohms`, as her plugs would. */
+  setR(ohms: number): void;
+  /** Closes or opens the key K, as her tap on it would. */
+  key(closed: boolean): void;
 }
 
 declare global {
@@ -65,6 +74,9 @@ export function installE2E(search: URLSearchParams, current: () => SnaplabE2E): 
     wireOhm: () => current().wireOhm(),
     handIn: () => current().handIn(),
     result: () => current().result(),
+    play: () => current().play(),
+    setR: (ohms) => current().setR(ohms),
+    key: (closed) => current().key(closed),
   };
   e2eHost.__snaplab = hook;
   return () => {

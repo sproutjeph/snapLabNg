@@ -30,6 +30,7 @@ import { benchTruthForE2E, handIn } from "./results/handIn";
 import { Results } from "./results/Results";
 import { checkRows } from "./results/resultsModel";
 import type { ResultsProps } from "./results/types";
+import { plugMoves } from "./script/actor";
 import { createDirector, type DirectorHandle } from "./script/createDirector";
 import type { Beat, DirectorOptions } from "./script/types";
 import LessonShell, { type GuideState, type PopupId, type ShellTab } from "./shell/LessonShell";
@@ -315,6 +316,9 @@ function idleE2E(run: Run): SnaplabE2E {
     wireOhm: () => Number.NaN,
     handIn: () => {},
     result: () => null,
+    play: () => {},
+    setR: () => {},
+    key: () => {},
   };
 }
 
@@ -685,13 +689,26 @@ function LearnScreen({
     handIn: doHandIn,
     result: () => {
       const r = resultsRef.current;
-      return r
-        ? {
-            total: r.sheet.earned,
-            max: r.sheet.available,
-            checkRows: checkRows(r.record, r.checks).length,
-          }
-        : null;
+      if (!r) return null;
+      const rows = checkRows(r.record, r.checks);
+      return {
+        total: r.sheet.earned,
+        max: r.sheet.available,
+        checkRows: rows.length,
+        checkOk: rows.filter((row) => row.ok).length,
+      };
+    },
+    play: () => {
+      if (!paper && resultsRef.current === null) director.play();
+    },
+    setR: (ohms) => {
+      if (paper || watch || resultsRef.current !== null) return;
+      const moves = plugMoves(bench.params.boxCoilsOhm, bench.visual.current.plugsIn, ohms);
+      for (const index of moves) bench.togglePlug(index);
+    },
+    key: (closed) => {
+      if (paper || watch || resultsRef.current !== null) return;
+      if (bench.visual.current.keyClosed !== closed) bench.toggleKey();
     },
   };
 

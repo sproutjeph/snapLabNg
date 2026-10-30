@@ -13,6 +13,9 @@ const fake = (): SnaplabE2E => ({
   wireOhm: () => 1,
   handIn: () => {},
   result: () => null,
+  play: () => {},
+  setR: () => {},
+  key: () => {},
 });
 
 afterEach(() => {
