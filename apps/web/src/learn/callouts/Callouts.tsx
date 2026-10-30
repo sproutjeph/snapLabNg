@@ -99,12 +99,32 @@ export function CalloutChip({ label, x, y, visible, stageWidth, stageHeight }: C
   const [chipSize, setChipSize] = useState({ w: 120, h: 40 });
 
   useEffect(() => {
-    if (chipRef.current && displayedLabel) {
-      const rect = chipRef.current.getBoundingClientRect();
+    let live = true;
+    const measure = () => {
+      if (!live || !chipRef.current || !displayedLabel) return;
+      // The layout box, not the bounding rect: the first-show pop scales the chip from 0.3, and a
+      // width measured mid-pop is far too narrow.
+      const el = chipRef.current;
+      const rect = { width: el.offsetWidth, height: el.offsetHeight };
       if (rect.width > 0 && rect.height > 0) {
-        setChipSize({ w: rect.width, h: rect.height });
+        setChipSize((s) =>
+          Math.abs(s.w - rect.width) < 0.5 && Math.abs(s.h - rect.height) < 0.5
+            ? s
+            : { w: rect.width, h: rect.height },
+        );
       }
-    }
+    };
+    measure();
+    // The chip's face (Barlow Condensed) may still be loading: a width measured in the fallback
+    // face is too narrow, and the chip then pokes past the stage's edge. Measure again once the
+    // page's fonts are in.
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    void fonts?.ready.then(measure);
+    fonts?.addEventListener?.("loadingdone", measure);
+    return () => {
+      live = false;
+      fonts?.removeEventListener?.("loadingdone", measure);
+    };
   }, [displayedLabel]);
 
   // First-show pop (0.3s, 0.3 -> 1.12 -> 1)
