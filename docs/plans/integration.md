@@ -92,6 +92,7 @@ interface SnaplabE2E {
 ## Progress
 - [x] Plan approved by the user (Oct 30)
 - [x] Seam (AGENTS.md rows, Muse worktree)
-- [ ] I1 merged (built and fixed once, Oct 30; in review)
-- [ ] I2 merged, E2E green on main
-- [ ] The user signs off in Chrome
+- [x] I1 merged Oct 30 (#105): paper first, mode choice, Results (21 marks, D1), demo mark sheet, E2E hook (dev only), phone bench crop
+- [x] I2 merged Oct 30 (#107, Muse Code, one review round); on main 33624ab the four checks and all four scripts pass on phone and laptop (exam 25 s, noleak 61 s, practise 61 s, watch 356 s)
+- [x] The user signed off #105 in Chrome (Oct 30)
+- [x] Frame rate (one visual-qa run, M1 Pro, DPR 1): phone `quality=low` 57 fps, laptop 59 fps while Watch plays; no console errors. A real phone check stays in the beauty pass.

@@ -15,7 +15,7 @@ Inputs:
 - [x] Wave 1: paper and picker (#79), director and voice (#80), apparatus v2 (#81), look (#82) merged; **golden frame approved by the user** on Oct 29 with three tweaks, then re-checked in real Chrome beside BC101 after the anti-aliasing fix (renders: `docs/design/exam-redesign/golden-render-{phone,laptop}.jpg`)
 - [x] Wave 1b (Oct 30): the asset pass (`docs/plans/asset-pass.md`) and the Backcountry page layout (see "Page layout" below), run in parallel at max effort (the user opted in to ultracode)
 - [ ] Wave 2: Watch script, guided Practise, callouts and motion, hero look merged
-- [ ] Integration: the practical page end to end, E2E green
+- [x] Integration (Oct 30, `docs/plans/integration.md`): the practical page end to end (#105), E2E green on main (#107)
 - [ ] Beauty pass and bug bash; freeze at 23:59 on Nov 2
 
 ## Goal
