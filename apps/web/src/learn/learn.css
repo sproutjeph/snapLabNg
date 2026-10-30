@@ -306,6 +306,34 @@
   left: calc(12px * var(--ui));
 }
 
+/* A phone held upright with the guide open. The stage window is only 234 px tall at 390 x 844
+   (192 px at 360 x 640), and the toolbar's two rows lay over the bench. So the toolbar moves up
+   onto the Compare button's row: this page has no player there, and the row ends at --sh-head,
+   where the free stage starts. It is one row of four buttons that share the width, a long label
+   wrapping to two lines, and the graph paper then starts at the top of the window. (With the guide
+   folded the window is 497 px tall and the toolbar's two rows clear the bench.) */
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-tools {
+  top: calc(78px * var(--ui) + (54px * var(--ui) - var(--tap)) / 2);
+  left: calc(14px * var(--ui) + var(--tap) + 8px);
+  max-width: 520px;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-tools .ol-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: clamp(11px, 3.4vw, 13px);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.sh-root[data-layout="portrait"][data-guide="open"] .ol-graph {
+  top: calc(var(--sh-head) + 8px);
+}
+
 .ol-handed {
   margin: 0;
   font-family: var(--f-body);

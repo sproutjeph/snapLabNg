@@ -22,6 +22,7 @@ import { useParallaxNote } from "./readings/parallax";
 import { clampEye, type LoupeTarget, MAX_EYE_DEG, type RuleEnd } from "./readings/poses";
 import { ReadingLoupe } from "./readings/ReadingLoupe";
 import { emptyOhmsLawRecord } from "./readings/record";
+import { MAX_POSE_DISTANCE_M, poseFitFactor } from "./shell/benchFrame";
 import LessonShell, { type GuideState, type ShellTab } from "./shell/LessonShell";
 import { TerminalProvider } from "./terminals";
 import { ease } from "./timeline";
@@ -69,13 +70,15 @@ function coveredPx(guide: GuideState): Covered {
   return playerCovered(window.innerWidth, window.innerHeight, { guide });
 }
 
-/** How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen. */
-function fitFactor(width: number, height: number, guide: GuideState): number {
-  const aspect = width / Math.max(height, 1);
-  const c = coveredPx(guide);
-  const fitTall = aspect < 1 ? 1 / aspect : 1;
-  const fitPanels = (0.9 * width) / Math.max(width - c.left - c.right, 1);
-  return Math.min(2.6, Math.max(1, fitTall, fitPanels));
+/** The camera's vertical field of view: the Canvas below and the pose fit both read it. */
+const CAMERA_FOV_DEG = 40;
+
+/**
+ * How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen
+ * (shell/benchFrame.ts: a pose that looks at the whole bench shows all of it on a phone).
+ */
+function fitFactor(pose: CameraPose, width: number, height: number, guide: GuideState): number {
+  return poseFitFactor(pose.distanceM, CAMERA_FOV_DEG, width, height, coveredPx(guide));
 }
 
 /** Camera position for a lesson pose: azimuth about +y from the student's side, elevation up. */
@@ -162,7 +165,7 @@ function PoseRig({
     if (paused) return;
     if (anim.dirty) {
       anim.dirty = false;
-      posePosition(pose, fitFactor(width, height, guide), anim.to);
+      posePosition(pose, fitFactor(pose, width, height, guide), anim.to);
       anim.toLook.set(pose.target[0], pose.target[1], pose.target[2]);
       anim.from.copy(camera.position);
       if (controls) anim.fromLook.copy(controls.target);
@@ -382,7 +385,7 @@ function LearnView() {
           shadows={settings.shadows}
           dpr={settings.dpr}
           gl={{ antialias: false }}
-          camera={{ fov: 40, position: BENCH_CAMERA, near: 0.02, far: 20 }}
+          camera={{ fov: CAMERA_FOV_DEG, position: BENCH_CAMERA, near: 0.02, far: 20 }}
         >
           <InkLights quality={tier} />
           <PoseRig pose={pose} paused={loupe !== null || returning} guide={framedGuide} />
@@ -391,7 +394,7 @@ function LearnView() {
               makeDefault
               enablePan={false}
               minDistance={0.45}
-              maxDistance={4.2}
+              maxDistance={MAX_POSE_DISTANCE_M}
               maxPolarAngle={Math.PI * 0.45}
             />
           )}

@@ -366,6 +366,22 @@ describe("learn.css (the lesson page's overlays)", () => {
     );
   });
 
+  it("a phone held upright with the guide open puts the toolbar on the Compare button's row, out of the window", () => {
+    // The window is 234 px tall at 390 x 844, and two rows of buttons lay over the bench. The
+    // Compare button is 78 design px down, centred in the player's 54: the toolbar takes the same
+    // top, starts beside the button (14 design px in, --tap wide, 8 px of room), and keeps to one row.
+    const open = body('.sh-root[data-layout="portrait"][data-guide="open"] .ol-tools');
+    expect(open).toMatch(
+      /top:\s*calc\(78px\s*\*\s*var\(--ui\)\s*\+\s*\(54px\s*\*\s*var\(--ui\)\s*-\s*var\(--tap\)\)\s*\/\s*2\)/,
+    );
+    expect(open).toMatch(/left:\s*calc\(14px\s*\*\s*var\(--ui\)\s*\+\s*var\(--tap\)\s*\+\s*8px\)/);
+    expect(open).toMatch(/flex-wrap:\s*nowrap/);
+    // The graph paper takes the room the toolbar left.
+    expect(body('.sh-root[data-layout="portrait"][data-guide="open"] .ol-graph')).toMatch(
+      /top:\s*calc\(var\(--sh-head\)\s*\+\s*8px\)/,
+    );
+  });
+
   it("a landscape phone puts the toolbar beside the Compare button, clear of its 44 px", () => {
     expect(body('.sh-root[data-layout="short"] .ol-tools')).toMatch(
       /left:\s*calc\(12px\s*\*\s*var\(--ui\)\s*\+\s*52px\)/,
