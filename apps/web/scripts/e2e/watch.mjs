@@ -32,4 +32,18 @@ await run("watch", "/?practical=ohms-law&mode=watch&e2e=1&speed=8&seed=7", async
     result.total === result.max - 1,
     `demo mark sheet total ${result.total}, expected max - 1 (max ${result.max})`,
   );
+
+  // Which mark was lost: exactly PHYS-CALC's ("Calculation", RULE_LABEL in learn/marking.ts,
+  // one li per rule on the results page). A different single lost mark must fail here too.
+  await page
+    .locator('[data-testid="results"]')
+    .first()
+    .waitFor({ state: "visible", timeout: 15000 });
+  const lostLabels = (
+    await page.locator('[data-testid="results"] li[data-lost="1"] .rs-line-label').allInnerTexts()
+  ).map((t) => t.trim());
+  check(
+    lostLabels.length === 1 && lostLabels[0] === "Calculation",
+    `demo lost marks [${lostLabels.join(", ")}], expected exactly [Calculation]`,
+  );
 });

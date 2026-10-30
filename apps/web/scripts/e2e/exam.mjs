@@ -18,8 +18,21 @@ await run(
     const clockText = (await timer.first().innerText()).trim();
     check(/^\d+:\d{2}$/.test(clockText), `elapsed timer shows "${clockText}", expected m:ss`);
 
+    // Make the same wrong lead Practise corrects (E+ to E-, the cells shorted straight
+    // across; practise.mjs proves that pair, as a first tap, earns a hint there). Here it
+    // must earn nothing: no hint, chip or Show me may appear for it.
+    await snap(page, "tap", "E+");
+    await snap(page, "tap", "E-");
+    await page.waitForTimeout(2000);
+    for (const id of FORBIDDEN) {
+      check(
+        (await page.locator(`[data-testid="${id}"]`).count()) === 0,
+        `${id} appeared in Exam after a wrong lead`,
+      );
+    }
+
     // Give the page a few seconds in Exam, then hand in once.
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1000);
     await snap(page, "handIn");
     await waitFor(
       "the results screen",

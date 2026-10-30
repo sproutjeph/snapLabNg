@@ -15,6 +15,10 @@ const RESISTANCES = [0, 1, 5, 10, 20, 40, 60];
 
 await run("practise", "/?practical=ohms-law&mode=practice&e2e=1&seed=7", async (page) => {
   check((await snap(page, "screen")) === "practice", "page did not open in Practise");
+  check(
+    (await page.locator('[data-testid="hint"]').count()) === 0,
+    "a hint is already showing before the wrong tap",
+  );
 
   // A deliberate wrong lead: the cells shorted straight across (E+ to E-).
   await snap(page, "tap", "E+");
