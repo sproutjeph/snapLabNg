@@ -298,6 +298,7 @@ function Screen({
       note={MODE_NOTE[practical]}
       guide={guide}
       onGuideChange={setGuide}
+      onRestart={practical === "watch" && director ? () => director.seek(0) : undefined}
       overlay={overlay}
       checklist={checklist}
     >

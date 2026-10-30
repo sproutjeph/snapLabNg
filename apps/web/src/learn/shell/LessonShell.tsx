@@ -76,6 +76,12 @@ export interface LessonShellProps {
   onGuideChange?(guide: GuideState): void;
   /** The one line at the guide's foot about this mode. */
   note?: ReactNode;
+  /**
+   * Watch: plays the demonstration again from its first beat. The practical menu on the strip
+   * lists it as Restart. A touch screen's player card has no Restart of its own (no room for a
+   * sixth 44 px button), so this is where it is there.
+   */
+  onRestart?: (() => void) | undefined;
   /** A div over the canvas and under the cards, for the callout labels (W2-callouts). */
   calloutLayerRef?: RefObject<HTMLDivElement | null>;
 }
@@ -125,6 +131,7 @@ export default function LessonShell({
   guide: guideProp,
   onGuideChange,
   note,
+  onRestart,
   calloutLayerRef,
 }: LessonShellProps) {
   const uid = useId();
@@ -307,6 +314,7 @@ export default function LessonShell({
           thumbs={thumbs}
           lockedFrom={lockedFrom}
           readOnly={readOnlyTabs}
+          onRestart={onRestart}
         />
       </div>
 

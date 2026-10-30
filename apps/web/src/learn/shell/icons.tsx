@@ -118,6 +118,14 @@ export const IconPage = () => (
   </Icon>
 );
 
+/** Back to the start: the practical menu's Restart (the player's button has the same mark). */
+export const IconRestart = () => (
+  <Icon strokeWidth={1.8}>
+    <path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5" />
+    <path d="M4.5 4.5v4h4" />
+  </Icon>
+);
+
 export const IconChevronRight = () => (
   <Icon strokeWidth={2}>
     <path d="m9 5 7 7-7 7" />

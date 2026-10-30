@@ -8,6 +8,7 @@ import { MODE_NOTE } from "../player/stages";
 import type { LessonMode } from "../types";
 import LessonShell, { type LessonShellProps, type ShellTab, type StepStatus } from "./LessonShell";
 import { layoutFor } from "./layout";
+import { PracticalMenuBody } from "./PracticalMenu";
 import { creditFromSource } from "./StatusCard";
 import { applyLayout } from "./useLayout";
 
@@ -238,6 +239,36 @@ describe("step strip", () => {
   });
 });
 
+describe("practical menu", () => {
+  const body = (over: { onRestart?: () => void } = {}) =>
+    renderToStaticMarkup(
+      createElement(PracticalMenuBody, { stageCount: total, onNavigate: () => {}, ...over }),
+    );
+
+  it("lists the three practicals, the one she is on ticked with its stage count", () => {
+    const out = body();
+    for (const name of ["Metre bridge", "Titration", "Ohm&#x27;s law (V–I)"]) {
+      expect(out).toContain(`<b>${name}</b>`);
+    }
+    expect(out.match(/class="sh-pitem"/g)).toHaveLength(3);
+    expect(out.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(out).toContain("11 stages");
+  });
+
+  it("has no Restart unless the page offers it (Practise and Exam have none)", () => {
+    expect(body()).not.toContain("Restart");
+    expect(body()).not.toContain("sh-pmenu-actions");
+  });
+
+  it("lists Restart under the practicals, as a button, when the page offers it (Watch)", () => {
+    const out = body({ onRestart: () => {} });
+    expect(out.match(/class="sh-pitem"/g)).toHaveLength(4);
+    expect(out).toMatch(/<button type="button" class="sh-pitem">.*<b>Restart<\/b>/s);
+    // Under the three links, set off in its own list, so a touch screen finds it last.
+    expect(out.indexOf("sh-pmenu-actions")).toBeGreaterThan(out.lastIndexOf('href="'));
+  });
+});
+
 describe("shell.css", () => {
   const labelClasses = [
     ".sh-txt",
@@ -290,6 +321,55 @@ describe("shell.css", () => {
     const outside = css.slice(0, css.indexOf("@media (prefers-reduced-motion: no-preference)"));
     expect(outside).not.toMatch(/transition\s*:/);
     expect(outside).not.toMatch(/animation\s*:/);
+  });
+});
+
+describe("learn.css (the lesson page's overlays)", () => {
+  // ?learn=ohms-law lays a toolbar, a note, a close-up bar and the graph paper over the canvas. They
+  // used to sit at fixed offsets from the old header and panel (top 96 px, right 428 px), which ran
+  // under the new cards (the Compare button, the guide). They read the shell's free-stage edges now.
+  const css = readFileSync(fileURLToPath(new URL("../learn.css", import.meta.url)), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const rules: Array<[string, string]> = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    rules.push([(m[1] ?? "").trim(), m[2] ?? ""]);
+  }
+  const body = (selector: string) => rules.find(([s]) => s === selector)?.[1] ?? "";
+
+  it("has no layout media queries and none of the old header and panel offsets", () => {
+    expect(css).not.toMatch(/@media\s*\(\s*(min|max)-(width|height)/);
+    for (const old of ["96px", "152px", "428px", "432px", "368px", "372px", "var(--sh-rail"]) {
+      expect({ old, found: css.includes(old) }).toEqual({ old, found: false });
+    }
+  });
+
+  it("anchors each overlay to the free stage the shell writes: its head, strip and guide", () => {
+    expect(body(".ol-tools")).toContain("var(--sh-head)");
+    expect(body(".ol-tools")).toContain("var(--sh-guide)");
+    expect(body(".ol-note")).toContain("var(--sh-head)");
+    expect(body(".ol-note")).toContain("var(--sh-guide)");
+    expect(body(".ol-loupe")).toContain("var(--sh-bar)");
+    expect(body(".ol-loupe")).toContain("var(--sh-guide)");
+    expect(body(".ol-graph")).toContain("var(--sh-head)");
+    expect(body(".ol-graph")).toContain("var(--sh-bar)");
+    // The graph paper stops left of the guide, with its gap, so it never runs under it.
+    expect(body(".ol-graph")).toMatch(/right:\s*calc\(var\(--sh-guide\)\s*\+\s*12px\)/);
+  });
+
+  it("puts the toolbar a row below the Compare button on a laptop and on a phone held upright", () => {
+    // --sh-head is the foot of the row the Compare button is on, so the toolbar can never lie over it.
+    expect(body(".ol-tools")).toMatch(/top:\s*calc\(var\(--sh-head\)\s*\+\s*12px\)/);
+    expect(body('.sh-root[data-layout="portrait"] .ol-tools')).toMatch(
+      /top:\s*calc\(var\(--sh-head\)\s*\+\s*8px\)/,
+    );
+  });
+
+  it("a landscape phone puts the toolbar beside the Compare button, clear of its 44 px", () => {
+    expect(body('.sh-root[data-layout="short"] .ol-tools')).toMatch(
+      /left:\s*calc\(12px\s*\*\s*var\(--ui\)\s*\+\s*52px\)/,
+    );
   });
 });
 

@@ -52,26 +52,22 @@
   right: calc(var(--guide-w, 372px) + 20px);
 }
 
+/* Centred under the brand, but never nearer than 8 px to the Compare button at the left (44 px
+   wide, 14 design px in): between those margins the card sits in the middle, and a card wider than
+   the room between them (Watch's five 44 px buttons on a 360 px phone) starts at the left margin
+   instead of lying over the button. */
 .dp[data-layout="portrait"] .dp-card {
   top: 78px;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
+  left: calc(14px + 52px / var(--ui, 1));
+  right: calc(14px + 52px / var(--ui, 1));
+  width: max-content;
+  margin-inline: auto;
 }
 
 /* Watch's six buttons on a landscape phone are 44 px each (below), so the card's own chrome
    closes up. */
 .dp.dp-watch[data-layout="short"] .dp-card {
   gap: 3px;
-  padding: 0 3px;
-}
-
-/* Watch on a phone held upright: Backcountry's pill is 268 design px wide (243 px at 390 wide), and
-   its five transport buttons share it as 44 px targets, side by side (below). Six would need 264
-   px, so mute is a card of its own beside the pill. The pill stays centred under the brand, where
-   Backcountry has it, with the Compare button at its left. */
-.dp.dp-watch[data-layout="portrait"] .dp-card {
-  min-width: 268px;
   padding: 0 3px;
 }
 
@@ -192,19 +188,35 @@
   min-width: calc(var(--tap) / var(--ui, 1));
 }
 
+/* Compact is a tablet's size, and in Practise and Exam mute is an icon on its own in the card (the
+   other buttons there have words, bar the repeat button, below), so it is a 44 px target whatever
+   the pointer. (Watch's buttons are 44 on every touch screen, above and below.) */
+.dp.dp-practice[data-layout="compact"] .dp-mute,
+.dp.dp-practice[data-layout="compact"] .dp-again,
+.dp.dp-exam[data-layout="compact"] .dp-mute {
+  min-width: calc(var(--tap) / var(--ui, 1));
+}
+
+/* Restart is the sixth of Watch's buttons, and six 44 px targets are 264 px: wider than a phone's
+   pill. So on a phone held upright, and on any touch screen, the card drops it, and the practical
+   menu on the step strip has it instead (the page passes the shell `onRestart`). It is out of
+   the page there, not just out of sight, so it leaves the tab order too. A laptop with a mouse
+   keeps all six. */
+.dp[data-layout="portrait"] .dp-restart {
+  display: none;
+}
+
 @media (pointer: coarse) {
   .dp .dp-btn {
     min-width: calc(var(--tap) / var(--ui, 1));
   }
 
-  /* Watch's six are 44 px apart already, so its card closes up its chrome, as it does on a phone,
-     and the wider card keeps clear of the brand on a small tablet. The buttons touch, so their
-     hit areas stop at their own edges. */
-  .dp.dp-watch .dp-card {
-    gap: 3px;
-    padding: 0 3px;
+  .dp .dp-restart {
+    display: none;
   }
 
+  /* Watch's buttons are 44 px apart already. They touch, so their hit areas stop at their own
+     edges. */
   .dp.dp-watch .dp-group {
     gap: 0;
   }
@@ -215,45 +227,13 @@
   }
 }
 
-/* Watch's buttons have no gap between them on a phone. */
+/* Watch's buttons have no gap between them on a phone. On one held upright the pill is centred
+   under the brand, the Compare button at its left, and holds what is left of the six: previous,
+   play, next and the speed, then mute after the divider. Five 44 px buttons and the card's chrome
+   make it about 245 px wide at 390 (Backcountry's six 37 px buttons are 243). */
 .dp.dp-watch[data-layout="portrait"] .dp-group,
 .dp.dp-watch[data-layout="short"] .dp-group {
   gap: 0;
-}
-
-/* Watch held upright: the five transport buttons share the pill (the play button a little wider),
-   the divider has nothing left to divide, and mute is a card of its own at the pill's right,
-   8 px off its border. Its tap area is 44 wide and as tall as the pill. */
-.dp.dp-watch[data-layout="portrait"] .dp-group {
-  flex: 1 1 auto;
-}
-
-.dp.dp-watch[data-layout="portrait"] .dp-group .dp-btn {
-  flex: 1 1 0;
-}
-
-.dp.dp-watch[data-layout="portrait"] .dp-group .dp-btn-main {
-  flex-grow: 1.25;
-}
-
-.dp.dp-watch[data-layout="portrait"] .dp-divider {
-  display: none;
-}
-
-.dp.dp-watch[data-layout="portrait"] .dp-mute {
-  position: absolute;
-  top: -1.5px;
-  left: calc(100% + 9.5px);
-  width: calc(var(--tap) / var(--ui, 1));
-  height: 54px;
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--card) 97%, transparent);
-  box-shadow: 0 2px 6px rgba(60, 45, 25, 0.06);
-}
-
-.dp.dp-watch[data-layout="portrait"] .dp-mute:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--line) 70%, var(--card));
 }
 
 /* Hit area: the visual size is the design's; a pseudo-element brings the height to 44 px. */
@@ -306,6 +286,23 @@
   margin: 0;
   overflow: visible;
   clip-path: none;
+}
+
+/* Compact is short of room in Practise: Resume guide, Say it again, Show me and a 44 px mute are
+   359 px wide at 1024, and the card (it grows leftwards from the status card) lay over the end of
+   the brand's tagline. So there the repeat button keeps its icon and gives up its words, as every
+   Practise button does on a phone. They stay in the page, clipped, as its name. */
+.dp.dp-practice[data-layout="compact"] .dp-again .dp-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.dp.dp-practice[data-layout="compact"] .dp-again {
+  padding: 0;
 }
 
 /* ---- The caption: an ink pill in the free stage, above the strip ---- */

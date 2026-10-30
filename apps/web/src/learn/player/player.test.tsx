@@ -230,8 +230,8 @@ describe("Player markup", () => {
   });
 
   it("Watch keeps the five transport buttons in one group, with mute after the speed button", () => {
-    // Six 44 px targets do not fit Backcountry's 243 px pill on a phone, so the phone's card holds
-    // the five and mute stands beside it; mute is last in the page too, so the tab order follows.
+    // Restart, previous, play, next and the speed are one group; mute follows the divider, last in
+    // the page, so the tab order follows. (On a touch screen css drops Restart from the group.)
     const out = html("watch", SAMPLE_SCRIPT, 4);
     const group = out.match(/<div class="dp-group">(.*?)<\/div>/s)?.[1] ?? "";
     expect(group.match(/<button/g)).toHaveLength(5);
@@ -263,16 +263,72 @@ describe("player.css", () => {
     expect(phone?.body).toMatch(tap44);
   });
 
-  it("Watch held upright is Backcountry's 268 px pill, with mute a card of its own beside it", () => {
-    expect(rule('.dp.dp-watch[data-layout="portrait"] .dp-card')?.body).toMatch(
-      /min-width:\s*268px/,
+  it("Watch drops Restart on a touch screen and on a phone held upright, and nowhere else", () => {
+    // Six 44 px targets are 264 px, wider than a phone's pill: the practical menu has Restart
+    // there. The button stays in the markup (a laptop with a mouse keeps all six); the css takes
+    // it out of the page, so it leaves the tab order too. Exactly these two rules hide it.
+    expect(html("watch", SAMPLE_SCRIPT, 4)).toContain(
+      '<button type="button" class="dp-btn dp-restart"',
     );
-    const mute = rule('.dp.dp-watch[data-layout="portrait"] .dp-mute')?.body ?? "";
-    expect(mute).toMatch(/position:\s*absolute/);
-    expect(mute).toMatch(/left:\s*calc\(100%/);
-    expect(mute).toMatch(/width:\s*calc\(var\(--tap\)/);
+    const hiding = rules
+      .filter((r) => r.selector.includes("dp-restart") && /display:\s*none/.test(r.body))
+      .map((r) => `${r.media}|${r.selector}`)
+      .sort();
+    expect(hiding).toEqual(
+      ["(pointer: coarse)|.dp .dp-restart", '|.dp[data-layout="portrait"] .dp-restart'].sort(),
+    );
+  });
+
+  it("Watch's pill holds its five buttons and mute in one card, not mute in a card beside it", () => {
+    // Upright on a phone the pill is five 44 px buttons wide (previous, play, next, the speed, and
+    // mute after the divider), about 245 px at 390: nothing positions mute on its own or stretches
+    // the pill to Backcountry's 268 design px.
+    expect(
+      rules.some((r) => r.selector.includes(".dp-mute") && /position:\s*absolute/.test(r.body)),
+    ).toBe(false);
+    expect(rules.some((r) => /min-width:\s*268px/.test(r.body))).toBe(false);
+    expect(rule('.dp.dp-watch[data-layout="portrait"] .dp-divider')).toBeUndefined();
     // The pill stays centred under the brand whether or not the Compare button is beside it.
     expect(rules.some((r) => r.selector.includes("data-compare"))).toBe(false);
+  });
+
+  it("mute is a 44 px target in Practise and Exam on compact, whatever the pointer", () => {
+    // Compact is a tablet's size and mute is an icon on its own in these two cards, so it has no
+    // mouse-sized exception there (wide keeps Backcountry's 37 px for a mouse).
+    for (const mode of ["practice", "exam"] as const) {
+      expect(html(mode)).toContain('class="dp-btn dp-mute"');
+    }
+    const compact = rule(
+      '.dp.dp-practice[data-layout="compact"] .dp-mute, .dp.dp-practice[data-layout="compact"] .dp-again, .dp.dp-exam[data-layout="compact"] .dp-mute',
+    );
+    expect(compact?.body).toMatch(tap44);
+  });
+
+  it("on compact the repeat button keeps its icon and gives up its words, so the card clears the brand", () => {
+    // Resume guide, Say it again, Show me and a 44 px mute are 359 px wide at 1024 and lay over the
+    // end of the brand's tagline: the repeat button's words are clipped (still its name), never
+    // display: none. Wide keeps all the words.
+    const out = html("practice", SAMPLE_SCRIPT, 4, true);
+    expect(out).toMatch(
+      /class="dp-btn dp-btn-text dp-again"[^>]*>.*?<span class="dp-label">Say it again</s,
+    );
+    const clipped = rule('.dp.dp-practice[data-layout="compact"] .dp-again .dp-label')?.body ?? "";
+    expect(clipped).toMatch(/clip-path/);
+    expect(clipped).not.toMatch(/display:\s*none/);
+    expect(rule('.dp.dp-practice[data-layout="compact"] .dp-again')?.body).toMatch(
+      /padding:\s*0\b/,
+    );
+    expect(rule('.dp.dp-practice[data-layout="wide"] .dp-again .dp-label')).toBeUndefined();
+  });
+
+  it("a phone's card stays 8 px clear of the Compare button, and centred when there is room", () => {
+    // 14 design px in and 44 px wide, so the card's margins are 14 + 52 / ui design px on both
+    // sides: centred between them, and starting at the left margin when it is wider than the room.
+    const card = rule('.dp[data-layout="portrait"] .dp-card')?.body ?? "";
+    expect(card).toMatch(/left:\s*calc\(14px \+ 52px \/ var\(--ui, 1\)\)/);
+    expect(card).toMatch(/right:\s*calc\(14px \+ 52px \/ var\(--ui, 1\)\)/);
+    expect(card).toMatch(/width:\s*max-content/);
+    expect(card).toMatch(/margin-inline:\s*auto/);
   });
 });
 

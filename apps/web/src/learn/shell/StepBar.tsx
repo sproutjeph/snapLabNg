@@ -19,6 +19,8 @@ interface StepBarProps {
   lockedFrom?: number | undefined;
   /** The cards are display only: she goes through the stages in order, not by tapping them. */
   readOnly?: boolean | undefined;
+  /** Watch: plays the demonstration again from the start; the practical menu lists it. */
+  onRestart?: (() => void) | undefined;
 }
 
 const STATUS_WORD: Record<StepStatus, string> = {
@@ -52,6 +54,7 @@ export default function StepBar({
   thumbs,
   lockedFrom,
   readOnly,
+  onRestart,
 }: StepBarProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const cursor = useRef<HTMLSpanElement>(null);
@@ -99,7 +102,7 @@ export default function StepBar({
     <nav className="sh-strip" data-region="strip" aria-label="Steps">
       <div className="sh-plate-body" aria-hidden="true" />
       <div className="sh-plate-tab">
-        <PracticalMenu title={title} stageCount={steps.length} />
+        <PracticalMenu title={title} stageCount={steps.length} onRestart={onRestart} />
         <svg className="sh-ear" viewBox="0 0 74 26" aria-hidden="true" focusable="false">
           <path className="sh-ear-fill" d="M0 .75C30 .75 40 25.75 74 25.75V30H0z" />
           <path className="sh-ear-line" d="M0 .75C30 .75 40 25.75 74 25.75" />

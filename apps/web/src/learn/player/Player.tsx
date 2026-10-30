@@ -116,11 +116,13 @@ export function Player({ director }: PlayerProps) {
       <div className="dp-card" data-region="player">
         {s.mode === "watch" ? (
           <>
-            {/* The five transport buttons, then mute: the order the plan lists them in. On a phone
-                the card holds only the five (six 44 px targets do not fit in Backcountry's 243 px
-                pill) and mute is a card of its own beside it, still last in the tab order. */}
+            {/* Restart, previous, play, next and the speed, then mute: the order the plan lists
+                them in. Six 44 px targets are 264 px, wider than a phone's pill, so on a touch
+                screen (and on a phone held upright) Restart is not in the card: the practical menu
+                has it (player.css hides `dp-restart`; the page passes `onRestart` to the shell).
+                It stays in the markup, so a laptop with a mouse keeps all six. */}
             <div className="dp-group">
-              <button type="button" className="dp-btn" onClick={() => director.seek(0)}>
+              <button type="button" className="dp-btn dp-restart" onClick={() => director.seek(0)}>
                 <IconRestart />
                 <span className="dp-label">Restart</span>
               </button>
@@ -164,7 +166,7 @@ export function Player({ director }: PlayerProps) {
             </button>
             <button
               type="button"
-              className="dp-btn dp-btn-text"
+              className="dp-btn dp-btn-text dp-again"
               disabled={!s.playing}
               onClick={() => {
                 handle?.voice.stop();

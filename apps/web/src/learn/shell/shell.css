@@ -43,14 +43,13 @@
   --strip-top: calc(var(--lh) - 250px);
 }
 
-/* The free stage's edges, in CSS px, for the lesson page's own overlays (learn.css: the toolbar,
-   the note, the close-up bar, the graph paper; see "The lesson page's overlays" below). The canvas
-   already starts beside the rail, so --sh-rail is 0. --sh-head is where the free stage starts
-   below the Compare button (a phone: below the player's row), --sh-bar is how tall the strip is
-   (a phone: the strip and the guide), and --sh-guide is how much of the right the guide takes,
-   with its gap to the edge. They are the CSS twins of coveredFor() in layout.ts. */
+/* The free stage's edges, in CSS px, for the lesson page's own overlays (learn.css reads them for
+   the toolbar, the note, the close-up bar and the graph paper). The canvas already starts beside
+   the rail, so there is no left edge to give. --sh-head is where the free stage starts below the
+   Compare button (a phone: below the player's row), --sh-bar is how tall the strip is (a phone:
+   the strip and the guide), and --sh-guide is how much of the right the guide takes, with its gap
+   to the edge. They are the CSS twins of coveredFor() in layout.ts. */
 .sh-root {
-  --sh-rail: 0px;
   --sh-head: calc(112px * var(--ui) + 44px);
   --sh-bar: calc(164px * var(--ui));
   --sh-guide: calc(529px * var(--ui));
@@ -1012,6 +1011,13 @@
   min-height: 64px;
   padding: 10px 12px;
   border-radius: 8px;
+}
+
+/* What the page offers beside the practicals (Restart in Watch), set off by a thin rule. */
+.sh-pmenu-actions {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1.5px solid var(--line);
 }
 
 .sh-pitem:hover {
@@ -2032,141 +2038,6 @@
 .sh-root[data-layout="short"] .sh-practical-btn::after {
   bottom: -3px;
   height: max(calc(100% + 3px), calc(var(--tap) / var(--ui)));
-}
-
-/* ---- The lesson page's overlays (learn.css) --------------------------------------------------
-   ?learn=ohms-law lays its toolbar, note, close-up bar and graph paper over the canvas (.ol-tools,
-   .ol-note, .ol-loupe, .ol-graph). learn.css anchored them to the old header and panel (top 96 px,
-   right 428 px, ...) and changes them by window width, not by this layout, so they ran under the
-   new cards: the toolbar under the Compare button, the graph paper and the close-up bar under the
-   guide. Here they are anchored to the free stage instead (--sh-head, --sh-bar and --sh-guide,
-   above). Every selector carries the root's data-layout, so it outranks learn.css however wide the
-   window is, and each one sets all of the edges learn.css might have set. Delete this section once
-   learn.css reads those variables itself. One element at a time, wide and compact first (the
-   guide on the right), then portrait (a phone upright), then short (a phone on its side). */
-
-/* The toolbar: under the Compare button on a laptop and beside it on a landscape phone; under the
-   player's row on a portrait phone. */
-.sh-root[data-layout="wide"] .ol-tools,
-.sh-root[data-layout="compact"] .ol-tools {
-  top: calc(var(--sh-head) + 12px);
-  right: auto;
-  bottom: auto;
-  left: calc(24px * var(--ui));
-  max-width: calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px);
-}
-
-.sh-root[data-layout="portrait"] .ol-tools {
-  top: calc(var(--sh-head) + 8px);
-  right: 12px;
-  bottom: auto;
-  left: 12px;
-  max-width: none;
-}
-
-.sh-root[data-layout="short"] .ol-tools {
-  top: calc(68px * var(--ui));
-  right: auto;
-  bottom: auto;
-  left: calc(12px * var(--ui) + 52px);
-  max-width: calc(100% - 12px * var(--ui) - 52px - var(--sh-guide) - 12px);
-}
-
-/* The note: under the toolbar on a laptop; at the foot of the free stage on a phone (never with
-   the close-up bar: the note is hidden while the bar is open). */
-.sh-root[data-layout="wide"] .ol-note,
-.sh-root[data-layout="compact"] .ol-note {
-  top: calc(var(--sh-head) + 68px);
-  right: auto;
-  bottom: auto;
-  left: calc(24px * var(--ui));
-  max-width: min(460px, calc(100% - 24px * var(--ui) - var(--sh-guide) - 12px));
-}
-
-.sh-root[data-layout="portrait"] .ol-note {
-  top: auto;
-  right: 12px;
-  bottom: calc(var(--sh-bar) + 12px);
-  left: 12px;
-  max-width: none;
-}
-
-.sh-root[data-layout="short"] .ol-note {
-  top: auto;
-  right: auto;
-  bottom: calc(var(--sh-bar) + 12px);
-  left: calc(12px * var(--ui));
-  max-width: min(460px, calc(100% - 12px * var(--ui) - var(--sh-guide) - 12px));
-}
-
-/* The close-up bar: at the foot of the free stage, left of the guide. */
-.sh-root[data-layout="wide"] .ol-loupe,
-.sh-root[data-layout="compact"] .ol-loupe {
-  top: auto;
-  right: calc(var(--sh-guide) + 16px);
-  bottom: calc(var(--sh-bar) + 16px);
-  left: 16px;
-}
-
-.sh-root[data-layout="portrait"] .ol-loupe {
-  top: auto;
-  right: 12px;
-  bottom: calc(var(--sh-bar) + 12px);
-  left: 12px;
-  max-width: none;
-  margin: 0;
-}
-
-.sh-root[data-layout="short"] .ol-loupe {
-  top: auto;
-  right: calc(var(--sh-guide) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
-  left: calc(12px * var(--ui));
-}
-
-/* The graph paper: the free stage under the toolbar, left of the guide; a phone's fills it. */
-.sh-root[data-layout="wide"] .ol-graph,
-.sh-root[data-layout="compact"] .ol-graph {
-  top: calc(var(--sh-head) + 68px);
-  right: calc(var(--sh-guide) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
-  left: calc(24px * var(--ui));
-  border: var(--rule);
-  border-radius: var(--radius);
-}
-
-.sh-root[data-layout="portrait"] .ol-graph {
-  top: calc(var(--sh-head) + 64px);
-  right: 0;
-  bottom: var(--sh-bar);
-  left: 0;
-  border-right: 0;
-  border-left: 0;
-  border-radius: 0;
-}
-
-.sh-root[data-layout="short"] .ol-graph {
-  top: calc(var(--sh-head) + 8px);
-  right: calc(var(--sh-guide) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
-  left: calc(12px * var(--ui));
-  border: var(--rule);
-  border-radius: var(--radius);
-}
-
-/* The diagram or Identify card floats top-left on a laptop, so the toolbar and note go
-   bottom-left. (On a phone they open as sheets, and nothing floats.) Last: it is the most
-   specific. */
-.sh-root[data-layout="wide"] .ol-float-open .ol-tools,
-.sh-root[data-layout="compact"] .ol-float-open .ol-tools {
-  top: auto;
-  bottom: calc(var(--sh-bar) + 12px);
-}
-
-.sh-root[data-layout="wide"] .ol-float-open .ol-note,
-.sh-root[data-layout="compact"] .ol-float-open .ol-note {
-  top: auto;
-  bottom: calc(var(--sh-bar) + 68px);
 }
 
 /* ---- Motion: slides and fades only, and none under reduced motion ------------------------ */

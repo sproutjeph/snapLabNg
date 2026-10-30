@@ -22,7 +22,7 @@ import { useParallaxNote } from "./readings/parallax";
 import { clampEye, type LoupeTarget, MAX_EYE_DEG, type RuleEnd } from "./readings/poses";
 import { ReadingLoupe } from "./readings/ReadingLoupe";
 import { emptyOhmsLawRecord } from "./readings/record";
-import LessonShell, { type ShellTab } from "./shell/LessonShell";
+import LessonShell, { type GuideState, type ShellTab } from "./shell/LessonShell";
 import { TerminalProvider } from "./terminals";
 import { ease } from "./timeline";
 import type {
@@ -62,16 +62,17 @@ function useBenchVersion(bench: OhmsLawBench): number {
 /**
  * Where the shell's cards cover the canvas (the guide, status card and step strip: shell/layout.ts,
  * from the window size), so the bench is framed in the part she can see. On a phone held upright
- * the guide starts folded to a peek (the shell's default), so the bench is framed for that window.
+ * the guide is folded to a peek or open, and each leaves a different window: the page keeps that
+ * state (it is the shell's `guide`) and frames the bench for it.
  */
-function coveredPx(): Covered {
-  return playerCovered(window.innerWidth, window.innerHeight, { guide: "peek" });
+function coveredPx(guide: GuideState): Covered {
+  return playerCovered(window.innerWidth, window.innerHeight, { guide });
 }
 
 /** How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen. */
-function fitFactor(width: number, height: number): number {
+function fitFactor(width: number, height: number, guide: GuideState): number {
   const aspect = width / Math.max(height, 1);
-  const c = coveredPx();
+  const c = coveredPx(guide);
   const fitTall = aspect < 1 ? 1 / aspect : 1;
   const fitPanels = (0.9 * width) / Math.max(width - c.left - c.right, 1);
   return Math.min(2.6, Math.max(1, fitTall, fitPanels));
@@ -99,7 +100,16 @@ const reducedMotion = () =>
  * changes (a jump the first time, and with reduced motion). A close-up owns the camera while it
  * is open; a step or size change then waits until it is back. Her own orbit within a step stays.
  */
-function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
+function PoseRig({
+  pose,
+  paused,
+  guide,
+}: {
+  pose: CameraPose;
+  paused: boolean;
+  /** The phone's guide as it stands (open, or folded to a peek): it sets how much canvas is free. */
+  guide: GuideState;
+}) {
   const camera = useThree((st) => st.camera);
   const controls = useThree((st) => st.controls) as unknown as {
     target: THREE.Vector3;
@@ -109,7 +119,7 @@ function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
   const height = useThree((st) => st.size.height);
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
-    const c = coveredPx();
+    const c = coveredPx(guide);
     camera.setViewOffset(
       width,
       height,
@@ -119,7 +129,7 @@ function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
       height,
     );
     return () => camera.clearViewOffset();
-  }, [camera, width, height]);
+  }, [camera, width, height, guide]);
 
   const anim = useMemo(
     () => ({
@@ -143,16 +153,16 @@ function PoseRig({ pose, paused }: { pose: CameraPose; paused: boolean }) {
     controls.update();
   }, [controls, anim, pose]);
   const poseKey = `${pose.azimuthDeg}|${pose.elevationDeg}|${pose.target.join(",")}|${pose.distanceM}`;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new pose or size is what marks it dirty.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new pose, size or guide is what marks it dirty.
   useEffect(() => {
     anim.dirty = true;
-  }, [anim, poseKey, width, height]);
+  }, [anim, poseKey, width, height, guide]);
 
   useFrame((_, dtS) => {
     if (paused) return;
     if (anim.dirty) {
       anim.dirty = false;
-      posePosition(pose, fitFactor(width, height), anim.to);
+      posePosition(pose, fitFactor(width, height, guide), anim.to);
       anim.toLook.set(pose.target[0], pose.target[1], pose.target[2]);
       anim.from.copy(camera.position);
       if (controls) anim.fromLook.copy(controls.target);
@@ -228,6 +238,11 @@ function LearnView() {
     return Number.isInteger(n) && n >= 1 ? Math.min(n, lesson.steps.length) - 1 : 0;
   });
   const [tab, setTab] = useState<ShellTab>("instructions");
+  // A phone held upright folds the guide to a peek or opens it. The shell reports each change, and
+  // the bench is framed in the window that leaves. Only Instructions has a peek: any other tab
+  // shows the guide in full (the shell's own rule).
+  const [guide, setGuide] = useState<GuideState>("peek");
+  const framedGuide: GuideState = tab === "instructions" ? guide : "open";
   const [record, setRecordState] = useState<OhmsLawRecord>(() => emptyOhmsLawRecord(mode));
   const [identified, setIdentified] = useState<ReadonlySet<PartId>>(() => new Set());
   const [sheet, setSheet] = useState<MarkSheet | null>(null);
@@ -327,6 +342,8 @@ function LearnView() {
       stepStatus={status}
       tab={tab}
       onTabChange={setTab}
+      guide={guide}
+      onGuideChange={setGuide}
       tabContent={{
         examiner: <MarkPanel sheet={sheet} stale={stale} onHandIn={handIn} mode={mode} />,
       }}
@@ -368,7 +385,7 @@ function LearnView() {
           camera={{ fov: 40, position: BENCH_CAMERA, near: 0.02, far: 20 }}
         >
           <InkLights quality={tier} />
-          <PoseRig pose={pose} paused={loupe !== null || returning} />
+          <PoseRig pose={pose} paused={loupe !== null || returning} guide={framedGuide} />
           {!loupe && !returning && (
             <OrbitControls
               makeDefault

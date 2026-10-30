@@ -234,6 +234,7 @@ function Shelled({
       note={MODE_NOTE[practical]}
       guide={guide}
       onGuideChange={setGuide}
+      onRestart={practical === "watch" ? () => director.seek(0) : undefined}
       overlay={<Player director={director} stageTitles={STAGE_TITLES} />}
       checklist={<StageChecklist director={director} stageTitles={STAGE_TITLES} />}
     >
