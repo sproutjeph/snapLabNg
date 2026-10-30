@@ -4,28 +4,24 @@ import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
 import {
   BENCH_TILE_M,
+  benchCellSteel,
+  benchCellWrapper,
   benchTag,
   benchTexture,
   bevelBox,
   bevelSegments,
   boxProjectUV,
   brassSurface,
+  CELL_SPRING,
   CELLS_NUTS,
   disposeKitBag,
-  kitTexture,
+  helixTube,
   offsetUV,
+  scaleUV,
   woodMaterial,
 } from "../materials";
 import { INK_IDS, type PartProps } from "./layout";
-import {
-  COLOURS,
-  canvasTexture,
-  jitterColour,
-  makeCanvas,
-  matte,
-  mergeStatic,
-  seeded,
-} from "./MeterMaterials";
+import { jitterColour, matte, mergeStatic, seeded } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
 
 /**
@@ -48,9 +44,9 @@ const INNER_X = HOLDER_L / 2 - END_T; // the end blocks' inner faces
 const FLOOR_T = 0.008;
 const RAIL_T = 0.006;
 // The front rail is low, so the cells' printed faces and the springs show over it; the back one
-// is taller, so its pale lining shows behind the cells.
+// is tall (a little under the end blocks), so a good width of its pale lining shows over the cells.
 const RAIL_FRONT_H = 0.022;
-const RAIL_BACK_H = 0.034;
+const RAIL_BACK_H = 0.042;
 const RAIL_Z = HOLDER_D / 2 - RAIL_T / 2;
 const LINING_T = 0.001;
 // Two cells and three springs fill the space between the end blocks. A cell's brass cap is at
@@ -63,8 +59,9 @@ const NUB_L = 0.0012;
 const RING_L = 0.0026; // the silver collar at each end of a cell
 const RING_PROUD = 0.0008; // it stands proud of the wrapper, so the ink draws a clean line there
 const CLIP_T = 0.0016;
-const SPRING_R = 0.0072;
-const SPRING_WIRE = 0.0014;
+// The springs' wire is 8-sided on every tier (round under the ink pass); the lower tiers take fewer
+// steps round the coil, and the lowest one a turn less, to stay within the triangle budget
+// (CELL_SPRING in materials/benchSpec.ts).
 const CELL_A = -0.0484; // left end of the left-hand cell's body
 const CELL_B = 0.0066; // left end of the right-hand cell's body
 const SPRING_SPANS = [
@@ -84,88 +81,6 @@ const BRASS_FRESH = new THREE.Color();
 const BRASS_SPENT = new THREE.Color("#5e4a28");
 const SPENT_TINT = new THREE.Color("#7b7466");
 
-/**
- * The wrapper: a black body with pores and a cream paper band round its middle, lettered 1.5 V
- * in a ruled box. 512 px round the cell, 290 px along it (6 px a millimetre). The text runs
- * along the cell, as printed on a real one lying on its side.
- */
-function wrapperTexture(rnd: () => number) {
-  const { canvas, ctx } = makeCanvas(512, 290);
-  if (ctx) {
-    ctx.fillStyle = "#2b2927";
-    ctx.fillRect(0, 0, 512, 290);
-    for (let i = 0; i < 520; i++) {
-      ctx.fillStyle = `rgba(10, 9, 8, ${0.4 + rnd() * 0.4})`;
-      ctx.beginPath();
-      ctx.ellipse(rnd() * 512, rnd() * 290, 0.8 + rnd() * 1.9, 0.7 + rnd() * 1.4, 0, 0, 6.3);
-      ctx.fill();
-    }
-    for (let i = 0; i < 260; i++) {
-      ctx.fillStyle = `rgba(120, 114, 106, ${0.2 + rnd() * 0.3})`;
-      ctx.beginPath();
-      ctx.ellipse(rnd() * 512, rnd() * 290, 0.6 + rnd() * 1.2, 0.5 + rnd() * 0.9, 0, 0, 6.3);
-      ctx.fill();
-    }
-    // The paper band, all the way round.
-    const top = 62;
-    const bottom = 228;
-    const paper = ctx.createLinearGradient(0, top, 0, bottom);
-    paper.addColorStop(0, "#fbf3dc");
-    paper.addColorStop(1, "#f1e6c6");
-    ctx.fillStyle = paper;
-    ctx.fillRect(0, top, 512, bottom - top);
-    ctx.strokeStyle = "rgba(120, 90, 40, 0.07)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 120; i++) {
-      const x = rnd() * 512;
-      const y = top + rnd() * (bottom - top);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + 10 + rnd() * 22, y + (rnd() - 0.5) * 2);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "#1d2430";
-    ctx.fillRect(0, top, 512, 4);
-    ctx.fillRect(0, bottom - 4, 512, 4);
-    // 1.5 V in a ruled box, on the face that turns toward the student.
-    ctx.save();
-    ctx.translate(256, (top + bottom) / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.strokeStyle = "#1d2430";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-62, -23, 124, 46);
-    ctx.fillStyle = "#1d2430";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 36px Arial, Helvetica, sans-serif";
-    ctx.fillText("1.5 V", 0, 2);
-    ctx.restore();
-  }
-  const tex = canvasTexture(canvas, 8);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.offset.x = 0.5; // the printed face sits at the front of the cylinder
-  return tex;
-}
-
-/** A coil spring along +x from x = 0 to `len`, round the axis. */
-function springGeometry(len: number, turns: number, low: boolean) {
-  const per = low ? 6 : 12;
-  const n = Math.round(turns * per);
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const a = t * turns * Math.PI * 2;
-    pts.push(new THREE.Vector3(t * len, Math.cos(a) * SPRING_R, Math.sin(a) * SPRING_R));
-  }
-  return new THREE.TubeGeometry(
-    new THREE.CatmullRomCurve3(pts),
-    n,
-    SPRING_WIRE,
-    low ? 4 : 6,
-    false,
-  );
-}
-
 export function CellHolder({ state, quality, position, rotationY = 0 }: PartProps) {
   const low = quality === "low";
   const cast = !low;
@@ -179,9 +94,11 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
     const seg = low ? 14 : 28;
     const bs = bevelSegments(quality);
     const bsSmall = Math.min(bs, 2);
-    const tex = wrapperTexture(rnd);
+    const tex = benchCellWrapper(quality);
+    tex.offset.x = 0.5; // the printed face sits at the front of the cylinder
+    const steelTex = benchCellSteel(quality);
     const woodTex = benchTexture("mahogany", quality);
-    const pineTex = kitTexture("pine", quality);
+    const pineTex = benchTexture("pine", quality);
     const brassTex = benchTexture("brass", quality);
     const plusTag = benchTag(
       { text: "+", width: TAG_W, height: TAG_H, seed: 31, glyph: 0.9 },
@@ -202,27 +119,63 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
       geo.rotateX(-0.6);
       return { geo, place: (g: THREE.BufferGeometry) => g.translate(cx, CELL_Y, 0) };
     };
-    // The silver collars: a short closed cylinder at each end, so each end is a flat silver disc.
-    const ring = (x: number) => {
-      const geo = new THREE.CylinderGeometry(CELL_R + RING_PROUD, CELL_R + RING_PROUD, RING_L, seg);
-      geo.rotateZ(Math.PI / 2);
-      return { geo, place: (g: THREE.BufferGeometry) => g.translate(x, CELL_Y, 0) };
+    // The silver collars: a short open cylinder at each end of a can, and the flat silver disc on
+    // its outer face (the face inside the can is never seen, so it is not built).
+    const ring = (from: number, outward: 1 | -1) => {
+      const r = CELL_R + RING_PROUD;
+      const side = new THREE.CylinderGeometry(r, r, RING_L, seg, 1, true);
+      side.rotateZ(Math.PI / 2);
+      const disc = new THREE.CircleGeometry(r, seg);
+      disc.rotateY((outward * Math.PI) / 2);
+      // The steel texture is two squares: the flat end on its left half, the collar's rim on its right.
+      scaleUV(disc, 0.5, 1);
+      scaleUV(side, 0.5, 1);
+      offsetUV(side, 0.5, 0);
+      const discX = outward < 0 ? from : from + RING_L;
+      return [
+        {
+          geo: side,
+          place: (g: THREE.BufferGeometry) => g.translate(from + RING_L / 2, CELL_Y, 0),
+        },
+        { geo: disc, place: (g: THREE.BufferGeometry) => g.translate(discX, CELL_Y, 0) },
+      ];
     };
     const clip = (side: -1 | 1) => ({
       geo: new THREE.BoxGeometry(CLIP_T, 0.024, 0.022),
       place: (g: THREE.BufferGeometry) =>
         g.translate(side * (INNER_X - CLIP_T / 2), CELL_Y + 0.001, 0),
     });
-    const nub = (x: number) => {
-      const geo = new THREE.CylinderGeometry(NUB_R, NUB_R, NUB_L, low ? 10 : 16);
-      geo.rotateZ(Math.PI / 2);
-      return { geo, place: (g: THREE.BufferGeometry) => g.translate(x, CELL_Y, 0) };
+    // The brass cap of a cell (+ end): an open short cylinder and the disc on its outer face,
+    // the face against the cell's silver end being hidden.
+    const nub = (cellX: number) => {
+      const sides = low ? 10 : 16;
+      const side = new THREE.CylinderGeometry(NUB_R, NUB_R, NUB_L, sides, 1, true);
+      side.rotateZ(Math.PI / 2);
+      const disc = new THREE.CircleGeometry(NUB_R, sides);
+      disc.rotateY(-Math.PI / 2);
+      return [
+        {
+          geo: side,
+          place: (g: THREE.BufferGeometry) => g.translate(cellX - NUB_L / 2, CELL_Y, 0),
+        },
+        { geo: disc, place: (g: THREE.BufferGeometry) => g.translate(cellX - NUB_L, CELL_Y, 0) },
+      ];
     };
     const spring = (from: number, to: number) => ({
-      geo: springGeometry(to - from, 3.2, low),
+      geo: helixTube(
+        to - from,
+        CELL_SPRING.turns[quality],
+        CELL_SPRING.coilR,
+        CELL_SPRING.wireR,
+        CELL_SPRING.perTurn[quality],
+        CELL_SPRING.sides,
+      ),
       place: (g: THREE.BufferGeometry) => g.translate(from, CELL_Y, 0),
     });
-    // The tray: two end blocks, two rails and a floor, all mahogany.
+    // The tray: two end blocks, two rails and a floor, all mahogany. On the low tier the floor and
+    // the back rail (only their top edges are seen) are plain boxes, to stay within the budget.
+    const slab = (w: number, h: number, d: number, plain: boolean) =>
+      plain ? new THREE.BoxGeometry(w, h, d) : bevelBox(w, h, d, 0.002, 1);
     const shellGeo = mergeStatic([
       ...[-1, 1].map((side) => ({
         geo: bevelBox(END_T, END_H, HOLDER_D, 0.003, bsSmall),
@@ -231,12 +184,12 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
       ...([-1, 1] as const).map((side) => {
         const railH = side < 0 ? RAIL_BACK_H : RAIL_FRONT_H;
         return {
-          geo: bevelBox(HOLDER_L - 2 * END_T + 0.004, railH, RAIL_T, 0.002, 1),
+          geo: slab(HOLDER_L - 2 * END_T + 0.004, railH, RAIL_T, low && side < 0),
           place: (g: THREE.BufferGeometry) => g.translate(0, railH / 2, side * RAIL_Z),
         };
       }),
       {
-        geo: bevelBox(HOLDER_L - 2 * END_T + 0.004, FLOOR_T, HOLDER_D, 0.002, 1),
+        geo: slab(HOLDER_L - 2 * END_T + 0.004, FLOOR_T, HOLDER_D, low),
         place: (g: THREE.BufferGeometry) => g.translate(0, FLOOR_T / 2, 0),
       },
     ]);
@@ -259,12 +212,19 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
           ),
       },
     ]);
-    boxProjectUV(liningGeo, [0.55, 0.14]);
+    boxProjectUV(liningGeo, BENCH_TILE_M.pine);
+    offsetUV(liningGeo, 0.738, -0.057); // the knot lands high on the back wall, at its left end
     const tagGeo = new THREE.PlaneGeometry(TAG_W, TAG_H);
     return {
       tex,
       wrapperMat,
-      steelMat: matte(COLOURS.zinc, rnd, { roughness: 0.6, metalness: 0.4 }),
+      steelTex,
+      steelMat: matte("#ffffff", rnd, {
+        roughness: 0.62,
+        metalness: 0.25,
+        amount: 0.01,
+        map: steelTex,
+      }),
       brassMat: brassSurface(8, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
       woodTex,
       woodMat: woodMaterial(7, { map: woodTex }),
@@ -279,17 +239,17 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
       // Both cells and all four silver collars: one draw call each.
       cansGeo: mergeStatic([can(cellAx), can(cellBx)]),
       steelGeo: mergeStatic([
-        ring(CELL_A + RING_L / 2),
-        ring(CELL_A + CELL_L - RING_L / 2),
-        ring(CELL_B + RING_L / 2),
-        ring(CELL_B + CELL_L - RING_L / 2),
+        ...ring(CELL_A, -1),
+        ...ring(CELL_A + CELL_L - RING_L, 1),
+        ...ring(CELL_B, -1),
+        ...ring(CELL_B + CELL_L - RING_L, 1),
       ]),
       // The brass spring clips at both ends, the caps and the springs.
       brassGeo: mergeStatic([
         clip(-1),
         clip(1),
-        nub(CELL_A - NUB_L / 2),
-        nub(CELL_B - NUB_L / 2),
+        ...nub(CELL_A),
+        ...nub(CELL_B),
         ...SPRING_SPANS.map(([a, b]) => spring(a, b)),
       ]),
       shellGeo,
