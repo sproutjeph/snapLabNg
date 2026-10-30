@@ -23,6 +23,7 @@ uniform sampler2D inkBuffer;
 uniform sampler2D inkFocusMap;
 uniform float inkRadius;
 uniform float thinAlpha;
+uniform float thinRadius;
 uniform float depthThreshold;
 uniform float depthThresholdM;
 uniform float creaseThreshold;
@@ -95,7 +96,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float thr = depthThresholdM;
 #endif
   vec2 outer = texelSize * inkRadius;
-  vec2 inner = outer * 0.5;
+  // Thin parts draw a line thinRadius as wide, kept to whole texels like inkRadius.
+  vec2 thinOuter = texelSize * max(1.0, floor(inkRadius * thinRadius + 0.5));
+  vec2 inner = (c.b > 1.5 ? thinOuter : outer) * 0.5;
 
   // The strongest edge, and the sample that owns it.
   float edge = 0.0;
@@ -106,6 +109,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
     vec2 sb = uv + INK_DIRS[i * 2 + 1] * outer;
     vec4 na = texture2D(inkBuffer, sa);
     vec4 nb = texture2D(inkBuffer, sb);
+    // A thin neighbour owns a narrower line: look for it again, nearer in.
+    if (na.b > 1.5) { sa = uv + INK_DIRS[i * 2] * thinOuter; na = texture2D(inkBuffer, sa); }
+    if (nb.b > 1.5) { sb = uv + INK_DIRS[i * 2 + 1] * thinOuter; nb = texture2D(inkBuffer, sb); }
     // Paper pixels only ask whether a part is next to them: no depth needed.
     float nearerA = 0.0;
     float nearerB = 0.0;
