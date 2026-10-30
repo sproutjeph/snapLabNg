@@ -87,8 +87,13 @@ const GLASS_Z = FACE_Z + RING_LIP + 0.0002;
 const RING_SHADOW_OUTER = RING_OUTER + 0.0075;
 const SCREW_SHADOW_R = 0.0095;
 const SHADOW_Z = FACE_Z + 0.0004;
-/** The terminals' brass plates, and the ledge's + and − marks between them. */
-const PLATE = { w: 0.03, h: 0.0016, d: 0.03 } as const;
+/**
+ * The terminals' brass plates, and the ledge's + and − marks between them. A plate is a 4.5 mm
+ * block so its edge can be rounded by 1.5 mm (a rounded edge is at most a third of the thinnest
+ * side), sunk into the ledge until only `shows` of it stands above: the brass the student sees is
+ * as thin as before, and the nuts stand where they did.
+ */
+const PLATE = { w: 0.03, h: 0.0045, d: 0.03, radius: 0.0015, shows: 0.0012 } as const;
 const NUT_Z = 0.045;
 const MARK_X = 0.0105;
 /** Turns the marks to read upright from the default camera (azimuth 45 degrees). */
@@ -140,11 +145,14 @@ function pointerGeometry() {
  * shoulder outside and a sloped wall inside, so the lip on the camera's side does not hide the
  * numbers at the paper's edge. A surface of revolution, built on the y axis and turned to face +z.
  * The profile runs outer foot, up, across, down the inner wall (so the faces point outward).
+ *
+ * The low tier draws the ring twice (the ink hull), so it keeps the same outline in five points
+ * (a slanted outer wall, the flat lip, a sloped inner wall) instead of eight: 160 triangles, not 336.
  */
-function ringGeometry(segments: number) {
+function ringGeometry(segments: number, low: boolean) {
   const ro = RING_OUTER;
   const ri = DIAL.radius;
-  const profile = [
+  const full = [
     [ro + 0.0005, -0.0004],
     [ro, 0.002],
     [ro - 0.0007, 0.0036],
@@ -153,7 +161,15 @@ function ringGeometry(segments: number) {
     [ri + 0.0013, 0.004],
     [ri + 0.0006, 0.0027],
     [ri, METER_DIAL_LIFT - 0.0001],
-  ].map(([r, z]) => new THREE.Vector2(r, z));
+  ];
+  const light = [
+    [ro + 0.0005, -0.0004],
+    [ro - 0.001, RING_LIP - 0.0003],
+    [ri + 0.0021, RING_LIP],
+    [ri + 0.0006, 0.0028],
+    [ri, METER_DIAL_LIFT - 0.0001],
+  ];
+  const profile = (low ? light : full).map(([r, z]) => new THREE.Vector2(r, z));
   const geo = new THREE.LatheGeometry(profile, segments);
   geo.rotateX(Math.PI / 2);
   return geo;
@@ -226,13 +242,14 @@ export function Meter({
     const caseMat = bakeliteMaterial(seed, { map: bakeTex, roughness: 0.9 });
     caseMat.vertexColors = true;
 
-    // Brass plates under the terminals, and the zero-adjust screw.
+    // Brass plates under the terminals, and the zero-adjust screw. The low tier keeps a plain
+    // block (its hull outline draws the edge).
     const plateGeo = (side: number) => ({
       geo: low
         ? new THREE.BoxGeometry(PLATE.w, PLATE.h, PLATE.d)
-        : bevelBox(PLATE.w, PLATE.h, PLATE.d, 0.0006, 1),
+        : bevelBox(PLATE.w, PLATE.h, PLATE.d, PLATE.radius, 1),
       place: (g: THREE.BufferGeometry) =>
-        g.translate(side * PLUS_X, LEDGE.h + PLATE.h / 2 - 0.0004, NUT_Z),
+        g.translate(side * PLUS_X, LEDGE.h + PLATE.shows - PLATE.h / 2, NUT_Z),
     });
     const platesGeo = mergeStatic([plateGeo(-1), plateGeo(1)]);
     boxProjectUV(platesGeo, [0.1, 0.1]);
@@ -297,7 +314,7 @@ export function Meter({
 
     const ledgeLabelGeo = new THREE.PlaneGeometry(0.04, 0.012);
     ledgeLabelGeo.rotateX(-Math.PI / 2);
-    const ledgeLabelMat = matte("#ffffff", rnd, { roughness: 0.8, amount: 0.002, map: ledgeTex });
+    const ledgeLabelMat = matte("#ffffff", rnd, { roughness: 0.9, amount: 0.002, map: ledgeTex });
     ledgeLabelMat.transparent = true;
     ledgeLabelMat.depthWrite = false;
 
@@ -315,9 +332,9 @@ export function Meter({
       ledgeLabelMat,
       dialGeo: new THREE.CircleGeometry(DIAL.radius, low ? 32 : 48),
       dialMat: matte("#ffffff", rnd, { roughness: 0.88, amount: 0.008, map: dialTex }),
-      ringGeo: ringGeometry(low ? 24 : 36),
-      // Smooth dark ebonite for the bezel and the screw's slot.
-      ringMat: matte("#1f1b19", rnd, { roughness: 0.8, amount: 0.01 }),
+      ringGeo: ringGeometry(low ? 20 : 36, low),
+      // Smooth dark ebonite for the bezel and the screw's slot, matte like the rest.
+      ringMat: matte("#1f1b19", rnd, { roughness: 0.9, amount: 0.01 }),
       platesGeo,
       screwGeo,
       slotGeo,
@@ -325,7 +342,7 @@ export function Meter({
       needleGeo,
       needleBrassGeo: mergeStatic([{ geo: hubGeo }, { geo: postGeo }]),
       pointerGeo: pointerGeometry(),
-      needleMat: matte("#111111", rnd, { roughness: 0.7 }),
+      needleMat: matte("#111111", rnd, { roughness: 0.9 }),
       mirrorGeo,
       // The needle seen in the mirror strip. None on the low tier: parallax alone there.
       image: low ? null : createMirrorImage(),
