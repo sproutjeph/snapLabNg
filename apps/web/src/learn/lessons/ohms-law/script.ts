@@ -119,7 +119,9 @@ function build(): Beat[] {
   add({
     id: "enter",
     stage: "identify",
-    say: "You are provided with an ammeter, a voltmeter, a resistance box, connecting wires, dry cells and other necessary materials. Here they are on the bench: the dry cells, the plug key, the ammeter, the voltmeter, the resistance box and the resistance wire XY.",
+    // Short, so the first lead follows soon after the parts land (the question's own wording is on
+    // the paper; about 5 s spoken).
+    say: "Here is the apparatus: the cells, a plug key, an ammeter, a voltmeter, a resistance box and the wire XY.",
     instruct: "Look at each part on the bench and find it in the diagram.",
     shot: "bench",
     act: { kind: "enter", parts: ["cells", "key", "ammeter", "voltmeter", "box", "wire"] },
