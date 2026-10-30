@@ -3,6 +3,7 @@ import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
 import type { Beat, DirectorState } from "../script/types";
 import type { TerminalId } from "../types";
+import { createLeadPicks, type LeadPicks } from "../wiring/leadPick";
 import { DROP_HEIGHT_M, type DropPose, type DropSlot } from "./motion";
 
 // What the stage's choreographer (Choreo.tsx) writes each frame and the parts read in their own
@@ -10,6 +11,15 @@ import { DROP_HEIGHT_M, type DropPose, type DropSlot } from "./motion";
 // React per frame (.claude/rules/web-3d.md).
 
 /** The callout chip's sink: the DOM chip (StageChip.tsx) registers it; Choreo calls it. */
+/** The lead's Remove chip (LeadRemove.tsx): where, its words, whether it removes, and which lead. */
+export type RemoveSink = (
+  x: number,
+  y: number,
+  label: string,
+  removes: boolean,
+  id: string | null,
+) => void;
+
 export type ChipSink = (
   x: number,
   y: number,
@@ -45,6 +55,9 @@ export interface StageMotion {
    * played (`&freeze=`), so a screenshot shows one moment of a beat, whatever the frame rate.
    */
   freezeAtS: number | null;
+  /** Which lead is hovered or selected for removal, and the first-lead hint (wiring/leadPick.ts). */
+  leads: LeadPicks;
+  remove: RemoveSink | null;
 }
 
 const DROP_SLOTS: readonly DropSlot[] = ["cells", "key", "ammeter", "voltmeter", "box", "wire"];
@@ -64,6 +77,8 @@ export function createStageMotion(): StageMotion {
     epoch: 0,
     chip: null,
     freezeAtS: null,
+    leads: createLeadPicks(),
+    remove: null,
   };
 }
 

@@ -10,6 +10,44 @@
   touch-action: none;
 }
 
+/* Practise: "Undo lead" stays on screen, just under the player card and lined up with it (the
+   user, PR #100), not only in the Tools pop-up. Design px, zoomed like the card (player.css). */
+.ol-undo {
+  position: absolute;
+  z-index: 4;
+  zoom: var(--ui, 1);
+  top: 76px;
+  right: calc(540px + var(--sh-actions-w, 274px) + 10px);
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.ol-undo:disabled {
+  opacity: 0.45;
+}
+
+.sh-root[data-status="plain"] .ol-undo {
+  right: calc(340px + var(--sh-actions-w, 274px) + 10px);
+}
+
+.sh-root[data-layout="compact"] .ol-undo {
+  top: 138px;
+  right: 480px;
+}
+
+.sh-root[data-layout="portrait"] .ol-undo,
+.sh-root[data-layout="short"] .ol-undo {
+  top: 140px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sh-root[data-layout="short"] .ol-undo {
+  top: 66px;
+}
+
 .ol-btn {
   min-height: var(--tap);
   padding: 0 14px;

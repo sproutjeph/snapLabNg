@@ -25,6 +25,7 @@ import type { OhmsLawBench, PracticalMode } from "../types";
 import { BenchParts, type BenchPartsProps } from "../wiring/BenchParts";
 import { BenchWiring } from "../wiring/BenchWiring";
 import { Choreo } from "./Choreo";
+import { DevProbe } from "./DevProbe";
 import {
   benchBusy,
   createPoseMemo,
@@ -547,6 +548,7 @@ export function Stage({
           {nib ? (
             <PenNib target={nib.target} tap={nib.tap} rate={nib.rate} quality={quality} />
           ) : null}
+          {import.meta.env.DEV ? <DevProbe bench={bench} /> : null}
         </TerminalProvider>
         {loupeHeld && (
           <CloseUpCamera>

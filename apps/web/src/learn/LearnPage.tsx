@@ -23,6 +23,7 @@ import type { Beat, DirectorOptions } from "./script/types";
 import LessonShell, { type GuideState, type PopupId, type ShellTab } from "./shell/LessonShell";
 import { creditFromSource } from "./shell/StatusCard";
 import { BenchTools } from "./stage/BenchTools";
+import { LeadRemove } from "./stage/LeadRemove";
 import { Stage } from "./stage/Stage";
 import { StageChip } from "./stage/StageChip";
 import { createStageMotion, type StageMotion, trackEpoch } from "./stage/stageMotion";
@@ -38,6 +39,7 @@ import { createVoice } from "./voice/createVoice";
 import { createSfx } from "./voice/sfx";
 import { createOhmsLawBench } from "./wiring/bench";
 import { CircuitDiagram } from "./wiring/CircuitDiagram";
+import { hintFirstLead } from "./wiring/leadPick";
 import { watchWrongTaps } from "./wiring/wrongTap";
 import "./learn.css";
 
@@ -98,6 +100,8 @@ export function watchPose(beat: Beat | undefined, loupe: string | null): string 
 }
 
 const lesson = OHMS_LAW_LESSON;
+/** What the voice adds after every wrong lead's correction (the user, PR #100). */
+export const WRONG_LEAD_TAIL = "Tap the wire to remove it.";
 const STAGE_TITLES = Object.fromEntries(lesson.steps.map((st) => [st.key, st.title]));
 const CREDIT = creditFromSource(OHMS_LAW_QUESTION.source);
 
@@ -275,11 +279,15 @@ function LearnScreen({
         const act = director.script.beats[director.state.beat]?.act;
         return act?.kind === "lead" ? ([act.from, act.to] as const) : undefined;
       },
-      onWrong: (line, ends) => {
+      // Her first lead on this page shows, once, how a lead comes off again.
+      onLead: (id) => hintFirstLead(motion.leads, id, performance.now() / 1000),
+      onWrong: (line, ends, id) => {
         motion.marks.shake = [ends[0], ends[1]];
         motion.marks.shakeAtS = performance.now() / 1000;
+        // The wrong lead is the one picked for removal: lit, with its Remove chip, one tap away.
+        motion.leads.selected = id;
         director.voice.stop();
-        director.voice.say(line);
+        director.voice.say(`${line} ${WRONG_LEAD_TAIL}`);
       },
     });
   }, [practical, bench, director, motion]);
@@ -355,7 +363,21 @@ function LearnScreen({
       guide={guide}
       onGuideChange={setGuide}
       onRestart={watch ? () => director.seek(0) : undefined}
-      overlay={<Player director={director} stageTitles={STAGE_TITLES} />}
+      overlay={
+        <>
+          <Player director={director} stageTitles={STAGE_TITLES} />
+          {practical === "practice" ? (
+            <button
+              type="button"
+              className="ol-btn ol-undo"
+              disabled={bench.visual.current.leads.length === 0}
+              onClick={() => bench.undo()}
+            >
+              Undo lead
+            </button>
+          ) : null}
+        </>
+      }
       checklist={<StageChecklist director={director} stageTitles={STAGE_TITLES} />}
       calloutLayerRef={calloutLayer}
       activePopup={popup}
@@ -439,6 +461,13 @@ function LearnScreen({
           practical={practical}
         />
         <StageChip motion={motion} layer={calloutLayer} />
+        {watch ? null : (
+          <LeadRemove
+            motion={motion}
+            layer={calloutLayer}
+            onRemove={(id) => bench.removeLead(id)}
+          />
+        )}
 
         {loupe && (
           <fieldset className="ol-loupe" aria-label="Close-up">

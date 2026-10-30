@@ -3,12 +3,14 @@ import { TERMINAL_IDS } from "@snaplab/engine";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { slotBounds } from "../../apparatus/ohms-law/kitParams";
+import { getLeadCurve } from "../../apparatus/ohms-law/Lead";
 import { TERMINAL_PART } from "../../apparatus/ohms-law/layout";
 import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
 import { KEY_TOGGLE_AT, type LeadPhase, leadPhaseInto, partsEnteredBefore } from "../script/timing";
 import { useTerminalRegistry } from "../terminals";
 import type { OhmsLawBench, PartId, TerminalId } from "../types";
+import { chipTarget, forgetLead, HINT_TEXT } from "../wiring/leadPick";
 import { type DropSlot, dropAt, entranceOrder, inOutCubic, SHAKE_S, springStep } from "./motion";
 import { chipSpecAt, clearBench, DROP_SLOTS, type StageMotion, stageBusy } from "./stageMotion";
 
@@ -45,6 +47,41 @@ const CHIP_REST_PX = 0.5;
 const CHIP_REST_V = 4;
 
 const _p = new THREE.Vector3();
+const _q = new THREE.Vector3();
+
+/**
+ * The Remove chip on the lead she hovers or selected, or the first-lead hint: the lead's middle
+ * projected to canvas px, sent to the chip's sink. True while the chip is on a timer (the hint,
+ * or the linger after the mouse left a lead), so the loop keeps the frames that end it.
+ */
+function placeRemove(
+  m: StageMotion,
+  bench: OhmsLawBench,
+  camera: THREE.Camera,
+  size: { width: number; height: number },
+): boolean {
+  if (!m.remove) return false;
+  const nowS = performance.now() / 1000;
+  const tgt = chipTarget(m.leads, nowS);
+  if (tgt) {
+    let exists = false;
+    const leads = bench.visual.current.leads;
+    for (let i = 0; i < leads.length; i++) if (leads[i]?.id === tgt.id) exists = true;
+    const c = exists ? getLeadCurve(bench.visual, tgt.id) : undefined;
+    if (!exists) forgetLead(m.leads, tgt.id);
+    if (c && c.count > 1) {
+      const k = Math.floor(c.count / 2) * 3;
+      // The cable's points are in BenchWiring's space, which is the scene's.
+      _q.set(c.points[k] ?? 0, c.points[k + 1] ?? 0, c.points[k + 2] ?? 0).project(camera);
+      const x = ((_q.x + 1) / 2) * size.width;
+      const y = ((1 - _q.y) / 2) * size.height;
+      m.remove(x, y, tgt.label, tgt.removes, tgt.id);
+      return tgt.label === HINT_TEXT || (m.leads.hover === null && m.leads.selected !== tgt.id);
+    }
+  }
+  m.remove(0, 0, "", false, null);
+  return false;
+}
 
 export interface ChoreoProps {
   director: DirectorHandle | null;
@@ -193,7 +230,9 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     // ---- The callout chip: one, springing to the beat's anchor in real time ----
     let chipBusy = false;
     if (m.chip) {
-      const spec = s.mode === "exam" ? null : k.spec;
+      // One label at a time: while a lead's Remove chip (or its hint) shows, the callout steps aside.
+      const removing = chipTarget(m.leads, performance.now() / 1000) !== null;
+      const spec = s.mode === "exam" || removing ? null : k.spec;
       const slot = spec ? slotOf(spec.anchor) : null;
       let ok = spec !== null && (slot === null || m.parts[slot].k > 0);
       if (ok && spec) {
@@ -238,7 +277,8 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     const playing = s.playing && !s.finished && s.mode !== "exam";
     const nibOut = m.nib.target !== null;
     m.moving = (playing && (dropping || drawing || nibOut)) || shaking;
-    m.busy = stageBusy(s, t.length, chipBusy, m.moving);
+    m.busy =
+      stageBusy(s, t.length, chipBusy, m.moving) || placeRemove(m, bench, state.camera, state.size);
   }, -2);
 
   return null;
