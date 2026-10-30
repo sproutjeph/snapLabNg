@@ -65,7 +65,7 @@ interface SnaplabE2E {
 ## Tests
 - I1 (Vitest, `learn/` and `results/`): `with no mode the page opens on the paper`; `a paper choice sets the mode and the URL`; `?mode= skips the paper`; `the reading check and slope appear only after hand-in`; `new bench changes the seed, watch again keeps it`; `show me on a full terminal emits no lead event`; `the e2e hook is absent without e2e=1`.
 - I2 (E2E):
-  - `watch.mjs`: `?practical=ohms-law&mode=watch&e2e=1&speed=8&seed=7`: calls `play()`, plays to `done` (about 3 minutes at speed 8), a chip appeared during the lead beats, and the demo mark sheet shows `total === max`.
+  - `watch.mjs`: `?practical=ohms-law&mode=watch&e2e=1&speed=8&seed=7`: calls `play()`, plays to `done` (about 3 minutes at speed 8), a chip appeared during the lead beats, and the demo mark sheet shows `total === max − 1`, the lost mark being PHYS-CALC's final answer (by design the demo stops the length working before the answer, so Watch never shows her result; `script.test.ts` enforces it).
   - `practise.mjs`: wires the circuit by tapping `targets()` (one deliberate wrong tap first: a `hint` appears and contains no digit), then per row `setR` → `key(true)` → wait for `meters()` non-null → `type` I and V (and R if the notebook needs it) → `key(false)`; hands in: `checkRows === rows` and `checkOk === rows` (the length, graph and precautions are not filled, so not `total === max`).
   - `exam.mjs`: no `callout-chip`, `hint` or `show-me` ever in the DOM; elapsed timer visible; one hand-in, then `results`.
   - `noleak.mjs`: in Practise and Exam, before hand-in, `results-check` is absent and the page text never contains `wireOhm()` (to 1, 2 or 3 s.f.); after hand-in the check and the slope comparison appear.
@@ -86,11 +86,11 @@ interface SnaplabE2E {
 ## Risks
 1. **The read-aloud sync is fragile** (speechSynthesis boundary events are missing on some browsers). Fallback: drop each part at its sentence's estimated time; the timed drop if muted.
 2. **I1 changes a DOM hook that I2 relies on.** The contract above is frozen; a needed change goes through the lead, who updates both briefs.
-3. **The demo record does not score full marks** (a rounding or scale edge on some seed). `watch.mjs` pins seed 7 and logs the lost rule; a rules fix is then a lead decision, not a test change.
+3. **The demo record loses an unexpected mark** (a rounding or scale edge on some seed). `watch.mjs` pins seed 7 and logs the lost rule; a rules fix is then a lead decision, not a test change.
 
 ## Progress
 - [x] Plan approved by the user (Oct 30)
 - [x] Seam (AGENTS.md rows, Muse worktree)
-- [ ] I1 merged
+- [ ] I1 merged (built and fixed once, Oct 30; in review)
 - [ ] I2 merged, E2E green on main
 - [ ] The user signs off in Chrome
