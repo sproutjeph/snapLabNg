@@ -247,6 +247,16 @@ function build(): Beat[] {
       callouts: [{ anchor: "key", label: "PLUG KEY, K", sub: "Close the key", kind: "do" }],
     });
     add({
+      id: `${r}-r`,
+      stage,
+      say: `Write R = ${ohm} Ω in the first column of the row.`,
+      instruct: `Write ${ohm} in the R column of this row.`,
+      shot: "bench",
+      act: { kind: "write", field: { kind: "cell", row, col: "R" }, value: { text: String(ohm) } },
+      done: (s) => s.record.rows.some((r) => r.R.value === ohm),
+      focus: ["box"],
+    });
+    add({
       id: `${r}-i-loupe`,
       stage,
       say: "Read and record the current I on the ammeter. Read it with the pointer over its own image in the mirror strip, so parallax error is avoided.",
@@ -295,16 +305,6 @@ function build(): Beat[] {
       act: { kind: "write", field: { kind: "cell", row, col: "V" }, value: { from: "voltmeter" } },
       done: (s) => s.record.rows.some((r) => r.R.value === ohm && filled(r.V.text_as_written)),
       focus: ["voltmeter"],
-    });
-    add({
-      id: `${r}-r`,
-      stage,
-      say: `Write R = ${ohm} Ω in the first column of the row.`,
-      instruct: `Write ${ohm} in the R column of this row.`,
-      shot: "bench",
-      act: { kind: "write", field: { kind: "cell", row, col: "R" }, value: { text: String(ohm) } },
-      done: (s) => s.record.rows.some((r) => r.R.value === ohm),
-      focus: ["box"],
     });
     add({
       id: `${r}-key-off`,

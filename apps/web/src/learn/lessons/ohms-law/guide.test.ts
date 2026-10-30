@@ -160,18 +160,20 @@ describe("ohms-law guide", () => {
     expect(beat("head-I")(withRecord(setHeader(emptyOhmsLawRecord("practice"), "I", "I/A")))).toBe(
       true,
     );
-    const rowWritten = setCell(
-      setCell(emptyOhmsLawRecord("practice"), 0, "R", "0"),
-      0,
-      "I",
-      "0.55",
-    );
-    expect(beat("row-1-i")(withRecord(emptyOhmsLawRecord("practice")))).toBe(false);
-    expect(beat("row-1-i")(withRecord(rowWritten))).toBe(true);
-    // The current alone, in a row whose R was never written, does not count.
-    expect(
-      beat("row-1-i")(withRecord(setCell(emptyOhmsLawRecord("practice"), 0, "I", "0.55"))),
-    ).toBe(false);
+    // The row's beats complete in the order she works: R first (known once the plugs are
+    // set), then I, then V. row-N-r comes before row-N-i-loupe, or the I beat would wait
+    // on an R that only its own row's later beat writes.
+    const ids = S.beats.map((b) => b.id);
+    expect(ids.indexOf("row-1-r")).toBeLessThan(ids.indexOf("row-1-i-loupe"));
+    const rWritten = setCell(emptyOhmsLawRecord("practice"), 0, "R", "0");
+    const iWritten = setCell(rWritten, 0, "I", "0.55");
+    const vWritten = setCell(iWritten, 0, "V", "2.05");
+    expect(beat("row-1-r")(withRecord(emptyOhmsLawRecord("practice")))).toBe(false);
+    expect(beat("row-1-r")(withRecord(rWritten))).toBe(true);
+    expect(beat("row-1-i")(withRecord(rWritten))).toBe(false);
+    expect(beat("row-1-i")(withRecord(iWritten))).toBe(true);
+    expect(beat("row-1-v")(withRecord(iWritten))).toBe(false);
+    expect(beat("row-1-v")(withRecord(vWritten))).toBe(true);
     const graph = (over: Partial<OhmsLawGraph>): OhmsLawGraph => ({
       sheet: { width_cm: 26, height_cm: 18 },
       x: { label_as_written: "I/A", scale_as_written: null, units_per_cm: null, origin_value: 0 },
