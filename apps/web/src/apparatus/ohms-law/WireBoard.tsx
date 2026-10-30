@@ -45,12 +45,20 @@ const BOARD_BEVEL = 0.005;
 const RULE = { length: RULE_LENGTH_M, thickness: 0.003, depth: RULE_DEPTH_M, z: 0.0265 } as const;
 /** The tap box over the rule: as it was, so a tap lands where it always did. */
 const RULE_HIT = { height: 0.008, depth: 0.05, y: BOARD.height + 0.005, z: 0.019 } as const;
-/** The brass end blocks the wire is clamped in; the terminal nuts stand on them. */
-const BLOCK = { width: 0.04, height: 0.014, depth: 0.034 } as const;
-const WIRE = { z: -0.015, radius: 0.0011, y: BOARD.height + 0.007 } as const;
+const WIRE = { z: -0.015, radius: 0.0012, y: BOARD.height + 0.007 } as const;
+/**
+ * The brass end blocks the wire is clamped in; the terminal nuts stand on them. A block reaches
+ * `dz` behind the wire's line, so it is deeper (4.2 cm) while its face stays 1.5 mm clear of the rule.
+ */
+const BLOCK = { width: 0.044, height: 0.014, depth: 0.042, dz: -0.004 } as const;
+const BLOCK_Z = WIRE.z + BLOCK.dz;
 const NUT_Y = BOARD.height + BLOCK.height;
-/** How far past its block, along the wire's line, each letter is written on the board (m). */
-const LETTER_X_OFFSET = 0.038;
+/**
+ * Where each letter is written on the board: 4.4 cm to the right of its block's nut, in the back
+ * strip (z). Right is toward the camera of the bench and of every shot (az 0 to 90), so the block
+ * and its nut never stand in front of the letter; X's falls between the blocks, Y's just past its own.
+ */
+const LETTER = { dx: 0.044, z: -0.0385, size: 0.05 } as const;
 /** One tile of pine along the board (m): two tiles make the board, and the texture tiles across u. */
 const PINE_TILE_M = 0.55;
 
@@ -136,7 +144,7 @@ export function WireBoard({
         ? new THREE.BoxGeometry(BLOCK.width, BLOCK.height, BLOCK.depth)
         : bevelBox(BLOCK.width, BLOCK.height, BLOCK.depth, 0.0025, Math.max(1, bs - 1));
       blockPieces.push(
-        block.translate(x, BOARD.height + BLOCK.height / 2, WIRE.z),
+        block.translate(x, BOARD.height + BLOCK.height / 2, BLOCK_Z),
         // Open-ended: the board hides the collar's inner end and the lock screw's back.
         new THREE.CylinderGeometry(0.0028, 0.0028, 0.004, seg / 2, 1, true)
           .rotateZ(Math.PI / 2)
@@ -197,7 +205,7 @@ export function WireBoard({
     });
 
     const letterBlock = new THREE.PlaneGeometry(0.0125, 0.0125);
-    const letterBoard = new THREE.PlaneGeometry(0.03, 0.03).rotateX(-Math.PI / 2);
+    const letterBoard = new THREE.PlaneGeometry(LETTER.size, LETTER.size).rotateX(-Math.PI / 2);
     // A printed letter: no depth write, so the ink pass leaves its quad alone (skipsInk).
     const decal = (map: THREE.Texture) => {
       const m = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false });
@@ -252,17 +260,17 @@ export function WireBoard({
           castShadow
           receiveShadow
         />
-        {/* The letters are written on the board past each block, outside the wire, where nothing
-            stands in front of them. */}
+        {/* The letters are written on the board beside each block, on the side the camera sees,
+            where nothing stands in front of them (LETTER). */}
         <mesh
           geometry={res.letterBoard}
           material={res.letterXMat}
-          position={[xX - LETTER_X_OFFSET, lettersY, WIRE.z]}
+          position={[xX + LETTER.dx, lettersY, LETTER.z]}
         />
         <mesh
           geometry={res.letterBoard}
           material={res.letterYMat}
-          position={[xY + LETTER_X_OFFSET, lettersY, WIRE.z]}
+          position={[xY + LETTER.dx, lettersY, LETTER.z]}
         />
       </InkGroup>
       <InkGroup id={INK_IDS.wire + 1}>
@@ -288,12 +296,12 @@ export function WireBoard({
         <mesh
           geometry={res.letterBlock}
           material={res.letterXMat}
-          position={[xX, BOARD.height + BLOCK.height / 2, WIRE.z + BLOCK.depth / 2 + 0.0004]}
+          position={[xX, BOARD.height + BLOCK.height / 2, BLOCK_Z + BLOCK.depth / 2 + 0.0004]}
         />
         <mesh
           geometry={res.letterBlock}
           material={res.letterYMat}
-          position={[xY, BOARD.height + BLOCK.height / 2, WIRE.z + BLOCK.depth / 2 + 0.0004]}
+          position={[xY, BOARD.height + BLOCK.height / 2, BLOCK_Z + BLOCK.depth / 2 + 0.0004]}
         />
       </InkGroup>
       <InkGroup id={INK_IDS.wire + 3} thin>
