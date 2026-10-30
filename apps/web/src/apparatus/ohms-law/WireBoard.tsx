@@ -9,8 +9,10 @@ import {
   disposeKitBag,
   mergePieces,
   paperMaterial,
+  withRelief,
   woodMaterial,
 } from "../materials";
+import { INK_SOFT, SoftInk } from "./inkStyle";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { TerminalNut } from "./TerminalNut";
 import {
@@ -198,7 +200,7 @@ export function WireBoard({
     boxProjectUV(screws, [0.05, 0.05]);
 
     const wireLen = Math.abs(xY - xX);
-    const wireGeo = new THREE.CylinderGeometry(WIRE.radius, WIRE.radius, wireLen, low ? 5 : 8);
+    const wireGeo = new THREE.CylinderGeometry(WIRE.radius, WIRE.radius, wireLen, low ? 5 : 12);
     wireGeo.rotateZ(Math.PI / 2);
     wireGeo.translate((xX + xY) / 2, WIRE.y, WIRE.z);
 
@@ -251,9 +253,12 @@ export function WireBoard({
       letterBlock,
       letterBoard,
       ruleHit: new THREE.BoxGeometry(RULE_HIT.length, RULE_HIT.height, RULE_HIT.depth),
-      boardMats: [woodMaterial(0x5ee5, { map: endTex }), woodMaterial(0x5ee1, { map: pineTex })],
+      boardMats: [
+        woodMaterial(0x5ee5, { map: endTex }),
+        withRelief(woodMaterial(0x5ee1, { map: pineTex }), "wood", quality),
+      ],
       ruleBodyMat: paperMaterial(0x5ee4, { tint: "#d8cba6" }),
-      brassMat: brassSurface(0x5ee2, { map: brassTex }),
+      brassMat: withRelief(brassSurface(0x5ee2, { map: brassTex }), "brass", quality),
       wireMat: brassSurface(0x5ee6, { tint: "#7d776c" }),
       letterXMat: decal(letterX),
       letterYMat: decal(letterY),
@@ -292,7 +297,7 @@ export function WireBoard({
           position={[xY + LETTER.dx, lettersY, LETTER.z]}
         />
       </InkGroup>
-      <InkGroup id={INK_IDS.wire + 1}>
+      <SoftInk soft={INK_SOFT.rule} id={INK_IDS.wire + 1}>
         <mesh
           geometry={res.ruleBody}
           material={res.ruleBodyMat}
@@ -309,7 +314,7 @@ export function WireBoard({
             receiveShadow
           />
         ))}
-      </InkGroup>
+      </SoftInk>
       <InkGroup id={INK_IDS.wire + 2}>
         <mesh geometry={res.blocks} material={res.brassMat} castShadow receiveShadow />
         <mesh
@@ -323,9 +328,9 @@ export function WireBoard({
           position={[xY, BOARD.height + BLOCK.height / 2, BLOCK_Z + BLOCK.depth / 2 + 0.0004]}
         />
       </InkGroup>
-      <InkGroup id={INK_IDS.wire + 3} thin>
+      <SoftInk soft={INK_SOFT.wire} id={INK_IDS.wire + 3}>
         <mesh geometry={res.wireGeo} material={res.wireMat} castShadow />
-      </InkGroup>
+      </SoftInk>
       <InkGroup id={INK_IDS.wire + 4} thin>
         <mesh geometry={res.screws} material={res.brassMat} castShadow />
       </InkGroup>

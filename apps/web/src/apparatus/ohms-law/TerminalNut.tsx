@@ -11,6 +11,7 @@ import {
   brassSurface,
   disposeKitBag,
   paintMaterial,
+  withRelief,
 } from "../materials";
 import type { QualityTier } from "../meter-bridge/types";
 import {
@@ -310,7 +311,7 @@ export function TerminalNut({
       ringHalo: dashedRing(0.02041, 0.02548, 12),
       // The kit's own brass (warm, a little rough, metalness 0.3). The look's lights lift an
       // albedo by about half, so more metal or a brighter tint turns it lemon, not brass.
-      brassMat: brassSurface(seed, { map: brassTex }),
+      brassMat: withRelief(brassSurface(seed, { map: brassTex }), "brass", quality),
       // The moulded cap shares the leads' speckled skin of its colour, so a red cap and a red lead
       // are one plastic; the material only tints it a hair.
       capSkin,

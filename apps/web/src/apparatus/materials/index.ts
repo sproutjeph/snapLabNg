@@ -59,6 +59,15 @@ export {
 } from "./materials";
 export { fbm, hash2, seededRandom, valueNoise } from "./noise";
 export {
+  MIN_ROUGHNESS,
+  paintRelief,
+  RELIEF,
+  type ReliefKind,
+  type ReliefSpec,
+  reliefTexture,
+  withRelief,
+} from "./relief";
+export {
   bakeliteTexture,
   brushedBrassTexture,
   INK_BLUE,

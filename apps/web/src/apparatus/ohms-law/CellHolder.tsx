@@ -18,8 +18,10 @@ import {
   helixTube,
   offsetUV,
   scaleUV,
+  withRelief,
   woodMaterial,
 } from "../materials";
+import { INK_SOFT, SoftInk } from "./inkStyle";
 import { INK_IDS, type PartProps } from "./layout";
 import { jitterColour, matte, mergeStatic, seeded } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -91,7 +93,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
 
   const res = useMemo(() => {
     const rnd = seeded(7);
-    const seg = low ? 14 : 28;
+    const seg = low ? 14 : quality === "mid" ? 32 : 48;
     const bs = bevelSegments(quality);
     const bsSmall = Math.min(bs, 2);
     const tex = benchCellWrapper(quality);
@@ -225,11 +227,15 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
         amount: 0.01,
         map: steelTex,
       }),
-      brassMat: brassSurface(8, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
+      brassMat: withRelief(
+        brassSurface(8, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
+        "brass",
+        quality,
+      ),
       woodTex,
-      woodMat: woodMaterial(7, { map: woodTex }),
+      woodMat: withRelief(woodMaterial(7, { map: woodTex }), "wood", quality),
       pineTex,
-      pineMat: woodMaterial(9, { map: pineTex }),
+      pineMat: withRelief(woodMaterial(9, { map: pineTex }), "wood", quality),
       plusTag,
       minusTag,
       plusMat: matte("#ffffff", rnd, { roughness: 0.92, amount: 0.004, map: plusTag }),
@@ -304,7 +310,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
       <InkGroup id={ids + 3} thin>
         <mesh geometry={res.brassGeo} material={res.brassMat} />
       </InkGroup>
-      <InkGroup id={ids + 5} thin>
+      <SoftInk soft={INK_SOFT.label} id={ids + 5}>
         <mesh
           geometry={res.tagGeo}
           material={res.plusMat}
@@ -315,7 +321,7 @@ export function CellHolder({ state, quality, position, rotationY = 0 }: PartProp
           material={res.minusMat}
           position={[END_X, END_H * 0.62, HOLDER_D / 2 + LABEL_LIFT]}
         />
-      </InkGroup>
+      </SoftInk>
       <TerminalNut
         id="E+"
         part="cells"
