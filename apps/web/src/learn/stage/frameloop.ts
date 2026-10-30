@@ -37,15 +37,31 @@ export interface StageLoop {
   tick(dtS: number): boolean;
   /** Seconds of frames left. */
   remaining(): number;
+  /**
+   * Called at the end of each rendered frame: true when it asked for the next frame, false when
+   * the loop now rests.
+   */
+  frameEnd(continues: boolean): void;
+  /** True while frames follow one another; false while the loop rests. */
+  rendering(): boolean;
   /** r3f's invalidate, set by the canvas, so a wake from outside a frame starts one. */
   invalidate: () => void;
+  /**
+   * Restarts the frame clock (r3f's clock.getDelta()), set by the canvas. A wake that ends a rest
+   * calls it first, so the next frame's delta is a frame long, not the whole rest: parts that step
+   * by the delta (the key, the plugs, the engine) then move from where they were.
+   */
+  resetClock: () => void;
 }
 
 export function createStageLoop(): StageLoop {
   let left = 0;
+  let rendering = false;
   const loop: StageLoop = {
     wake(seconds) {
       left = Math.max(left, seconds);
+      if (!rendering) loop.resetClock();
+      rendering = true;
       loop.invalidate();
     },
     tick(dtS) {
@@ -53,7 +69,12 @@ export function createStageLoop(): StageLoop {
       return left > 0;
     },
     remaining: () => left,
+    frameEnd(continues) {
+      rendering = continues;
+    },
+    rendering: () => rendering,
     invalidate: () => {},
+    resetClock: () => {},
   };
   return loop;
 }

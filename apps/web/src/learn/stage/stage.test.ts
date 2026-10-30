@@ -92,6 +92,27 @@ describe("the demand frameloop", () => {
     expect(loop.tick(0.1)).toBe(false);
   });
 
+  it("restarts the frame clock when a wake ends a rest, and not while frames follow", () => {
+    const loop = createStageLoop();
+    let resets = 0;
+    loop.resetClock = () => {
+      resets++;
+    };
+    // Resting: the first wake restarts the clock, so the next frame's delta is not the whole rest.
+    loop.wake(1);
+    expect(resets).toBe(1);
+    // Frames following one another: a wake keeps the clock running.
+    loop.frameEnd(true);
+    loop.wake(1);
+    expect(resets).toBe(1);
+    // The loop rests again; the next wake restarts it once more.
+    loop.frameEnd(false);
+    expect(loop.rendering()).toBe(false);
+    loop.wake(1);
+    expect(resets).toBe(2);
+    expect(loop.rendering()).toBe(true);
+  });
+
   it("counts a slow frame as at most a tenth of a second, so a wake always buys frames", () => {
     const loop = createStageLoop();
     loop.wake(0.15);

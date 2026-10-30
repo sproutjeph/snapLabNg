@@ -204,6 +204,7 @@ function Heartbeat({
   shadowsDirty: { current: boolean };
 }) {
   const invalidate = useThree((s) => s.invalidate);
+  const get = useThree((s) => s.get);
   const gl = useThree((s) => s.gl);
   const dpr = useThree((s) => s.viewport.dpr);
   const memo = useMemo(createPoseMemo, []);
@@ -213,11 +214,13 @@ function Heartbeat({
 
   useEffect(() => {
     loop.invalidate = () => invalidate();
+    loop.resetClock = () => void get().clock.getDelta();
     loop.wake(MOUNT_S);
     return () => {
       loop.invalidate = () => {};
+      loop.resetClock = () => {};
     };
-  }, [loop, invalidate]);
+  }, [loop, invalidate, get]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new pixel ratio needs frames to settle.
   useEffect(() => loop.wake(RENDER_S), [loop, dpr]);
   useEffect(
@@ -228,17 +231,34 @@ function Heartbeat({
       }),
     [bench, loop],
   );
-  // Hover, taps and drags on the canvas (the camera's drag listens on the window for its moves).
+  // Hover and taps on the canvas. A press that starts on it may drag the camera, which follows the
+  // window's moves (LookCamera), so while it is down any move wakes the loop, over the cards too.
   useEffect(() => {
     const el = gl.domElement;
+    let down = false;
     const wake = () => loop.wake(POINTER_S);
+    const press = () => {
+      down = true;
+      wake();
+    };
+    const move = () => {
+      if (down) wake();
+    };
+    const lift = () => {
+      down = false;
+      wake();
+    };
     el.addEventListener("pointermove", wake);
-    el.addEventListener("pointerdown", wake);
-    window.addEventListener("pointerup", wake);
+    el.addEventListener("pointerdown", press);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", lift);
+    window.addEventListener("pointercancel", lift);
     return () => {
       el.removeEventListener("pointermove", wake);
-      el.removeEventListener("pointerdown", wake);
-      window.removeEventListener("pointerup", wake);
+      el.removeEventListener("pointerdown", press);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", lift);
+      window.removeEventListener("pointercancel", lift);
     };
   }, [gl, loop]);
 
@@ -252,8 +272,12 @@ function Heartbeat({
       shadowsDirty.current = true;
       shadowLeft.current -= Math.min(dt, MAX_TICK_S);
     }
+    // The rubber-band lead follows the pointer and casts a shadow: keep its shadow with it.
+    if (v.pendingFrom !== null) shadowsDirty.current = true;
     const awake = loop.tick(dt);
-    if (awake || heldRef.current || benchBusy(v)) invalidate();
+    const next = awake || heldRef.current || benchBusy(v);
+    loop.frameEnd(next);
+    if (next) invalidate();
   });
   return null;
 }
