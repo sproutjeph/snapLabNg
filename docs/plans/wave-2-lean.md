@@ -63,9 +63,17 @@ Owners never edit another slice's paths. Anything needed outside them goes under
 - Gemini and Muse each start from one line: "Read AGENTS.md, then docs/plans/wave-2-lean.md, slice 2a-shell (or 2a-script). Work in your worktree; open a PR." The lead creates their worktrees and adds their rows to AGENTS.md "Who owns what".
 - `/clear` after 2a merges; 2b resumes from this file's Progress.
 
+## 2b additions (found in 2a; the 2b writer owns these too)
+- `learn/LearnPage.tsx`'s `ol-tools` (Compare, Notebook, Graph paper, Undo, Reset) move into the shell's `tools` slot; nothing floats over the stage.
+- Laptop bench shot: stop reserving the ±25° drag margin, so the bench fills the free area (about 1.3× today); drag turns at most ±8°.
+- Phone steps R = 1 Ω and Repeat: the box-and-key shot must include both meters (she reads them on those steps).
+- Script (`learn/lessons/ohms-law/script.ts`): write R before the key closes (close the key only to read).
+- `Lead.tsx`: `thin: true` on the cable's ink tag and `userData.inkStrength = 0.55` (2a-real).
+- The demand frameloop stays awake while a beat plays.
+
 ## Progress
 - [x] Plan approved by the user (Oct 30)
 - [ ] Seam merged (chrome.ts, timing constants, ownership rows, worktrees for Gemini and Muse)
-- [ ] 2a: stage, real, shell, script merged; user signs off the still frame in Chrome
+- [x] 2a merged Oct 30: real #95, shell #98 (Gemini), script #97 (Muse), stage #96. The user rejected the 45° golden camera (meter dials edge-on) and approved the student's-seat stage: azimuth 12°, layout v3 (meters front row, box/key/cells middle, wire board back, tray off the bench), sloping-front meters (dial aspect 0.97), named shots in `learn/stage/shots.ts` (bench; meters for readings; phone: board, box and key).
 - [ ] 2b: motion merged; user signs off Watch and Practise in Chrome
 - [ ] 2c: hero (SHOULD)
