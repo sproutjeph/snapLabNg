@@ -197,6 +197,32 @@ export function createGlassTexture(px: number): THREE.CanvasTexture {
   return canvasTexture(canvas, 4);
 }
 
+/**
+ * A soft dark glow that fades out toward the edge of a square plane, for a part's contact shadow
+ * on a face: full strength from the middle out to `solidFrac` of the half width, then fading to
+ * clear at the edge. Painted black on clear; the plane that carries it hides under the part.
+ */
+export function createShadowTexture(
+  px: number,
+  solidFrac: number,
+  strength = 0.55,
+): THREE.CanvasTexture {
+  const { canvas, ctx } = makeCanvas(px, px);
+  if (ctx) {
+    ctx.clearRect(0, 0, px, px);
+    const c = px / 2;
+    const g = ctx.createRadialGradient(c, c, c * solidFrac, c, c, c);
+    g.addColorStop(0, `rgba(0,0,0,${strength})`);
+    g.addColorStop(0.45, `rgba(0,0,0,${strength * 0.35})`);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(c, c, c, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvasTexture(canvas, 2);
+}
+
 export function createDialTexture(spec: DialSpec): THREE.CanvasTexture {
   const size = spec.px;
   const { canvas, ctx } = makeCanvas(size, size);

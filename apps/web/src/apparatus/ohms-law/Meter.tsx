@@ -13,6 +13,7 @@ import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import {
   createDialTexture,
   createGlassTexture,
+  createShadowTexture,
   DIAL,
   NEEDLE_LEN,
   needleAngleDeg,
@@ -78,6 +79,10 @@ const RING_OUTER = 0.0418;
 const RING_LIP = 0.0046;
 /** The glass highlight floats just over the lip. */
 const GLASS_Z = FACE_Z + RING_LIP + 0.0002;
+/** Soft contact shadows on the face: round the bezel (out to this radius) and under the zero screw. */
+const RING_SHADOW_OUTER = RING_OUTER + 0.0075;
+const SCREW_SHADOW_R = 0.0095;
+const SHADOW_Z = FACE_Z + 0.0004;
 /** The terminals' brass plates, and the ledge's + and − marks between them. */
 const PLATE = { w: 0.03, h: 0.0016, d: 0.03 } as const;
 const NUT_Z = 0.045;
@@ -93,8 +98,8 @@ function ledgeLabelTexture(): THREE.CanvasTexture {
   if (ctx) {
     ctx.clearRect(0, 0, w, h);
     const pxPerM = w / 0.04;
-    const len = 0.0088 * pxPerM;
-    const thick = 0.0019 * pxPerM;
+    const len = 0.0082 * pxPerM;
+    const thick = 0.0024 * pxPerM;
     const x = (m: number) => w / 2 + m * pxPerM;
     const bar = (cx: number, cy: number, bw: number, bh: number) =>
       ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
@@ -186,6 +191,18 @@ export function Meter({
     const brassTex = meterBrassTexture(quality);
     const ledgeTex = ledgeLabelTexture();
     const glassTex = low ? null : createGlassTexture(256);
+    const ringShadowTex = low ? null : createShadowTexture(256, RING_OUTER / RING_SHADOW_OUTER);
+    const screwShadowTex = low ? null : createShadowTexture(128, 0.4);
+    // An unlit, clear-edged decal: it carries its own alpha and never writes depth.
+    const decal = (map: THREE.Texture | null) =>
+      map
+        ? new THREE.MeshBasicMaterial({
+            map,
+            transparent: true,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        : null;
 
     // The case: a bevelled block with a bevelled ledge in front, speckled bakelite all over, its
     // edges worn pale where the bevels turn. The voltmeter takes another part of the same tile.
@@ -207,7 +224,9 @@ export function Meter({
 
     // Brass plates under the terminals, and the zero-adjust screw.
     const plateGeo = (side: number) => ({
-      geo: bevelBox(PLATE.w, PLATE.h, PLATE.d, 0.0006, 1),
+      geo: low
+        ? new THREE.BoxGeometry(PLATE.w, PLATE.h, PLATE.d)
+        : bevelBox(PLATE.w, PLATE.h, PLATE.d, 0.0006, 1),
       place: (g: THREE.BufferGeometry) =>
         g.translate(side * PLUS_X, LEDGE.h + PLATE.h / 2 - 0.0004, NUT_Z),
     });
@@ -262,28 +281,21 @@ export function Meter({
     ledgeLabelMat.transparent = true;
     ledgeLabelMat.depthWrite = false;
 
-    const glassMat = glassTex
-      ? new THREE.MeshBasicMaterial({
-          map: glassTex,
-          transparent: true,
-          depthWrite: false,
-          toneMapped: false,
-        })
-      : null;
-
     return {
       dialTex,
       ledgeTex,
       glassTex,
+      ringShadowTex,
+      screwShadowTex,
       bakeTex,
       brassTex,
       caseMat,
       caseGeo,
       ledgeLabelGeo,
       ledgeLabelMat,
-      dialGeo: new THREE.CircleGeometry(DIAL.radius, low ? 32 : 64),
+      dialGeo: new THREE.CircleGeometry(DIAL.radius, low ? 32 : 48),
       dialMat: matte("#ffffff", rnd, { roughness: 0.88, amount: 0.008, map: dialTex }),
-      ringGeo: ringGeometry(low ? 24 : 44),
+      ringGeo: ringGeometry(low ? 24 : 36),
       // Smooth dark ebonite for the bezel and the screw's slot.
       ringMat: matte("#1f1b19", rnd, { roughness: 0.8, amount: 0.01 }),
       platesGeo,
@@ -299,7 +311,15 @@ export function Meter({
       mirrorMat: matte("#cfd5da", rnd, { roughness: 0.6, metalness: 0.15, amount: 0.01 }),
       brassMat: brassSurface(seed, { map: brassTex, tint: "#fff0d2" }),
       glassGeo: glassTex ? new THREE.PlaneGeometry(DIAL.radius * 2, DIAL.radius * 2) : null,
-      glassMat,
+      glassMat: decal(glassTex),
+      ringShadowGeo: ringShadowTex
+        ? new THREE.PlaneGeometry(RING_SHADOW_OUTER * 2, RING_SHADOW_OUTER * 2)
+        : null,
+      ringShadowMat: decal(ringShadowTex),
+      screwShadowGeo: screwShadowTex
+        ? new THREE.PlaneGeometry(SCREW_SHADOW_R * 2, SCREW_SHADOW_R * 2)
+        : null,
+      screwShadowMat: decal(screwShadowTex),
       hitScrewGeo,
       hitMat: hitMaterial(),
     };
@@ -412,6 +432,24 @@ export function Meter({
             material={res.glassMat}
             position={[0, DIAL_CY, GLASS_Z]}
             renderOrder={6}
+            userData={{ noInk: true }}
+          />
+        )}
+        {res.ringShadowGeo && res.ringShadowMat && (
+          <mesh
+            geometry={res.ringShadowGeo}
+            material={res.ringShadowMat}
+            position={[0, DIAL_CY, SHADOW_Z]}
+            renderOrder={1}
+            userData={{ noInk: true }}
+          />
+        )}
+        {res.screwShadowGeo && res.screwShadowMat && (
+          <mesh
+            geometry={res.screwShadowGeo}
+            material={res.screwShadowMat}
+            position={[0, SCREW_Y, SHADOW_Z]}
+            renderOrder={1}
             userData={{ noInk: true }}
           />
         )}

@@ -39,7 +39,7 @@ const PENCIL_R = 0.0058;
 const CONE_LEN = 0.022;
 const BOOKLET = { w: 0.2, d: 0.27, h: 0.012 } as const;
 /** Each board of the booklet's cover. */
-const COVER_H = 0.0018;
+const COVER_H = 0.003;
 const CALC = { w: 0.08, d: 0.155, h: 0.0145 } as const;
 const ERASER = { w: 0.052, d: 0.024, h: 0.014 } as const;
 /** A hexagon lying on a flat face has its centre this high. */
@@ -370,7 +370,7 @@ function usePropAssets(tier: Tier) {
     const eraser = new RoundedBoxGeometry(ERASER.w, ERASER.h, ERASER.d, bs, 0.0045);
 
     // The booklet: two covers, the page block between them, and a rounded spine on the left.
-    const cover = (thick: number) => new RoundedBoxGeometry(BOOKLET.w, thick, BOOKLET.d, 1, 0.0011);
+    const cover = (thick: number) => new RoundedBoxGeometry(BOOKLET.w, thick, BOOKLET.d, 1, 0.0015);
     const coverTop = cover(COVER_H);
     topUV(coverTop, BOOKLET.w, BOOKLET.d);
     const coverBottom = cover(COVER_H);
@@ -380,7 +380,7 @@ function usePropAssets(tier: Tier) {
       BOOKLET.h - 2 * COVER_H,
       BOOKLET.d - 0.006,
       1,
-      0.0008,
+      0.0015,
     );
     const spine = new THREE.CylinderGeometry(
       BOOKLET.h / 2,
@@ -525,6 +525,9 @@ export function DeskProps() {
         </InkGroup>
         <InkGroup id={FERRULE_INK} thin>
           <mesh geometry={g.ferrule} material={m.ferrule} position-x={-PENCIL_LEN / 2 - 0.0062} />
+        </InkGroup>
+        {/* The rubber touches only the ferrule, so it can take the body's own id. */}
+        <InkGroup id={DESK_INK_IDS.pencil} thin>
           <mesh geometry={g.rubber} material={m.rubber} position-x={-PENCIL_LEN / 2 - 0.0172} />
         </InkGroup>
       </group>
