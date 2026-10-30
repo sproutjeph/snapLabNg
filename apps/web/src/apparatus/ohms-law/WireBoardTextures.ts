@@ -691,16 +691,30 @@ export function repaintWhenFontReady(textures: THREE.CanvasTexture[]): () => voi
   };
 }
 
-/** Coarse grit for the sandpaper strip: a paper ground with dark and pale grains. */
+/**
+ * Coarse grit for the sandpaper strip: a brown abrasive paper (garnet and aluminium oxide are
+ * brown, not cream) with dark and pale grains and a few worn patches.
+ */
 export function makeGritTexture(rng: () => number): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 256);
-  ctx.fillStyle = "#c2a67c";
+  ctx.fillStyle = "#a47548";
   ctx.fillRect(0, 0, 512, 256);
-  for (let i = 0; i < 9000; i++) {
+  for (let i = 0; i < 11000; i++) {
     const v = rng();
     ctx.fillStyle =
-      v < 0.4 ? "rgba(84,56,30,0.42)" : v < 0.8 ? "rgba(240,220,176,0.5)" : "rgba(140,76,44,0.32)";
-    ctx.fillRect(rng() * 512, rng() * 256, 1 + rng() * 2, 1 + rng() * 2);
+      v < 0.4 ? "rgba(62,38,20,0.5)" : v < 0.8 ? "rgba(228,190,136,0.5)" : "rgba(150,66,36,0.38)";
+    ctx.fillRect(rng() * 512, rng() * 256, 1 + rng() * 2.4, 1 + rng() * 2.4);
+  }
+  // Worn patches, paler where the grit has rubbed off.
+  for (let i = 0; i < 9; i++) {
+    const x = rng() * 512;
+    const y = rng() * 256;
+    const r = 18 + rng() * 40;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(214,176,124,0.28)");
+    g.addColorStop(1, "rgba(214,176,124,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
   }
   return finish(c, 4);
 }

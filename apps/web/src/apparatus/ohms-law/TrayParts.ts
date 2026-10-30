@@ -421,16 +421,28 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     const plugBox = boxOf(plugProto.body, plugProto.pin);
     // The pin's tip to the cable's entry, and the body's radius, which the plug rests on.
     const endX = TIP_X + (plugBox.max.y - plugBox.min.y);
-    const py = FLOOR_Y + Math.max(plugBox.max.x, -plugBox.min.x);
-    const x1 = Math.max(0.075, endX + 0.02);
+    const radius = Math.max(plugBox.max.x, -plugBox.min.x);
+    const py = FLOOR_Y + radius;
+    // The cable leaves a plug level, along its axis, and only then settles to the floor: a plug
+    // is wider than the cable, and a straight run from its middle down would tilt it. The plugs
+    // lie a body's width apart (the front one against the front wall), and the fold-back stays
+    // inside the rim, whatever size LeadParts makes the plug.
+    const level = endX + Math.max(0.008, 2 * (py - cableY));
+    const x1 = level + 0.012;
+    const reach = Math.max(0.012, Math.min(0.037, TRAY_SIZE.x / 2 - WALL_T - CABLE_R - 0.001 - x1));
+    const zA = Math.min(0.145, TRAY_SIZE.z / 2 - WALL_T - radius - 0.0005);
+    const zB = zA - Math.max(0.019, 2 * radius + 0.003);
+    const zAt = (t: number) => zA + (zB - zA) * t;
     const pts = [
-      new THREE.Vector3(endX, py, 0.145),
-      new THREE.Vector3(x1, cableY, 0.145),
-      new THREE.Vector3(x1 + 0.025, cableY, 0.142),
-      new THREE.Vector3(x1 + 0.037, cableY, 0.135),
-      new THREE.Vector3(x1 + 0.025, cableY, 0.128),
-      new THREE.Vector3(x1, cableY, 0.126),
-      new THREE.Vector3(endX, py, 0.126),
+      new THREE.Vector3(endX, py, zA),
+      new THREE.Vector3(level, py, zA),
+      new THREE.Vector3(x1, cableY, zA),
+      new THREE.Vector3(x1 + 0.68 * reach, cableY, zAt(0.16)),
+      new THREE.Vector3(x1 + reach, cableY, zAt(0.5)),
+      new THREE.Vector3(x1 + 0.68 * reach, cableY, zAt(0.84)),
+      new THREE.Vector3(x1, cableY, zB),
+      new THREE.Vector3(level, py, zB),
+      new THREE.Vector3(endX, py, zB),
     ];
     const { curve, geo } = tubeOf(pts);
     acc.add("leads", 1, false, "yellow", geo);
