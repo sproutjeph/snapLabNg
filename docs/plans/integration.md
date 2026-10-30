@@ -18,8 +18,8 @@ From the home page, the student opens the Ohm's law practical, reads (or hears) 
 - I1 also owns `learn/shell/**` and `learn/player/**` for the paper pop-up and the mode choice (Gemini has no open slice).
 - `learn/LearnPage.tsx`: with no `mode` in the URL, open on the **question paper** in a pop-up over the stage (the shell's question pop-up); its three choices set the mode in page state (and `history.replaceState` the `mode` param); `?mode=` still deep-links past the paper. Hand-in renders `results/Results.tsx` (via `results/handIn.ts`) in place of `MarkPanel`. "Watch again" → Watch, from beat 0, same seed; "Try again on a new bench" → Practise (or Exam, whichever she was in) with a new seed. Watch's last beat opens the demo's mark sheet (the actor's record through `handIn`), labelled "Demonstration bench".
 - `learn/stage/Choreo.tsx`: the entrance plays while the paper is open (on every mode's first load, not only Watch), and when "Read it to me" reaches the apparatus list each part drops as it is named (fallback: the 0.9 s timed drop if speech is unavailable or muted).
-- `paper/QuestionPaper.tsx`: one optional prop `onItem?(partId)` fired as the reader reaches each listed item, and the existing choices call `onChoose(mode)`. No other change.
-- `results/handIn.ts`, `results/Results.tsx`: use the bench's meters as the supervisor's values (AGENTS.md hard rule; no `teacherXyOhm` on a simulated bench). Fix only what the live page needs.
+- `paper/QuestionPaper.tsx`: the existing `onItemRead` drives the drops; only the testids are added.
+- `results/handIn.ts`, `results/Results.tsx`: the engine is the supervisor (AGENTS.md hard rule; D1 in `exam-redesign.md`): keep `teacherXyOhm` = the bench's own wire, so the sheet stays 21 marks. Fix only what the live page needs.
 - `learn/script/types.ts`: the `benchState` JSDoc (keep the same `record` object until she edits, or the hint ladder never fires). `learn/script/createDirector.ts`: emit the Show me "lead" event only when the lead count went up.
 - `learn/stage/shots.ts`: the phone bench shot crops the bench's sides (resume-point backlog item marked Integration).
 - `learn/e2e.ts` (new): the test hook below, active only with `?e2e=1`.
@@ -29,7 +29,7 @@ From the home page, the student opens the Ohm's law practical, reads (or hears) 
 
 **Lead (seam, before both start):** this plan; AGENTS.md "Who owns what" rows for I1 and I2; Muse's worktree on a fresh branch from `origin/main`.
 
-## Contracts (frozen until both merge)
+## Contracts (frozen until both merge; amended Oct 30 after I1's first round: `play`, `setR`, `key`, `checkOk`, nullable `meters`)
 The E2E hook, `apps/web/src/learn/e2e.ts`, installed by `LearnPage` only when the URL has `e2e=1`:
 ```ts
 // window.__snaplab, present only with ?e2e=1
@@ -44,13 +44,19 @@ interface SnaplabE2E {
   tap(terminalId: string): void;
   /** Type into the notebook cell (row, column key), the same as her typing. */
   type(row: number, col: string, value: string): void;
-  /** The bench's current meter readings (ammeter A, voltmeter V), as the meters show them. */
-  meters(): { i: number; v: number };
+  /** Same as tapping Start / play. */
+  play(): void;
+  /** Set the resistance box as her plugs would. */
+  setR(ohms: number): void;
+  /** Close or open the key. */
+  key(closed: boolean): void;
+  /** The bench's current meter readings (ammeter A, voltmeter V), as the meters show them; null fields while a needle is still moving. */
+  meters(): { i: number | null; v: number | null };
   /** The wire's true resistance in ohms (the answer her slope is checked against). For noleak only. */
   wireOhm(): number;
   handIn(): void;
-  /** After hand-in: total and max from markOhmsLaw, and the reading-check row count. */
-  result(): { total: number; max: number; checkRows: number } | null;
+  /** After hand-in: total and max from markOhmsLaw, the reading-check row count and how many rows are ✓. */
+  result(): { total: number; max: number; checkRows: number; checkOk: number } | null;
 }
 ```
 - With `e2e=1`: the voice is silent and uses its estimated durations; `speed` also accepts 4 and 8 (still 1/1.5/2 in the UI).
@@ -59,8 +65,8 @@ interface SnaplabE2E {
 ## Tests
 - I1 (Vitest, `learn/` and `results/`): `with no mode the page opens on the paper`; `a paper choice sets the mode and the URL`; `?mode= skips the paper`; `the reading check and slope appear only after hand-in`; `new bench changes the seed, watch again keeps it`; `show me on a full terminal emits no lead event`; `the e2e hook is absent without e2e=1`.
 - I2 (E2E):
-  - `watch.mjs`: `?practical=ohms-law&mode=watch&e2e=1&speed=8&seed=7`: plays to `done`, a chip appeared during the lead beats, and the demo mark sheet shows `total === max`.
-  - `practise.mjs`: wires the circuit by tapping `targets()` (one deliberate wrong tap first: a `hint` appears and contains no digit), fills every row from `meters()` and hands in: `total === max`, `checkRows` equals the row count.
+  - `watch.mjs`: `?practical=ohms-law&mode=watch&e2e=1&speed=8&seed=7`: calls `play()`, plays to `done` (about 3 minutes at speed 8), a chip appeared during the lead beats, and the demo mark sheet shows `total === max`.
+  - `practise.mjs`: wires the circuit by tapping `targets()` (one deliberate wrong tap first: a `hint` appears and contains no digit), then per row `setR` → `key(true)` → wait for `meters()` non-null → `type` I and V (and R if the notebook needs it) → `key(false)`; hands in: `checkRows === rows` and `checkOk === rows` (the length, graph and precautions are not filled, so not `total === max`).
   - `exam.mjs`: no `callout-chip`, `hint` or `show-me` ever in the DOM; elapsed timer visible; one hand-in, then `results`.
   - `noleak.mjs`: in Practise and Exam, before hand-in, `results-check` is absent and the page text never contains `wireOhm()` (to 1, 2 or 3 s.f.); after hand-in the check and the slope comparison appear.
 
