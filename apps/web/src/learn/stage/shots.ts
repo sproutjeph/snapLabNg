@@ -67,7 +67,13 @@ interface CloseFrame {
 const CLOSE: Readonly<Record<Exclude<StageShotName, "bench">, CloseFrame>> = {
   // A meter's nuts stand on its ledge, well under the case's top.
   meters: { slots: ["ammeter", "voltmeter"], topPad: 0, azimuthDeg: STAGE_AZIMUTH_DEG },
-  boxKey: { slots: ["box", "key"], topPad: 0.025, azimuthDeg: STAGE_AZIMUTH_DEG },
+  // She reads both meters on the R = 1 Ω and Repeat steps, which take this shot on a phone, so it
+  // holds the meters in front of the box and key (docs/plans/wave-2-lean.md, 2b additions).
+  boxKey: {
+    slots: ["box", "key", "ammeter", "voltmeter"],
+    topPad: 0.025,
+    azimuthDeg: STAGE_AZIMUTH_DEG,
+  },
   board: { slots: ["wire"], topPad: 0.025, azimuthDeg: BOARD_PHONE_AZIMUTH_DEG },
 };
 
@@ -189,6 +195,42 @@ function closeShot(
     }
   }
   return { id: name, focus, spanM: hi, azimuthDeg };
+}
+
+/**
+ * How far she can turn the bench shot by dragging, either way (docs/plans/wave-2-lean.md, 2b
+ * additions). The shot is fitted at its own azimuth, not for LookCamera's ±25° drag, so the bench
+ * fills the free area; the stage turns it itself (StageCamera) and keeps the zoom while it does.
+ */
+export const BENCH_DRAG_DEG = 8;
+/** Degrees of turn per CSS px of drag (LookCamera's 0.006 rad/px). */
+export const BENCH_DRAG_DEG_PER_PX = 0.006 / DEG;
+
+const dragScratch: Frustum = { halfW: 1, halfH: 1, offsetX: 0, offsetY: 0 };
+
+/**
+ * The span that, seen from `azimuthDeg`, frames the bench at the same scale `shot` has from its
+ * own azimuth, so a turn never zooms (fitShot's scale grows with the span; bisection finds it).
+ */
+export function spanAtAzimuth(
+  shot: LookShot,
+  azimuthDeg: number,
+  covered: Covered,
+  width: number,
+  height: number,
+): number {
+  const baseAz = (shot.azimuthDeg ?? STAGE_AZIMUTH_DEG) * DEG;
+  const el = LOOK_ELEVATION_DEG * DEG;
+  const want = fitShot(shot.spanM, covered, width, height, baseAz, dragScratch, el).halfW;
+  const az = azimuthDeg * DEG;
+  let lo = MIN_SPAN_M;
+  let hi = Math.max(shot.spanM * 2, MIN_SPAN_M * 2);
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (fitShot(mid, covered, width, height, az, dragScratch, el).halfW >= want) hi = mid;
+    else lo = mid;
+  }
+  return hi;
 }
 
 /** The named shot for a canvas this size under these cards. */

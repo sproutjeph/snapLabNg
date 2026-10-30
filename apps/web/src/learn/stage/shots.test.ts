@@ -169,8 +169,8 @@ describe("the stage's named shots", () => {
     });
   }
 
-  it("keeps the box and key, and the wire board, inside a phone's free area", () => {
-    fitsInFree("boxKey", ["box", "key"], 390, 844);
+  it("keeps the box and key with both meters, and the wire board, inside a phone's free area", () => {
+    fitsInFree("boxKey", ["box", "key", "ammeter", "voltmeter"], 390, 844);
     fitsInFree("board", ["wire"], 390, 844);
   });
 
