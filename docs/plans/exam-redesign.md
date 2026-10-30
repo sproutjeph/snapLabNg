@@ -16,7 +16,7 @@ Inputs:
 - [x] Wave 1b (Oct 30): the asset pass (`docs/plans/asset-pass.md`) and the Backcountry page layout (see "Page layout" below), run in parallel at max effort (the user opted in to ultracode)
 - [ ] Wave 2: Watch script, guided Practise, callouts and motion, hero look merged
 - [x] Integration (Oct 30, `docs/plans/integration.md`): the practical page end to end (#105), E2E green on main (#107)
-- [ ] Beauty pass and bug bash; freeze at 23:59 on Nov 2
+- [x] Beauty pass and bug bash (Oct 30, `docs/plans/beauty-pass.md`): B1 look #110, B4 page #111, B3 steps strip #112 (Muse), B2 bench and leads #113; E2E and fps green on main b8a9e68
 
 ## Goal
 A student opens the app, picks a WAEC practical (WASSCE (SC) 2018 Physics Paper 3, Q3B, "Ohm's law (V–I)") and hears the question read aloud while the apparatus lands on the bench as each item is named.
