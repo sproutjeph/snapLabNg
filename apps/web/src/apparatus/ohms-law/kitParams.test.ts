@@ -68,20 +68,9 @@ describe("the kit preview's parameters", () => {
     expect(DEFAULT_AZ_DEG).toBe(45);
   });
 
-  it("frames the ten subjects and nothing else", () => {
+  it("frames the nine subjects and nothing else", () => {
     expect([...KIT_SUBJECTS].sort()).toEqual(
-      [
-        "ammeter",
-        "voltmeter",
-        "cells",
-        "key",
-        "box",
-        "wire",
-        "tray",
-        "leads",
-        "terminal",
-        "desk",
-      ].sort(),
+      ["ammeter", "voltmeter", "cells", "key", "box", "wire", "tray", "leads", "terminal"].sort(),
     );
     for (const s of KIT_SUBJECTS) expect(params(`?kit=ohms-law&part=${s}`).subject).toBe(s);
     expect(params("?part=nonsense").subject).toBeNull();
@@ -93,15 +82,13 @@ describe("the kit preview's parameters", () => {
     expect(parseSubject("plug-key")).toBe("key");
     expect(parseSubject("cell-holder")).toBe("cells");
     expect(parseSubject("wire-board")).toBe("wire");
-    expect(parseSubject("desk-props")).toBe("desk");
     expect(parseSubject("AMMETER")).toBe("ammeter");
   });
 
   it("names every subject's reference image once", () => {
     const files = KIT_SUBJECTS.map(referenceFile);
-    expect(new Set(files).size).toBe(10);
+    expect(new Set(files).size).toBe(9);
     expect(referenceFile("box")).toBe("resistance-box.webp");
-    expect(referenceFile("desk")).toBe("desk-props.webp");
   });
 
   it("reads a terminal id typed with a plus, which the URL turns into a space", () => {
@@ -227,7 +214,6 @@ describe("what each subject mounts", () => {
     for (const s of SLOT_SUBJECTS) {
       const p = plan(`?part=${s}`);
       expect(shown(p)).toEqual([s]);
-      expect(p.desk).toBe(false);
       expect(p.leads).toBe(false);
       expect(p.macro).toBeNull();
       expect(p.focusIds).toBeNull();
@@ -254,11 +240,10 @@ describe("what each subject mounts", () => {
     expect(pen.focusIds?.has(INK_IDS.key)).toBe(true);
   });
 
-  it("draws the seven leads over the six parts they join, the tray and the desk things left out", () => {
+  it("draws the seven leads over the six parts they join, the tray left out", () => {
     const p = plan("?part=leads");
     expect(shown(p)).toEqual(Object.keys(PART_TERMINALS).sort());
     expect(p.parts.tray).toBe(false);
-    expect(p.desk).toBe(false);
     expect(p.leads).toBe(true);
     for (let i = 0; i < 20; i++) expect(p.focusIds?.has(INK_IDS.leadBase + i)).toBe(true);
     for (const id of TERMINAL_IDS) {
@@ -270,18 +255,10 @@ describe("what each subject mounts", () => {
     }
   });
 
-  it("puts the desk things alone on the paper for part=desk", () => {
-    const p = plan("?part=desk");
-    expect(shown(p)).toEqual([]);
-    expect(p.desk).toBe(true);
-    expect(p.leads).toBe(false);
-  });
-
   it("mounts the part that owns the nut, with a plug in it, for part=terminal", () => {
     const a = plan("?part=terminal&id=A+");
     expect(shown(a)).toEqual(["ammeter"]);
     expect(a.macro).toBe("A+");
-    expect(a.desk).toBe(false);
     expect(a.leads).toBe(false);
     for (const [part, ids] of Object.entries(PART_TERMINALS)) {
       for (const id of ids) {
@@ -319,10 +296,9 @@ describe("what each subject mounts", () => {
     }
   });
 
-  it("shows the whole bench and the desk things when no part is asked for", () => {
+  it("shows the whole bench when no part is asked for", () => {
     const p = plan("?kit=ohms-law");
     expect(shown(p)).toEqual([...SLOT_SUBJECTS].sort());
-    expect(p.desk).toBe(true);
     expect(p.leads).toBe(false);
     expect(p.focusIds).toBeNull();
     expect(plan("?leads=1").leads).toBe(true);
@@ -375,7 +351,7 @@ describe("the shot", () => {
   }
 
   it("reads a box's reach on the screen the way its corners project", () => {
-    for (const s of ["key", "wire", "tray", "desk", "terminal"]) {
+    for (const s of ["key", "wire", "tray", "terminal"]) {
       const b = planKit(params(`?part=${s}`)).bounds;
       for (const az of [-30, 0, 15, 45, 75, 90, 135]) {
         const e = screenExtents(b, az, { right: 0, up: 0 });

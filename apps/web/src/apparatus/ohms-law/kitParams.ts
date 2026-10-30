@@ -23,8 +23,8 @@ export const SLOT_SUBJECTS: readonly BenchSlot[] = [
   "tray",
 ];
 
-/** The ten things `?kit=ohms-law&part=<subject>` can frame. */
-export const KIT_SUBJECTS = [...SLOT_SUBJECTS, "leads", "terminal", "desk"] as const;
+/** The nine things `?kit=ohms-law&part=<subject>` can frame. */
+export const KIT_SUBJECTS = [...SLOT_SUBJECTS, "leads", "terminal"] as const;
 export type KitSubject = (typeof KIT_SUBJECTS)[number];
 
 /** The reference image of each subject (docs/design/asset-pass/<name>.webp), and the other way round. */
@@ -38,7 +38,6 @@ const ASSET_NAME: Readonly<Record<KitSubject, string>> = {
   tray: "tray",
   leads: "leads",
   terminal: "terminal",
-  desk: "desk-props",
 };
 
 export function referenceFile(subject: KitSubject): string {
@@ -64,7 +63,7 @@ export function parseTerminalId(raw: string | null): TerminalId | null {
 }
 
 export interface KitParams {
-  /** null: the whole bench with the desk things, as the look shows it. */
+  /** null: the whole bench, as the look shows it. */
   subject: KitSubject | null;
   /** The nut `part=terminal` looks at. */
   terminal: TerminalId;
@@ -172,19 +171,6 @@ const REACH_M = 0.006;
  */
 const TOP_PAD_M = 0.025;
 const LEADS_TOP_PAD_M = 0.07;
-/**
- * Where the exam-desk props lay, [x, z] in metres, in front of the bench. The props were removed
- * in Wave 2 (docs/plans/wave-2-lean.md); `part=desk` still frames that patch of desk.
- */
-const DESK_PROP_PLACES = {
-  pencil: { x: -0.52, z: 0.34 },
-  eraser: { x: -0.22, z: 0.38 },
-  booklet: { x: 0.14, z: 0.44 },
-  calculator: { x: 0.5, z: 0.38 },
-} as const;
-/** A pencil, an eraser, a booklet and a calculator, as circles round DESK_PROP_PLACES, in metres. */
-const DESK_PROP_REACH_M = { pencil: 0.12, eraser: 0.03, booklet: 0.17, calculator: 0.09 } as const;
-const DESK_TOP_M = 0.02;
 /**
  * What `part=terminal` frames: a nut with its plug standing in it (about 6.5 cm) and the empty nut
  * beside it. Where it is comes from the registry once the nut mounts; this is only its size.
@@ -308,15 +294,6 @@ export function slotBounds(slot: BenchSlot, topPad = TOP_PAD_M): Bounds {
   );
 }
 
-export function deskBounds(): Bounds {
-  const boxes = (Object.keys(DESK_PROP_PLACES) as (keyof typeof DESK_PROP_PLACES)[]).map((k) => {
-    const { x, z } = DESK_PROP_PLACES[k];
-    const r = DESK_PROP_REACH_M[k];
-    return { x0: x - r, x1: x + r, z0: z - r, z1: z + r, h: DESK_TOP_M };
-  });
-  return union(boxes);
-}
-
 /** Which ink ids belong to a part: its block of ten, and its nuts. */
 export function partInkIds(slot: BenchSlot): number[] {
   const ids: number[] = [];
@@ -337,8 +314,6 @@ export function leadInkIds(): number[] {
 export interface KitPlan {
   /** Which parts are drawn. The rest stay mounted, hidden, so every terminal is still registered. */
   parts: Readonly<Record<BenchSlot, boolean>>;
-  /** The exam desk's things (booklet, pencil, eraser, calculator). */
-  desk: boolean;
   /** The seven diagram leads. */
   leads: boolean;
   /** A lead plug seated in this nut, its cable leaving sideways (`part=terminal`). */
@@ -365,28 +340,16 @@ const WIRED_SLOTS = Object.keys(PART_TERMINALS) as BenchSlot[];
  *  - `leads`: the six parts the leads join, faded, and the leads in full ink;
  *  - `terminal`: the part owning the nut, and a plug in the nut; with the parts its cable lies on,
  *    faded, where it cannot lie on the paper (MACRO_RESTS_ON);
- *  - `desk`: the desk things alone;
- *  - none: the whole bench and the desk things.
+ *  - none: the whole bench.
  */
 export function planKit(p: KitParams): KitPlan {
   const { subject } = p;
-  if (subject === "desk") {
-    return {
-      parts: only([]),
-      desk: true,
-      leads: false,
-      macro: null,
-      focusIds: null,
-      bounds: deskBounds(),
-    };
-  }
   if (subject === "terminal") {
     const owner = TERMINAL_PART[p.terminal];
     const rests = MACRO_RESTS_ON[p.terminal] ?? [];
     const [x, , z] = OHMS_LAW_LAYOUT[owner].position;
     return {
       parts: only([owner, ...rests]),
-      desk: false,
       leads: false,
       macro: p.terminal,
       // The parts the cable lies on fade back, so the nut and its lead stay the picture.
@@ -404,7 +367,6 @@ export function planKit(p: KitParams): KitPlan {
   if (subject === "leads") {
     return {
       parts: only(WIRED_SLOTS),
-      desk: false,
       leads: true,
       macro: null,
       focusIds: new Set([...leadInkIds(), ...WIRED_SLOTS.flatMap(nutIds), ...pen]),
@@ -414,21 +376,16 @@ export function planKit(p: KitParams): KitPlan {
   if (subject === null) {
     return {
       parts: only(SLOT_SUBJECTS),
-      desk: true,
       leads: p.leads,
       macro: null,
       focusIds: null,
-      bounds: union([
-        ...SLOT_SUBJECTS.map((s) => slotBounds(s, p.leads ? LEADS_TOP_PAD_M : TOP_PAD_M)),
-        deskBounds(),
-      ]),
+      bounds: union(SLOT_SUBJECTS.map((s) => slotBounds(s, p.leads ? LEADS_TOP_PAD_M : TOP_PAD_M))),
     };
   }
   // One part of the bench.
   const needsBench = p.leads || p.pen !== null;
   return {
     parts: only(needsBench ? SLOT_SUBJECTS : [subject]),
-    desk: false,
     leads: p.leads,
     macro: null,
     focusIds: needsBench
