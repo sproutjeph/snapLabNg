@@ -4,7 +4,15 @@ import type { ReactNode } from "react";
 // text colour, are decorative (aria-hidden) and always sit beside a visible label or an
 // aria-labelled button.
 
-function Icon({ children, size = 24 }: { children: ReactNode; size?: number }) {
+function Icon({
+  children,
+  size = 24,
+  strokeWidth = 1.6,
+}: {
+  children: ReactNode;
+  size?: number;
+  strokeWidth?: number;
+}) {
   return (
     <svg
       width={size}
@@ -12,7 +20,7 @@ function Icon({ children, size = 24 }: { children: ReactNode; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -91,6 +99,88 @@ export const IconDiagram = () => (
     <path d="M4 7h7v10H4z" />
     <path d="M14 7h6M14 12h6M14 17h6" strokeDasharray="2 2" />
   </Icon>
+);
+
+/** An open book: the practical's mark on the status card. */
+export const IconBook = () => (
+  <Icon strokeWidth={1.5}>
+    <path d="M12 6.5C10 5 7 4.6 3.5 5v13c3.5-.4 6.5 0 8.5 1.5 2-1.5 5-1.9 8.5-1.5V5c-3.5-.4-6.5 0-8.5 1.5z" />
+    <path d="M12 6.5v13" />
+  </Icon>
+);
+
+/** A page with a folded corner: the mark in front of the paper's source (the credit). */
+export const IconPage = () => (
+  <Icon strokeWidth={1.7}>
+    <path d="M7 3.5h7.5L18 7v13.5H7z" />
+    <path d="M14.5 3.5V7H18" />
+    <path d="M9.5 11.5h6M9.5 14.5h6M9.5 17.5h4" />
+  </Icon>
+);
+
+/** Back to the start: the practical menu's Restart (the player's button has the same mark). */
+export const IconRestart = () => (
+  <Icon strokeWidth={1.8}>
+    <path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5" />
+    <path d="M4.5 4.5v4h4" />
+  </Icon>
+);
+
+export const IconChevronRight = () => (
+  <Icon strokeWidth={2}>
+    <path d="m9 5 7 7-7 7" />
+  </Icon>
+);
+
+export const IconChevronLeft = () => (
+  <Icon strokeWidth={2}>
+    <path d="m15 5-7 7 7 7" />
+  </Icon>
+);
+
+export const IconChevronUp = () => (
+  <Icon strokeWidth={2}>
+    <path d="m5 15 7-7 7 7" />
+  </Icon>
+);
+
+export const IconChevronDown = () => (
+  <Icon strokeWidth={2}>
+    <path d="m5 9 7 7 7-7" />
+  </Icon>
+);
+
+export const IconLock = () => (
+  <Icon strokeWidth={1.8}>
+    <path d="M6.5 11h11v8.5h-11z" />
+    <path d="M9 11V8.5a3 3 0 0 1 6 0V11" />
+  </Icon>
+);
+
+/**
+ * The SnapLab NG mark: a lens ring with a resistor's zig-zag through it and a small ink dot, in
+ * ink and the accent. Drawn for the brand; it takes its size from the box it sits in.
+ */
+export const BrandMark = () => (
+  <svg
+    viewBox="0 0 82 84"
+    width="100%"
+    height="100%"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <circle cx="41" cy="42" r="34" stroke="currentColor" strokeWidth="4.5" />
+    <circle cx="41" cy="42" r="26" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 4" />
+    <path
+      d="M12 42h13l5-14 9 28 9-28 9 28 5-14h8"
+      stroke="currentColor"
+      strokeWidth="4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="66" cy="16" r="5.5" fill="var(--accent)" />
+  </svg>
 );
 
 /** Tick used on a step that is done. Heavier stroke, drawn inside a filled disc. */

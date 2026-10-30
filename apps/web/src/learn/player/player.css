@@ -1,221 +1,136 @@
-/* The player overlay (docs/design/exam-redesign/watch-mode.webp): cream cards with a 1 px line
-   and 6 px corners, a dark ink caption pill, an orange speed pill. Tokens are in styles/tokens.css.
-   The root covers its parent and lets pointer events through; only the controls catch them. */
+/* The player card and caption (docs/plans/page-layout.md), and the stage checklist the shell's
+   guide shows. Paper and ink, thin rules, no blur. Tokens are in styles/tokens.css.
+
+   Sizes are design px, scaled by `zoom: var(--ui)` on each layer (the player writes --ui, --lw and
+   data-layout on its own root; inside the shell they are the shell's own values). The checklist
+   sits inside the shell's already-zoomed guide, so it is not zoomed again. The root covers its
+   parent and lets pointer events through; only the controls catch them. */
 
 .dp {
   position: absolute;
   inset: 0;
+  z-index: 4;
   pointer-events: none;
   color: var(--ink);
   font-family: var(--f-body);
-  --dp-panel-w: 280px;
-  --dp-gutter: 16px;
+}
+
+.dp *,
+.dp *::before,
+.dp *::after {
+  box-sizing: border-box;
 }
 
 .dp > * {
   pointer-events: auto;
 }
 
-.dp-chip,
-.dp-stage,
-.dp-panel {
-  background: var(--card);
-  border: var(--rule);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 0 rgba(29, 36, 48, 0.06);
+/* ---- The card: top row, left of the status card ---- */
+
+.dp-card {
+  position: absolute;
+  top: 34px;
+  right: 558px;
+  zoom: var(--ui, 1);
+  height: 54px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 97%, transparent);
+  box-shadow: 0 2px 6px rgba(60, 45, 25, 0.06);
 }
 
-/* ---- Header: what this is, and where we are ---- */
+.dp[data-layout="compact"] .dp-card {
+  right: 556px;
+}
 
-.dp-chip {
-  position: absolute;
-  top: var(--dp-gutter);
-  left: var(--dp-gutter);
-  max-width: min(460px, calc(100% - 2 * var(--dp-gutter) - 130px));
-  padding: 8px 14px;
-  display: grid;
+.dp[data-layout="short"] .dp-card {
+  top: 4px;
+  right: calc(var(--guide-w, 372px) + 20px);
+}
+
+/* Centred under the brand, but never nearer than 8 px to the Compare button at the left (44 px
+   wide, 14 design px in): between those margins the card sits in the middle, and a card wider than
+   the room between them (Watch's five 44 px buttons on a 360 px phone) starts at the left margin
+   instead of lying over the button. */
+.dp[data-layout="portrait"] .dp-card {
+  top: 78px;
+  left: calc(14px + 52px / var(--ui, 1));
+  right: calc(14px + 52px / var(--ui, 1));
+  width: max-content;
+  margin-inline: auto;
+}
+
+/* Watch's six buttons on a landscape phone are 44 px each (below), so the card's own chrome
+   closes up. */
+.dp.dp-watch[data-layout="short"] .dp-card {
+  gap: 3px;
+  padding: 0 3px;
+}
+
+/* Compact and narrow: the status card folds its credit to a mark, so the card sits against it.
+   (After short and portrait, so the rules run from least to most specific.) */
+.dp[data-layout="compact"][data-credit="mark"] .dp-card {
+  right: 382px;
+}
+
+/* A status card with no credit is narrower, so the card sits against it. */
+.sh-root[data-status="plain"] .dp[data-layout="wide"] .dp-card {
+  right: 334px;
+}
+
+.sh-root[data-status="plain"] .dp[data-layout="compact"] .dp-card {
+  right: 332px;
+}
+
+.dp-group {
+  display: flex;
+  align-items: center;
   gap: 2px;
 }
 
-.dp-chip-mode {
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 22px;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.dp-chip-note {
-  font-size: 14px;
-  line-height: 1.3;
-  color: var(--ink-2);
-}
-
-.dp-stage {
-  position: absolute;
-  top: var(--dp-gutter);
-  right: var(--dp-gutter);
-  padding: 8px 14px;
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 18px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* ---- The stage's checklist ---- */
-
-.dp-panel {
-  position: absolute;
-  top: calc(var(--dp-gutter) + 64px);
-  right: var(--dp-gutter);
-  bottom: var(--dp-gutter);
-  width: var(--dp-panel-w);
-  padding: 16px 16px 12px;
-  overflow-y: auto;
-  display: none;
-}
-
-.dp-panel-title {
-  margin: 0 0 12px;
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 28px;
-  line-height: 1.05;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.dp-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.dp-item {
-  display: grid;
-  grid-template-columns: 26px 1fr;
-  gap: 10px;
-  align-items: start;
-  font-size: 15px;
-  line-height: 1.3;
-  color: var(--ink-2);
-}
-
-.dp-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid var(--pencil);
-  display: grid;
-  place-items: center;
-  color: var(--card);
-}
-
-.dp-done .dp-mark {
-  background: var(--green);
-  border-color: var(--green);
-}
-
-.dp-now {
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.dp-now .dp-mark {
-  border-color: var(--accent);
-}
-
-/* ---- Caption and player ---- */
-
-.dp-dock {
-  position: absolute;
-  left: var(--dp-gutter);
-  right: var(--dp-gutter);
-  bottom: var(--dp-gutter);
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  pointer-events: none;
-}
-
-.dp-dock > * {
-  pointer-events: auto;
-}
-
-.dp-caption {
-  margin: 0;
-  max-width: min(720px, 100%);
-  padding: 10px 22px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--card);
-  font-size: 18px;
-  line-height: 1.35;
-  text-align: center;
-}
-
-/* Mounted even with no words (for screen readers), but takes no room then. */
-.dp-caption:empty {
-  display: block;
-  height: 0;
-  padding: 0;
-  /* Cancels the dock's gap above the pill. */
-  margin: 0 0 -10px;
-  overflow: hidden;
-}
-
-.dp-pill {
-  max-width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: var(--card);
-  border: var(--rule);
-  border-radius: 14px;
-}
-
-.dp-pill-solo {
-  padding: 4px;
+.dp-divider {
+  flex: none;
+  width: 1.5px;
+  height: 30px;
+  background: var(--line);
 }
 
 .dp-btn {
   position: relative;
-  min-height: var(--tap);
-  min-width: var(--tap);
-  padding: 0 14px;
-  display: inline-flex;
+  flex: none;
+  min-width: 37px;
+  height: 40px;
+  padding: 0;
+  display: inline-grid;
+  grid-auto-flow: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--card);
-  color: var(--ink);
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 16px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
   cursor: pointer;
-  transition:
-    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.16s;
+}
+
+.dp-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .dp-btn:hover:not(:disabled) {
-  background: var(--paper-2);
+  background: color-mix(in srgb, var(--line) 70%, var(--card));
 }
 
-.dp-btn:active:not(:disabled) {
-  transform: scale(0.96);
+/* 2 CSS px on screen: the card is zoomed by --ui, so the width is divided by it. */
+.dp-btn:focus-visible {
+  outline: calc(2px / var(--ui, 1)) solid var(--ink);
+  outline-offset: calc(2px / var(--ui, 1));
 }
 
 .dp-btn:disabled {
@@ -223,197 +138,466 @@
   cursor: default;
 }
 
-.dp-btn:focus-visible,
-.dp-tick:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.dp-btn-icon {
-  padding: 0;
-  border-color: transparent;
-}
-
+/* The play button: filled ink, a little wider than the rest. */
 .dp-btn-main {
+  min-width: 44px;
   background: var(--ink);
-  color: var(--card);
+  color: var(--paper);
 }
 
 .dp-btn-main:hover:not(:disabled) {
   background: var(--ink-2);
 }
 
-.dp-btn-speed,
-.dp-btn-accent {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1d2430;
-  min-width: 56px;
+.dp-btn-main:focus-visible {
+  outline-color: var(--accent);
 }
 
 .dp-btn-speed {
-  /* The design reads "1x", not "1X". */
-  text-transform: none;
+  min-width: 40px;
+  font: 700 18px / 1 var(--f-cond);
+  letter-spacing: 0.04em;
 }
 
-.dp-btn-speed:hover:not(:disabled),
+/* Show me: the one action that does it for her, in the accent (and a hand, and its words). */
+.dp-btn-accent {
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+  color: var(--ink);
+}
+
 .dp-btn-accent:hover:not(:disabled) {
-  background: #ea8541;
+  background: color-mix(in srgb, var(--accent) 38%, var(--card));
 }
 
-/* ---- Progress: eleven stages, evenly spaced ---- */
-
-.dp-track {
-  position: relative;
-  width: min(560px, 100%);
-  height: 28px;
+/* Practise's buttons have words; they show on a laptop and fold to icons on a phone. */
+.dp-btn-text {
+  padding: 0 12px;
+  font: 600 15px / 1 var(--f-cond);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
-.dp-bar {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  top: 12px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
+/* 44 px targets. Next to each other, buttons only have 44 px hit areas if the buttons themselves
+   are 44 px apart, so on a phone-sized window (portrait, short), and on any touch screen (a
+   coarse pointer: a tablet's compact and wide layouts too), every button is at least 44 px wide
+   and the card grows with them. It is anchored on its right edge, so it grows to the left. A
+   mouse on a laptop keeps Backcountry's sizes. This beats the play and speed buttons' own
+   minimums by specificity, so they are 44 px there as well. */
+.dp[data-layout="portrait"] .dp-btn,
+.dp[data-layout="short"] .dp-btn {
+  min-width: calc(var(--tap) / var(--ui, 1));
 }
 
-.dp-fill {
-  width: 100%;
-  height: 100%;
-  background: var(--accent);
-  transform-origin: left center;
+/* Compact is a tablet's size, and in Practise and Exam mute is an icon on its own in the card (the
+   other buttons there have words, bar the repeat button, below), so it is a 44 px target whatever
+   the pointer. (Watch's buttons are 44 on every touch screen, above and below.) */
+.dp.dp-practice[data-layout="compact"] .dp-mute,
+.dp.dp-practice[data-layout="compact"] .dp-again,
+.dp.dp-exam[data-layout="compact"] .dp-mute {
+  min-width: calc(var(--tap) / var(--ui, 1));
 }
 
-.dp-ticks {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: space-between;
+/* Restart is the sixth of Watch's buttons, and six 44 px targets are 264 px: wider than a phone's
+   pill. So on a phone held upright, and on any touch screen, the card drops it, and the practical
+   menu on the step strip has it instead (the page passes the shell `onRestart`). It is out of
+   the page there, not just out of sight, so it leaves the tab order too. A laptop with a mouse
+   keeps all six. */
+.dp[data-layout="portrait"] .dp-restart {
+  display: none;
 }
 
-.dp-tick {
-  flex: 1 1 0;
-  min-width: 24px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  position: relative;
-}
-
-.dp-tick::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
-  border-radius: 50%;
-  border: 2px solid var(--ink);
-  background: var(--card);
-}
-
-.dp-tick-on::after {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-/* ---- Steps button (narrow screens) ---- */
-
-.dp-steps {
-  position: absolute;
-  top: calc(var(--dp-gutter) + 64px);
-  right: var(--dp-gutter);
-  padding: 0;
-}
-
-@media (min-width: 900px) {
-  .dp-panel {
-    display: block;
+@media (pointer: coarse) {
+  .dp .dp-btn {
+    min-width: calc(var(--tap) / var(--ui, 1));
   }
 
-  .dp-steps {
+  .dp .dp-restart {
     display: none;
   }
 
-  .dp-dock {
-    right: calc(var(--dp-panel-w) + 2 * var(--dp-gutter));
+  /* Watch's buttons are 44 px apart already. They touch, so their hit areas stop at their own
+     edges. */
+  .dp.dp-watch .dp-group {
+    gap: 0;
   }
 
-  .dp-stage {
-    right: calc(var(--dp-panel-w) + 2 * var(--dp-gutter));
-  }
-
-  .dp-chip {
-    max-width: min(460px, calc(100% - var(--dp-panel-w) - 220px));
-  }
-}
-
-@media (max-width: 899px) {
-  .dp-panel {
-    top: auto;
-    left: var(--dp-gutter);
-    right: var(--dp-gutter);
-    bottom: 170px;
-    width: auto;
-    max-height: 40%;
-  }
-
-  .dp-panel-open {
-    display: block;
-  }
-
-  .dp-panel-title {
-    font-size: 22px;
+  .dp.dp-watch .dp-btn::after {
+    left: 0;
+    right: 0;
   }
 }
 
-@media (max-width: 640px) {
-  /* Icon-only on a phone, but the words stay in the accessibility tree: they are the buttons'
-     names (visually hidden, never display: none). The one primary action keeps them on screen. */
-  .dp-btn:not(.dp-btn-main) .dp-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
+/* Watch's buttons have no gap between them on a phone. On one held upright the pill is centred
+   under the brand, the Compare button at its left, and holds what is left of the six: previous,
+   play, next and the speed, then mute after the divider. Five 44 px buttons and the card's chrome
+   make it about 245 px wide at 390 (Backcountry's six 37 px buttons are 243). */
+.dp.dp-watch[data-layout="portrait"] .dp-group,
+.dp.dp-watch[data-layout="short"] .dp-group {
+  gap: 0;
+}
 
-  .dp-chip-note {
-    font-size: 12px;
-  }
+/* Hit area: the visual size is the design's; a pseudo-element brings the height to 44 px. */
+.dp-btn::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 50%;
+  height: max(100%, calc(var(--tap) / var(--ui, 1)));
+  transform: translateY(-50%);
+}
 
-  .dp-stage {
-    font-size: 15px;
-    padding: 6px 10px;
-  }
+/* Watch's phone buttons touch, so their hit areas stop at their own edges. */
+.dp.dp-watch[data-layout="portrait"] .dp-btn::after,
+.dp.dp-watch[data-layout="short"] .dp-btn::after {
+  left: 0;
+  right: 0;
+}
 
-  .dp-caption {
-    font-size: 16px;
-    padding: 8px 16px;
-    border-radius: 18px;
-  }
+.dp-clock {
+  min-width: 64px;
+  padding: 0 10px;
+  font: 700 20px / 1 var(--f-cond);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--ink-2);
+}
 
-  .dp-pill {
-    gap: 4px;
-    padding: 6px;
-  }
+/* Button words: icon-only by default, but the words stay in the page, clipped (never
+   display: none), because they are the buttons' names. */
+.dp-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
+.dp.dp-practice[data-layout="wide"] .dp-btn-text .dp-label,
+.dp.dp-practice[data-layout="compact"] .dp-btn-text .dp-label {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+}
+
+/* Compact is short of room in Practise: Resume guide, Say it again, Show me and a 44 px mute are
+   359 px wide at 1024, and the card (it grows leftwards from the status card) lay over the end of
+   the brand's tagline. So there the repeat button keeps its icon and gives up its words, as every
+   Practise button does on a phone. They stay in the page, clipped, as its name. */
+.dp.dp-practice[data-layout="compact"] .dp-again .dp-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.dp.dp-practice[data-layout="compact"] .dp-again {
+  padding: 0;
+}
+
+/* ---- The caption: an ink pill in the free stage, above the strip ---- */
+
+/* Not zoomed: it spans the free stage, and the pill (zoomed) sits in the middle of it. */
+.dp-dock {
+  position: absolute;
+  left: 0;
+  right: calc(529px * var(--ui, 1));
+  bottom: calc(186px * var(--ui, 1));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dp[data-layout="compact"] .dp-dock {
+  right: calc(458px * var(--ui, 1));
+}
+
+.dp[data-layout="short"] .dp-dock {
+  right: calc((var(--guide-w, 372px) + 12px) * var(--ui, 1));
+  bottom: calc(112px * var(--ui, 1));
+}
+
+/* A phone: 58 above the strip, wherever the guide leaves it. */
+.dp[data-layout="portrait"] .dp-dock {
+  right: 0;
+  bottom: auto;
+  top: calc((var(--strip-top, var(--scene-bottom, 600px)) - 58px) * var(--ui, 1));
+}
+
+.dp-caption {
+  zoom: var(--ui, 1);
+  max-width: min(720px, 100%);
+  margin: 0;
+  padding: 12px 20px;
+  border: 1px solid var(--ink-2);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 18px / 1.2 var(--f-cond);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Mounted even with no words (for screen readers), but takes no room then. */
+.dp-caption:empty {
+  display: block;
+  height: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+/* ---- The stage checklist: rows in the guide ---- */
+
+.sc-list {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0 -6px;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-row {
+  position: relative;
+  min-height: 58px;
+  padding: 5px 48px 5px 0;
+  display: grid;
+  grid-template-columns: 26px 46px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  font: 500 18.5px / 21px var(--f-cond);
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The row's card: a thin rule, from the ring's column to the right edge. */
+.sc-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 32px;
+  border: 1.5px solid color-mix(in srgb, var(--line) 70%, var(--card));
+  border-radius: 9px;
+}
+
+.sc-row > * {
+  position: relative;
+  z-index: 2;
+}
+
+.sc-done {
+  color: var(--ink-2);
+}
+
+.sc-done::before {
+  background: color-mix(in srgb, var(--card) 80%, var(--paper));
+}
+
+.sc-now {
+  color: var(--ink);
+}
+
+/* The line joining one row's mark to the next: grey, green once the row is done. */
+.sc-row:not(:last-of-type)::after {
+  content: "";
+  position: absolute;
+  left: 12.25px;
+  top: calc(50% + 13px);
+  width: 1.5px;
+  height: calc(100% - 18px);
+  background: var(--pencil);
+}
+
+.sc-row.sc-done:not(:last-of-type)::after {
+  background: var(--green);
+}
+
+/* The mark: an empty ring, a thick accent ring on the current row, a green tick when done. */
+.sc-mark {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--paper);
+}
+
+.sc-mark::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px dashed var(--pencil);
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.sc-now .sc-mark::before {
+  border: 3.5px solid var(--accent);
+}
+
+.sc-done .sc-mark {
+  background: var(--green);
+}
+
+.sc-done .sc-mark::before {
+  display: none;
+}
+
+.sc-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The ring: dashed pencil = not done, solid ink = done, an accent arc that fills = this one. */
+.sc-ico {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--line) 45%, var(--card));
+  color: var(--ink);
+}
+
+.sc-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.sc-ring-track,
+.sc-ring-arc {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.sc-ring-track {
+  stroke: var(--pencil);
+  stroke-dasharray: 3 3;
+}
+
+.sc-ring-arc {
+  stroke: var(--accent);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+.sc-done .sc-ring-track {
+  stroke: var(--ink);
+  stroke-dasharray: none;
+}
+
+.sc-now .sc-ring-track {
+  stroke: color-mix(in srgb, var(--accent) 30%, transparent);
+  stroke-dasharray: none;
+}
+
+.sc-now .sc-ring-arc {
+  stroke-dashoffset: calc(1 - var(--p, 0));
+  opacity: 1;
+}
+
+.sc-glyph {
+  position: relative;
+  width: 26px;
+  height: 26px;
+}
+
+.sc-text {
+  min-width: 0;
+}
+
+/* Said for a screen reader: the tick is a picture. */
+.sc-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The current row's tint, a chevron at its right, slides to the row she is on. */
+.sc-cursor {
+  position: absolute;
+  top: 0;
+  left: 32px;
+  right: 0;
+  z-index: 1;
+  height: 58px;
+  border: 1.7px solid var(--sh-peach-edge, color-mix(in srgb, var(--accent) 55%, var(--card)));
+  border-radius: 9px;
+  background: var(--sh-peach, color-mix(in srgb, var(--accent) 22%, var(--card)));
+  pointer-events: none;
+  transform: translateY(calc(var(--i, 0) * 66px));
+}
+
+.sc-cursor svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
   .dp-btn {
-    padding: 0 10px;
+    transition: background-color 0.15s;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .dp-btn {
-    transition: none;
+  .sc-cursor {
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sc-row,
+  .sc-row::before,
+  .sc-row::after {
+    transition:
+      color 0.25s,
+      background-color 0.25s,
+      border-color 0.25s;
+  }
+
+  .sc-mark {
+    transition: background-color 0.25s;
+  }
+
+  .sc-done .sc-mark svg {
+    animation: sc-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes sc-pop {
+    from {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
   }
 }

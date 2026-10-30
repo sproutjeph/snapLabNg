@@ -1,8 +1,12 @@
 import type { Covered } from "../../scene/look/types";
-import type { Script } from "../script/types";
+import type { DirectorHandle } from "../script/createDirector";
+import type { Director, Script } from "../script/types";
+import { type CoveredOptions, coveredFor, layoutFor } from "../shell/layout";
+import type { PracticalMode } from "../types";
 
-// What the player draws from the script alone: the question's stages (one per `Step.key`, in
-// the order the script first reaches them) and the room its panels take on the screen.
+// What the player and the stage checklist draw from the script alone: the question's stages (one
+// per `Step.key`, in the order the script first reaches them), the words for each mode, and the
+// room the page's cards take on the screen.
 
 export interface StageInfo {
   key: string;
@@ -38,25 +42,34 @@ export function humaniseStage(key: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-/** Below this width the stage panel folds into a sheet that a button opens. */
-export const WIDE_MIN_PX = 900;
-/** The stage panel's width and the gap around it (player.css uses the same numbers). */
-export const PANEL_WIDTH_PX = 280;
-const GUTTER_PX = 16;
-/** The header chips at the top, and the caption bar and player pill at the bottom. */
-const TOP_PX = 76;
-const DOCK_PX = 150;
+/** createDirector's handle carries the script and the voice; any other Director shows less. */
+export function handleOf(d: Director): DirectorHandle | null {
+  return "script" in d && "voice" in d ? (d as DirectorHandle) : null;
+}
+
+/** The three ways through a practical, as the UI says them. */
+export const MODE_LABEL: Readonly<Record<PracticalMode, string>> = {
+  watch: "Watch",
+  practice: "Practise",
+  exam: "Exam",
+};
+
+/** The one line the guide's foot says about each mode. */
+export const MODE_NOTE: Readonly<Record<PracticalMode, string>> = {
+  watch: "Demonstration bench. Your own bench will give different readings.",
+  practice: "Your own bench. Do each action yourself; the voice will guide you.",
+  exam: "Exam conditions: no guide.",
+};
 
 /**
- * The part of the canvas the player's panels cover, in CSS px, for LookCamera's `covered`: the
- * stage panel on the right (wide screens), the header at the top, the caption and player below.
+ * The part of the canvas the page's cards cover, in CSS px, for LookCamera's `covered`: from the
+ * one layout the shell and the player share (shell/layout.ts). `o.guide` is the phone's guide
+ * state (default open) and `o.caption` is true while a caption pill shows.
  */
-export function playerCovered(viewportWidthPx: number, viewportHeightPx: number): Covered {
-  const wide = viewportWidthPx >= WIDE_MIN_PX;
-  return {
-    left: 0,
-    right: wide ? PANEL_WIDTH_PX + 2 * GUTTER_PX : 0,
-    top: TOP_PX,
-    bottom: Math.min(DOCK_PX, viewportHeightPx * 0.3),
-  };
+export function playerCovered(
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+  o?: CoveredOptions,
+): Covered {
+  return coveredFor(layoutFor(viewportWidthPx, viewportHeightPx), o);
 }

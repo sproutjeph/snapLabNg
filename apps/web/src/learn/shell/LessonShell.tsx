@@ -1,42 +1,20 @@
-import {
-  type ComponentType,
-  type KeyboardEvent,
-  type PointerEvent,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
-import type { IdentifyCard, Lesson, LessonMode, Step } from "../types";
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
+import type { IdentifyCard, Lesson, LessonMode, PracticalMode } from "../types";
+import Brand from "./Brand";
+import GuidePanel, { type GuideState, type ShellTab } from "./GuidePanel";
 import IdentifyFrame from "./IdentifyFrame";
-import {
-  IconAbout,
-  IconClose,
-  IconDiagram,
-  IconHome,
-  IconMenu,
-  IconMetreBridge,
-  IconNotebook,
-  IconOhm,
-  IconTitration,
-} from "./icons";
+import { IconClose, IconDiagram } from "./icons";
+import Rail, { NavList } from "./Rail";
 import Sheet from "./Sheet";
+import StatusCard, { type StatusCredit } from "./StatusCard";
 import StepBar, { type StepStatus } from "./StepBar";
-import { usePhone } from "./usePhone";
+import { useLayout } from "./useLayout";
 import "./shell.css";
 
-export type { StepStatus };
+export type { GuideState, ShellTab, StatusCredit, StepStatus };
 
-export type ShellTab = "instructions" | "why" | "precautions" | "examiner";
-
-const TABS: { id: ShellTab; label: string; inExam: boolean }[] = [
-  { id: "instructions", label: "Instructions", inExam: true },
-  { id: "why", label: "Why it works", inExam: false },
-  // Precautions are a marked item, so exam mode keeps them hidden.
-  { id: "precautions", label: "Precautions", inExam: false },
-  { id: "examiner", label: "Examiner asks", inExam: true },
-];
+/** The tabs in order. Exam keeps Instructions and Examiner asks only; Examiner asks needs content. */
+const TAB_ORDER: readonly ShellTab[] = ["instructions", "why", "precautions", "examiner"];
 
 export interface LessonShellProps {
   lesson: Lesson;
@@ -50,7 +28,7 @@ export interface LessonShellProps {
   onTabChange(tab: ShellTab): void;
   /**
    * Replaces a tab's default body. Instructions, Why it works and Precautions read the current
-   * step; Examiner asks has no default (the lesson page passes it in).
+   * step; Examiner asks has no default, so its tab shows only when this carries it.
    */
   tabContent?: Partial<Record<ShellTab, ReactNode>>;
   /** Shown in the Notebook sheet (rail > Notebook). */
@@ -65,160 +43,66 @@ export interface LessonShellProps {
   onDiagramOpenChange?(open: boolean): void;
   /** The Identify frame renders only while `card` is set. */
   identify?: { card: IdentifyCard | null; onClose(): void };
-  /** The canvas. It fills the whole shell, behind the rail, header and panels. */
+  /**
+   * The canvas. It fills the stage (the whole shell but the rail), behind every card: the cards
+   * float over it and cover only their own corners (docs/plans/page-layout.md).
+   */
   children?: ReactNode;
-}
 
-interface NavItem {
-  id: string;
-  label: string;
-  /** Short label under the icon in the rail. */
-  short: string;
-  Icon: ComponentType;
-  href?: string;
-  current?: boolean;
-}
+  // ---- Additive (page layout). Every prop below is optional. ----
 
-const NAV: NavItem[] = [
-  { id: "home", label: "Home", short: "Home", Icon: IconHome, href: "/" },
-  {
-    id: "meter",
-    label: "Metre bridge",
-    short: "Metre bridge",
-    Icon: IconMetreBridge,
-    href: "/?flow=1&golden=note1",
-  },
-  {
-    id: "titration",
-    label: "Titration",
-    short: "Titration",
-    Icon: IconTitration,
-    href: "/?kit=titration",
-  },
-  {
-    id: "ohms",
-    label: "Ohm's law (V–I)",
-    short: "Ohm's law",
-    Icon: IconOhm,
-    href: "/?learn=ohms-law",
-    current: true,
-  },
-  { id: "notebook", label: "Notebook", short: "Notebook", Icon: IconNotebook },
-  { id: "about", label: "About", short: "About", Icon: IconAbout, href: "/?about=1" },
-];
-
-function NavList({
-  variant,
-  onNotebook,
-  onNavigate,
-}: {
-  variant: "rail" | "menu";
-  onNotebook(): void;
-  onNavigate?(): void;
-}) {
-  return (
-    <ul className={`sh-nav sh-nav-${variant}`}>
-      {NAV.map(({ id, label, short, Icon, href, current }) => (
-        <li key={id} className={id === "notebook" ? "sh-nav-sep" : undefined}>
-          {href ? (
-            <a
-              className="sh-nav-item"
-              href={href}
-              aria-current={current ? "page" : undefined}
-              aria-label={label}
-              onClick={onNavigate}
-            >
-              <Icon />
-              <span>{variant === "rail" ? short : label}</span>
-            </a>
-          ) : (
-            <button
-              type="button"
-              className="sh-nav-item"
-              aria-label={label}
-              onClick={() => {
-                onNavigate?.();
-                onNotebook();
-              }}
-            >
-              <Icon />
-              <span>{variant === "rail" ? short : label}</span>
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function InstructionsBody({ step, exam }: { step: Step; exam: boolean }) {
-  const callouts = exam ? [] : (step.callouts ?? []);
-  return (
-    <>
-      <h2 className="sh-step-title">{step.title}</h2>
-      <figure className="sh-quote">
-        <figcaption className="sh-label">The question says</figcaption>
-        <blockquote>“{step.instruction}”</blockquote>
-      </figure>
-      {!exam && step.plain && (
-        <div className="sh-next">
-          <span className="sh-label">Do this next</span>
-          <p>{step.plain}</p>
-        </div>
-      )}
-      {callouts.length > 0 && (
-        <div className="sh-callouts">
-          <h3 className="sh-label">On the bench</h3>
-          <ul>
-            {callouts.map((c) => (
-              <li key={`${c.part}-${c.label}`}>
-                <strong>{c.label}</strong>
-                {c.sub && <span>{c.sub}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </>
-  );
-}
-
-function ListBody({ items, empty }: { items: string[] | undefined; empty: string }) {
-  if (!items || items.length === 0) return <p className="sh-empty">{empty}</p>;
-  return (
-    <ul className="sh-bullets">
-      {items.map((t) => (
-        <li key={t}>{t}</li>
-      ))}
-    </ul>
-  );
-}
-
-function defaultBody(tab: ShellTab, step: Step, exam: boolean): ReactNode {
-  switch (tab) {
-    case "instructions":
-      return <InstructionsBody step={step} exam={exam} />;
-    case "why":
-      return <ListBody items={step.whyItWorks} empty="Nothing to explain for this step yet." />;
-    case "precautions":
-      return <ListBody items={step.precautions} empty="No precautions for this step." />;
-    case "examiner":
-      return <p className="sh-empty">No examiner questions for this step yet.</p>;
-  }
+  /**
+   * Which way through the practical is on, for the brand's "WATCH · PRACTISE · EXAM". Without it,
+   * `mode` says: "exam", or "practice".
+   */
+  practical?: PracticalMode;
+  /**
+   * Laid over the stage in the same coordinate space, above the callouts and the canvas: the
+   * Player (its card, caption and clock).
+   */
+  overlay?: ReactNode;
+  /** The stage's sub-steps, shown under the question's words in Instructions (not in Exam). */
+  checklist?: ReactNode;
+  /** The status card: the paper's source (the credit), and `hideCount` to drop the count (Exam). */
+  status?: { credit?: StatusCredit | undefined; hideCount?: boolean | undefined };
+  /** Step.key to the URL of its picture. A step with none shows a numbered ink ring. */
+  thumbs?: Readonly<Record<string, string>>;
+  /** Cards from this index on are locked: shown, but not selectable. Practise: current + 1. */
+  lockedFrom?: number | undefined;
+  /** The step cards are display only (Practise and Exam). */
+  readOnlyTabs?: boolean | undefined;
+  /** A phone held upright: the guide open, or folded to a peek (default "peek"). */
+  guide?: GuideState;
+  onGuideChange?(guide: GuideState): void;
+  /** The one line at the guide's foot about this mode. */
+  note?: ReactNode;
+  /**
+   * Watch: plays the demonstration again from its first beat. The practical menu on the strip
+   * lists it as Restart. A touch screen's player card has no Restart of its own (no room for a
+   * sixth 44 px button), so this is where it is there.
+   */
+  onRestart?: (() => void) | undefined;
+  /** A div over the canvas and under the cards, for the callout labels (W2-callouts). */
+  calloutLayerRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
- * The calm ink-and-paper lesson shell around the 3D bench (docs/plans/ohms-law-vi.md, Wave 2).
- * Controlled and data-driven: it holds only layout state (menu, notebook sheet, phone sheet height,
- * and the diagram toggle unless you control it). It computes nothing; ✓/✕ arrive in `stepStatus`.
+ * The page shell around the 3D bench (docs/plans/page-layout.md): the canvas full-bleed behind
+ * Backcountry-style cards in paper and ink. A dark rail on the left (laptop), the brand and a
+ * status card across the top, the guide (tabs, the step's card) down the right, the step strip
+ * along the foot, and the Player's card and caption laid over the stage by `overlay`.
  *
- * Laptop: dark rail on the left, header across the top, the tabbed panel floating on the right,
- * the step bar along the bottom, the canvas behind all of it. Phone (≤ 640 px): the rail becomes a
- * top bar with a menu, the panel a bottom sheet with a drag handle above the step bar.
+ * One layout (layout.ts) drives it: four modes by screen size, every size drawn in design px and
+ * scaled with `--ui`. On a phone held upright there is no rail (the brand mark opens the menu),
+ * the strip sits above a guide that folds to a peek, and the diagram and Identify card open as
+ * sheets.
  *
- * Exam mode turns every hint off: no "Do this next" line, callouts or Identify card, and no
- * "Why it works" or "Precautions" tabs. The question's own words, the diagram toggle and
- * "Examiner asks" stay.
+ * Controlled and data-driven: it holds only layout state (menus, sheets, the phone's guide, the
+ * diagram toggle unless you control it). It computes nothing; ✓/✕ arrive in `stepStatus`.
+ *
+ * Exam mode turns every hint off: no "Do this next" line, callouts or Identify card, no "Why it
+ * works" or "Precautions" tab, and the status card can drop its count. The question's own words,
+ * the diagram toggle and "Examiner asks" stay.
  */
 export default function LessonShell({
   lesson,
@@ -237,9 +121,28 @@ export default function LessonShell({
   onDiagramOpenChange,
   identify,
   children,
+  practical,
+  overlay,
+  checklist,
+  status,
+  thumbs,
+  lockedFrom,
+  readOnlyTabs,
+  guide: guideProp,
+  onGuideChange,
+  note,
+  onRestart,
+  calloutLayerRef,
 }: LessonShellProps) {
-  const phone = usePhone();
   const uid = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const ownCalloutLayer = useRef<HTMLDivElement>(null);
+  const menuBtn = useRef<HTMLButtonElement>(null);
+  const layout = useLayout(rootRef);
+  // A phone (upright or sideways) has no rail, and shows the diagram and Identify card as sheets.
+  const portrait = layout === "portrait";
+  const phone = portrait || layout === "short";
+
   const step = lesson.steps[Math.min(stepIndex, lesson.steps.length - 1)];
   const [menuOpen, setMenuOpen] = useState(false);
   const [ownNotebookOpen, setOwnNotebookOpen] = useState(false);
@@ -248,25 +151,34 @@ export default function LessonShell({
     setOwnNotebookOpen(open);
     onNotebookOpenChange?.(open);
   };
-  const [expanded, setExpanded] = useState(false);
   const [ownDiagramOpen, setOwnDiagramOpen] = useState(false);
   const diagramShown = diagramSlot !== undefined && (diagramOpen ?? ownDiagramOpen);
   const setDiagram = (open: boolean) => {
     setOwnDiagramOpen(open);
     onDiagramOpenChange?.(open);
   };
-  const doneCount = stepStatus.filter((s) => s === "done").length;
+  const [ownGuide, setOwnGuide] = useState<GuideState>("peek");
+  const guide = guideProp ?? ownGuide;
+  const setGuide = (g: GuideState) => {
+    setOwnGuide(g);
+    onGuideChange?.(g);
+  };
+
   const exam = mode === "exam";
   const card = exam ? null : (identify?.card ?? null);
-  const visibleTabs = exam ? TABS.filter((t) => t.inExam) : TABS;
-  // A tab hidden by exam mode falls back to Instructions without touching the caller's state.
-  const activeTab: ShellTab = visibleTabs.some((t) => t.id === tab) ? tab : "instructions";
+  const hasExaminer = tabContent?.examiner !== undefined;
+  const tabs = TAB_ORDER.filter((t) =>
+    t === "instructions" ? true : t === "examiner" ? hasExaminer : !exam,
+  );
+  // A tab hidden by exam mode (or missing its content) falls back to Instructions without
+  // touching the caller's state.
+  const activeTab: ShellTab = tabs.includes(tab) ? tab : "instructions";
+  // Only Instructions has a peek: any other tab shows in full.
+  const guideNow: GuideState = portrait && activeTab === "instructions" ? guide : "open";
+  const practicalMode: PracticalMode = practical ?? (exam ? "exam" : "practice");
+  const doneCount = stepStatus.filter((s) => s === "done").length;
 
-  const drag = useRef<number | null>(null);
-  const dragged = useRef(false);
-  const menuBtn = useRef<HTMLButtonElement>(null);
-
-  // Escape closes the menu from anywhere and hands focus back to the menu button.
+  // Escape closes the phone menu from anywhere and hands focus back to the mark that opened it.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -277,110 +189,80 @@ export default function LessonShell({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
+  // Turning the phone sideways, or onto a laptop, closes a menu left open.
+  useEffect(() => {
+    if (!phone) setMenuOpen(false);
+  }, [phone]);
 
   if (!step) return null;
 
-  const tabId = (t: ShellTab) => `${uid}-tab-${t}`;
-  const panelId = `${uid}-panel`;
-
-  const onTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const at = visibleTabs.findIndex((t) => t.id === activeTab);
-    const next =
-      e.key === "ArrowRight"
-        ? at + 1
-        : e.key === "ArrowLeft"
-          ? at - 1
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? visibleTabs.length - 1
-              : null;
-    if (next === null) return;
-    e.preventDefault();
-    const target = visibleTabs[(next + visibleTabs.length) % visibleTabs.length];
-    if (!target) return;
-    onTabChange(target.id);
-    document.getElementById(tabId(target.id))?.focus();
-  };
-
-  const onHandleDown = (e: PointerEvent<HTMLButtonElement>) => {
-    drag.current = e.clientY;
-    dragged.current = false;
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onHandleUp = (e: PointerEvent<HTMLButtonElement>) => {
-    const from = drag.current;
-    drag.current = null;
-    if (from === null) return;
-    const dy = e.clientY - from;
-    if (dy < -24) {
-      setExpanded(true);
-      dragged.current = true;
-    } else if (dy > 24) {
-      setExpanded(false);
-      dragged.current = true;
-    }
-  };
-
-  const body = tabContent?.[activeTab] ?? defaultBody(activeTab, step, exam);
+  const compare =
+    diagramSlot !== undefined ? (
+      <button
+        type="button"
+        className="sh-btn sh-compare"
+        aria-pressed={diagramShown}
+        aria-label="Compare with diagram"
+        onClick={() => setDiagram(!diagramShown)}
+      >
+        <IconDiagram />
+        <span className="sh-txt">Compare with diagram</span>
+      </button>
+    ) : null;
+  const diagramOnStage = diagramShown && !phone;
+  const showFloat = !phone && (compare !== null || diagramOnStage || card !== null);
 
   return (
-    <div className="sh-root">
-      <div className="sh-canvas">{children}</div>
+    <div
+      ref={rootRef}
+      className="sh-root"
+      data-guide={guideNow}
+      data-status={status?.credit ? "credit" : "plain"}
+    >
+      <div className="sh-stage">
+        <div className="sh-canvas">{children}</div>
+        <div ref={calloutLayerRef ?? ownCalloutLayer} className="sh-callout-layer" />
 
-      <nav className="sh-rail" aria-label="SnapLab NG">
-        <NavList variant="rail" onNotebook={() => setNotebookOpen(true)} />
-      </nav>
+        <div className="sh-band" aria-hidden="true" />
+        <Brand
+          practical={practicalMode}
+          menuRef={menuBtn}
+          {...(phone
+            ? {
+                menu: {
+                  open: menuOpen,
+                  controls: `${uid}-menu`,
+                  onToggle: () => setMenuOpen((o) => !o),
+                },
+              }
+            : {})}
+        />
+        {phone && menuOpen ? (
+          <>
+            <div id={`${uid}-menu`} className="sh-menu">
+              <NavList
+                variant="menu"
+                onNotebook={() => setNotebookOpen(true)}
+                onNavigate={() => setMenuOpen(false)}
+              />
+            </div>
+            {/* Pointer-only outside-tap layer; the keyboard closes the menu with Escape. */}
+            <div className="sh-menu-scrim" onPointerDown={() => setMenuOpen(false)} />
+          </>
+        ) : null}
 
-      <header className="sh-head">
-        <button
-          ref={menuBtn}
-          type="button"
-          className="sh-icon-btn sh-menu-btn"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          aria-controls={`${uid}-menu`}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <IconMenu />
-        </button>
-        <span className="sh-wordmark">SnapLab NG</span>
-        <h1 className="sh-head-title">{lesson.title}</h1>
-        <span className="sh-chip">
-          Step {stepIndex + 1} of {lesson.steps.length} · {doneCount} done
-        </span>
-        <span className={`sh-badge is-${mode}`}>{mode === "exam" ? "Exam" : "Practice"}</span>
-        {diagramSlot !== undefined && (
-          <button
-            type="button"
-            className="sh-btn sh-compare"
-            aria-pressed={diagramShown}
-            aria-label="Compare with diagram"
-            onClick={() => setDiagram(!diagramShown)}
-          >
-            <IconDiagram />
-            <span>Compare with diagram</span>
-          </button>
-        )}
-        {menuOpen && (
-          <div id={`${uid}-menu`} className="sh-menu">
-            <NavList
-              variant="menu"
-              onNotebook={() => setNotebookOpen(true)}
-              onNavigate={() => setMenuOpen(false)}
-            />
-          </div>
-        )}
-      </header>
-      {menuOpen && (
-        // Pointer-only outside-tap layer; the keyboard closes the menu with Escape.
-        <div className="sh-menu-scrim" onPointerDown={() => setMenuOpen(false)} />
-      )}
+        <StatusCard
+          title={lesson.title}
+          done={doneCount}
+          total={lesson.steps.length}
+          hideCount={status?.hideCount}
+          credit={status?.credit}
+        />
 
-      <div className="sh-stack">
-        {(diagramShown && !phone) || card ? (
+        {showFloat ? (
           <div className="sh-float">
-            {diagramShown && !phone && (
+            {compare}
+            {diagramOnStage ? (
               <section className="sh-card sh-diagram" aria-label="Circuit diagram">
                 <div className="sh-card-head">
                   <span className="sh-label">Diagram</span>
@@ -398,84 +280,47 @@ export default function LessonShell({
                   <p className="sh-caption">{lesson.diagram.caption}</p>
                 </div>
               </section>
-            )}
-            {card && identify && <IdentifyFrame card={card} onClose={identify.onClose} />}
+            ) : null}
+            {card && identify ? <IdentifyFrame card={card} onClose={identify.onClose} /> : null}
           </div>
+        ) : phone ? (
+          compare
         ) : null}
 
-        <section
-          className={`sh-panel${expanded ? " is-expanded" : ""}`}
-          aria-label={`Step ${stepIndex + 1}: ${step.title}`}
-        >
-          <button
-            type="button"
-            className="sh-handle"
-            aria-expanded={expanded}
-            aria-controls={panelId}
-            aria-label={expanded ? "Collapse instructions" : "Expand instructions"}
-            onPointerDown={onHandleDown}
-            onPointerUp={onHandleUp}
-            onPointerCancel={() => {
-              drag.current = null;
-            }}
-            onClick={() => {
-              if (dragged.current) {
-                dragged.current = false;
-                return;
-              }
-              setExpanded((x) => !x);
-            }}
-          >
-            <span className="sh-grabber" />
-          </button>
-          <div className="sh-peek">
-            <p className="sh-peek-title">{step.title}</p>
-            {!exam && step.plain && <p className="sh-peek-plain">{step.plain}</p>}
-          </div>
-          <div
-            className="sh-tabs"
-            role="tablist"
-            aria-label="Step help"
-            tabIndex={-1}
-            onKeyDown={onTabKeyDown}
-          >
-            {visibleTabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                id={tabId(t.id)}
-                className="sh-tab"
-                aria-selected={activeTab === t.id}
-                aria-controls={panelId}
-                tabIndex={activeTab === t.id ? 0 : -1}
-                onClick={() => onTabChange(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div
-            id={panelId}
-            className="sh-panel-body"
-            role="tabpanel"
-            aria-labelledby={tabId(activeTab)}
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable tab panel must be keyboard-focusable (WAI-ARIA tabs pattern)
-            tabIndex={0}
-          >
-            {body}
-          </div>
-        </section>
+        {overlay}
+
+        <GuidePanel
+          uid={uid}
+          step={step}
+          stepNumber={stepIndex + 1}
+          exam={exam}
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          tabContent={tabContent}
+          checklist={exam ? undefined : checklist}
+          note={note}
+          portrait={portrait}
+          guide={guideNow}
+          onGuideChange={setGuide}
+        />
 
         <StepBar
           steps={lesson.steps}
           stepIndex={stepIndex}
           stepStatus={stepStatus}
           onStepChange={onStepChange}
+          title={lesson.title}
+          thumbs={thumbs}
+          lockedFrom={lockedFrom}
+          readOnly={readOnlyTabs}
+          onRestart={onRestart}
         />
       </div>
 
-      {notebookOpen && (
+      {phone ? null : <Rail onNotebook={() => setNotebookOpen(true)} />}
+
+      {notebookOpen ? (
         <Sheet
           label="Notebook"
           closeLabel="Close notebook"
@@ -484,8 +329,8 @@ export default function LessonShell({
         >
           {notebookSlot ?? <p className="sh-empty">The notebook is not open in this view.</p>}
         </Sheet>
-      )}
-      {diagramShown && phone && (
+      ) : null}
+      {diagramShown && phone ? (
         <Sheet
           label="Diagram"
           closeLabel="Close diagram"
@@ -495,7 +340,17 @@ export default function LessonShell({
           <div className="sh-diagram-art">{diagramSlot}</div>
           <p className="sh-caption">{lesson.diagram.caption}</p>
         </Sheet>
-      )}
+      ) : null}
+      {card && identify && phone ? (
+        <Sheet
+          label={`Identify: ${card.name}`}
+          closeLabel="Close identify card"
+          onClose={identify.onClose}
+          fallbackFocus={menuBtn}
+        >
+          <IdentifyFrame card={card} onClose={identify.onClose} bare />
+        </Sheet>
+      ) : null}
     </div>
   );
 }

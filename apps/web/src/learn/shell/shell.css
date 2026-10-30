@@ -1,19 +1,75 @@
-/* LessonShell: paper, ink and thin rules only. No blur, no gradients, no glass.
-   Tokens come from styles/tokens.css. Phone layout is at ≤ 640 px. */
+/* LessonShell (docs/plans/page-layout.md): the canvas full-bleed behind Backcountry-style cards in
+   paper and ink. Flat: thin rules, no blur, no glass. The one gradient is the fade on the brand
+   band. Tokens come from styles/tokens.css.
+
+   Every card is drawn in "design px" on a 1728 x 996 canvas and scaled with `zoom: var(--ui)` on
+   its own layer. useLayout writes --ui, --lw, --lh, --label, --scene-bottom and --guide-w on
+   .sh-root and data-layout (wide | compact | short | portrait) from the window size; there are no
+   layout media queries. Inside a zoomed layer a length is a design px, so a 44 CSS px target is
+   calc(44px / var(--ui)). A label folded away on a small screen is clipped (never display: none)
+   so it stays in the page for screen readers. */
+
+@import "@fontsource/barlow-condensed/latin-700.css";
 
 .sh-root {
-  --sh-rail: 76px;
-  --sh-head: 56px;
-  --sh-bar: 80px;
-  position: relative;
-  width: 100%;
-  height: 100%;
+  /* Until the layout effect writes the real ones. */
+  --ui: 1;
+  --lw: 1728px;
+  --lh: 996px;
+  --label: 1;
+  --rail-w: calc(74px * var(--ui));
+  /* Portrait: where the strip starts. The guide open ends the stage at --scene-bottom. */
+  --strip-top: var(--scene-bottom, calc(var(--lh) - 314px));
+  --sh-card: color-mix(in srgb, var(--card) 97%, transparent);
+  --sh-edge: color-mix(in srgb, var(--line) 78%, var(--ink));
+  --sh-peach: color-mix(in srgb, var(--accent) 22%, var(--card));
+  --sh-peach-edge: color-mix(in srgb, var(--accent) 55%, var(--card));
+  --sh-track: color-mix(in srgb, var(--line) 82%, var(--ink));
+  --sh-rail-ink: color-mix(in srgb, var(--paper) 68%, var(--ink));
+  --sh-rail-on: color-mix(in srgb, var(--ink) 70%, black);
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background: var(--paper-2);
   color: var(--ink);
   font-family: var(--f-body);
   font-size: 15px;
   line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+.sh-root[data-layout="portrait"][data-guide="peek"] {
+  --strip-top: calc(var(--lh) - 250px);
+}
+
+/* The free stage's edges, in CSS px, for the lesson page's own overlays (learn.css reads them for
+   the toolbar, the note, the close-up bar and the graph paper). The canvas already starts beside
+   the rail, so there is no left edge to give. --sh-head is where the free stage starts below the
+   Compare button (a phone: below the player's row), --sh-bar is how tall the strip is (a phone:
+   the strip and the guide), and --sh-guide is how much of the right the guide takes, with its gap
+   to the edge. They are the CSS twins of coveredFor() in layout.ts. */
+.sh-root {
+  --sh-head: calc(112px * var(--ui) + 44px);
+  --sh-bar: calc(164px * var(--ui));
+  --sh-guide: calc(529px * var(--ui));
+}
+
+.sh-root[data-layout="compact"] {
+  --sh-guide: calc(458px * var(--ui));
+}
+
+.sh-root[data-layout="portrait"] {
+  --sh-head: calc(132px * var(--ui));
+  --sh-bar: calc((var(--lh) - var(--strip-top)) * var(--ui));
+  --sh-guide: 0px;
+}
+
+/* Short: the Compare button sits at (12, 68) design px, under the player's row. */
+.sh-root[data-layout="short"] {
+  --sh-head: calc(68px * var(--ui) + 44px);
+  --sh-bar: calc(100px * var(--ui));
+  --sh-guide: calc((var(--guide-w) + 6px) * var(--ui));
 }
 
 .sh-root *,
@@ -43,15 +99,30 @@
   list-style: none;
 }
 
+:where(.sh-root) a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(.sh-root) svg {
+  display: block;
+}
+
+/* The ring is 2 CSS px on screen: the layers are zoomed by --ui, so its width is divided by it. */
 .sh-root :focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: calc(2px / var(--ui)) solid var(--ink);
+  outline-offset: calc(2px / var(--ui));
 }
 
 .sh-rail :focus-visible,
-.sh-menu :focus-visible {
+.sh-menu :focus-visible,
+.sh-nav-primary:focus-visible {
   outline-color: var(--paper);
-  outline-offset: -3px;
+  outline-offset: -4px;
+}
+
+.sh-step:focus-visible {
+  outline-offset: -6px;
 }
 
 .sh-label {
@@ -67,148 +138,456 @@
   color: var(--muted);
 }
 
-/* Canvas */
+/* Said for a screen reader only: the picture beside it says it to everyone else. */
+.sh-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Layers ---------------------------------------------------------------------------- */
+
+/* Everything but the rail: the canvas and the cards. Its left edge is the rail's right edge, so
+   a canvas-local `covered` has left = 0. */
+.sh-stage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--rail-w);
+}
+
+.sh-root[data-layout="portrait"] .sh-stage,
+.sh-root[data-layout="short"] .sh-stage {
+  left: 0;
+}
+
 .sh-canvas {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
 
-/* Rail */
+/* A div over the canvas and under the cards, for the callout labels. */
+.sh-callout-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sh-rail,
+.sh-band,
+.sh-brand,
+.sh-status,
+.sh-float,
+.sh-compare,
+.sh-menu,
+.sh-guide,
+.sh-strip {
+  zoom: var(--ui);
+}
+
+/* On a laptop the Compare button sits in the float, which is already zoomed: zoomed twice it was
+   a 37 px target, under the 44 px bar. (On a phone it stands alone, and keeps its own zoom.) */
+.sh-float .sh-compare {
+  zoom: 1;
+}
+
+/* ---- Rail ------------------------------------------------------------------------------ */
+
 .sh-rail {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: var(--sh-rail);
-  background: var(--rail);
-  color: var(--paper);
+  width: 74px;
   z-index: 5;
-  padding-top: 8px;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--sh-rail-ink);
+  box-shadow: 1px 0 rgba(0, 0, 0, 0.08);
 }
 
-.sh-nav-item {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: inherit;
-  position: relative;
+.sh-rail[data-open="true"] {
+  width: 248px;
+  box-shadow:
+    1px 0 rgba(0, 0, 0, 0.08),
+    14px 0 34px rgba(29, 36, 48, 0.24);
+}
+
+.sh-rail-toggle {
+  position: absolute;
+  top: 40px;
+  left: 14px;
+  width: 44px;
+  height: 45px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 7px;
+  color: var(--sh-rail-ink);
+}
+
+.sh-rail-toggle:hover {
+  color: var(--paper);
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sh-rail-chevron {
+  display: grid;
+  place-items: center;
+}
+
+.sh-rail-chevron svg {
+  width: 21px;
+  height: 21px;
+}
+
+.sh-rail[data-open="true"] .sh-rail-chevron {
+  transform: rotate(180deg);
+}
+
+.sh-rail-nav {
+  position: absolute;
+  top: 125px;
+  left: 0;
+  right: 0;
+}
+
+.sh-nav-rail .sh-nav-li {
+  margin-bottom: 10px;
+}
+
+.sh-nav-rail .sh-nav-li:first-child {
+  margin-bottom: 22px;
 }
 
 .sh-nav-rail .sh-nav-item {
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  min-height: 64px;
-  padding: 8px 4px;
-  text-align: center;
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 1.1;
-  letter-spacing: 0.07em;
+  --ico: 33px;
+  position: relative;
+  width: 100%;
+  height: 80px;
+  display: grid;
+  grid-template-columns: 74px auto;
+  align-items: center;
+  white-space: nowrap;
+  color: var(--sh-rail-ink);
+}
+
+.sh-nav-rail .sh-nav-item:hover {
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* The icon's size is the item's --ico (the current page's is a little smaller), so no rule here
+   has to out-rank another on the svg. */
+.sh-nav-rail svg {
+  justify-self: center;
+  width: var(--ico);
+  height: var(--ico);
+}
+
+.sh-nav-rail .sh-nav-label {
+  font: 600 17px / 1 var(--f-cond);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  opacity: 0;
+  padding-right: 22px;
+  translate: -8px 0;
 }
 
-.sh-nav-item:hover {
-  background: color-mix(in srgb, var(--paper) 10%, transparent);
+.sh-rail[data-open="true"] .sh-nav-label {
+  opacity: 1;
+  translate: 0 0;
 }
 
-.sh-nav-item[aria-current="page"] {
-  background: color-mix(in srgb, var(--paper) 16%, transparent);
-  box-shadow: inset 4px 0 0 var(--accent);
+/* The current page: the accent on a deeper ink, with a bar at the left (shape, not colour alone). */
+.sh-nav-rail .sh-nav-item[aria-current="page"] {
+  --ico: 30px;
+  color: var(--accent);
+  background: var(--sh-rail-on);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px rgba(255, 255, 255, 0.05);
 }
 
-.sh-nav-sep {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
-}
-
-/* Header */
-.sh-head {
+.sh-nav-rail .sh-nav-item[aria-current="page"]::before {
+  content: "";
   position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 0;
+  width: 6px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+/* ---- Brand ----------------------------------------------------------------------------- */
+
+/* The band behind the brand: paper at 75% fading out to the right, and a rule under it. */
+.sh-band {
+  position: absolute;
+  left: 0;
   top: 0;
-  left: var(--sh-rail);
-  right: 0;
-  height: var(--sh-head);
+  z-index: 2;
+  width: 640px;
+  height: 103px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--paper) 75%, transparent) 70%,
+    transparent
+  );
+}
+
+.sh-band::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 103px;
+  width: 545px;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--line) 0 85%, transparent);
+}
+
+.sh-brand {
+  position: absolute;
+  left: 24px;
+  top: 17px;
+  z-index: 3;
+  width: 464px;
+  height: 84px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-  background: var(--paper);
-  border-bottom: var(--rule);
-  z-index: 4;
+  gap: 30px;
+  pointer-events: none;
+  color: var(--ink);
 }
 
-.sh-head .sh-menu-btn {
-  display: none;
+.sh-brand-logo {
+  position: relative;
+  flex: none;
+  display: block;
+  width: 82px;
+  height: 84px;
+  color: var(--ink);
 }
 
-.sh-wordmark {
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 20px;
-  letter-spacing: 0.1em;
+/* The one part of the brand that takes taps: the phone's menu button. */
+.sh-menu-btn {
+  pointer-events: auto;
+}
+
+.sh-brand-text {
+  margin-top: -9px;
+}
+
+.sh-brand-title {
+  font: 600 48.5px / 1 var(--f-cond);
+  letter-spacing: 0.068em;
   text-transform: uppercase;
   white-space: nowrap;
-  flex: none;
+  color: var(--ink);
 }
 
-.sh-chip,
-.sh-badge,
-.sh-compare {
-  flex: none;
-}
-
-.sh-head-title {
-  font-family: var(--f-body);
-  font-weight: 500;
-  font-size: 16px;
-  padding-left: 14px;
-  border-left: var(--rule);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  margin-right: auto;
-}
-
-.sh-chip,
-.sh-badge {
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.07em;
+.sh-brand-tagline {
+  margin-top: 4px;
+  font: 500 20px / 1 var(--f-cond);
+  letter-spacing: 0.272em;
   text-transform: uppercase;
   white-space: nowrap;
-  padding: 4px 10px;
-  border-radius: var(--radius);
+  color: var(--muted);
 }
 
-.sh-chip {
-  border: var(--rule);
-  color: var(--ink-2);
+.sh-brand-tagline i {
+  margin: 0 0.12em;
+  font-style: normal;
+}
+
+/* The way she is on: darker and heavier, so it reads without colour. */
+.sh-mode[aria-current="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---- Status card ----------------------------------------------------------------------- */
+
+.sh-status {
+  position: absolute;
+  top: 18px;
+  right: 17px;
+  z-index: 3;
+  width: 525px;
+  height: 86px;
+  padding-left: 9px;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--sh-card);
+}
+
+/* No credit passed, or folded to its mark: the card is only as wide as what it holds. */
+.sh-root[data-status="plain"] .sh-status,
+.sh-root[data-credit="mark"] .sh-status {
+  width: auto;
+  padding-right: 9px;
+}
+
+.sh-course {
+  flex: none;
+  width: 280px;
+  height: 70px;
+  padding-left: 17px;
+  display: flex;
+  align-items: center;
+  gap: 21px;
+  border: 1.5px solid var(--sh-edge);
+  border-radius: 8px;
   background: var(--card);
 }
 
-/* Practice = dashed pencil outline; Exam = solid ink block. */
-.sh-badge.is-practice {
-  border: 1.5px dashed var(--ink-2);
+.sh-book {
+  flex: none;
+  width: 42px;
+  color: var(--ink);
+}
+
+.sh-book svg {
+  width: 42px;
+  height: 42px;
+}
+
+.sh-course-meta {
+  min-width: 0;
+}
+
+.sh-course-name {
+  display: block;
+  font: 600 17.5px / 1 var(--f-cond);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.sh-progress {
+  display: flex;
+  align-items: center;
+  margin-top: 9px;
+}
+
+.sh-bar {
+  position: relative;
+  width: 137px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--sh-track);
+}
+
+.sh-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 7px;
+  background: var(--green);
+}
+
+.sh-count {
+  margin-left: 14px;
+  font: 700 20px / 1 var(--f-cond);
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.sh-credit {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 auto;
+}
+
+.sh-root[data-credit="mark"] .sh-credit {
+  margin: 0 0 0 14px;
+}
+
+.sh-credit-mark {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.sh-credit-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+.sh-credit-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--f-cond);
+  white-space: nowrap;
+}
+
+.sh-credit-lead {
+  font-weight: 500;
+  /* 10.5 design px came out at 8.7 px on a 1440 laptop (the layer is zoomed by --ui), so the size
+     has a floor on the screen: 11.5 px as drawn, and never under 12 design px. */
+  font-size: max(12px, calc(11.5px / var(--ui, 1)));
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sh-credit-line {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.02em;
   color: var(--ink-2);
 }
 
-.sh-badge.is-exam {
-  border: 1.5px solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+/* ---- Compare with diagram, and the Identify card ---------------------------------------- */
+
+.sh-float {
+  position: absolute;
+  left: 24px;
+  top: 112px;
+  z-index: 3;
+  width: 340px;
+  max-height: calc(var(--lh) - 112px - 164px - 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.sh-float > * {
+  pointer-events: auto;
+  flex: none;
 }
 
 .sh-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: var(--tap);
+  min-height: calc(var(--tap) / var(--ui));
   padding: 0 14px;
   border: 1px solid var(--ink);
   border-radius: var(--radius);
@@ -229,8 +608,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--tap);
-  height: var(--tap);
+  width: calc(var(--tap) / var(--ui));
+  height: calc(var(--tap) / var(--ui));
   flex: none;
   border-radius: var(--radius);
 }
@@ -239,34 +618,15 @@
   background: var(--paper-2);
 }
 
-/* Floating left column: diagram and identify */
-.sh-stack {
-  display: contents;
-}
-
-.sh-float {
-  position: absolute;
-  left: calc(var(--sh-rail) + 16px);
-  top: calc(var(--sh-head) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
-  width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.sh-float > * {
-  pointer-events: auto;
-  flex: none;
-}
-
 .sh-card {
   background: var(--card);
   border: var(--rule);
   border-radius: var(--radius);
+}
+
+/* The diagram and Identify cards fill the column. */
+.sh-float > .sh-card {
+  align-self: stretch;
 }
 
 .sh-card-head {
@@ -274,7 +634,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 8px 0 16px;
-  min-height: var(--tap);
+  min-height: calc(var(--tap) / var(--ui));
   border-bottom: var(--rule);
 }
 
@@ -330,32 +690,38 @@
   border-left: 2px dashed var(--red-ink);
 }
 
-/* Right panel */
-.sh-panel {
+/* ---- Guide ----------------------------------------------------------------------------- */
+
+.sh-guide {
   position: absolute;
+  top: 120px;
   right: 16px;
-  top: calc(var(--sh-head) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
-  width: 400px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--card);
-  border: var(--rule);
-  border-radius: var(--radius);
   z-index: 3;
+  width: 513px;
+  height: 542px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--sh-card);
 }
 
-.sh-handle,
-.sh-peek {
-  display: none;
+.sh-tabs-row {
+  position: relative;
+  height: 70px;
+  display: flex;
+  align-items: flex-start;
 }
 
 .sh-tabs {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
   display: flex;
-  flex: none;
-  border-bottom: var(--rule);
+  gap: 38px;
+  padding-left: 7px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 
@@ -364,70 +730,99 @@
 }
 
 .sh-tab {
-  flex: 1 0 auto;
-  min-height: var(--tap);
-  padding: 0 10px;
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.05em;
+  position: relative;
+  flex: none;
+  height: 56px;
+  padding: 8px 11px 0;
+  font: 600 19px / 1 var(--f-cond);
+  letter-spacing: 0.055em;
   text-transform: uppercase;
   white-space: nowrap;
-  text-align: center;
   color: var(--muted);
-  border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
+}
+
+.sh-tab:hover {
+  color: var(--ink);
 }
 
 .sh-tab[aria-selected="true"] {
   color: var(--ink);
-  border-bottom-color: var(--ink);
 }
 
-.sh-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 16px;
+/* One flat accent underline that slides under the active tab (useSlider). */
+.sh-tab-ink {
+  position: absolute;
+  left: 0;
+  top: 51px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sh-fold {
+  display: none;
+}
+
+/* The title row: the title, and the phone's fold button at its right. */
+.sh-guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sh-guide-card {
+  height: 458px;
+  padding: 16px 18px 14px 29px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1.5px solid color-mix(in srgb, var(--line) 80%, var(--paper));
+  border-radius: 8px;
+  background: var(--card);
+  scrollbar-width: thin;
+  scrollbar-color: var(--pencil) transparent;
 }
 
-.sh-step-title {
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 26px;
-  letter-spacing: 0.03em;
+.sh-guide-title {
+  font: 700 38.5px / 1 var(--f-cond);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  line-height: 1.1;
+  color: var(--ink);
 }
 
 .sh-quote {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  max-width: 410px;
+  margin-top: 11px;
 }
 
 .sh-quote blockquote {
-  padding-left: 12px;
-  border-left: 2px solid var(--ink);
-  font-style: italic;
-  color: var(--ink-2);
+  font: 400 19.5px / 24px var(--f-body);
+  color: var(--muted);
 }
 
 .sh-next {
+  margin-top: 14px;
   padding: 10px 12px 12px;
-  border: 1px solid var(--ink);
-  border-radius: var(--radius);
-  background: var(--paper);
+  border: 1.5px solid var(--sh-peach-edge);
+  border-radius: 9px;
+  background: var(--sh-peach);
 }
 
 .sh-next p {
+  margin-top: 2px;
   font-size: 17px;
   font-weight: 500;
-  margin-top: 2px;
+}
+
+.sh-callouts {
+  margin-top: 14px;
 }
 
 .sh-callouts ul {
@@ -442,7 +837,7 @@
   border-bottom: var(--rule);
 }
 
-.sh-callouts li span {
+.sh-callouts .sh-sub {
   font-size: 13px;
   color: var(--ink-2);
 }
@@ -451,11 +846,14 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: 14px;
 }
 
 .sh-bullets li {
   position: relative;
   padding-left: 16px;
+  font: 400 18.5px / 25px var(--f-body);
+  color: var(--ink-2);
 }
 
 .sh-bullets li::before {
@@ -469,113 +867,370 @@
   border-radius: 50%;
 }
 
-/* Step bar */
-.sh-stepbar {
+.sh-guide-card > .sh-empty {
+  margin-top: 14px;
+}
+
+/* The mode's one line at the foot. */
+.sh-note {
+  margin-top: auto;
+  padding-top: 14px;
+  font: 500 14.5px / 1.3 var(--f-cond);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.sh-peek {
+  min-width: 0;
+}
+
+/* ---- Step strip ------------------------------------------------------------------------ */
+
+.sh-strip {
   position: absolute;
-  left: var(--sh-rail);
+  left: 0;
   right: 0;
   bottom: 0;
-  height: var(--sh-bar);
-  background: var(--paper);
-  border-top: var(--rule);
-  z-index: 4;
+  z-index: 3;
+  height: 164px;
 }
 
-.sh-steps {
-  position: relative;
+.sh-strip:has(.sh-pmenu) {
+  z-index: 6;
+}
+
+/* The plate: a body from y = 25 across the strip, and a raised tab at the left that grows with
+   the selector and ends in a curve down to the body. */
+.sh-plate-body {
+  position: absolute;
+  inset: 25px 0 0 0;
+  border-top: 1.5px solid var(--line);
+  background: var(--sh-card);
+}
+
+/* Not positioned, so the practical menu rises from the strip itself. */
+.sh-plate-tab {
+  width: max-content;
+  height: 26px;
   display: flex;
-  height: 100%;
+  align-items: flex-start;
+  border-top: 1.5px solid var(--line);
+  background: var(--sh-card);
+}
+
+/* The ear overhangs the tab (its negative right margin), so the tab is as wide as the selector. */
+.sh-ear {
+  flex: none;
+  width: 74px;
+  height: 26px;
+  margin: -1.5px -74px 0 3px;
+  overflow: visible;
+}
+
+.sh-ear-fill {
+  fill: var(--sh-card);
+}
+
+.sh-ear-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5px;
+}
+
+.sh-practical-btn {
+  position: relative;
+  height: 38px;
+  margin: 2.5px 0 0 18px;
+  padding: 0 10px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-radius: 7px;
+  font: 700 17px / 1 var(--f-cond);
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.sh-practical-btn:hover,
+.sh-practical-btn[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.sh-practical-ico {
+  width: 27px;
+  color: var(--ink);
+}
+
+.sh-practical-ico svg {
+  width: 27px;
+  height: 27px;
+}
+
+.sh-practical-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sh-practical-caret {
+  width: 18px;
+  margin-left: -4px;
+  color: var(--muted);
+}
+
+.sh-practical-caret svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sh-practical-btn[aria-expanded="true"] .sh-practical-caret {
+  transform: rotate(180deg);
+}
+
+.sh-pmenu {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: 18px;
+  z-index: 6;
+  width: 360px;
+  max-height: calc(var(--lh) - 190px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 99%, transparent);
+  box-shadow: 0 -8px 24px rgba(60, 45, 25, 0.14);
+}
+
+.sh-pitem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+/* What the page offers beside the practicals (Restart in Watch), set off by a thin rule. */
+.sh-pmenu-actions {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1.5px solid var(--line);
+}
+
+.sh-pitem:hover {
+  background: color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+.sh-pitem[aria-current="page"] {
+  background: var(--sh-peach);
+}
+
+.sh-pitem-ico {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.sh-pitem-ico svg {
+  width: 26px;
+  height: 26px;
+}
+
+.sh-pitem-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sh-pitem-text b {
+  font: 700 19px / 1 var(--f-cond);
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.sh-pitem-text small {
+  font: 500 14.5px / 1 var(--f-cond);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.sh-pitem-tick {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--paper);
+}
+
+.sh-pitem-tick svg {
+  width: 13px;
+  height: 13px;
+}
+
+.sh-track {
+  position: absolute;
+  top: 47px;
+  left: 24px;
+  right: 42px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.sh-cards {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 0 8px;
 }
 
-.sh-steps::-webkit-scrollbar {
+.sh-cards::-webkit-scrollbar {
   display: none;
 }
 
-.sh-step-item {
-  flex: 1 0 76px;
+.sh-steps {
   display: flex;
+  gap: 11px;
+}
+
+/* Six cards show across a laptop; the rest scroll sideways. Never narrower than 188. */
+.sh-step-item {
+  flex: 0 0 max(188px, calc((100% - 55px) / 6));
+  min-width: 0;
 }
 
 .sh-step {
   position: relative;
   width: 100%;
+  height: 87px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: var(--tap);
-  padding: 4px 2px 6px;
+  border: 1.5px solid var(--sh-edge);
+  border-radius: 8px;
+  background: var(--card);
+  font: 500 17.5px / 20px var(--f-cond);
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-align: left;
 }
 
-/* The track: dashed pencil until the step is done, then solid ink. */
-.sh-step::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 11px);
-  border-top: 1.5px dashed var(--pencil);
+.sh-step:hover {
+  border-color: var(--ink-2);
 }
 
-.sh-step-item.is-done .sh-step::before {
-  border-top: 2px solid var(--ink);
+.sh-step[aria-current="step"] {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 6%, var(--card));
 }
 
-.sh-step-item:first-child .sh-step::before {
-  left: 50%;
+.sh-step-item.is-locked .sh-step {
+  color: var(--muted);
 }
 
-.sh-step-item:last-child .sh-step::before {
-  right: 50%;
+.sh-step[aria-disabled="true"] {
+  cursor: default;
 }
 
-.sh-step-icon {
-  position: relative;
+.sh-step-pic {
+  flex: none;
+  width: 70px;
+  height: 70px;
+  margin-left: 8px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1.5px dashed var(--pencil);
-  color: var(--ink-2);
-  font-family: var(--f-cond);
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 1;
 }
 
-.sh-step-item.is-done .sh-step-icon {
-  border: 2px solid var(--ink);
+.sh-step-pic img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+
+/* The numbered ink ring (until the pictures exist): dashed pencil = not done, solid ink = done,
+   solid red = lost, filled ink = the current stage. */
+.sh-ring {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--pencil);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-2);
+  font: 700 26px / 1 var(--f-cond);
+  letter-spacing: 0;
+}
+
+.sh-step-item.is-done .sh-ring {
+  border: 2.5px solid var(--ink);
   color: var(--ink);
 }
 
-.sh-step-item.is-lost .sh-step-icon {
-  border: 2px solid var(--red-ink);
+.sh-step-item.is-lost .sh-ring {
+  border: 2.5px solid var(--red-ink);
   color: var(--red-ink);
 }
 
-.sh-step[aria-current="step"] .sh-step-icon {
+.sh-step[aria-current="step"] .sh-ring {
+  border: 2.5px solid var(--ink);
   background: var(--ink);
-  border: 2px solid var(--ink);
   color: var(--paper);
+}
+
+.sh-step-label {
+  min-width: 0;
+  margin: 0 32px 0 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.sh-step-label b {
+  grid-row: span 2;
+  font-weight: inherit;
+}
+
+.sh-step-label > span {
+  grid-column: 2;
+}
+
+.sh-step-label:not(:has(b)) > span {
+  grid-column: 1 / -1;
 }
 
 .sh-step-mark {
   position: absolute;
-  right: -6px;
-  bottom: -5px;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
-  width: 17px;
-  height: 17px;
   border-radius: 50%;
-  border: 1.5px solid var(--paper);
   color: var(--paper);
+}
+
+.sh-step-mark svg {
+  width: 13px;
+  height: 13px;
 }
 
 .sh-step-mark.is-done {
@@ -586,30 +1241,137 @@
   background: var(--red-ink);
 }
 
-.sh-step-label {
-  max-width: 100%;
-  font-family: var(--f-cond);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ink-2);
+.sh-step-lock {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
 }
 
-.sh-step[aria-current="step"] .sh-step-label {
+.sh-step-lock svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The current card's outline, in the accent, slides to the card she is on (useSlider). */
+.sh-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  height: 87px;
+  border: 2.5px solid var(--accent);
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sh-cursor svg {
+  position: absolute;
+  top: 30px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
   color: var(--ink);
-  font-weight: 600;
-  box-shadow: 0 2px 0 var(--ink);
 }
 
-.sh-step:hover .sh-step-icon {
+.sh-nav-btn {
+  position: relative;
+  flex: 0 0 62px;
+  height: 77px;
+  margin-left: 6px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--sh-edge);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.sh-nav-btn svg {
+  width: 30px;
+  height: 30px;
+}
+
+.sh-nav-btn:hover:not(:disabled) {
+  border-color: var(--ink-2);
+}
+
+.sh-nav-primary {
+  flex-basis: 67px;
+  margin-left: 4px;
   border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
 
-/* Sheets (notebook, phone diagram) */
+/* Not available: dashed and faded, so it never relies on colour. */
+.sh-nav-btn:disabled {
+  border-style: dashed;
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A label folded away on a small screen: clipped, still read by a screen reader. (After the base
+   rules of everything it hides, so it wins by order as well as by specificity.) */
+[data-layout="portrait"] .sh-compare .sh-txt,
+[data-layout="short"] .sh-compare .sh-txt,
+[data-layout="short"] .sh-brand-tagline,
+[data-brand="badge"] .sh-brand-text.sh-txt,
+[data-credit="mark"] .sh-credit-text.sh-txt,
+[data-layout="portrait"] .sh-credit-text.sh-txt,
+[data-layout="short"] .sh-credit-text.sh-txt,
+[data-layout="short"] .sh-step-label.sh-txt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Menu (phone) and sheets ------------------------------------------------------------ */
+
+.sh-menu {
+  position: absolute;
+  left: 0;
+  top: 68px;
+  z-index: 6;
+  width: min(300px, var(--lw));
+  padding: 6px 0;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.sh-menu-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.sh-nav-menu .sh-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: calc(var(--tap) / var(--ui));
+  padding: 0 16px;
+  color: var(--paper);
+  font: 600 16px / 1 var(--f-cond);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.sh-nav-menu .sh-nav-item[aria-current="page"] {
+  color: var(--accent);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
 .sh-scrim {
   position: absolute;
   inset: 0;
@@ -636,272 +1398,721 @@
   min-height: 120px;
 }
 
-/* Menu (phone only) */
-.sh-menu,
-.sh-menu-scrim {
+.sh-sheet .sh-card-head {
+  min-height: var(--tap);
+}
+
+.sh-sheet .sh-icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+}
+
+/* ---- Compact: a laptop below 0.7 of the design canvas ------------------------------------ */
+
+/* The brand's box is only as wide as its words (wide keeps Backcountry's 464 px box), so the player
+   card, wider on a touch screen, never lies over the empty end of it. */
+.sh-root[data-layout="compact"] .sh-brand {
+  width: fit-content;
+}
+
+.sh-root[data-layout="compact"] .sh-guide {
+  right: 12px;
+  width: 446px;
+  height: calc(var(--lh) - 120px - 164px - 12px);
+}
+
+.sh-root[data-layout="compact"] .sh-guide-card {
+  height: calc(100% - 84px);
+  padding-left: 22px;
+}
+
+/* The guide is 446 wide, so three tabs sit closer than in the 513 one. */
+.sh-root[data-layout="compact"] .sh-tabs {
+  gap: 14px;
+}
+
+.sh-root[data-layout="compact"] .sh-tab {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.sh-root[data-layout="compact"] .sh-track {
+  left: 16px;
+  right: 16px;
+  gap: 8px;
+}
+
+.sh-root[data-layout="compact"] .sh-step-pic {
+  width: 48px;
+  height: 48px;
+  margin-left: 6px;
+}
+
+.sh-root[data-layout="compact"] .sh-step-pic img {
+  width: 48px;
+  height: 48px;
+}
+
+.sh-root[data-layout="compact"] .sh-ring,
+.sh-root[data-layout="portrait"] .sh-ring {
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+}
+
+.sh-root[data-layout="compact"] .sh-step-label,
+.sh-root[data-layout="portrait"] .sh-step-label {
+  margin-left: 8px;
+  margin-right: 28px;
+}
+
+/* Previous and next sit one gap apart, so each one's 44 px hit area needs the two to be 44 px apart
+   (centre to centre): the width never drops below 44 CSS px less the gap (and a design px to
+   spare), whatever the scale. */
+.sh-root[data-layout="compact"] .sh-nav-btn,
+.sh-root[data-layout="compact"] .sh-nav-primary {
+  flex-basis: max(52px, calc(44px / var(--ui) - 7px));
+}
+
+.sh-root[data-layout="compact"] .sh-nav-btn {
+  margin-left: 0;
+}
+
+/* ---- Short: a landscape phone ------------------------------------------------------------ */
+
+.sh-root[data-layout="short"] .sh-band {
+  width: calc(var(--lw) - var(--guide-w) - 12px);
+  height: 62px;
+}
+
+.sh-root[data-layout="short"] .sh-band::after {
+  top: 61px;
+  width: calc(var(--lw) - var(--guide-w) - 12px);
+}
+
+/* The mark is the menu button, with a 44 px hit area centred on it: on a screen under 330 px tall
+   it would stick out above the page, so the brand steps down until it does not. */
+.sh-root[data-layout="short"] .sh-brand {
+  left: 12px;
+  top: max(8px, calc(22px / var(--ui) - 21px));
+  gap: 10px;
+  width: auto;
+  height: 42px;
+}
+
+.sh-root[data-layout="short"] .sh-brand-logo {
+  width: 40px;
+  height: 42px;
+}
+
+.sh-root[data-layout="short"] .sh-brand-text {
+  margin-top: 0;
+}
+
+.sh-root[data-layout="short"] .sh-brand-title {
+  font-size: 23px;
+}
+
+.sh-root[data-layout="short"] .sh-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+}
+
+.sh-root[data-layout="short"] .sh-float {
+  left: 12px;
+  top: 68px;
+  max-height: calc(var(--lh) - 68px - 100px - 12px);
+}
+
+.sh-root[data-layout="short"] .sh-compare {
+  position: absolute;
+  left: 12px;
+  top: 68px;
+  z-index: 3;
+}
+
+.sh-root[data-layout="short"] .sh-guide {
+  top: 6px;
+  right: 6px;
+  bottom: 6px;
+  width: var(--guide-w);
+  height: auto;
+  padding: 0 10px 10px;
+}
+
+/* The row holds the tabs' 44 px hit areas: 50 design px is enough above a 0.88 scale, below it the
+   row grows to 44 CSS px (a 640 x 360 phone) and the card gives the room back. */
+.sh-root[data-layout="short"] .sh-tabs-row {
+  height: max(50px, calc(var(--tap) / var(--ui)));
+}
+
+.sh-root[data-layout="short"] .sh-tabs {
+  gap: 8px;
+  padding-left: 2px;
+}
+
+/* The words scale with the guide's width (40% of the screen, 320 to 420), so three tabs fit. */
+.sh-root[data-layout="short"] .sh-tab {
+  height: 44px;
+  padding: 4px 7px 0;
+  font-size: clamp(13px, calc(var(--guide-w) * 0.042), 16.5px);
+}
+
+.sh-root[data-layout="short"] .sh-tab-ink {
+  top: 39px;
+}
+
+.sh-root[data-layout="short"] .sh-guide-card {
+  height: calc(100% - max(50px, calc(var(--tap) / var(--ui))));
+  padding: 12px 12px 14px 16px;
+}
+
+.sh-root[data-layout="short"] .sh-guide-title {
+  font-size: 27px;
+}
+
+.sh-root[data-layout="short"] .sh-quote {
+  max-width: none;
+}
+
+.sh-root[data-layout="short"] .sh-quote blockquote,
+.sh-root[data-layout="short"] .sh-bullets li {
+  font-size: 16.5px;
+  line-height: 21px;
+}
+
+.sh-root[data-layout="short"] .sh-strip {
+  right: calc(var(--guide-w) + 12px);
+  height: 100px;
+}
+
+.sh-root[data-layout="short"] .sh-plate-tab {
+  height: 26px;
+}
+
+.sh-root[data-layout="short"] .sh-practical-btn {
+  height: 32px;
+  margin-top: 0.5px;
+}
+
+.sh-root[data-layout="short"] .sh-pmenu {
+  max-height: calc(var(--lh) - 112px);
+  left: 10px;
+}
+
+.sh-root[data-layout="short"] .sh-track {
+  top: 38px;
+  left: 10px;
+  right: 10px;
+  gap: 6px;
+}
+
+.sh-root[data-layout="short"] .sh-step-item {
+  flex-basis: 76px;
+  min-width: 76px;
+}
+
+.sh-root[data-layout="short"] .sh-step {
+  height: 56px;
+  justify-content: center;
+}
+
+.sh-root[data-layout="short"] .sh-step-pic {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+}
+
+.sh-root[data-layout="short"] .sh-step-pic img {
+  width: 44px;
+  height: 44px;
+}
+
+.sh-root[data-layout="short"] .sh-ring {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+
+.sh-root[data-layout="short"] .sh-step-mark {
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+}
+
+.sh-root[data-layout="short"] .sh-step-mark svg {
+  width: 10px;
+  height: 10px;
+}
+
+.sh-root[data-layout="short"] .sh-step-lock {
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+.sh-root[data-layout="short"] .sh-cursor {
+  height: 56px;
+}
+
+.sh-root[data-layout="short"] .sh-cursor svg {
   display: none;
 }
 
-/* Between phone and laptop: Compare becomes an icon (it keeps its aria-label), the title truncates
-   and the side cards are narrower so the diagram card and the panel never overlap. */
-@media (min-width: 641px) and (max-width: 900px) {
-  .sh-head {
-    gap: 10px;
-  }
-
-  .sh-compare {
-    width: var(--tap);
-    padding: 0;
-    justify-content: center;
-  }
-
-  .sh-compare span {
-    display: none;
-  }
-
-  .sh-panel {
-    width: 340px;
-  }
-
-  .sh-float {
-    width: 248px;
-  }
-
-  /* Four tabs in 340 px: let the labels wrap onto two lines instead of clipping. */
-  .sh-tab {
-    flex: 1 1 0;
-    min-width: min-content;
-    padding: 0 6px;
-    font-size: 12px;
-    line-height: 1.1;
-    white-space: normal;
-  }
+.sh-root[data-layout="short"] .sh-nav-btn,
+.sh-root[data-layout="short"] .sh-nav-primary {
+  flex-basis: max(44px, calc(44px / var(--ui) - 5px));
 }
 
-/* Phone */
-@media (max-width: 640px) {
-  .sh-root {
-    --sh-bar: 76px;
-  }
-
-  .sh-rail {
-    display: none;
-  }
-
-  .sh-head {
-    left: 0;
-    height: auto;
-    display: grid;
-    grid-template-columns: var(--tap) 1fr auto auto;
-    column-gap: 10px;
-    row-gap: 0;
-    align-items: center;
-    padding: 2px 16px 8px 6px;
-    /* Above the stack (z 4) so the open menu covers an expanded panel, and above the
-       outside-tap layer (z 5) so the menu itself stays tappable. */
-    z-index: 6;
-  }
-
-  .sh-head .sh-menu-btn {
-    display: inline-flex;
-    grid-area: 1 / 1;
-  }
-
-  .sh-wordmark {
-    grid-area: 1 / 2;
-    font-size: 18px;
-  }
-
-  .sh-badge {
-    grid-area: 1 / 3;
-    justify-self: end;
-  }
-
-  .sh-compare {
-    grid-area: 1 / 4;
-    margin: 0;
-    padding: 0;
-    width: var(--tap);
-    justify-content: center;
-  }
-
-  .sh-compare span {
-    display: none;
-  }
-
-  .sh-head-title {
-    grid-area: 2 / 1 / 3 / 3;
-    padding: 0 0 0 10px;
-    border: 0;
-    font-size: 15px;
-  }
-
-  .sh-chip {
-    grid-area: 2 / 3 / 3 / 5;
-    justify-self: end;
-    font-size: 13px;
-    padding: 2px 8px;
-  }
-
-  .sh-menu {
-    display: block;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: min(300px, 100%);
-    background: var(--rail);
-    color: var(--paper);
-    padding: 6px 0;
-  }
-
-  .sh-menu-scrim {
-    display: block;
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-  }
-
-  .sh-nav-menu .sh-nav-item {
-    gap: 14px;
-    min-height: 48px;
-    padding: 0 16px;
-    width: 100%;
-    font-family: var(--f-cond);
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-  }
-
-  .sh-stack {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    pointer-events: none;
-    z-index: 4;
-  }
-
-  .sh-stack > * {
-    pointer-events: auto;
-  }
-
-  .sh-float {
-    position: static;
-    width: auto;
-    max-height: 48dvh;
-    margin: 0 16px 8px;
-    bottom: auto;
-    top: auto;
-  }
-
-  .sh-panel {
-    position: static;
-    width: auto;
-    border-left: 0;
-    border-right: 0;
-    border-radius: 10px 10px 0 0;
-  }
-
-  .sh-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: var(--tap);
-    touch-action: none;
-  }
-
-  .sh-grabber {
-    width: 44px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--pencil);
-  }
-
-  .sh-peek {
-    display: block;
-    padding: 0 16px 12px;
-  }
-
-  .sh-peek-title {
-    font-family: var(--f-cond);
-    font-weight: 600;
-    font-size: 20px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    line-height: 1.1;
-  }
-
-  .sh-peek-plain {
-    margin-top: 2px;
-    color: var(--ink-2);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .sh-panel:not(.is-expanded) .sh-tabs,
-  .sh-panel:not(.is-expanded) .sh-panel-body {
-    display: none;
-  }
-
-  .sh-panel.is-expanded .sh-peek {
-    display: none;
-  }
-
-  .sh-panel.is-expanded .sh-panel-body {
-    flex: none;
-    max-height: 42dvh;
-  }
-
-  /* With an Identify card open above it, the expanded panel gives up some height. */
-  .sh-stack:has(.sh-float) .sh-panel.is-expanded .sh-panel-body {
-    max-height: 22dvh;
-  }
-
-  .sh-stepbar {
-    position: static;
-    left: auto;
-    right: auto;
-    height: calc(var(--sh-bar) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  .sh-step-item {
-    flex: 0 0 72px;
-  }
-
-  .sh-scrim {
-    align-items: flex-end;
-  }
-
-  .sh-sheet {
-    width: 100%;
-    max-height: 86%;
-    border-left: 0;
-    border-right: 0;
-    border-bottom: 0;
-    border-radius: 10px 10px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
+.sh-root[data-layout="short"] .sh-nav-btn {
+  height: 56px;
+  margin-left: 0;
 }
+
+.sh-root[data-layout="short"] .sh-scrim,
+.sh-root[data-layout="portrait"] .sh-scrim {
+  align-items: flex-end;
+}
+
+.sh-root[data-layout="short"] .sh-sheet,
+.sh-root[data-layout="portrait"] .sh-sheet {
+  width: 100%;
+  max-height: 86%;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---- Portrait: a phone held upright ------------------------------------------------------- */
+
+.sh-root[data-layout="portrait"] .sh-band {
+  width: var(--lw);
+  height: 68px;
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+}
+
+.sh-root[data-layout="portrait"] .sh-band::after {
+  top: 67px;
+  width: var(--lw);
+}
+
+.sh-root[data-layout="portrait"] .sh-brand {
+  left: 14px;
+  top: 10px;
+  gap: 12px;
+  width: 254px;
+  height: 48px;
+}
+
+.sh-root[data-layout="portrait"] .sh-brand-logo {
+  width: 46px;
+  height: 48px;
+}
+
+.sh-root[data-layout="portrait"] .sh-brand-text {
+  margin-top: -2px;
+}
+
+.sh-root[data-layout="portrait"] .sh-brand-title {
+  font-size: 27px;
+}
+
+.sh-root[data-layout="portrait"] .sh-brand-tagline {
+  margin-top: 3px;
+  /* 11.5 design px is 10.4 px on a 390 phone: a floor of 11.5 px as drawn, never under 12 design px. */
+  font-size: max(12px, calc(11.5px / var(--ui, 1)));
+  letter-spacing: 0.24em;
+}
+
+/* No card on a phone: the name, a bar and the count, in a box as wide as Backcountry's (the bar
+   gives a little if the count has more digits). */
+.sh-root[data-layout="portrait"] .sh-status {
+  top: 10px;
+  right: 14px;
+  width: 109px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.sh-root[data-layout="portrait"] .sh-course {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.sh-root[data-layout="portrait"] .sh-book,
+.sh-root[data-layout="portrait"] .sh-credit-mark {
+  display: none;
+}
+
+.sh-root[data-layout="portrait"] .sh-credit {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.sh-root[data-layout="portrait"] .sh-course-name {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sh-root[data-layout="portrait"] .sh-progress {
+  margin-top: 6px;
+}
+
+.sh-root[data-layout="portrait"] .sh-bar {
+  flex: 0 1 78px;
+  width: 78px;
+  min-width: 24px;
+  height: 10px;
+}
+
+.sh-root[data-layout="portrait"] .sh-count {
+  margin-left: 9px;
+  font-size: 16px;
+}
+
+/* The diagram toggle is an icon button beside the player card. */
+.sh-root[data-layout="portrait"] .sh-compare {
+  position: absolute;
+  left: 14px;
+  top: calc(78px + (54px - 44px / var(--ui)) / 2);
+  z-index: 3;
+  width: calc(var(--tap) / var(--ui));
+  padding: 0;
+  justify-content: center;
+}
+
+.sh-root[data-layout="short"] .sh-compare {
+  width: calc(var(--tap) / var(--ui));
+  padding: 0;
+  justify-content: center;
+}
+
+.sh-root[data-layout="portrait"] .sh-strip {
+  top: var(--strip-top);
+  bottom: auto;
+  height: 150px;
+}
+
+.sh-root[data-layout="portrait"] .sh-pmenu {
+  left: 10px;
+  max-width: calc(var(--lw) - 20px);
+  max-height: calc(var(--strip-top) - 12px);
+}
+
+.sh-root[data-layout="portrait"] .sh-track {
+  left: 10px;
+  right: 10px;
+  gap: 6px;
+}
+
+.sh-root[data-layout="portrait"] .sh-step-pic {
+  width: 48px;
+  height: 48px;
+  margin-left: 6px;
+}
+
+.sh-root[data-layout="portrait"] .sh-step-pic img {
+  width: 48px;
+  height: 48px;
+}
+
+.sh-root[data-layout="portrait"] .sh-step-mark {
+  top: 4px;
+  right: 4px;
+}
+
+.sh-root[data-layout="portrait"] .sh-nav-btn,
+.sh-root[data-layout="portrait"] .sh-nav-primary {
+  flex-basis: max(44px, calc(44px / var(--ui) - 5px));
+}
+
+.sh-root[data-layout="portrait"] .sh-nav-btn {
+  margin-left: 0;
+}
+
+.sh-root[data-layout="portrait"] .sh-guide {
+  top: calc(var(--strip-top) + 150px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px) / var(--ui));
+  border: 0;
+  border-radius: 0;
+}
+
+.sh-root[data-layout="portrait"] .sh-tabs-row {
+  height: 54px;
+}
+
+.sh-root[data-layout="portrait"] .sh-tabs {
+  gap: 16px;
+  padding-left: 4px;
+  touch-action: pan-x;
+}
+
+.sh-root[data-layout="portrait"] .sh-tab {
+  height: 46px;
+  padding-top: 4px;
+  font-size: 17px;
+}
+
+.sh-root[data-layout="portrait"] .sh-tab-ink {
+  top: 41px;
+}
+
+/* The fold button at the title's right: open or fold the guide. It is a small mark with a
+   44 px hit area (below). The card scrolls, so it clips what sticks out of its padding box: the
+   mark is centred on the title's row and kept 16 design px from the edge, so the whole 44 px
+   square (the card's 14 px padding plus 2) stays inside it on a 360 px phone and up. */
+.sh-root[data-layout="portrait"] .sh-fold {
+  position: relative;
+  flex: none;
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  margin: -1.5px 2px -1.5px 8px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.sh-root[data-layout="portrait"] .sh-fold svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sh-root[data-layout="portrait"] .sh-fold:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sh-root[data-layout="portrait"] .sh-guide-card {
+  height: calc(100% - 54px);
+  padding: 14px 14px 16px 18px;
+}
+
+.sh-root[data-layout="portrait"] .sh-guide-title {
+  font-size: 30px;
+}
+
+.sh-root[data-layout="portrait"] .sh-quote {
+  max-width: none;
+}
+
+.sh-root[data-layout="portrait"] .sh-quote blockquote,
+.sh-root[data-layout="portrait"] .sh-bullets li {
+  font-size: 17.5px;
+  line-height: 23px;
+}
+
+/* Peek: the tab row, then the step's title and one line, flush with the foot of the screen. */
+.sh-root[data-layout="portrait"] .sh-guide[data-state="peek"] {
+  padding-bottom: 0;
+}
+
+.sh-root[data-layout="portrait"] .sh-guide[data-state="peek"] .sh-guide-card {
+  padding: 3px 14px 0 18px;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  overflow: visible;
+}
+
+.sh-peek-title {
+  min-width: 0;
+  font: 700 20px / 1.05 var(--f-cond);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sh-peek-line {
+  margin-top: 1px;
+  font: 400 14px / 1.15 var(--f-body);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Four tabs (Examiner asks) need the room: a tighter gap and less padding, tighter again on
+   a compact screen, and smaller still on a phone (the row scrolls if they do not all fit). Here,
+   after every mode's own tab rules, in rising specificity. */
+
+.sh-tabs[data-n="4"] {
+  gap: 4px;
+}
+
+.sh-tabs[data-n="4"] .sh-tab {
+  padding-right: 7px;
+  padding-left: 7px;
+  font-size: 17.5px;
+  letter-spacing: 0.04em;
+}
+
+.sh-root[data-layout="compact"] .sh-tabs[data-n="4"] {
+  gap: 0;
+}
+
+.sh-root[data-layout="compact"] .sh-tabs[data-n="4"] .sh-tab {
+  padding-right: 5px;
+  padding-left: 5px;
+  font-size: 15.5px;
+  letter-spacing: 0.03em;
+}
+
+.sh-root[data-layout="portrait"] .sh-tabs[data-n="4"],
+.sh-root[data-layout="short"] .sh-tabs[data-n="4"] {
+  gap: 4px;
+}
+
+.sh-root[data-layout="portrait"] .sh-tabs[data-n="4"] .sh-tab,
+.sh-root[data-layout="short"] .sh-tabs[data-n="4"] .sh-tab {
+  padding-right: 6px;
+  padding-left: 6px;
+  font-size: 15px;
+}
+
+/* ---- Hit areas: the visual size is BC101's; a pseudo-element brings the rest to 44 px ----- */
+
+.sh-fold::after,
+.sh-nav-btn::after,
+.sh-rail-toggle::after,
+.sh-brand-logo.sh-menu-btn::after,
+.sh-practical-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, calc(var(--tap) / var(--ui)));
+  height: max(100%, calc(var(--tap) / var(--ui)));
+  transform: translate(-50%, -50%);
+}
+
+/* A tab sits at the top of a scrolling row, so its hit area grows downward only. */
+.sh-tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: max(100%, calc(var(--tap) / var(--ui)));
+}
+
+/* The selector sits right above the cards (5 design px below it), so its hit area grows upward
+   and stops 4 px under it, short of the first card. Centred on the button, the card's top edge cut
+   2 px off its bottom and it measured 42 px high. */
+.sh-practical-btn::after {
+  top: auto;
+  bottom: -4px;
+  height: max(calc(100% + 4px), calc(var(--tap) / var(--ui)));
+  transform: translateX(-50%);
+}
+
+/* A landscape phone's selector is 32 high, and its cards start about 4 below it. */
+.sh-root[data-layout="short"] .sh-practical-btn::after {
+  bottom: -3px;
+  height: max(calc(100% + 3px), calc(var(--tap) / var(--ui)));
+}
+
+/* ---- Motion: slides and fades only, and none under reduced motion ------------------------ */
 
 @media (prefers-reduced-motion: no-preference) {
+  .sh-rail {
+    transition:
+      width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.3s;
+  }
+
+  .sh-rail-chevron {
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sh-nav-rail .sh-nav-label {
+    transition:
+      opacity 0.15s,
+      translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sh-rail[data-open="true"] .sh-nav-label {
+    transition-delay: 60ms;
+  }
+
+  .sh-tab-ink,
+  .sh-cursor {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.2s;
+  }
+
+  .sh-bar-fill {
+    transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sh-tab,
+  .sh-step,
+  .sh-nav-btn,
+  .sh-practical-btn,
+  .sh-pitem,
+  .sh-nav-item {
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  .sh-practical-caret {
+    transition: transform 0.2s;
+  }
+
+  .sh-pmenu {
+    animation: sh-pop 0.15s ease-out;
+  }
+
+  .sh-root[data-layout="portrait"] .sh-strip,
+  .sh-root[data-layout="portrait"] .sh-guide {
+    transition: top 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   .sh-sheet {
     animation: sh-rise 180ms ease-out;
   }
 
-  .sh-nav-item,
-  .sh-step-icon,
-  .sh-tab {
-    transition:
-      background-color 120ms linear,
-      border-color 120ms linear,
-      color 120ms linear;
+  @keyframes sh-pop {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   @keyframes sh-rise {
