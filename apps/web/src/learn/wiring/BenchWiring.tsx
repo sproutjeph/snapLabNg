@@ -11,6 +11,7 @@ import { inOutCubic, LEAD_DRAW_S } from "../stage/motion";
 import type { StageMotion } from "../stage/stageMotion";
 import { useTerminalRegistry } from "../terminals";
 import type { LeadColour, OhmsLawBench, OhmsLawVisualState, TerminalId } from "../types";
+import { hoverLead, leadLit, tapLead } from "./leadPick";
 import { TerminalHits, TerminalMarks } from "./TerminalMarks";
 
 // The wiring layer of the V–I bench (docs/plans/ohms-law-vi.md, "Wave 2 → Wiring"), used inside
@@ -30,7 +31,7 @@ export interface BenchWiringProps {
    * The live stage's motion (learn/stage/Choreo.tsx): the lead the actor is drawing, the rings,
    * the hovered nut and the shake. Without it, leads appear whole and nothing is ringed.
    */
-  motion?: Pick<StageMotion, "lead" | "marks">;
+  motion?: Pick<StageMotion, "lead" | "marks" | "leads">;
   /** False on the demonstration bench (Watch): taps on nuts and leads do nothing (default true). */
   interactive?: boolean;
   /** A lead she makes draws itself from her first tap over LEAD_DRAW_S (Practise). */
@@ -124,19 +125,25 @@ export function BenchWiring({
   // Phones have no Esc: a tap on bare desk cancels a pending lead. The plane only sees the
   // press when nothing nearer took it (nuts, leads and parts stop it), and a press that turns
   // into a camera drag is not a tap.
+  // A tap on bare desk also lets go of a lead she selected for removal.
+  const picks = motion?.leads;
   const onDeskDown = (e: ThreeEvent<PointerEvent>) => {
     onMove(e);
-    deskDown.current = bench.visual.current.pendingFrom
-      ? { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
-      : null;
+    deskDown.current =
+      bench.visual.current.pendingFrom || picks?.selected
+        ? { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+        : null;
   };
   const onDeskUp = (e: ThreeEvent<PointerEvent>) => {
     const down = deskDown.current;
     deskDown.current = null;
-    const from = bench.visual.current.pendingFrom;
-    if (!down || !from) return;
+    if (!down) return;
     const moved = Math.hypot(e.nativeEvent.clientX - down.x, e.nativeEvent.clientY - down.y);
-    if (moved <= TAP_SLOP_PX) bench.tapTerminal(from); // tapping the start nut again cancels
+    if (moved > TAP_SLOP_PX) return;
+    const from = bench.visual.current.pendingFrom;
+    if (from)
+      bench.tapTerminal(from); // tapping the start nut again cancels
+    else if (picks) picks.selected = null;
   };
 
   const leads = state.current.leads;
@@ -156,6 +163,8 @@ export function BenchWiring({
       {leads.map((l) => (
         <DrawnLead
           key={l.id}
+          id={l.id}
+          bench={bench}
           from={l.a}
           to={l.b}
           colour={l.colour}
@@ -163,7 +172,7 @@ export function BenchWiring({
           quality={quality}
           motion={motion}
           bornS={drawHers ? (born.get(l.id) ?? Number.NEGATIVE_INFINITY) : Number.NEGATIVE_INFINITY}
-          {...(interactive ? { onTap: () => bench.removeLead(l.id) } : {})}
+          interactive={interactive}
         />
       ))}
       {pending ? (
@@ -190,6 +199,8 @@ export function BenchWiring({
  * other lead is whole. The draw is read every frame through a ref-like object (Lead's `drawn`).
  */
 function DrawnLead({
+  id,
+  bench,
   from,
   to,
   colour,
@@ -197,17 +208,43 @@ function DrawnLead({
   quality,
   motion,
   bornS,
-  onTap,
+  interactive,
 }: {
+  id: string;
+  bench: Pick<OhmsLawBench, "removeLead">;
   from: TerminalId;
   to: TerminalId;
   colour: LeadColour;
   state: { current: OhmsLawVisualState };
   quality: QualityTier;
-  motion: Pick<StageMotion, "lead"> | undefined;
+  motion: Pick<StageMotion, "lead" | "leads"> | undefined;
   bornS: number;
-  onTap?: () => void;
+  interactive: boolean;
 }) {
+  const picks = motion?.leads;
+  // Picked for removal (hovered, or selected by a first tap or by the guide): the whole cable lit.
+  const highlight = useMemo(
+    () => ({
+      get current(): boolean {
+        return picks ? leadLit(picks, id, performance.now() / 1000) : false;
+      },
+    }),
+    [picks, id],
+  );
+  const handlers = interactive
+    ? {
+        // A tap on the cable: a mouse removes the lead; a finger selects it first (leadPick.ts).
+        onTap: (pointerType?: string) => {
+          if (picks) tapLead(bench, picks, id, pointerType);
+          else bench.removeLead(id);
+        },
+        onHover: (on: boolean) => {
+          if (picks) hoverLead(picks, id, on, performance.now() / 1000);
+          document.body.style.cursor = on ? "pointer" : "";
+        },
+        highlight,
+      }
+    : {};
   const drawn = useMemo(
     () => ({
       get current(): number {
@@ -227,7 +264,7 @@ function DrawnLead({
       state={state}
       quality={quality}
       drawn={drawn}
-      {...(onTap ? { onTap } : {})}
+      {...handlers}
     />
   );
 }

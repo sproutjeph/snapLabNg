@@ -9,8 +9,10 @@ import type { OhmsLawBench, TerminalId } from "../types";
 export interface WrongTapOptions {
   /** The lead the current beat is waiting for, if it is a lead beat. */
   expected(): readonly [TerminalId, TerminalId] | undefined;
-  /** A wrong lead was just made: the spoken line, and the two terminals it joined. */
-  onWrong(line: string, ends: readonly [TerminalId, TerminalId]): void;
+  /** A wrong lead was just made: the spoken line, the two terminals it joined, and its id. */
+  onWrong(line: string, ends: readonly [TerminalId, TerminalId], leadId: string): void;
+  /** Any lead she has just made with her taps (right or wrong), by id. */
+  onLead?(leadId: string): void;
 }
 
 /** Watches her bench for new leads and reports the wrong ones. Returns the unsubscribe. */
@@ -29,12 +31,13 @@ export function watchWrongTaps(
     if (fresh.length === 1 && leads.length === before.length + 1) {
       const l = fresh[0];
       if (l) {
+        o.onLead?.(l.id);
         const expected = o.expected();
         const line = correctionFor(
           { from: l.a, to: l.b },
           { leads: before, ...(expected ? { expected } : {}) },
         );
-        if (line) o.onWrong(line, [l.a, l.b]);
+        if (line) o.onWrong(line, [l.a, l.b], l.id);
       }
     }
     for (const l of leads) seen.add(l.id);

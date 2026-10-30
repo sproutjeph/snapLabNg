@@ -239,11 +239,17 @@ export function TerminalHits({ marks }: { marks: StageMotion["marks"] }) {
     }
   });
 
+  // These targets are bigger than the nuts: where one lies over a lead's own tap tube, the lead
+  // wins, so a tap on the cable takes it, not the nut beside it.
+  const onLead = (e: ThreeEvent<PointerEvent>) =>
+    e.intersections.some((i) => i.object.userData.leadHit === true);
   const down = (id: TerminalId) => (e: ThreeEvent<PointerEvent>) => {
+    if (onLead(e)) return;
     e.stopPropagation();
     registry.tap(id);
   };
   const over = (id: TerminalId) => (e: ThreeEvent<PointerEvent>) => {
+    if (onLead(e)) return;
     e.stopPropagation();
     marks.hover = id;
     document.body.style.cursor = "pointer";
