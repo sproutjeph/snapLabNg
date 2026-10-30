@@ -200,7 +200,7 @@ export function ResistanceBox({
     engravingGeo.rotateX(-Math.PI / 2);
     const stripGeo = new THREE.PlaneGeometry(STRIP_W, STRIP_H);
     // The box: mahogany, rounded all round; the brass plate sits on it with a margin of wood.
-    const bodyGeo = bevelBox(BODY_W, BODY_H, BODY_D, 0.005, bs);
+    const bodyGeo = bevelBox(BODY_W, BODY_H, BODY_D, 0.009, bs);
     boxProjectUV(bodyGeo, [BENCH_TILE_M.mahogany[0], 0.09]);
     const plateGeo = bevelBox(PLATE_W, PLATE_T, PLATE_D, 0.0015, Math.min(bs, 2));
     boxProjectUV(plateGeo, BENCH_TILE_M.brass);
@@ -213,7 +213,7 @@ export function ResistanceBox({
     }
     const blocksGeo = mergePieces(
       blocks.map((b) =>
-        bevelBox(b.w, BLOCK_H, BLOCK_D, 0.002, Math.min(bs, 2)).translate(
+        bevelBox(b.w, BLOCK_H, BLOCK_D, 0.0035, Math.min(bs, 2)).translate(
           b.x,
           PLATE_TOP + BLOCK_H / 2,
           BLOCK_Z,

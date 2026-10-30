@@ -205,8 +205,8 @@ function paintRuleSegment(
   ctx.fillStyle = INK_BLUE;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  const small = Math.round(9.2 * pxMm);
-  const big = Math.round(29 * pxMm);
+  const small = Math.round(10.6 * pxMm);
+  const big = Math.round(34 * pxMm);
   for (let cm = 0; cm <= 100; cm++) {
     const x = markPx(seg, cm * 10);
     const ten = cm % 10 === 0;
@@ -216,8 +216,8 @@ function paintRuleSegment(
     // inside the strip's end (18.5 mm past the mark) and clear of the ink line there. The rest are
     // centred on their marks.
     ctx.textAlign = cm === 100 ? "right" : "center";
-    // Baselines 20.5 mm (small, 6.4 mm tall) and 42 mm (large, 20 mm tall) below the print's back edge.
-    ctx.fillText(String(cm), cm === 100 ? x + 9 * pxMm : x, (ten ? 42 : 20.5) * pxMm);
+    // Baselines 21.5 mm (small, 7.4 mm tall) and 42 mm (large, 24 mm tall) below the print's back edge.
+    ctx.fillText(String(cm), cm === 100 ? x + 9 * pxMm : x, (ten ? 42 : 21.5) * pxMm);
   }
 }
 
