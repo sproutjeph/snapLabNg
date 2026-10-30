@@ -24,8 +24,11 @@ export const DIAL = {
 
 /** Tick lengths, from the arc outward, in metres. */
 export const TICK_LEN = { major: 0.0042, mid: 0.0032, minor: 0.0022 } as const;
-/** Scale numbers: the font size, and how far past the longest tick their middle sits. */
-export const NUMERAL_M = 0.0058;
+/**
+ * Scale numbers: the font size, and how far past the longest tick their middle sits. A dial that
+ * carries four numbers (the voltmeter's 0 1 2 3) has room for larger ones than a dial with six.
+ */
+export const numeralFontM = (numbers: number): number => (numbers <= 4 ? 0.007 : 0.0058);
 const NUMERAL_GAP_M = 0.0038;
 const LETTER_M = 0.0135;
 const UNIT_NOTE = "d.c.";
@@ -229,9 +232,10 @@ export function createDialTexture(spec: DialSpec): THREE.CanvasTexture {
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const fontPx = Math.round(NUMERAL_M * s);
+    const ticks = dialTicks(spec.fullScale, spec.division);
+    const fontPx = Math.round(numeralFontM(ticks.filter((t) => t.label !== null).length) * s);
     ctx.font = `bold ${fontPx}px Georgia, serif`;
-    for (const t of dialTicks(spec.fullScale, spec.division)) {
+    for (const t of ticks) {
       const len = TICK_LEN[t.kind] * s;
       ctx.lineWidth = Math.max(1.2, (t.kind === "major" ? 0.00046 : 0.00024) * s);
       const [x0, y0] = at(t.deg, R);

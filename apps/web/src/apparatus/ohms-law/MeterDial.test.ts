@@ -7,8 +7,8 @@ import {
   dialTicks,
   majorEvery,
   NEEDLE_LEN,
-  NUMERAL_M,
   needleAngleDeg,
+  numeralFontM,
   numeralPoint,
   scaleLabel,
 } from "./MeterDial";
@@ -73,12 +73,14 @@ describe("the meter dial prints only its scale", () => {
 describe("the round dial", () => {
   it("keeps every scale number, whole, inside the paper disc", () => {
     for (const m of [ammeter, voltmeter]) {
-      for (const t of dialTicks(m.fullScale, m.division)) {
+      const ticks = dialTicks(m.fullScale, m.division);
+      const em = numeralFontM(ticks.filter((t) => t.label !== null).length);
+      for (const t of ticks) {
         if (t.label === null) continue;
         const [x, y] = numeralPoint(t.deg);
         // The glyphs are about 0.55 em wide and 0.8 em tall.
-        const halfW = (t.label.length * 0.55 * NUMERAL_M) / 2;
-        const halfH = (0.8 * NUMERAL_M) / 2;
+        const halfW = (t.label.length * 0.55 * em) / 2;
+        const halfH = (0.8 * em) / 2;
         const far = Math.hypot(Math.abs(x) + halfW, Math.abs(y) + halfH);
         expect(far, `"${t.label}" on the ${m === ammeter ? "ammeter" : "voltmeter"}`).toBeLessThan(
           DIAL.radius - 0.0008,
