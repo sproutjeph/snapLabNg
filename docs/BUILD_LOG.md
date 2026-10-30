@@ -1,6 +1,7 @@
 # Build log
 
 ## Oct 30 (Day 5)
+- Integration (Oct 30, `docs/plans/integration.md`): `?practical=ohms-law` opens on the question paper over the bench, the parts dropping as "Read it to me" names them; the paper's choice starts Watch, Practise or Exam; hand-in shows the full Results (21 marks with the engine as supervisor, the reading check, her slope against the wire, Watch again / Try again on a new bench); Watch ends on the demonstration's sheet one mark short by design (the length working stops before the answer) (#105, lead's subagent, one fix round after review). Four Playwright E2E scripts, `apps/web/scripts/e2e/{watch,practise,exam,noleak}.mjs`, drive a dev-only `?e2e=1` hook and pass on phone and laptop (#107, **built with Muse Code**, one review round).
 - Exam redesign Wave 1b, run as background workflows with up to 4 writers at once.
   - #86 the asset seam: `?kit=ohms-law` mounts the real look, with ten subjects and `dpr`, `zoom`, `turn` and `dump`; `shot.ts --only`; ten Muse Image references ($0.10, no rerolls).
   - Four asset groups, each modelled against its own reference, then shot at DPR 3 and 2: #87 the leads and terminal nuts (chunky 1.5× plugs, 1.9× cables), #88 the wire board and tray, #89 the resistance box, key and cells, #91 the meters and desk props. Every terminal kept 0 mm drift.
