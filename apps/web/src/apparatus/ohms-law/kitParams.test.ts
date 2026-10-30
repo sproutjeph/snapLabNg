@@ -44,6 +44,7 @@ import {
   PLUG_HEIGHT_M,
 } from "./LeadParts";
 import { type BenchSlot, INK_IDS, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
+import { NUT_CAP_INK_OFFSET } from "./TerminalNut";
 
 const DEG = Math.PI / 180;
 const params = (search: string): KitParams => parseKitParams(search);
@@ -229,6 +230,9 @@ describe("what each subject mounts", () => {
     for (let i = 0; i < 10; i++) expect(leads.focusIds?.has(INK_IDS.ammeter + i)).toBe(true);
     expect(leads.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf("A+"))).toBe(true);
     expect(leads.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf("A-"))).toBe(true);
+    expect(
+      leads.focusIds?.has(INK_IDS.nutBase + NUT_CAP_INK_OFFSET + TERMINAL_IDS.indexOf("A+")),
+    ).toBe(true);
     expect(leads.focusIds?.has(INK_IDS.nutBase + TERMINAL_IDS.indexOf("K1"))).toBe(false);
     expect(leads.focusIds?.has(INK_IDS.voltmeter)).toBe(false);
     for (let i = 0; i < 20; i++) expect(leads.focusIds?.has(INK_IDS.leadBase + i)).toBe(true);
