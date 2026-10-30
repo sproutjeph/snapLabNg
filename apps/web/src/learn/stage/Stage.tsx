@@ -18,7 +18,6 @@ import { useDprLadder, useLadderDpr } from "../../scene/look/useDprLadder";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { LoupeTarget, RuleEnd } from "../readings/poses";
 import { ReadingLoupe } from "../readings/ReadingLoupe";
-import { BENCH_SHOT } from "../shell/benchFrame";
 import { TerminalProvider } from "../terminals";
 import type { OhmsLawBench } from "../types";
 import { BenchParts, type BenchPartsProps } from "../wiring/BenchParts";
@@ -38,10 +37,12 @@ import {
   type StagePart,
   stageFocusIds,
 } from "./frameloop";
+import { STAGE_SHOTS, type StageShotName } from "./shots";
 
 // The live practical's stage (docs/plans/wave-2-lean.md, 2a-stage): the V–I bench through the
 // look that ?look=ohms-law signed off (scene/look/LookPreview.tsx), full-bleed behind the shell.
-//   - A fixed orthographic shot of the whole bench (BENCH_SHOT), fitted into the part of the
+//   - A fixed orthographic shot from the student's seat (shots.ts: the whole bench, or the two
+//     meters for a reading), fitted into the part of the
 //     canvas the page's cards leave free (`covered`); a drag turns the azimuth only and eases back.
 //     A free area taller than wide (a phone held upright) turns the camera steeper with the bench's
 //     long side up the screen, so the bench fills it.
@@ -52,15 +53,17 @@ import {
 //   - The meter and rule close-ups take a perspective camera for as long as they are open, placed
 //     where the shot looked from, and hand back to the shot when they return.
 
-/** Blob shadows under each part: x offsets from the part and a radius, in metres (LookPreview). */
-const BLOBS: Readonly<Record<BenchSlot, { dx: readonly number[]; r: number }>> = {
+/**
+ * Blob shadows under each part: x offsets from the part and a radius, in metres (LookPreview). The
+ * stage does not draw the tray (layout.ts), so it has no blob.
+ */
+const BLOBS: Readonly<Partial<Record<BenchSlot, { dx: readonly number[]; r: number }>>> = {
   cells: { dx: [-0.05, 0.05], r: 0.08 },
   key: { dx: [0], r: 0.075 },
   ammeter: { dx: [0], r: 0.12 },
   voltmeter: { dx: [0], r: 0.12 },
   box: { dx: [-0.15, 0, 0.15], r: 0.11 },
   wire: { dx: [-0.44, -0.22, 0, 0.22, 0.44], r: 0.11 },
-  tray: { dx: [-0.08, 0.08], r: 0.17 },
 };
 
 /** The close-up camera's vertical field of view (ReadingLoupe fits the dial with it). */
@@ -93,6 +96,8 @@ export interface StageProps {
   focus?: readonly StagePart[] | null;
   /** Pins the pixel ratio (shots at the device's) instead of the ladder. */
   dpr?: number | null;
+  /** The named shot: the whole bench (default), or both meters big for a reading. */
+  shot?: StageShotName;
 }
 
 function prefersReducedMotion(): boolean {
@@ -104,7 +109,15 @@ function prefersReducedMotion(): boolean {
 }
 
 /** The shot camera, fitted to what the cards leave free at the canvas's current size. */
-function StageCamera({ covered, loop }: { covered: StageProps["covered"]; loop: StageLoop }) {
+function StageCamera({
+  covered,
+  loop,
+  shot,
+}: {
+  covered: StageProps["covered"];
+  loop: StageLoop;
+  shot: StageShotName;
+}) {
   const width = useThree((s) => s.size.width);
   const height = useThree((s) => s.size.height);
   // The shell's layout is measured on the window (shell/layout.ts), as the cards are.
@@ -120,7 +133,12 @@ function StageCamera({ covered, loop }: { covered: StageProps["covered"]; loop: 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new fit is what the camera eases to.
   useEffect(() => loop.wake(RENDER_S), [loop, c.left, c.right, c.top, c.bottom]);
   return (
-    <LookCamera shot={BENCH_SHOT} covered={c} drag={!portrait} reducedMotion={reducedMotion} />
+    <LookCamera
+      shot={STAGE_SHOTS[shot]}
+      covered={c}
+      drag={!portrait && shot === "bench"}
+      reducedMotion={reducedMotion}
+    />
   );
 }
 
@@ -308,7 +326,9 @@ function Blobs() {
     <>
       {(Object.keys(BLOBS) as BenchSlot[]).flatMap((slot) => {
         const [x, y, z] = L[slot].position;
-        const { dx, r } = BLOBS[slot];
+        const blob = BLOBS[slot];
+        if (!blob) return [];
+        const { dx, r } = blob;
         return dx.map((d) => (
           <BlobShadow key={`${slot}${d}`} position={[x + d, y, z]} radiusM={r} />
         ));
@@ -329,6 +349,7 @@ export function Stage({
   onLoupeReturned,
   focus = null,
   dpr: pinned = null,
+  shot = "bench",
 }: StageProps) {
   const look = useMemo(() => lookFor(quality, window.devicePixelRatio || 1), [quality]);
   // The ladder lives outside the Canvas, so a re-render keeps its rung (scene/look/dprLadder.ts).
@@ -349,12 +370,12 @@ export function Stage({
       gl={{ antialias: true }}
     >
       <LookTier.Provider value={quality}>
-        <StageCamera covered={covered} loop={loop} />
+        <StageCamera covered={covered} loop={loop} shot={shot} />
         <LookLights shadowsDirty={shadowsDirty} />
         <LookGround />
         <Blobs />
         <TerminalProvider>
-          <BenchParts bench={bench} quality={quality} {...parts} />
+          <BenchParts bench={bench} quality={quality} {...parts} tray={false} />
           <BenchWiring bench={bench} quality={quality} {...(audio ? { audio } : {})} />
         </TerminalProvider>
         {loupeHeld && (

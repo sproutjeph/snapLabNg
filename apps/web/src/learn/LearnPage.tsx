@@ -249,6 +249,8 @@ function LearnView() {
           loupeHeld={loupe !== null || returning}
           onLoupeReturned={loupeReturned}
           dpr={dprPin}
+          // A reading step brings both meters close (BC101's per-step zoom); the rest see the bench.
+          shot={lesson.steps[stepIndex]?.pose === "readings" ? "meters" : "bench"}
         />
 
         <div className="ol-tools" role="toolbar" aria-label="Bench">
