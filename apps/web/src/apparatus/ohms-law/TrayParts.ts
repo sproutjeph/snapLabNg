@@ -48,6 +48,8 @@ export interface TrayPart {
 }
 
 export const TRAY_SIZE = { x: 0.26, z: 0.34 } as const;
+/** The metres one tile of the tray's mahogany covers: along the grain, across it. */
+export const MAHOGANY_TILE_M: readonly [number, number] = [0.34, 0.26];
 export const FLOOR_Y = 0.004;
 const WALL_H = 0.014;
 const WALL_T = 0.016;
@@ -221,8 +223,9 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   const at = new THREE.Vector3();
 
   // ---- The tray: a shallow mahogany box, its boards rounded and the grain along each board ----
-  // The floor is 0.26 m across: its tile is wider than that, so it never wraps. Each wall takes
-  // its own slice of the texture (`v0`), so no two boards show the same grain.
+  // The floor is one whole tile, 0.26 m across by 0.34 m along, so its uv never leaves 0 to 1 and
+  // the texture never wraps. Each wall takes its own slice of the tile (`v0`), so no two boards
+  // show the same grain.
   const board = (
     w: number,
     h: number,
@@ -236,10 +239,10 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     u0: number,
     v0: number,
   ) => grainUV(bevelBox(w, h, d, r, Math.max(1, bs - 1)), tile, alongZ, u0, v0).translate(x, y, z);
-  // A tile is long, 1.5 m along the grain, so the mahogany's slow bend shows as a gentle wave
-  // across a 0.34 m board, not a steep one.
-  const wallTile: readonly [number, number] = [1.5, 0.22];
-  const floorTile: readonly [number, number] = [1.5, 0.3];
+  // One tile of the tray's own mahogany (makeMahoganyTexture) is the floor, 0.34 m along the grain
+  // by 0.26 m across, so every board shows it at 3 px a millimetre.
+  const wallTile = MAHOGANY_TILE_M;
+  const floorTile = MAHOGANY_TILE_M;
   const hx = TRAY_SIZE.x / 2;
   const hz = TRAY_SIZE.z / 2;
   // Every board is a fifth of a millimetre short of the next one's face (and the short walls a
@@ -276,8 +279,8 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         0,
         true,
         wallTile,
-        0.45,
-        0.2,
+        0.5,
+        0.15,
       ),
       board(
         WALL_T,
@@ -289,8 +292,8 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         0,
         true,
         wallTile,
-        0.55,
-        0.7,
+        0.5,
+        0.85,
       ),
       // ...and the short walls, front and back, the full width across their ends: a frame.
       board(
@@ -304,7 +307,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         false,
         wallTile,
         0.5,
-        0.4,
+        0.3,
       ),
       board(
         TRAY_SIZE.x - 2 * eps,
@@ -317,7 +320,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         false,
         wallTile,
         0.5,
-        0.85,
+        0.7,
       ),
     ]),
   );
@@ -535,7 +538,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   );
 
   // The winding: one torus, instanced along the tube between two bare bands of ceramic.
-  const coilGeo = new THREE.TorusGeometry(0.0199, 0.0015, low ? 3 : 4, low ? 10 : 14);
+  const coilGeo = new THREE.TorusGeometry(0.0199, 0.0015, low ? 3 : 4, low ? 12 : 22);
   const coilN = low ? 20 : 38;
   const coilMatrices: THREE.Matrix4[] = [];
   for (let i = 0; i < coilN; i++) {
@@ -547,10 +550,10 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   // Built along +x with its frame bulging toward +z, then centred in its tap box and yawed a little.
   {
     const mseg = low ? 10 : 20;
-    const frameH = 0.026;
+    const frameH = 0.028;
     const axisY = frameH / 2;
     const rc = 0.027; // the C's middle radius
-    const t = 0.013; // the frame's thickness
+    const t = 0.017; // the frame's thickness: a thick, cast-looking C
     const tipAngle = (15 * Math.PI) / 180;
     const cy = -rc * Math.sin(tipAngle);
     const shape = new THREE.Shape();
@@ -578,19 +581,20 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       return placeAt(g, (x0 + x1) / 2, axisY, 0);
     };
     const steel = mergeAll([
-      axis(0.0042, 0.0042, -tipX - 0.002, -tipX + 0.014, mseg),
-      axis(0.0034, 0.0034, tipX - 0.027, tipX + 0.004, mseg),
-      axis(0.0068, 0.0068, tipX - 0.002, tipX + 0.03, mseg),
+      axis(0.0054, 0.0054, -tipX - 0.002, -tipX + 0.014, mseg),
+      axis(0.0046, 0.0046, tipX - 0.027, tipX + 0.004, mseg),
+      axis(0.0084, 0.0084, tipX - 0.002, tipX + 0.03, mseg),
     ]);
     // The thimble (brass, with its edge turned and a groove), and the ratchet knob beyond it.
+    // Fat, so it reads as the chunky brass barrel of the reference at a squint.
     const thimbleProfile = [
       [0.0, 0.0],
-      [0.0096, 0.0],
-      [0.0108, 0.0035],
-      [0.0118, 0.01],
-      [0.0118, 0.028],
-      [0.0112, 0.029],
-      [0.0, 0.029],
+      [0.0112, 0.0],
+      [0.0126, 0.0035],
+      [0.0138, 0.009],
+      [0.0138, 0.026],
+      [0.0131, 0.027],
+      [0.0, 0.027],
     ].map(([r, x]) => new THREE.Vector2(r ?? 0, x ?? 0));
     const thimble = new THREE.LatheGeometry(thimbleProfile, mseg);
     thimble.rotateZ(-Math.PI / 2);
@@ -599,14 +603,14 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
     const teeth = low ? 8 : 14;
     for (let i = 0; i < teeth * 2; i++) {
       const ang = (i / (teeth * 2)) * Math.PI * 2;
-      const r = i % 2 === 0 ? 0.0088 : 0.0078;
+      const r = i % 2 === 0 ? 0.0102 : 0.0091;
       if (i === 0) knob.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
       else knob.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
     }
     knob.closePath();
-    const ratchet = new THREE.ExtrudeGeometry(knob, { depth: 0.015, bevelEnabled: false });
+    const ratchet = new THREE.ExtrudeGeometry(knob, { depth: 0.013, bevelEnabled: false });
     ratchet.rotateY(Math.PI / 2);
-    placeAt(ratchet, tipX + 0.053, axisY, 0);
+    placeAt(ratchet, tipX + 0.051, axisY, 0);
     const brass = mergeAll([thimble, ratchet]);
 
     // Centre the whole gauge in its tap box and yaw it a little, as it was put down.

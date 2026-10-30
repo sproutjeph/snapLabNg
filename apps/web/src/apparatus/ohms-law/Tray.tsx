@@ -13,7 +13,12 @@ import {
 import { LEAD_BASE_COLOURS, seeded } from "./LeadParts";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { buildTray, type TrayItemKey, type TrayMat } from "./TrayParts";
-import { makeBrassTexture, makeCeramicTexture, makeGritTexture } from "./WireBoardTextures";
+import {
+  makeBrassTexture,
+  makeCeramicTexture,
+  makeGritTexture,
+  makeMahoganyTexture,
+} from "./WireBoardTextures";
 
 export type TrayItem = "leads" | "sandpaper" | "rheostat" | "micrometer";
 
@@ -32,7 +37,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
   const res = useMemo(() => {
     const rng = seeded(0x7a4);
     const build = buildTray(quality, rng);
-    const woodTex = kitTexture("mahogany", quality);
+    const woodTex = makeMahoganyTexture(quality);
     const bakeTex = kitTexture("bakelite", quality);
     const brassTex = makeBrassTexture(quality, 0x7a49);
     const ceramicTex = makeCeramicTexture(quality);

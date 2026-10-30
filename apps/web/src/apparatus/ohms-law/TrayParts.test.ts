@@ -76,6 +76,22 @@ describe("the side tray", () => {
     }
   });
 
+  it("keeps the tray's wood inside one tile of its mahogany, so the texture never wraps", () => {
+    // The painted mahogany is not periodic: every board must read it between 0 and 1.
+    for (const q of ["low", "mid", "high"] as const) {
+      const wood = build(q).parts.find((p) => p.item === null && p.mat === "wood");
+      expect(wood).toBeDefined();
+      const uv = wood?.geo.getAttribute("uv");
+      if (!uv) return;
+      for (let i = 0; i < uv.count; i++) {
+        for (const c of [uv.getX(i), uv.getY(i)]) {
+          expect(c).toBeGreaterThanOrEqual(-1e-3);
+          expect(c).toBeLessThanOrEqual(1 + 1e-3);
+        }
+      }
+    }
+  });
+
   it("builds the same tray every time from the same seed", () => {
     const again = build("high");
     expect(again.parts.length).toBe(high.parts.length);

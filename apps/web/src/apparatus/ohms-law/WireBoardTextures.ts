@@ -546,6 +546,108 @@ export function makeCeramicTexture(quality: QualityTier): THREE.CanvasTexture {
   return finish(c, 4, THREE.RepeatWrapping, THREE.RepeatWrapping);
 }
 
+// ---- The tray's mahogany ----------------------------------------------------------------------
+
+/**
+ * Dark mahogany for the tray, after the reference: a deep red-brown ground, broad ribbons of
+ * darker and lighter wood, hard dark grain lines that thicken and fade along their length, pores
+ * and a few pale flecks. Grain runs along u. One tile is 0.34 m along the grain by 0.26 m across
+ * (TrayParts' MAHOGANY_TILE_M), 3 px a millimetre on mid and high: the floor takes the whole of
+ * it and each wall a slice, so the wood never wraps and the kit's 512 px mahogany is not
+ * stretched over a metre and a half.
+ */
+export function makeMahoganyTexture(quality: QualityTier): THREE.CanvasTexture {
+  const hi = quality !== "low";
+  const w = hi ? 1024 : 512;
+  const h = hi ? 768 : 384;
+  const k = w / 1024;
+  const [c, ctx] = canvas(w, h);
+  const rnd = seededRandom(0x3a40);
+  const phase = rnd() * TAU;
+  // One slow bend shared by every line, so neighbours move together like growth rings, and the
+  // grain stays long and nearly straight.
+  const bend = (x: number, y: number) =>
+    9 * k * Math.sin((TAU * x) / (w * 1.4) + phase + (y / h) * 3.4);
+
+  ctx.fillStyle = "#6c301e";
+  ctx.fillRect(0, 0, w, h);
+
+  // A line along u: wavy, its ink strength changing along its length (some stretches nearly
+  // clear), so no line reads as a ruled stroke.
+  const streak = (y0: number, width: number, rgb: string, lo: number, hi2: number) => {
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    const stops = 9;
+    for (let s = 0; s <= stops; s++) {
+      const gap = rnd() < 0.2 ? 0.12 : 1;
+      g.addColorStop(s / stops, `rgba(${rgb},${(lo + rnd() * (hi2 - lo) * gap).toFixed(3)})`);
+    }
+    const waves: Array<readonly [number, number, number]> = [
+      [1 + Math.floor(rnd() * 2), (0.5 + rnd() * 2.5) * k, rnd() * TAU],
+      [4 + Math.floor(rnd() * 4), (0.2 + rnd() * 0.8) * k, rnd() * TAU],
+    ];
+    ctx.strokeStyle = g;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    const step = 16 * k + 4;
+    for (let x = -step; x <= w + step; x += step) {
+      const y = y0 + bend(x, y0) + wobble(x, w, waves);
+      if (x === -step) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+
+  // Broad ribbons of darker and lighter wood.
+  for (let i = 0; i < (hi ? 26 : 14); i++) {
+    const dark = rnd() < 0.55;
+    streak(
+      rnd() * h,
+      (16 + rnd() * 56) * k,
+      dark ? "52,18,10" : "158,78,46",
+      dark ? 0.16 : 0.12,
+      dark ? 0.46 : 0.34,
+    );
+  }
+  // The grain: mid-brown lines, then hard dark ones, then a few light ones between.
+  for (let i = 0; i < (hi ? 90 : 44); i++) {
+    streak(rnd() * h, (1.2 + rnd() * 3.2) * k, "108,46,26", 0.15, 0.5);
+  }
+  for (let i = 0; i < (hi ? 190 : 90); i++) {
+    streak(rnd() * h, Math.max(0.8, (0.7 + rnd() * 1.6) * k), "30,10,6", 0.25, 0.75);
+  }
+  for (let i = 0; i < (hi ? 70 : 34); i++) {
+    streak(rnd() * h, Math.max(0.7, (0.6 + rnd() * 1.1) * k), "198,108,68", 0.14, 0.42);
+  }
+  // Pores: short dark dashes lying along the grain; pale flecks where the cut catches the light.
+  ctx.lineCap = "round";
+  const dash = (len: number, thick: number, colour: string) => {
+    const x = rnd() * w;
+    const y = rnd() * h;
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = thick;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y + (rnd() - 0.5) * 0.8 * k);
+    ctx.stroke();
+  };
+  for (let i = 0; i < (hi ? 1900 : 700); i++) {
+    dash(
+      (2 + rnd() * 7) * k,
+      Math.max(0.9, (0.8 + rnd() * 0.9) * k),
+      `rgba(26,8,5,${(0.3 + rnd() * 0.5).toFixed(2)})`,
+    );
+  }
+  for (let i = 0; i < (hi ? 130 : 50); i++) {
+    dash(
+      (3 + rnd() * 8) * k,
+      Math.max(0.9, (0.7 + rnd() * 0.8) * k),
+      `rgba(214,140,98,${(0.22 + rnd() * 0.3).toFixed(2)})`,
+    );
+  }
+  return finish(c, 8);
+}
+
 // ---- Letters and the sandpaper ----------------------------------------------------------------
 
 /** A single printed letter (X or Y) in the ink, on a transparent ground. */
