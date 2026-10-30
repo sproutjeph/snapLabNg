@@ -2,7 +2,6 @@ import { PART_TERMINALS, TERMINAL_IDS, type TerminalId } from "@snaplab/engine";
 import * as THREE from "three";
 import type { TerminalRegistry } from "../../learn/types";
 import { parseOverride } from "../../quality/tier";
-import { DESK_PROP_PLACES } from "../../scene/look/DeskProps";
 import { LOOK_ELEVATION_DEG, SHOT_DEPTH_RATIO, SHOT_HEIGHT_M } from "../../scene/look/LookCamera";
 import type { Covered } from "../../scene/look/types";
 import type { QualityTier } from "../meter-bridge/types";
@@ -173,6 +172,16 @@ const REACH_M = 0.006;
  */
 const TOP_PAD_M = 0.025;
 const LEADS_TOP_PAD_M = 0.07;
+/**
+ * Where the exam-desk props lay, [x, z] in metres, in front of the bench. The props were removed
+ * in Wave 2 (docs/plans/wave-2-lean.md); `part=desk` still frames that patch of desk.
+ */
+const DESK_PROP_PLACES = {
+  pencil: { x: -0.52, z: 0.34 },
+  eraser: { x: -0.22, z: 0.38 },
+  booklet: { x: 0.14, z: 0.44 },
+  calculator: { x: 0.5, z: 0.38 },
+} as const;
 /** A pencil, an eraser, a booklet and a calculator, as circles round DESK_PROP_PLACES, in metres. */
 const DESK_PROP_REACH_M = { pencil: 0.12, eraser: 0.03, booklet: 0.17, calculator: 0.09 } as const;
 const DESK_TOP_M = 0.02;
