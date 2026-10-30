@@ -2,6 +2,7 @@ import { compareWithDiagram, DIAGRAM_LEADS, demoSeedFor, type Lead } from "@snap
 import { markOhmsLaw } from "@snaplab/rules";
 import { describe, expect, it } from "vitest";
 import { emptyOhmsLawRecord } from "../../readings/record";
+import { plugMoves } from "../../script/actor";
 import { createDirector } from "../../script/createDirector";
 import type { VoiceGuide } from "../../voice/types";
 import { createOhmsLawBench } from "../../wiring/bench";
@@ -27,6 +28,9 @@ describe("ohms-law script", () => {
       ["ammeter", "box", "cells", "key", "voltmeter", "wire"].sort(),
     );
     expect(new Set(first.act.parts).size).toBe(first.act.parts.length);
+    // One label at a time: the entrance shows a single APPARATUS chip.
+    expect(first.callouts).toHaveLength(1);
+    expect(first.callouts?.[0]?.label).toBe("APPARATUS");
     // And no later beat enters anything again.
     expect(S.beats.slice(1).filter((b) => b.act?.kind === "enter")).toHaveLength(0);
   });
@@ -83,7 +87,7 @@ describe("ohms-law script", () => {
     expect(S.lessonId).toBe("ohms_law_vi");
   });
 
-  it("Watch on the demo bench scores 20/20, and 21/21 with the bench's own effective resistance", () => {
+  it("Watch on the demo bench scores every mark except the (b)(ii) answer it must not show", () => {
     const bench = createOhmsLawBench(demoSeedFor(7));
     const voice: VoiceGuide = {
       say(_text, o) {
@@ -118,9 +122,61 @@ describe("ohms-law script", () => {
       t += DT;
     }
     expect(director.state.finished).toBe(true);
-    expect(markOhmsLaw(director.demoRecord).earned).toBe(20);
+    // The demo record carries the (b)(ii) method but never its answer (AGENTS.md: the
+    // expected result is not shown before she hands in), so PHYS-CALC's answer and unit
+    // halves are the one mark Watch cannot earn: 19 of 20, 20 of 21 with the supervisor.
+    const calc = director.demoRecord.length_calc_as_written ?? "";
+    expect(calc).toContain("L = RA/ρ");
+    expect(calc).not.toContain("0.25");
+    const lengthBeat = S.beats.find((b) => b.id === "length");
+    expect(lengthBeat?.say).toContain("you work out the length");
+    expect(markOhmsLaw(director.demoRecord).earned).toBe(19);
     expect(
       markOhmsLaw(director.demoRecord, { teacherXyOhm: bench.supervisor.effectiveOhm() }).earned,
-    ).toBe(21);
+    ).toBe(20);
   });
+
+  // GRAPH-SCALE (docs/07 §5.2; WAEC Phys P3 Nov/Dec 2013): the graph occupies at least a
+  // third of the page. I runs along the sheet's long side, V up the short side.
+  it("the scales 2 cm to 0.1 A and 1 cm to 0.2 V fit every demo seed 1-300 on an 18 × 26 cm sheet and cover more than a third each way", () => {
+    let maxI = 0;
+    let minI = Number.POSITIVE_INFINITY;
+    let maxV = 0;
+    let minV = Number.POSITIVE_INFINITY;
+    const readPair = (bench: ReturnType<typeof createOhmsLawBench>, ohm: number) => {
+      for (const i of plugMoves(bench.params.boxCoilsOhm, bench.visual.current.plugsIn, ohm)) {
+        bench.togglePlug(i);
+      }
+      if (!bench.visual.current.keyClosed) bench.toggleKey();
+      let i: string | null = null;
+      let v: string | null = null;
+      for (let t = 0; t < 40 && (i === null || v === null); t++) {
+        bench.advance(0.25);
+        i = bench.supervisor.reading("ammeter");
+        v = bench.supervisor.reading("voltmeter");
+      }
+      bench.toggleKey();
+      if (i === null || v === null) throw new Error(`no settled reading at R=${ohm}`);
+      return [Number.parseFloat(i), Number.parseFloat(v)] as const;
+    };
+    for (let seed = 1; seed <= 300; seed++) {
+      const bench = createOhmsLawBench(demoSeedFor(seed));
+      for (const [a, b] of DIAGRAM_LEADS) {
+        bench.tapTerminal(a);
+        bench.tapTerminal(b);
+      }
+      for (const ohm of [0, 60]) {
+        const [i, v] = readPair(bench, ohm);
+        maxI = Math.max(maxI, i);
+        minI = Math.min(minI, i);
+        maxV = Math.max(maxV, v);
+        minV = Math.min(minV, v);
+      }
+    }
+    // 2 cm per 0.1 A along the 26 cm side; 1 cm per 0.2 V up the 18 cm side.
+    expect(maxI * 20).toBeLessThanOrEqual(26);
+    expect((maxI - minI) * 20).toBeGreaterThan(26 / 3);
+    expect(maxV * 5).toBeLessThanOrEqual(18);
+    expect((maxV - minV) * 5).toBeGreaterThan(18 / 3);
+  }, 240_000);
 });

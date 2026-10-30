@@ -103,9 +103,14 @@ const PRECAUTIONS = [
 const LAW =
   "Ohm's law: the current flowing through a metallic conductor is directly proportional to the potential difference across its ends, provided the temperature and other physical conditions remain constant.";
 
-// (b)(ii): d = 0.2 mm, R = 7 Ω, ρ = 8.8 × 10⁻⁷ Ω m, π = 22/7. A = πd²/4, then L = RA/ρ = 0.25 m.
+// (b)(ii): d = 0.2 mm, R = 7 Ω, ρ = 8.8 × 10⁻⁷ Ω m, π = 22/7. Watch writes the method — the
+// formula and the substitution — and stops before the final value: the expected result is
+// never shown before she hands in (AGENTS.md). She works the length out herself in Practise.
 const LENGTH_CALC =
-  "A = πd²/4 = (22/7 × (0.2 × 10⁻³)²)/4 = 3.143 × 10⁻⁸ m²\nL = RA/ρ = (7 × 3.143 × 10⁻⁸)/(8.8 × 10⁻⁷) = 0.25 m";
+  "A = πd²/4 = (22/7 × (0.2 × 10⁻³)²)/4 = 3.143 × 10⁻⁸ m²\nL = RA/ρ = (7 × 3.143 × 10⁻⁸)/(8.8 × 10⁻⁷)";
+
+/** A record field she has actually written something in. */
+const filled = (t: string | null | undefined) => (t ?? "").trim().length > 0;
 
 function build(): Beat[] {
   const out: Beat[] = [];
@@ -119,14 +124,8 @@ function build(): Beat[] {
     shot: "bench",
     act: { kind: "enter", parts: ["cells", "key", "ammeter", "voltmeter", "box", "wire"] },
     focus: ["cells", "key", "ammeter", "voltmeter", "box", "wire"],
-    callouts: [
-      { anchor: "cells", label: "DRY CELLS, E", kind: "name" },
-      { anchor: "key", label: "PLUG KEY, K", kind: "name" },
-      { anchor: "ammeter", label: "AMMETER, A", kind: "name" },
-      { anchor: "voltmeter", label: "VOLTMETER, V", kind: "name" },
-      { anchor: "box", label: "RESISTANCE BOX, R", kind: "name" },
-      { anchor: "wire", label: "RESISTANCE WIRE XY", kind: "name" },
-    ],
+    // One label at a time: the entrance names the apparatus, not six parts at once.
+    callouts: [{ anchor: "cells", label: "APPARATUS", kind: "name" }],
   });
 
   add({
@@ -148,6 +147,7 @@ function build(): Beat[] {
     instruct: "Write the length XY in your notebook, in centimetres.",
     shot: "bench",
     act: { kind: "write", field: { kind: "length" }, value: { from: "rule" } },
+    done: (s) => filled(s.record.length_xy?.text_as_written),
     focus: ["wire"],
   });
   add({
@@ -196,6 +196,7 @@ function build(): Beat[] {
         field: { kind: "header", col },
         value: { text: col === "R" ? "R/Ω" : col === "I" ? "I/A" : "V/V" },
       },
+      done: (s) => filled(s.record.headers[col]),
     });
   }
 
@@ -208,7 +209,7 @@ function build(): Beat[] {
       say:
         row === 0
           ? "Turn to the resistance box. Check the zero error of each meter before the key is closed."
-          : "Open the key, then turn back to the resistance box to change R.",
+          : "With the key open, turn back to the resistance box to change R.",
       instruct: "Look at the resistance box.",
       shot: "bench",
       act: { kind: "loupe", target: null },
@@ -264,6 +265,8 @@ function build(): Beat[] {
       instruct: "Write the current I in this row of your table.",
       shot: "bench",
       act: { kind: "write", field: { kind: "cell", row, col: "I" }, value: { from: "ammeter" } },
+      // Rows are matched by their R value, the way checks.ts hasRow matches them.
+      done: (s) => s.record.rows.some((r) => r.R.value === ohm && filled(r.I.text_as_written)),
       focus: ["ammeter"],
     });
     add({
@@ -290,6 +293,7 @@ function build(): Beat[] {
       instruct: "Write the voltage V in the same row.",
       shot: "bench",
       act: { kind: "write", field: { kind: "cell", row, col: "V" }, value: { from: "voltmeter" } },
+      done: (s) => s.record.rows.some((r) => r.R.value === ohm && filled(r.V.text_as_written)),
       focus: ["voltmeter"],
     });
     add({
@@ -299,6 +303,7 @@ function build(): Beat[] {
       instruct: `Write ${ohm} in the R column of this row.`,
       shot: "bench",
       act: { kind: "write", field: { kind: "cell", row, col: "R" }, value: { text: String(ohm) } },
+      done: (s) => s.record.rows.some((r) => r.R.value === ohm),
       focus: ["box"],
     });
     add({
@@ -325,6 +330,7 @@ function build(): Beat[] {
     instruct: "On your graph paper, mark the horizontal axis for the current.",
     shot: "bench",
     act: { kind: "write", field: { kind: "graph", part: "axisX" }, value: { text: "I/A" } },
+    done: (s) => filled(s.record.graph?.x.label_as_written),
   });
   add({
     id: "axis-y",
@@ -333,6 +339,7 @@ function build(): Beat[] {
     instruct: "Mark the vertical axis for the voltage, with its unit.",
     shot: "bench",
     act: { kind: "write", field: { kind: "graph", part: "axisY" }, value: { text: "V/V" } },
+    done: (s) => filled(s.record.graph?.y.label_as_written),
   });
   add({
     id: "scale-x",
@@ -347,6 +354,7 @@ function build(): Beat[] {
       field: { kind: "graph", part: "scaleX" },
       value: { text: "2 cm to 0.1 A" },
     },
+    done: (s) => filled(s.record.graph?.x.scale_as_written),
   });
   add({
     id: "scale-y",
@@ -359,6 +367,7 @@ function build(): Beat[] {
       field: { kind: "graph", part: "scaleY" },
       value: { text: "1 cm to 0.2 V" },
     },
+    done: (s) => filled(s.record.graph?.y.scale_as_written),
   });
   OHMS_LAW_RESISTANCES.forEach((_, row) => {
     add({
@@ -368,6 +377,7 @@ function build(): Beat[] {
       instruct: "Plot this row of your table on the graph.",
       shot: "bench",
       act: { kind: "plot", row },
+      done: (s) => (s.record.graph?.points.length ?? 0) > row,
     });
   });
   add({
@@ -377,6 +387,7 @@ function build(): Beat[] {
     instruct: "Draw the line of best fit through your points.",
     shot: "bench",
     act: { kind: "line" },
+    done: (s) => s.record.graph?.line != null,
   });
   add({
     id: "triangle",
@@ -385,6 +396,7 @@ function build(): Beat[] {
     instruct: "Draw a large right-angled triangle on your line.",
     shot: "bench",
     act: { kind: "triangle" },
+    done: (s) => s.record.graph?.triangle != null,
   });
   add({
     id: "delta-v",
@@ -393,6 +405,7 @@ function build(): Beat[] {
     instruct: "Read the change in V from your triangle, off the line.",
     shot: "bench",
     act: { kind: "write", field: { kind: "graph", part: "deltaY" }, value: { from: "rule" } },
+    done: (s) => filled(s.record.graph?.delta_y_as_written),
   });
   add({
     id: "delta-i",
@@ -401,6 +414,7 @@ function build(): Beat[] {
     instruct: "Read the change in I along the base of your triangle.",
     shot: "bench",
     act: { kind: "write", field: { kind: "graph", part: "deltaX" }, value: { from: "rule" } },
+    done: (s) => filled(s.record.graph?.delta_x_as_written),
   });
   add({
     id: "slope",
@@ -409,6 +423,7 @@ function build(): Beat[] {
     instruct: "Work out the slope: change in V divided by change in I, with its unit.",
     shot: "bench",
     act: { kind: "write", field: { kind: "graph", part: "slope" }, value: { from: "rule" } },
+    done: (s) => filled(s.record.graph?.slope_as_written),
   });
 
   PRECAUTIONS.forEach((text, index) => {
@@ -419,6 +434,7 @@ function build(): Beat[] {
       instruct: "Write a precaution you took, as something you did.",
       shot: "bench",
       act: { kind: "write", field: { kind: "precaution", index }, value: { text } },
+      done: (s) => filled(s.record.precautions[index]),
     });
   });
   add({
@@ -428,14 +444,16 @@ function build(): Beat[] {
     instruct: "Name and state the law this experiment is based on.",
     shot: "bench",
     act: { kind: "write", field: { kind: "law" }, value: { text: LAW } },
+    done: (s) => filled(s.record.law_as_written),
   });
   add({
     id: "length",
     stage: "length",
-    say: "A wire of diameter 0.2 mm and resistance 7 Ω has resistivity 8.8 × 10⁻⁷ Ω m. Calculate its length, taking π = 22/7. Start from the resistivity formula, work in metres, and give the unit.",
+    say: "A wire of diameter 0.2 mm and resistance 7 Ω has resistivity 8.8 × 10⁻⁷ Ω m. Calculate its length, taking π = 22/7. Start from the resistivity formula, work out the area, and put the numbers in, in metres. The working is on the page; you work out the length.",
     instruct: "Calculate the length of the wire. Show your working and give the unit.",
     shot: "bench",
     act: { kind: "write", field: { kind: "lengthCalc" }, value: { text: LENGTH_CALC } },
+    done: (s) => filled(s.record.length_calc_as_written),
   });
 
   return out;
