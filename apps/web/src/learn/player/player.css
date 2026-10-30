@@ -29,8 +29,9 @@
 
 .dp-card {
   position: absolute;
-  top: 34px;
-  right: 558px;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
   zoom: var(--ui, 1);
   height: 54px;
   padding: 0 6px;
@@ -44,12 +45,14 @@
 }
 
 .dp[data-layout="compact"] .dp-card {
-  right: 556px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .dp[data-layout="short"] .dp-card {
   top: 4px;
-  right: calc(var(--guide-w, 372px) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Centred under the brand, but never nearer than 8 px to the Compare button at the left (44 px
@@ -60,6 +63,7 @@
   top: 78px;
   left: calc(14px + 52px / var(--ui, 1));
   right: calc(14px + 52px / var(--ui, 1));
+  transform: none;
   width: max-content;
   margin-inline: auto;
 }
@@ -305,33 +309,29 @@
   padding: 0;
 }
 
-/* ---- The caption: an ink pill in the free stage, above the strip ---- */
+/* ---- The caption: an ink pill centered in the free stage, at the bottom ---- */
 
 /* Not zoomed: it spans the free stage, and the pill (zoomed) sits in the middle of it. */
 .dp-dock {
   position: absolute;
   left: 0;
-  right: calc(529px * var(--ui, 1));
-  bottom: calc(186px * var(--ui, 1));
+  right: 0;
+  bottom: calc(24px * var(--ui, 1));
   display: flex;
   justify-content: center;
   pointer-events: none;
 }
 
-.dp[data-layout="compact"] .dp-dock {
-  right: calc(458px * var(--ui, 1));
-}
-
+.dp[data-layout="compact"] .dp-dock,
 .dp[data-layout="short"] .dp-dock {
-  right: calc((var(--guide-w, 372px) + 12px) * var(--ui, 1));
-  bottom: calc(112px * var(--ui, 1));
+  right: 0;
+  bottom: calc(16px * var(--ui, 1));
 }
 
-/* A phone: 58 above the strip, wherever the guide leaves it. */
 .dp[data-layout="portrait"] .dp-dock {
   right: 0;
-  bottom: auto;
-  top: calc((var(--strip-top, var(--scene-bottom, 600px)) - 58px) * var(--ui, 1));
+  bottom: calc(24px * var(--ui, 1));
+  top: auto;
 }
 
 .dp-caption {

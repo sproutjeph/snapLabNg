@@ -62,7 +62,7 @@ export const BENCH_SHOT: LookShot = { id: "bench", focus: [-0.02, 0, -0.19], spa
  * parts nearest the camera, and a margin. (0.62, looking 2 cm to one side, ran the resistance box
  * off the left of a phone.)
  */
-export const FIT_HALF_WIDTH_M = 0.7;
+export const FIT_HALF_WIDTH_M = 0.76;
 
 /**
  * The lesson page's poses at this distance or more look at the whole bench (its bench, wire and
