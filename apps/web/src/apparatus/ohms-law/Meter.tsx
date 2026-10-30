@@ -8,7 +8,9 @@ import {
   boxProjectUV,
   brassSurface,
   disposeKitBag,
+  withRelief,
 } from "../materials";
+import { INK_SOFT, SoftInk } from "./inkStyle";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import {
   createDialTexture,
@@ -217,7 +219,7 @@ export function Meter({
   const res = useMemo(() => {
     const seed = kind === "ammeter" ? 31 : 47;
     const rnd = seeded(seed);
-    const seg = low ? 12 : 24;
+    const seg = low ? 12 : quality === "mid" ? 32 : 48;
     const dialTex = createDialTexture({
       fullScale,
       division,
@@ -256,7 +258,11 @@ export function Meter({
     boxProjectUV(caseGeo, [0.12, 0.12]);
     if (kind === "voltmeter") offsetUV(caseGeo, 0.37, 0.61);
     applyEdgeWear(caseGeo);
-    const caseMat = bakeliteMaterial(seed, { map: bakeTex, roughness: 0.9 });
+    const caseMat = withRelief(
+      bakeliteMaterial(seed, { map: bakeTex, roughness: 0.9 }),
+      "bakelite",
+      quality,
+    );
     caseMat.vertexColors = true;
 
     // Brass plates under the terminals, and the zero-adjust screw. The low tier keeps a plain
@@ -280,7 +286,7 @@ export function Meter({
     slotGeo.translate(0, SCREW_Y, FACE_Z + 0.003);
     // Four mounting screws at the corners of the face, as on the approved golden frame's meters.
     const cornerScrew = (side: number, y: number) => {
-      const geo = new THREE.CylinderGeometry(0.0034, 0.0034, 0.0022, low ? 8 : 10);
+      const geo = new THREE.CylinderGeometry(0.0034, 0.0034, 0.0022, low ? 8 : 20);
       geo.rotateX(Math.PI / 2);
       return {
         geo,
@@ -296,7 +302,7 @@ export function Meter({
     boxProjectUV(cornersGeo, [0.1, 0.1]);
 
     // The needle, with its counterweight, and the brass hub and post that turn with it.
-    const tail = new THREE.CylinderGeometry(0.0027, 0.0027, 0.0014, low ? 10 : 16);
+    const tail = new THREE.CylinderGeometry(0.0027, 0.0027, 0.0014, low ? 10 : 24);
     tail.rotateX(Math.PI / 2);
     const needleGeo = mergeStatic([
       { geo: pointerGeometry() },
@@ -304,8 +310,8 @@ export function Meter({
     ]);
     const hubGeo = new THREE.SphereGeometry(
       0.0043,
-      low ? 10 : 14,
-      low ? 2 : 4,
+      low ? 10 : 24,
+      low ? 2 : 6,
       0,
       Math.PI * 2,
       0,
@@ -321,7 +327,7 @@ export function Meter({
     const mirrorGeo = new THREE.RingGeometry(
       DIAL.mirrorInner,
       DIAL.mirrorOuter,
-      low ? 24 : 40,
+      low ? 24 : 64,
       1,
       Math.PI / 2 - 43 * DEG,
       86 * DEG,
@@ -347,9 +353,9 @@ export function Meter({
       caseGeo,
       ledgeLabelGeo,
       ledgeLabelMat,
-      dialGeo: new THREE.CircleGeometry(DIAL.radius, low ? 32 : 48),
+      dialGeo: new THREE.CircleGeometry(DIAL.radius, low ? 32 : 64),
       dialMat: matte("#ffffff", rnd, { roughness: 0.88, amount: 0.008, map: dialTex }),
-      ringGeo: ringGeometry(low ? 20 : 36, low),
+      ringGeo: ringGeometry(low ? 20 : quality === "mid" ? 48 : 64, low),
       // Smooth dark ebonite for the bezel and the screw's slot, matte like the rest.
       ringMat: matte("#1f1b19", rnd, { roughness: 0.9, amount: 0.01 }),
       platesGeo,
@@ -364,7 +370,11 @@ export function Meter({
       // The needle seen in the mirror strip. None on the low tier: parallax alone there.
       image: low ? null : createMirrorImage(),
       mirrorMat: matte("#cfd5da", rnd, { roughness: 0.6, metalness: 0.15, amount: 0.01 }),
-      brassMat: brassSurface(seed, { map: brassTex, tint: "#fff0d2" }),
+      brassMat: withRelief(
+        brassSurface(seed, { map: brassTex, tint: "#fff0d2" }),
+        "brass",
+        quality,
+      ),
       glassGeo: glassTex ? new THREE.PlaneGeometry(DIAL.radius * 2, DIAL.radius * 2) : null,
       glassMat: decal(glassTex),
       ringShadowGeo: ringShadowTex ? ringShadowGeometry() : null,
@@ -422,14 +432,14 @@ export function Meter({
             rotation-y={MARK_TURN}
           />
         </InkGroup>
-        <InkGroup id={ink + 1}>
+        <SoftInk soft={INK_SOFT.dial} id={ink + 1}>
           <mesh
             geometry={res.dialGeo}
             material={res.dialMat}
             position={[0, DIAL_CY, DIAL_Z]}
             receiveShadow={cast}
           />
-        </InkGroup>
+        </SoftInk>
         <InkGroup id={ink + 5}>
           <mesh
             geometry={res.ringGeo}
@@ -452,13 +462,13 @@ export function Meter({
           <mesh geometry={res.slotGeo} material={res.ringMat} />
           <mesh geometry={res.cornersGeo} material={res.brassMat} />
         </InkGroup>
-        <InkGroup id={ink + 4} thin>
+        <SoftInk soft={INK_SOFT.mirror} id={ink + 4}>
           <mesh
             geometry={res.mirrorGeo}
             material={res.mirrorMat}
             position={[0, PIVOT_Y, DIAL_Z + MIRROR_LIFT]}
           />
-        </InkGroup>
+        </SoftInk>
         <InkGroup id={ink + 2} thin>
           <group ref={needleRef} position={[0, PIVOT_Y, DIAL_Z + NEEDLE_LIFT]}>
             <mesh geometry={res.needleGeo} material={res.needleMat} castShadow={cast} />
