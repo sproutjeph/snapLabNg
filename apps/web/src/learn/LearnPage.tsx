@@ -200,6 +200,21 @@ export function autoPlays(run: Run): boolean {
   return run.practical === "watch" && run.n > 0;
 }
 
+/** Watch's graph pop-up after a step: out on Plot and Slope (if she has not opened it herself), away on the next. */
+export function watchGraphMove(
+  watch: boolean,
+  stepKey: string | undefined,
+  popup: PopupId | null,
+  auto: boolean,
+): { popup: PopupId | null; auto: boolean } {
+  if (!watch) return { popup, auto: false };
+  if (watchGraphOut(stepKey)) {
+    // Her own graph, already open, is hers: the page neither claims it nor closes it later.
+    return popup === "graph" ? { popup, auto } : { popup: "graph", auto: true };
+  }
+  return { popup: auto && popup === "graph" ? null : popup, auto: false };
+}
+
 /** Whether Watch has the graph paper out on this step: Plot and Slope only. */
 export function watchGraphOut(stepKey: string | undefined): boolean {
   return stepKey === "plot" || stepKey === "slope";
@@ -376,6 +391,11 @@ function LearnView() {
     const next = nextRun(runRef.current, a);
     runRef.current = next;
     setRun(next);
+    // Choosing Watch is her tap: iOS speaks only if speech starts inside it. A silent utterance
+    // here unlocks speech for the director's play(), which runs a moment later in an effect.
+    if (next.practical === "watch" && "speechSynthesis" in window) {
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(" "));
+    }
     if (next.practical !== null) {
       history.replaceState(history.state, "", urlForRun(location.href, next.practical, next.seed));
     }
@@ -647,6 +667,8 @@ function LearnScreen({
   // A new run (a mode chosen, Watch again, a new bench) starts every piece of state over, as the
   // remount used to. Adjusting state during render: React re-renders at once, before any paint.
   const graphAuto = useRef(false);
+  const popupRef = useRef(popup);
+  popupRef.current = popup;
   if (fresh) {
     setSeenRig(rig.n);
     graphAuto.current = false;
@@ -672,13 +694,9 @@ function LearnScreen({
   // (In Practise and Exam she opens it herself.)
   useEffect(() => {
     if (!watch || paper) return;
-    if (watchGraphOut(stepKey)) {
-      graphAuto.current = true;
-      setPopupState("graph");
-    } else if (graphAuto.current) {
-      graphAuto.current = false;
-      setPopupState((p) => (p === "graph" ? null : p));
-    }
+    const move = watchGraphMove(watch, stepKey, popupRef.current, graphAuto.current);
+    graphAuto.current = move.auto;
+    setPopupState(move.popup);
   }, [watch, paper, stepKey]);
   // The stage draws its own rings (both ends of the beat's lead); the pencil-grey ghost leads
   // still guide the Connect step in Practise.
@@ -812,6 +830,7 @@ function LearnScreen({
           paper ? null : (
             <>
               <Player
+                key={rig.n}
                 director={director}
                 stageTitles={STAGE_TITLES}
                 onHandIn={watch || results ? undefined : doHandIn}
@@ -829,7 +848,7 @@ function LearnScreen({
             </>
           )
         }
-        checklist={<StageChecklist director={director} stageTitles={STAGE_TITLES} />}
+        checklist={<StageChecklist key={rig.n} director={director} stageTitles={STAGE_TITLES} />}
         calloutLayerRef={calloutLayer}
         activePopup={popup}
         onPopupChange={setPopup}

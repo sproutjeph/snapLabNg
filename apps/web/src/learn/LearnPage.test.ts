@@ -10,6 +10,7 @@ import {
   ResultsLayer,
   type Run,
   urlForRun,
+  watchGraphMove,
   watchGraphOut,
 } from "./LearnPage";
 import { emptyOhmsLawRecord, setCell } from "./readings/record";
@@ -120,5 +121,29 @@ describe("Watch plays itself, and its graph comes out", () => {
     for (const key of ["identify", "connect", "readings", undefined]) {
       expect(watchGraphOut(key)).toBe(false);
     }
+  });
+});
+
+describe("Watch's graph pop-up", () => {
+  it("Practise and Exam never open it by themselves", () => {
+    for (const key of ["plot", "slope", "readings"]) {
+      expect(watchGraphMove(false, key, null, false)).toEqual({ popup: null, auto: false });
+    }
+  });
+
+  it("Watch opens it on Plot and closes it after Slope", () => {
+    const on = watchGraphMove(true, "plot", null, false);
+    expect(on).toEqual({ popup: "graph", auto: true });
+    expect(watchGraphMove(true, "slope", on.popup, on.auto)).toEqual(on);
+    expect(watchGraphMove(true, "conclusion", on.popup, on.auto)).toEqual({
+      popup: null,
+      auto: false,
+    });
+  });
+
+  it("a graph she opened herself is not closed for her", () => {
+    const on = watchGraphMove(true, "plot", "graph", false);
+    expect(on).toEqual({ popup: "graph", auto: false });
+    expect(watchGraphMove(true, "conclusion", on.popup, on.auto).popup).toBe("graph");
   });
 });
