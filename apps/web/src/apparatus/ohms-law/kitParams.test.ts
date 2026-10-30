@@ -34,9 +34,11 @@ import {
   terminalPositions,
   turnAzimuth,
 } from "./kitParams";
+import { shapeCable } from "./Lead";
 import {
   BENCH_FOOTPRINTS,
   type BenchFootprint,
+  CABLE_SEAT_M,
   floorAt,
   LEAD_RADIUS_M,
   PLUG_HEIGHT_M,
@@ -573,39 +575,36 @@ describe("the shot", () => {
     });
 
     // ---- The cable the free plug leaves behind ----
-    // Lead's cable, restated, because its shapeCable is private: eleven control points at CABLE_T
-    // along the chord from the plug top over the nut to the plug top over the free end, each hung
-    // 0.012 + 0.3 d below it (d the level span) in a belly of 4t(1 - t), pushed sideways by
-    // bulge x min(d, 0.5) x 0.22 in the same belly and lifted a little beside each plug, then a
-    // centripetal Catmull-Rom curve through them. Lead's bulge is a seeded number from -1 to 1,
-    // so every one of BULGES is tried. When Lead's path changes, change this with it.
-    const CABLE_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
-    /** How far above the paper Lead holds a free plug, and the lowest its cable's centre goes. */
+    // Lead's own cable: the control points of its exported shapeCable, seated as Lead seats them,
+    // through the centripetal Catmull-Rom curve Lead draws. Nothing of the cable's shape is
+    // restated here, so a restyled plug (CABLE_SEAT_M) or a re-drawn cable is tested as it is.
+    // Lead's bulge is a seeded number from -1 to 1, so every one of BULGES is tried.
+    /** How far above the paper Lead holds a free plug (its CARRY_LIFT_M, which is not exported). */
     const CARRY_LIFT_M = 0.022;
-    const FLOOR_M = LEAD_RADIUS_M + 0.0004;
     const BULGES = [-1, -0.5, 0, 0.5, 1];
     /** A footprint's own share of LeadParts' floorAt: its top, ramping to the paper over 1.5 cm. */
     const RAMP_M = 0.015;
+    /**
+     * shapeCable writes as many control points as its cable has and leaves any more of the array
+     * alone, so this is more slots than it could want, and the ones it did not write stay NaN.
+     */
+    const CABLE_SLOTS = 32;
+
+    /** Where Lead.tsx seats the cable's centreline over a plug whose foot is at (x, y, z). */
+    function seatOver(x: number, y: number, z: number): THREE.Vector3 {
+      return new THREE.Vector3(x, y + CABLE_SEAT_M, z);
+    }
+
+    /** The cable's control points, from the nut's seat to the free plug's seat. */
+    function cableControl(id: TerminalId, end: THREE.Vector3, bulge: number): THREE.Vector3[] {
+      const [nx, ny, nz] = NUT_M[id];
+      const pts = Array.from({ length: CABLE_SLOTS }, () => new THREE.Vector3(NaN, NaN, NaN));
+      shapeCable(pts, seatOver(nx, ny, nz), seatOver(end.x, end.y + CARRY_LIFT_M, end.z), bulge);
+      return pts.filter((p) => !Number.isNaN(p.y));
+    }
 
     function cablePath(id: TerminalId, end: THREE.Vector3, bulge: number): THREE.Vector3[] {
-      const [nx, ny, nz] = NUT_M[id];
-      const sy = ny + PLUG_HEIGHT_M;
-      const ey = end.y + CARRY_LIFT_M + PLUG_HEIGHT_M;
-      const dx = end.x - nx;
-      const dz = end.z - nz;
-      const d = Math.hypot(dx, dz);
-      const droop = 0.012 + 0.3 * d;
-      const side = bulge * Math.min(d, 0.5) * 0.22;
-      const control = CABLE_T.map((t) => {
-        const belly = 4 * t * (1 - t);
-        const u = Math.min(t, 1 - t) * 26;
-        const stiff = 0.03 * u * Math.exp(-u);
-        return new THREE.Vector3(
-          nx + dx * t + (-dz / d) * side * belly,
-          Math.max(FLOOR_M, sy + (ey - sy) * t - droop * belly + stiff),
-          nz + dz * t + (dx / d) * side * belly,
-        );
-      });
+      const control = cableControl(id, end, bulge);
       return new THREE.CatmullRomCurve3(control, false, "centripetal").getPoints(112);
     }
 
@@ -647,6 +646,27 @@ describe("the shot", () => {
       }
       return worst;
     }
+
+    it("starts the cable at the nut's seat in the plug's boot and ends it at the carried free plug's, with all of shapeCable's control points", () => {
+      for (const id of TERMINAL_IDS) {
+        const end = freeEnd(id);
+        const [nx, ny, nz] = NUT_M[id];
+        for (const bulge of BULGES) {
+          const control = cableControl(id, end, bulge);
+          // None of the cable is dropped, and the slots have room to spare.
+          expect(control.length, id).toBeGreaterThan(2);
+          expect(control.length, id).toBeLessThan(CABLE_SLOTS);
+          const first = control[0];
+          const last = control[control.length - 1];
+          expect(first?.x, id).toBeCloseTo(nx, 9);
+          expect(first?.y, id).toBeCloseTo(ny + CABLE_SEAT_M, 9);
+          expect(first?.z, id).toBeCloseTo(nz, 9);
+          expect(last?.x, id).toBeCloseTo(end.x, 9);
+          expect(last?.y, id).toBeCloseTo(end.y + CARRY_LIFT_M + CABLE_SEAT_M, 9);
+          expect(last?.z, id).toBeCloseTo(end.z, 9);
+        }
+      }
+    });
 
     it("restates LeadParts' floorAt, footprint by footprint", () => {
       for (let x = -0.7; x <= 0.7; x += 0.0173) {
