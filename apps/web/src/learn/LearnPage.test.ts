@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  autoPlays,
   initialRun,
   nextRun,
   paperFirst,
@@ -9,6 +10,7 @@ import {
   ResultsLayer,
   type Run,
   urlForRun,
+  watchGraphOut,
 } from "./LearnPage";
 import { emptyOhmsLawRecord, setCell } from "./readings/record";
 import { handIn } from "./results/handIn";
@@ -96,5 +98,27 @@ describe("the practical page's flow", () => {
     expect(after).toContain(`${wire} Ω`);
     expect(after).toContain('data-testid="results-watch-again"');
     expect(after).toContain('data-testid="results-new-bench"');
+  });
+});
+
+describe("Watch plays itself, and its graph comes out", () => {
+  it("choosing Watch plays once; Practise, Exam and a bare load do not", () => {
+    const paper = initialRun(q("practical=ohms-law&seed=7"), 7);
+    expect(autoPlays(nextRun(paper, { kind: "choose", mode: "watch" }))).toBe(true);
+    expect(autoPlays(nextRun(paper, { kind: "choose", mode: "practice" }))).toBe(false);
+    expect(autoPlays(nextRun(paper, { kind: "choose", mode: "exam" }))).toBe(false);
+    // Watch again on the results is a tap too; the paper itself and a URL load are not.
+    expect(autoPlays(nextRun(paper, { kind: "watchAgain" }))).toBe(true);
+    expect(autoPlays(paper)).toBe(false);
+    expect(autoPlays(initialRun(q("mode=watch&seed=7"), 7))).toBe(false);
+    expect(autoPlays(nextRun(paper, { kind: "newBench", seed: 9 }))).toBe(false);
+  });
+
+  it("Watch has the graph out on Plot and Slope only", () => {
+    expect(watchGraphOut("plot")).toBe(true);
+    expect(watchGraphOut("slope")).toBe(true);
+    for (const key of ["identify", "connect", "readings", undefined]) {
+      expect(watchGraphOut(key)).toBe(false);
+    }
   });
 });
