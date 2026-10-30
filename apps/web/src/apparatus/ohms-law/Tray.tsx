@@ -16,6 +16,7 @@ import { buildTray, type TrayItemKey, type TrayMat } from "./TrayParts";
 import {
   makeBrassTexture,
   makeCeramicTexture,
+  makeFrameTexture,
   makeGritTexture,
   makeMahoganyTexture,
 } from "./WireBoardTextures";
@@ -41,6 +42,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
     const bakeTex = kitTexture("bakelite", quality);
     const brassTex = makeBrassTexture(quality, 0x7a49);
     const ceramicTex = makeCeramicTexture(quality);
+    const frameTex = makeFrameTexture(quality);
     const grit = makeGritTexture(rng);
     const mats: Record<TrayMat, THREE.MeshStandardMaterial> = {
       wood: woodMaterial(0x7a41, { map: woodTex }),
@@ -54,7 +56,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       grit: paperMaterial(0x7a4a, { map: grit }),
       ceramic: paintMaterial("#ffffff", 0x7a4b, { map: ceramicTex }),
       ebonite: bakeliteMaterial(0x7a4c, { map: bakeTex }),
-      frame: bakeliteMaterial(0x7a4d, { map: bakeTex }),
+      frame: bakeliteMaterial(0x7a4d, { map: frameTex }),
     };
     const coilMat = brassSurface(0x7a4e, { tint: "#b8693b" });
     const coil = new THREE.InstancedMesh(build.coilGeo, coilMat, build.coilMatrices.length);
@@ -71,6 +73,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       bakeTex,
       brassTex,
       ceramicTex,
+      frameTex,
       grit,
       mats,
       matList: Object.values(mats),
@@ -88,7 +91,7 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
       // The instanced coil owns no geometry or material of its own beyond these two.
       res.coil.dispose();
       disposeKitBag({
-        textures: [res.woodTex, res.bakeTex, res.brassTex, res.ceramicTex, res.grit],
+        textures: [res.woodTex, res.bakeTex, res.brassTex, res.ceramicTex, res.frameTex, res.grit],
         materials: res.matList,
         geometries: res.partGeos,
         coilMat: res.coilMat,

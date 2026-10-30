@@ -41,10 +41,26 @@ export interface WireBoardProps extends PartProps {
 // the footprints and the loupe's pose (learn/readings/poses.ts); only the look of them changes.
 const BOARD = { length: 1.1, height: 0.02, depth: 0.12 } as const;
 const BOARD_BEVEL = 0.005;
-/** The metre rule: a cream strip a little proud of the board, its back edge 1.5 mm in front of the blocks. */
-const RULE = { length: RULE_LENGTH_M, thickness: 0.003, depth: RULE_DEPTH_M, z: 0.0265 } as const;
-/** The tap box over the rule: as it was, so a tap lands where it always did. */
-const RULE_HIT = { height: 0.008, depth: 0.05, y: BOARD.height + 0.005, z: 0.019 } as const;
+/**
+ * The metre rule: a cream strip 3 mm proud of the board, its back edge 1.5 mm in front of the
+ * blocks. Its body goes `sink` deeper, hidden in the board, so that its edges can be rounded by
+ * 1.5 mm (the kit's bevel is at most a third of the thinnest side).
+ */
+const RULE = {
+  length: RULE_LENGTH_M,
+  thickness: 0.003,
+  sink: 0.0015,
+  depth: RULE_DEPTH_M,
+  z: 0.0265,
+} as const;
+/** The tap box over the rule: as it was (1.02 m long, whatever the strip), so a tap lands where it always did. */
+const RULE_HIT = {
+  length: 1.02,
+  height: 0.008,
+  depth: 0.05,
+  y: BOARD.height + 0.005,
+  z: 0.019,
+} as const;
 const WIRE = { z: -0.015, radius: 0.0012, y: BOARD.height + 0.007 } as const;
 /**
  * The brass end blocks the wire is clamped in; the terminal nuts stand on them. A block reaches
@@ -105,8 +121,10 @@ function boardUV(geo: THREE.BufferGeometry): void {
 /**
  * The constantan wire XY stretched on a pale pine board between two chunky brass blocks, each
  * with a terminal nut and its letter, and a metre rule printed along the front (0 to 100 cm, ticks
- * at every mm). X is at startCm, Y at startCm + lengthCm. The wire is drawn thicker than a real
- * 0.376 mm wire so it shows from across the bench.
+ * at every mm). X is at startCm, Y at startCm + lengthCm, each block on its own mark: the rule's
+ * 0 and 100 are under the blocks only for a wire laid the whole metre, and the engine sets other
+ * lengths, which the student reads off the rule. The wire is drawn thicker than a real 0.376 mm
+ * wire so it shows from across the bench.
  */
 export function WireBoard({
   state,
@@ -157,7 +175,8 @@ export function WireBoard({
     const blocks = mergePieces(blockPieces);
     boxProjectUV(blocks, [0.05, 0.05]);
 
-    // Four brass screws holding the board down: domed heads on the board's corners.
+    // Four brass screws holding the board down: domed heads on the board's corners, 1.4 cm clear
+    // of the ends of the rule's strip (and still on the flat top, inside the board's rounded end).
     const dome = [
       [0, 0],
       [0.0044, 0],
@@ -169,7 +188,7 @@ export function WireBoard({
       [-1, 1].flatMap((sx) =>
         [-1, 1].map((sz) =>
           new THREE.LatheGeometry(dome, low ? 5 : seg / 2 + 2).translate(
-            sx * 0.53,
+            sx * 0.5385,
             BOARD.height,
             sz * 0.046,
           ),
@@ -183,10 +202,10 @@ export function WireBoard({
     wireGeo.rotateZ(Math.PI / 2);
     wireGeo.translate((xX + xY) / 2, WIRE.y, WIRE.z);
 
-    // The strip, eased at its edges, and its printed face in four pieces (each under 1024 px).
+    // The strip, rounded at its edges, and its printed face in four pieces (each under 1024 px).
     const ruleBody = low
-      ? new THREE.BoxGeometry(RULE.length, RULE.thickness, RULE.depth)
-      : bevelBox(RULE.length, RULE.thickness, RULE.depth, RULE_EDGE_M, 1);
+      ? new THREE.BoxGeometry(RULE.length, RULE.thickness + RULE.sink, RULE.depth)
+      : bevelBox(RULE.length, RULE.thickness + RULE.sink, RULE.depth, RULE_EDGE_M, bs);
     const ruleGeos = segments.map((s) =>
       new THREE.PlaneGeometry(s.lengthM, RULE_PRINT_DEPTH_M).rotateX(-Math.PI / 2),
     );
@@ -231,7 +250,7 @@ export function WireBoard({
       rulePrint,
       letterBlock,
       letterBoard,
-      ruleHit: new THREE.BoxGeometry(RULE.length, RULE_HIT.height, RULE_HIT.depth),
+      ruleHit: new THREE.BoxGeometry(RULE_HIT.length, RULE_HIT.height, RULE_HIT.depth),
       boardMats: [woodMaterial(0x5ee5, { map: endTex }), woodMaterial(0x5ee1, { map: pineTex })],
       ruleBodyMat: paperMaterial(0x5ee4, { tint: "#d8cba6" }),
       brassMat: brassSurface(0x5ee2, { map: brassTex }),
@@ -277,7 +296,7 @@ export function WireBoard({
         <mesh
           geometry={res.ruleBody}
           material={res.ruleBodyMat}
-          position={[0, BOARD.height + RULE.thickness / 2, RULE.z]}
+          position={[0, BOARD.height + RULE.thickness - (RULE.thickness + RULE.sink) / 2, RULE.z]}
           castShadow
           receiveShadow
         />

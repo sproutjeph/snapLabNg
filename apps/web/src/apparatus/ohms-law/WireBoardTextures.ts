@@ -13,15 +13,25 @@ const FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
 // ---- The metre rule: layout -------------------------------------------------------------------
 
-/** The rule is longer than a metre by this much at each end (m): a margin before 0 and after 100. */
-export const RULE_MARGIN_M = 0.01;
+/**
+ * The rule is longer than a metre by this much at each end (m): a margin before 0 and after 100.
+ * The look's ink line round the strip is 3 px, as wide as a centimetre of rule at the phone's
+ * fit, so the margin is 2 cm: the 0 then stands clear of the line at the strip's end.
+ */
+export const RULE_MARGIN_M = 0.02;
 export const RULE_LENGTH_M = 1 + 2 * RULE_MARGIN_M;
 /** The cream strip's depth (m), front to back. */
 export const RULE_DEPTH_M = 0.046;
-/** The strip's edges are eased by this much, and the print stops short of them (m). */
-export const RULE_EDGE_M = 0.001;
+/**
+ * The strip's edges are rounded by this much (m), and the print stops where the flat top ends.
+ * The kit's bevel is at most a third of the thinnest side, so the strip's body is 4.5 mm thick
+ * (WireBoard sinks its lower 1.5 mm into the board) for a radius of 1.5 mm.
+ */
+export const RULE_EDGE_M = 0.0015;
 /** The printed area's depth (m): the strip inside its eased edges. */
 export const RULE_PRINT_DEPTH_M = RULE_DEPTH_M - 2 * RULE_EDGE_M;
+/** How far the printed area runs past the 0 and the 100, in cm on the scale. */
+const PRINT_PAST_CM = (RULE_MARGIN_M - RULE_EDGE_M) * 100;
 
 /**
  * Where the printed area is cut into textures, in cm on the scale (0 is at x = -0.5 m). One
@@ -29,7 +39,7 @@ export const RULE_PRINT_DEPTH_M = RULE_DEPTH_M - 2 * RULE_EDGE_M;
  * The cuts fall between two millimetre marks, and the marks near a cut are drawn on both sides
  * (the canvas clips them), so no tick or numeral is lost at a join.
  */
-export const RULE_CUTS_CM = [-0.9, 25.25, 50.25, 75.25, 100.9] as const;
+export const RULE_CUTS_CM = [-PRINT_PAST_CM, 24.25, 50.25, 76.25, 100 + PRINT_PAST_CM] as const;
 
 export interface RuleSegment {
   index: number;
@@ -202,10 +212,12 @@ function paintRuleSegment(
     const ten = cm % 10 === 0;
     if (x < -big || x > w + big) continue;
     ctx.font = `bold ${ten ? big : small}px ${FONT}`;
-    // "100" is three digits wide and the strip ends 9 mm past the mark: it ends 7 mm past it instead.
+    // "100" is three digits wide: set right-aligned, ending 9 mm past its mark, so it stays well
+    // inside the strip's end (18.5 mm past the mark) and clear of the ink line there. The rest are
+    // centred on their marks.
     ctx.textAlign = cm === 100 ? "right" : "center";
-    // Baselines 20.5 mm (small, 6.4 mm tall) and 43 mm (large, 20 mm tall) below the back edge.
-    ctx.fillText(String(cm), cm === 100 ? x + 7 * pxMm : x, (ten ? 43 : 20.5) * pxMm);
+    // Baselines 20.5 mm (small, 6.4 mm tall) and 42 mm (large, 20 mm tall) below the print's back edge.
+    ctx.fillText(String(cm), cm === 100 ? x + 9 * pxMm : x, (ten ? 42 : 20.5) * pxMm);
   }
 }
 
@@ -543,6 +555,67 @@ export function makeCeramicTexture(quality: QualityTier): THREE.CanvasTexture {
       }
     }
   }
+  return finish(c, 4, THREE.RepeatWrapping, THREE.RepeatWrapping);
+}
+
+// ---- The micrometer's frame -------------------------------------------------------------------
+
+/**
+ * Cast gunmetal for the micrometer's C-frame, after the reference's speckled black frame but a
+ * slate blue-grey, so that under the look's ink lines the frame never closes into a solid black
+ * patch: a dark slate ground, broad mottling, pale flecks and dark pits. It tiles across u and v;
+ * a tile is 6 cm square (TrayParts), 4 px a millimetre on mid and high.
+ */
+export function makeFrameTexture(quality: QualityTier): THREE.CanvasTexture {
+  const n = quality === "low" ? 128 : 256;
+  const k = n / 256;
+  const [c, ctx] = canvas(n, n);
+  const rnd = seededRandom(0xf4a3);
+  const wraps = [-n, 0, n];
+  ctx.fillStyle = "#4d5566";
+  ctx.fillRect(0, 0, n, n);
+  // Broad patches, lighter and darker, repeated on every side so the tile joins.
+  for (let i = 0; i < 30; i++) {
+    const x = rnd() * n;
+    const y = rnd() * n;
+    const r = (16 + rnd() * 46) * k;
+    const light = rnd() < 0.5;
+    const col = light ? "142,152,172" : "26,30,42";
+    for (const dx of wraps) {
+      for (const dy of wraps) {
+        const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+        g.addColorStop(0, `rgba(${col},${light ? 0.22 : 0.3})`);
+        g.addColorStop(1, `rgba(${col},0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(x + dx - r, y + dy - r, 2 * r, 2 * r);
+      }
+    }
+  }
+  // Speckle: many small pale flecks and some dark pits, as in cast and hammered enamel.
+  const speck = (
+    count: number,
+    rgb: string,
+    lo: number,
+    hi: number,
+    rMin: number,
+    rMax: number,
+  ) => {
+    for (let i = 0; i < count; i++) {
+      const x = rnd() * n;
+      const y = rnd() * n;
+      const r = (rMin + rnd() * (rMax - rMin)) * k + 0.25;
+      ctx.fillStyle = `rgba(${rgb},${(lo + rnd() * (hi - lo)).toFixed(2)})`;
+      for (const dx of wraps) {
+        for (const dy of wraps) {
+          ctx.beginPath();
+          ctx.arc(x + dx, y + dy, r, 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
+  };
+  speck(quality === "low" ? 120 : 340, "214,220,232", 0.45, 0.85, 0.5, 1.5);
+  speck(quality === "low" ? 60 : 160, "20,24,34", 0.4, 0.7, 0.6, 1.5);
   return finish(c, 4, THREE.RepeatWrapping, THREE.RepeatWrapping);
 }
 

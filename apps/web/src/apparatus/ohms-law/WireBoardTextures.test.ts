@@ -4,6 +4,7 @@ import { cmToX } from "../meter-bridge/dimensions";
 import {
   markPx,
   RULE_CUTS_CM,
+  RULE_EDGE_M,
   RULE_LENGTH_M,
   RULE_MARGIN_M,
   ruleMarks,
@@ -41,6 +42,22 @@ describe("the printed metre rule", () => {
     expect(wireEndX(37.5)).toBe(cmToX(37.5));
   });
 
+  it("stands each block on its own mark, not on the 0 and 100, when the wire is shorter than a metre", () => {
+    // A wire of 53.6 cm from 24.4 cm: X on 24.4 and Y on 78.0. The rule's 0 and 100 are then the
+    // ends of the scale, and the loupe reads the wire's length between the two blocks. Only a wire
+    // laid the whole metre puts the blocks on the 0 and the 100 (the first test).
+    const startCm = 24.4;
+    const lengthCm = 53.6;
+    for (const q of TIERS) {
+      expect(Math.abs(ruleMarkX(startCm, q) - wireEndX(startCm))).toBeLessThan(0.001);
+      expect(
+        Math.abs(ruleMarkX(startCm + lengthCm, q) - wireEndX(startCm + lengthCm)),
+      ).toBeLessThan(0.001);
+      expect(Math.abs(wireEndX(startCm) - ruleMarkX(0, q))).toBeGreaterThan(0.2);
+      expect(Math.abs(wireEndX(startCm + lengthCm) - ruleMarkX(100, q))).toBeGreaterThan(0.2);
+    }
+  });
+
   it("cuts the print into textures of at most 1024 px, whatever the tier", () => {
     for (const q of TIERS) {
       for (const s of ruleSegments(q)) {
@@ -60,9 +77,19 @@ describe("the printed metre rule", () => {
       expect(s.centreX - s.lengthM / 2).toBeCloseTo(reach, 9);
       reach = s.centreX + s.lengthM / 2;
     }
-    // The strip is 1.02 m; its printed face stops 1 mm inside each eased end, past the 0 and 100 marks.
+    // The strip is 1.04 m; its printed face stops where the flat top ends, 1.5 mm inside each end.
     expect(RULE_LENGTH_M).toBeCloseTo(1 + 2 * RULE_MARGIN_M, 9);
-    expect(reach).toBeLessThanOrEqual(RULE_LENGTH_M / 2);
+    expect(reach).toBeLessThanOrEqual(RULE_LENGTH_M / 2 - RULE_EDGE_M + 1e-9);
+  });
+
+  it("leaves 2 cm of strip beyond the 0 and the 100, so the numeral stands clear of the ink line at the end", () => {
+    // The look's outline is 3 px; at the phone's fit that is as wide as 1 cm of rule, and it covered
+    // the left half of the 0 when the margin was 1 cm (visual QA of the wire board, round 1).
+    expect(RULE_MARGIN_M).toBeGreaterThanOrEqual(0.02);
+    // The strip's body is 4.5 mm thick (3 mm proud, 1.5 mm in the board) so its 1.5 mm rounding fits.
+    expect(RULE_EDGE_M).toBeGreaterThanOrEqual(0.0015);
+    // The 0 mark is 2 cm from the strip's end; the first printed pixel is 1.85 cm before it.
+    expect(-(RULE_CUTS_CM[0] ?? 0)).toBeCloseTo((RULE_MARGIN_M - RULE_EDGE_M) * 100, 9);
   });
 
   it("makes every cut fall between two millimetre marks, so no tick is split", () => {

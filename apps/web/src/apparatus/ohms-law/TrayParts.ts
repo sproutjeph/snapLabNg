@@ -9,6 +9,7 @@ import {
   PLUG_HEIGHT_M,
   placeAlong,
   placeAt,
+  seeded,
 } from "./LeadParts";
 
 // The geometry of the side tray, built once and merged per (item, ink id, material). Metres,
@@ -50,7 +51,8 @@ export interface TrayPart {
 export const TRAY_SIZE = { x: 0.26, z: 0.34 } as const;
 /** The metres one tile of the tray's mahogany covers: along the grain, across it. */
 export const MAHOGANY_TILE_M: readonly [number, number] = [0.34, 0.26];
-export const FLOOR_Y = 0.004;
+/** The floor is 4.5 mm thick: the kit's bevel is at most a third of the thinnest side, so 1.5 mm. */
+export const FLOOR_Y = 0.0045;
 const WALL_H = 0.014;
 const WALL_T = 0.016;
 const RHEO_X = -0.075;
@@ -60,6 +62,9 @@ const CABLE_R = 0.0022;
 const CLIP_LENGTH_M = 0.05;
 /** The tips of the clips and plugs lie at this x (m), 5 mm inside the leads' tap box. */
 const TIP_X = 0.0;
+/** A lying clip's top jaw is swung open by this much, a little different on each clip (radians). */
+const CLIP_OPEN_MIN = 0.2;
+const CLIP_OPEN_SPAN = 0.12;
 
 export interface TrayBuild {
   parts: TrayPart[];
@@ -144,6 +149,66 @@ function grainUV(
   }
   geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   return geo;
+}
+
+/**
+ * The triangles of `geo` on the +x side of its axis (by centroid) and those on the -x side, as two
+ * new geometries with position, normal and uv. `geo` is left as it was.
+ */
+function splitAtX(geo: THREE.BufferGeometry): [THREE.BufferGeometry, THREE.BufferGeometry] {
+  const src = geo.index ? geo.toNonIndexed() : geo;
+  const pos = src.getAttribute("position");
+  const nor = src.getAttribute("normal");
+  const uv = src.getAttribute("uv");
+  const side = () => ({ p: [] as number[], n: [] as number[], u: [] as number[] });
+  const above = side();
+  const below = side();
+  for (let t = 0; t < pos.count; t += 3) {
+    const into = pos.getX(t) + pos.getX(t + 1) + pos.getX(t + 2) >= 0 ? above : below;
+    for (let i = t; i < t + 3; i++) {
+      into.p.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+      into.n.push(nor.getX(i), nor.getY(i), nor.getZ(i));
+      into.u.push(uv.getX(i), uv.getY(i));
+    }
+  }
+  if (src !== geo) src.dispose();
+  const make = (s: ReturnType<typeof side>) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(s.p, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(s.n, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(s.u, 2));
+    return g;
+  };
+  return [make(above), make(below)];
+}
+
+/**
+ * A crocodile clip's two jaws come merged from LeadParts, one half each side of the axis (the +x
+ * half is the top one once the clip lies down). Lying flat, the jaws show as one plate; this swings
+ * the top half open by `open` radians about the root of its own middle line, so the mouth and its
+ * teeth show, and adds a steel rivet on the swung half for the pivot. Returns the brass jaws and
+ * the rivet.
+ */
+export function openedJaws(
+  jaws: THREE.BufferGeometry,
+  open: number,
+  rivetSides = 10,
+): { brass: THREE.BufferGeometry; rivet: THREE.BufferGeometry } {
+  jaws.computeBoundingBox();
+  const root = jaws.boundingBox?.min.y ?? 0;
+  const [top, bottom] = splitAtX(jaws);
+  top.computeBoundingBox();
+  const inner = top.boundingBox?.min.x ?? 0;
+  const outer = top.boundingBox?.max.x ?? 0;
+  const mid = (inner + outer) / 2;
+  const rivet = new THREE.CylinderGeometry(0.0034, 0.0034, 0.0018, rivetSides)
+    .rotateZ(Math.PI / 2)
+    .translate(outer, root + 0.0085, 0);
+  const swing = (g: THREE.BufferGeometry) =>
+    g.translate(-mid, -root, 0).rotateZ(-open).translate(mid, root, 0);
+  swing(top);
+  swing(rivet);
+  return { brass: mergeAll([top, bottom]), rivet };
 }
 
 /** The two free ends of a lead: where the cable stops and the way a clip or plug points on from it. */
@@ -259,7 +324,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         TRAY_SIZE.x - 4 * eps,
         FLOOR_Y,
         TRAY_SIZE.z - 4 * eps,
-        0.0013,
+        FLOOR_Y / 3,
         0,
         FLOOR_Y / 2,
         0,
@@ -393,10 +458,18 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       ink: 2,
     },
   ];
+  // Each clip's mouth is open a little differently, from a stream of its own so the rest of the
+  // tray draws what it did.
+  const clipRng = seeded(0xc11b);
   for (const c of coils) {
     const { geo } = tubeOf(c.lead.pts);
     acc.add("leads", c.ink, false, c.mat, geo);
     for (const end of c.lead.ends) {
+      const jaws = openedJaws(
+        clipProto.jaws,
+        CLIP_OPEN_MIN + clipRng() * CLIP_OPEN_SPAN,
+        low ? 6 : 10,
+      );
       acc.add(
         "leads",
         3,
@@ -409,9 +482,10 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
         3,
         true,
         "brass",
-        placeAlong(clipProto.jaws.clone(), end.at, end.dir, clipScale),
+        placeAlong(jaws.brass, end.at, end.dir, clipScale),
         [0.04, 0.04],
       );
+      acc.add("leads", 3, true, "steel", placeAlong(jaws.rivet, end.at, end.dir, clipScale));
     }
   }
   clipProto.boot.dispose();
@@ -642,7 +716,7 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
       g.scale(0.9, 0.9, 0.9);
       return g.translate(0.07, FLOOR_Y, -0.125);
     };
-    acc.add("micrometer", 8, false, "frame", settle(frame), [0.12, 0.12]);
+    acc.add("micrometer", 8, false, "frame", settle(frame), [0.06, 0.06]);
     acc.add("micrometer", 9, false, "steel", settle(steel));
     acc.add("micrometer", 9, false, "brass", settle(brass), [0.04, 0.04]);
   }
