@@ -82,8 +82,10 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| Integration I1 (`docs/plans/integration.md`): `learn/LearnPage.tsx`, `learn/stage/**`, `learn/shell/**`, `learn/player/**`, `learn/e2e.ts`, `learn/script/{types.ts,createDirector.ts}`, `paper/QuestionPaper.tsx` (the `onItem` prop only), `results/**` | Claude subagent, `claude/integration-page`, port 5177 |
-| Integration I2: `apps/web/scripts/e2e/**` | Muse Code, branch `muse/integration-e2e`, port 5176 |
+| Beauty B1 (`docs/plans/beauty-pass.md`): `apparatus/ohms-law/{TrayParts.ts,Tray.tsx,ResistanceBox.tsx,TerminalNut.tsx,WireBoardTextures.ts}` | Claude subagent, `claude/beauty-look`, port 5177 |
+| Beauty B2: `apparatus/ohms-law/{layout.ts,poseTargets.ts,Lead.tsx,LeadParts.ts}`, `learn/stage/**`, `learn/lessons/ohms-law/script.ts` (the enter beat's `say` only) | Claude subagent, `claude/beauty-bench`, port 5178 |
+| Beauty B4: `learn/LearnPage.tsx` | Claude subagent, `claude/beauty-page`, port 5179 |
+| Beauty B3: `learn/shell/**`, `learn/player/**`, `learn/script/{types.ts,createDirector.ts}`, `learn/paper/desk.css`, `scripts/shot.ts` (repo root), `apps/web/scripts/e2e/**` | Muse Code, branch `muse/beauty-ui`, port 5176 |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/` unless rooted at `apps/`.
