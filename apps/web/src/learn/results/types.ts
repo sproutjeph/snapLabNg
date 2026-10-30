@@ -6,7 +6,7 @@ import type { ReadingCheck } from "@snaplab/rules";
 
 export interface ResultsProps {
   mode: "practice" | "exam";
-  /** markOhmsLaw(record): 20 marks (no teacher's value on a simulated bench: handIn.ts). */
+  /** markOhmsLaw(record, { teacherXyOhm: supervisor.effectiveOhm() }): 21 marks. */
   sheet: MarkSheet;
   /** Watch's end: the actor's own record, marked on the demonstration bench. */
   demo?: boolean;
