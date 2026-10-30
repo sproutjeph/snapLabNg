@@ -387,3 +387,10 @@ tr[data-ok="0"] .rs-verdict {
     animation: none;
   }
 }
+
+/* On the practical page the results cover the whole page, above the stage and its cards. */
+.rs-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}

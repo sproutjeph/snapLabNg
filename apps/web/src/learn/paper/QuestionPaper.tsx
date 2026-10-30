@@ -183,6 +183,7 @@ export function QuestionPaper({ question, voice, onItemRead, onChoose }: Questio
             <button
               type="button"
               className="xp-btn xp-btn-primary qp-read"
+              data-testid="paper-read"
               onClick={() => (reading ? reader.stop() : reader.start())}
             >
               {reading ? <IconStop /> : <IconSpeaker />}
@@ -195,6 +196,7 @@ export function QuestionPaper({ question, voice, onItemRead, onChoose }: Questio
                   key={m.mode}
                   type="button"
                   className={`xp-btn qp-mode${m.mode === "practice" ? " xp-btn-primary" : ""}`}
+                  data-testid={`paper-choice-${m.mode}`}
                   onClick={() => {
                     reader.stop();
                     onChoose(m.mode);

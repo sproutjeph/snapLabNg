@@ -116,19 +116,31 @@ function Dash({ what }: { what: string }) {
   );
 }
 
-export function Results({ mode, sheet, checks, record, benchOhm, onAgain, onWatch }: ResultsProps) {
+export function Results({
+  mode,
+  sheet,
+  demo = false,
+  checks,
+  record,
+  benchOhm,
+  onAgain,
+  onWatch,
+}: ResultsProps) {
   const lines = ruleLines(sheet);
   const rows = checkRows(record, checks);
   const unread = unreadSettings(rows);
   const slope = slopeLine(record, benchOhm);
 
   return (
-    <div className="xp xp-desk rs-page">
+    <div className="xp xp-desk rs-page" data-testid="results">
       <article className="rs-main" aria-labelledby="rs-title">
         <header className="rs-head">
           <div>
             <p className="xp-caps rs-caps">
-              Results <span className="rs-mode">{mode === "exam" ? "Exam" : "Practice"}</span>
+              Results{" "}
+              <span className="rs-mode">
+                {demo ? "Demonstration bench" : mode === "exam" ? "Exam" : "Practice"}
+              </span>
             </p>
             <h1 id="rs-title" className="rs-title">
               Ohm's law (V–I)
@@ -165,7 +177,7 @@ export function Results({ mode, sheet, checks, record, benchOhm, onAgain, onWatc
           </section>
 
           <div className="rs-side">
-            <section className="rs-card" aria-labelledby="rs-check">
+            <section className="rs-card" aria-labelledby="rs-check" data-testid="results-check">
               <h2 id="rs-check" className="rs-h2">
                 Check against your apparatus
               </h2>
@@ -224,10 +236,20 @@ export function Results({ mode, sheet, checks, record, benchOhm, onAgain, onWatc
 
             <div className="rs-foot">
               {record.graph && <GraphThumb graph={record.graph} />}
-              <button type="button" className="xp-btn" onClick={onWatch}>
+              <button
+                type="button"
+                className="xp-btn"
+                onClick={onWatch}
+                data-testid="results-watch-again"
+              >
                 Watch the demonstration again
               </button>
-              <button type="button" className="xp-btn xp-btn-primary" onClick={onAgain}>
+              <button
+                type="button"
+                className="xp-btn xp-btn-primary"
+                onClick={onAgain}
+                data-testid="results-new-bench"
+              >
                 Try again on a new bench
               </button>
             </div>
