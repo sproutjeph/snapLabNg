@@ -18,11 +18,14 @@ import {
   BENCH_SHOT,
   frameCorners,
   freeArea,
+  phoneBenchCorners,
+  restBounds,
   SHOT_FOR_POSE,
   STAGE_SHOT_NAMES,
   type StageShotName,
   shotForPose,
   stageShot,
+  WATCH_READINGS_SHOT,
 } from "./shots";
 
 // The stage's named shots (docs/plans/wave-2-lean.md, 2a-stage; the user's Oct 30 review). No
@@ -190,6 +193,14 @@ describe("the stage's named shots", () => {
         height,
       );
       expect(close.w, s.name).toBeGreaterThan(bench.w * 1.5);
+      // Layout v4: also against the bench as the stage shows it, fitted to the free area.
+      const shown = dialPx(
+        lookCamera(stageShot("bench", covered, width, height, s.w < s.h), covered, width, height),
+        "ammeter",
+        width,
+        height,
+      );
+      expect(close.w, `${s.name}, the bench as shown`).toBeGreaterThan(shown.w * 1.5);
       // A slightly tighter shot would cut into the paper round the cases: the shot is the
       // tightest that keeps the cases and their margin in view.
       const shot = stageShot("meters", covered, width, height);
@@ -205,6 +216,66 @@ describe("the stage's named shots", () => {
             q.y > free.top + free.height + 2,
         );
       expect(out, `${s.name}: 3% tighter still fits, so the shot is not the tightest`).toBe(true);
+    }
+  });
+});
+
+describe("the bench shots of layout v4 (docs/plans/beauty-pass.md B2)", () => {
+  /** The bench's screen height in px over the stage's (the free area's) height. */
+  function phoneBenchShare(caption: boolean): number {
+    const w = 390;
+    const h = 844;
+    const covered = playerCovered(w, h, { guide: "peek", caption });
+    const shot = stageShot("bench", covered, w, h, true);
+    const cam = lookCamera(shot, covered, w, h);
+    const ys = phoneBenchCorners().map(
+      ([x, y, z]) => toPx(cam, new THREE.Vector3(x, y, z), w, h).y,
+    );
+    return (Math.max(...ys) - Math.min(...ys)) / freeArea(covered, w, h).height;
+  }
+
+  it("frames the phone's bench taller than the old strip", () => {
+    // Before B2 the bench filled 25.5% of the stage's height at 390 x 844 (24% with no caption).
+    // Layout v4 is deeper, with the leads lying in front: 37.6% at the stage's 41 degree look.
+    // The plan's 45% wants the steeper portrait look (LookCamera's 64 degrees) for this shot,
+    // which LookShot cannot ask for yet (B2 report, "Needs from lead").
+    expect(phoneBenchShare(true)).toBeGreaterThanOrEqual(0.37);
+    expect(phoneBenchShare(false)).toBeGreaterThanOrEqual(0.35);
+  });
+
+  it("holds the leads lying at rest, and every nut, inside the bench shot on a laptop and a phone", () => {
+    const r = restBounds();
+    const rest = [r.x0, r.x1].flatMap((x) =>
+      [r.z0, r.z1].flatMap((z) => [0, r.h].map((y) => new THREE.Vector3(x, y, z))),
+    );
+    for (const s of SCREENS) {
+      const { width, height } = canvasFor(s.w, s.h);
+      const covered = playerCovered(s.w, s.h, { guide: "peek" });
+      const portrait = s.w < s.h;
+      const shot = stageShot("bench", covered, width, height, portrait);
+      const cam = lookCamera(shot, covered, width, height);
+      const free = freeArea(covered, width, height);
+      for (const p of rest) {
+        const q = toPx(cam, p, width, height);
+        expect(q.x, s.name).toBeGreaterThanOrEqual(free.left - 1e-6);
+        expect(q.x, s.name).toBeLessThanOrEqual(free.left + free.width + 1e-6);
+        expect(q.y, s.name).toBeGreaterThanOrEqual(free.top - 1e-6);
+        expect(q.y, s.name).toBeLessThanOrEqual(free.top + free.height + 1e-6);
+      }
+    }
+  });
+
+  it("a readings beat in Watch uses the loupe shot: the stage holds its shot, the loupe comes close", () => {
+    // Watch: the bench on a laptop, the box and key (which hold both meters) on a phone.
+    expect(shotForPose("readings", false, true)).toBe("bench");
+    expect(shotForPose("readings", true, true)).toBe("boxKey");
+    expect(WATCH_READINGS_SHOT).toEqual({ laptop: "bench", phone: "boxKey" });
+    // Practise reads through the meters shot, as before; Watch's other poses are unchanged.
+    expect(shotForPose("readings", false)).toBe("meters");
+    for (const pose of ["bench", "connect", "wire", "box"]) {
+      for (const portrait of [false, true]) {
+        expect(shotForPose(pose, portrait, true)).toBe(shotForPose(pose, portrait));
+      }
     }
   });
 });

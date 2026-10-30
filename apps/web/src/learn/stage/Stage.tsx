@@ -43,6 +43,7 @@ import {
   stageFocusIds,
 } from "./frameloop";
 import type { DropSlot } from "./motion";
+import { RestLeads } from "./RestLeads";
 import {
   BENCH_DRAG_DEG,
   BENCH_DRAG_DEG_PER_PX,
@@ -138,10 +139,13 @@ function StageCamera({
   covered,
   loop,
   pose,
+  watch,
 }: {
   covered: StageProps["covered"];
   loop: StageLoop;
   pose: string | undefined;
+  /** The demonstration: a reading takes the loupe, not a shot of its own (shots.ts). */
+  watch: boolean;
 }) {
   const width = useThree((s) => s.size.width);
   const height = useThree((s) => s.size.height);
@@ -155,7 +159,7 @@ function StageCamera({
   const wasPortrait = useRef(false);
   const portrait = isPortrait(c, width, height, wasPortrait.current);
   wasPortrait.current = portrait;
-  const name = shotForPose(pose, portrait);
+  const name = shotForPose(pose, portrait, watch);
   // A copy the drag may turn: LookCamera reads its shot every frame, so turning this one object
   // turns the camera without a React render per pointer move.
   const shot = useMemo<LookShot>(
@@ -524,7 +528,7 @@ export function Stage({
       gl={{ antialias: true }}
     >
       <LookTier.Provider value={quality}>
-        <StageCamera covered={covered} loop={loop} pose={pose} />
+        <StageCamera covered={covered} loop={loop} pose={pose} watch={practical === "watch"} />
         <LookLights shadowsDirty={shadowsDirty} />
         <LookGround />
         <Blobs motion={motion} />
@@ -544,6 +548,12 @@ export function Stage({
             tray={false}
             interactive={practical !== "watch"}
             {...(motion ? { drops: motion.parts } : {})}
+          />
+          <RestLeads
+            key={`rest-${identityKey(bench)}`}
+            bench={bench}
+            quality={quality}
+            motion={motion}
           />
           <BenchWiring
             key={`wiring-${identityKey(bench)}`}

@@ -7,16 +7,27 @@ import { getLeadCurve } from "../../apparatus/ohms-law/Lead";
 import { TERMINAL_PART } from "../../apparatus/ohms-law/layout";
 import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
-import { KEY_TOGGLE_AT, type LeadPhase, leadPhaseInto, partsEnteredBefore } from "../script/timing";
+import { type LeadPhase, leadPhaseInto, partsEnteredBefore } from "../script/timing";
 import { useTerminalRegistry } from "../terminals";
 import type { OhmsLawBench, PartId, TerminalId } from "../types";
 import { chipTarget, forgetLead, HINT_TEXT } from "../wiring/leadPick";
-import { type DropSlot, dropAt, entranceOrder, inOutCubic, SHAKE_S, springStep } from "./motion";
+import {
+  actTaps,
+  type DropSlot,
+  dropAt,
+  dropFrom,
+  entranceOrder,
+  inOutCubic,
+  leadDropStartS,
+  SHAKE_S,
+  springStep,
+} from "./motion";
 import {
   chipSpecAt,
   clearBench,
   DROP_SLOTS,
   entranceFrame,
+  fillBench,
   type StageMotion,
   stageBusy,
 } from "./stageMotion";
@@ -104,7 +115,6 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     epoch: -1,
     t: 0,
     tapped: 0,
-    keyTapped: false,
     entered: new Set<PartId>() as ReadonlySet<PartId>,
     /** Where each of this beat's entering parts falls in the drop order. */
     dropIndex: new Map<DropSlot, number>(),
@@ -129,10 +139,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       dt = Math.max(0, Math.min(dt, (m.freezeAtS - k.t) / director.state.speed));
     }
     if (!director) {
-      for (const s of DROP_SLOTS) {
-        m.parts[s].heightM = 0;
-        m.parts[s].k = 1;
-      }
+      fillBench(m);
       m.busy = false;
       m.moving = false;
       return;
@@ -151,7 +158,6 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       k.epoch = m.epoch;
       k.t = 0;
       k.tapped = 0;
-      k.keyTapped = false;
       k.entered = partsEnteredBefore(script, s.beat);
       k.dropIndex.clear();
       const act = beat?.act;
@@ -170,12 +176,12 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     }
 
     // ---- The entrance: under the question paper, parts land as the paper names them (or on the
-    // timed drop); in Watch, in turn on the enter beat, unless the paper's entrance has already put
-    // them down; Practise and Exam start with a full bench ----
+    // timed drop), then the leads one by one; in Watch, in turn on the enter beat, unless the
+    // paper's entrance has already put them down; Practise and Exam start with a full bench ----
     let dropping = false;
     const entrance = m.entrance;
     if (entrance.on) {
-      dropping = entranceFrame(entrance, order, dt, m.parts);
+      dropping = entranceFrame(entrance, order, dt, m.parts, m.restLeads);
     } else if (watch && !s.finished) {
       clearBench(m);
       for (const slot of DROP_SLOTS) {
@@ -189,11 +195,21 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
           if (pose.k > 0 && pose.k < 1) dropping = true;
         }
       }
-    } else {
-      for (const slot of DROP_SLOTS) {
-        m.parts[slot].heightM = 0;
-        m.parts[slot].k = 1;
+      // The leads follow the enter beat's parts, one by one, and lie in place after it.
+      const entering = k.dropIndex.size;
+      for (let j = 0; j < m.restLeads.length; j++) {
+        const pose = m.restLeads[j];
+        if (!pose) continue;
+        if (entrance.landed || (entering === 0 && k.entered.size > 0)) {
+          pose.heightM = 0;
+          pose.k = 1;
+        } else if (entering > 0) {
+          dropFrom(k.t, leadDropStartS(j, entering), pose);
+          if (pose.k > 0 && pose.k < 1) dropping = true;
+        }
       }
+    } else {
+      fillBench(m);
     }
 
     // ---- The actor's hand: the lead it draws and the pen nib ----
@@ -203,22 +219,20 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     m.lead.to = null;
     m.lead.drawn = 1;
     m.nib.target = null;
+    // The nib taps each terminal of a lead, the key as it moves, and the box as a plug moves.
+    const taps = act ? actTaps(act.kind, s.actT) : 0;
+    if (taps > k.tapped) {
+      m.nib.tap++;
+      k.tapped = taps;
+    }
     if (act?.kind === "lead") {
       const ph = leadPhaseInto(s.actT, k.phase);
       m.lead.from = act.from;
       m.lead.to = act.to;
       m.lead.drawn = inOutCubic(ph.drawn);
-      if (ph.tapped > k.tapped) {
-        m.nib.tap++;
-        k.tapped = ph.tapped;
-      }
       if (s.actT < 1) m.nib.target = ph.nibAt === "from" ? act.from : act.to;
     } else if (act?.kind === "key" && s.actT < 1) {
       m.nib.target = PART_ANCHOR.key;
-      if (s.actT >= KEY_TOGGLE_AT && !k.keyTapped) {
-        k.keyTapped = true;
-        m.nib.tap++;
-      }
     } else if (act?.kind === "plug" && s.actT < 1) {
       m.nib.target = PART_ANCHOR.box;
     }

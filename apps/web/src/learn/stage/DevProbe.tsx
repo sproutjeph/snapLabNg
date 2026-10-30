@@ -1,7 +1,7 @@
 import { useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import * as THREE from "three";
-import { getLeadCurve } from "../../apparatus/ohms-law/Lead";
+import { getLeadCurve, restBookOf } from "../../apparatus/ohms-law/Lead";
 import { useTerminalRegistry } from "../terminals";
 import type { OhmsLawBench, TerminalId } from "../types";
 
@@ -14,6 +14,13 @@ export interface StageProbe {
   /** The middle of bench lead `i` (in the order of visual.leads), in page px, or null. */
   leadMid(i: number): [number, number] | null;
   leads(): number;
+  /** The rest places (apparatus/ohms-law/Lead.tsx RestBook): which lead was lifted from each. */
+  rest(): {
+    on: number;
+    taken: (string | null)[];
+    held: number;
+    slotOf: Array<[string, { slot: number; flies: boolean }]>;
+  };
 }
 
 declare global {
@@ -46,6 +53,10 @@ export function DevProbe({ bench }: { bench: OhmsLawBench }) {
         return toPage(_v);
       },
       leads: () => bench.visual.current.leads.length,
+      rest: () => {
+        const r = restBookOf(bench.visual);
+        return { on: r.on, taken: [...r.taken], held: r.held, slotOf: [...r.slotOf.entries()] };
+      },
     };
     return () => {
       delete window.__SNAPLAB_STAGE__;

@@ -475,34 +475,58 @@ export function makeCrocClipGeometries(): {
     placeAt(new THREE.BoxGeometry(0.011, 0.026, 0.0085), 0, 0.021, 0),
   ]);
   const jawParts: THREE.BufferGeometry[] = [];
-  for (const side of [-1, 1]) {
-    // A tapering jaw: a flat plate leaning inward toward the tip, with teeth on its inside edge.
-    jawParts.push(
-      placeAt(
-        new THREE.BoxGeometry(0.0022, 0.03, 0.0075),
-        side * 0.0036,
-        0.049,
-        0,
-        0,
-        0,
-        -side * 0.07,
-      ),
-    );
-    for (let i = 0; i < 4; i++) {
-      jawParts.push(
-        placeAt(
-          new THREE.BoxGeometry(0.0016, 0.0022, 0.0075),
-          side * (0.0016 - i * 0.0004),
-          0.044 + i * 0.0065,
-          0,
-          0,
-          0,
-          0,
-        ),
-      );
-    }
-  }
+  for (const side of [-1, 1]) jawParts.push(crocJaw(side));
   return { boot, jaws: mergeAll(jawParts) };
+}
+
+/** A croc-clip jaw's sizes, metres: root and tip along y, its outer edge, and its teeth. */
+const JAW = {
+  root: 0.034,
+  tip: 0.064,
+  outerRoot: 0.0047,
+  outerTip: 0.0034,
+  /** The inner edge: tooth roots and tooth points (x), and how many teeth. */
+  toothRoot: 0.0024,
+  toothPoint: 0.001,
+  teeth: 6,
+  depth: 0.0075,
+  bevel: 0.0004,
+} as const;
+
+/**
+ * One jaw of a crocodile clip, on the `side` (±1) of the clip's axis: a stamped steel plate,
+ * tapering from its root to a blunt tip, with a row of saw teeth along its inside edge and its
+ * edges bevelled, so the ink pass draws the teeth and the light catches the edges. Never crosses
+ * the axis (TrayParts splits the two jaws there).
+ */
+function crocJaw(side: number): THREE.BufferGeometry {
+  const s = new THREE.Shape();
+  const x = (v: number) => side * v;
+  // The root's outer corner is chamfered, as a stamped jaw's is where it meets the hinge.
+  s.moveTo(x(JAW.outerRoot - 0.0012), JAW.root);
+  s.lineTo(x(JAW.outerRoot), JAW.root + 0.0015);
+  s.lineTo(x(JAW.outerTip), JAW.tip - 0.002);
+  s.lineTo(x(JAW.outerTip - 0.0008), JAW.tip);
+  s.lineTo(x(JAW.toothRoot), JAW.tip);
+  // The teeth, from the tip back to the root: each a point toward the axis and back.
+  const span = JAW.tip - 0.003 - (JAW.root + 0.003);
+  for (let i = 0; i < JAW.teeth; i++) {
+    const y0 = JAW.tip - 0.003 - (span * i) / JAW.teeth;
+    s.lineTo(x(JAW.toothPoint), y0 - span / JAW.teeth / 2);
+    s.lineTo(x(JAW.toothRoot), y0 - span / JAW.teeth);
+  }
+  s.lineTo(x(JAW.toothRoot), JAW.root);
+  s.lineTo(x(JAW.outerRoot - 0.0012), JAW.root);
+  const geo = new THREE.ExtrudeGeometry(s, {
+    depth: JAW.depth - 2 * JAW.bevel,
+    bevelEnabled: true,
+    bevelThickness: JAW.bevel,
+    bevelSize: JAW.bevel,
+    bevelSegments: 1,
+    curveSegments: 1,
+  });
+  geo.translate(0, 0, -(JAW.depth / 2 - JAW.bevel));
+  return geo;
 }
 
 // ---- Where the cable may not go ----------------------------------------------------------
@@ -554,14 +578,20 @@ export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(
 /** A cable slopes from a box's top edge down to the desk over this distance. */
 const FOOT_RAMP_M = 0.015;
 
-/** The height at (x, z) a cable must stay above: a box's top, ramping to the desk beside it. */
-export function floorAt(x: number, z: number): number {
+/**
+ * The height at (x, z) a cable must stay above: a box's top, ramping to the desk beside it over
+ * `ramp` metres. A routed lead (Lead.tsx), laid on purpose beside a part, passes 0: only a part's
+ * own top lifts it, so a lead tucked along a meter's ledge is not thrown up the case's front.
+ */
+export function floorAt(x: number, z: number, ramp = FOOT_RAMP_M): number {
   let y = 0;
   for (const f of BENCH_FOOTPRINTS) {
     const dx = Math.max(Math.abs(x - f.cx) - f.hx, 0);
     const dz = Math.max(Math.abs(z - f.cz) - f.hz, 0);
     const d = Math.hypot(dx, dz);
-    if (d < FOOT_RAMP_M) y = Math.max(y, f.top * (1 - d / FOOT_RAMP_M));
+    if (ramp <= 0) {
+      if (d === 0) y = Math.max(y, f.top);
+    } else if (d < ramp) y = Math.max(y, f.top * (1 - d / ramp));
   }
   return y;
 }

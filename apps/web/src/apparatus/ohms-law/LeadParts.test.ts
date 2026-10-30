@@ -1,7 +1,16 @@
+import { DIAGRAM_LEADS, TERMINAL_IDS, type TerminalId } from "@snaplab/engine";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { QualityTier } from "../meter-bridge/types";
-import { shapeCable } from "./Lead";
+import {
+  METER_CASES,
+  ROUTE_POINTS,
+  restBookOf,
+  returnRest,
+  routeCable,
+  shapeCable,
+  takeRest,
+} from "./Lead";
 import {
   BENCH_FOOTPRINTS,
   CABLE_SEAT_M,
@@ -16,6 +25,7 @@ import {
   PLUG_RADIUS_M,
   revolve,
 } from "./LeadParts";
+import { LEAD_REST, NUT_SEAT_M, nutFoot } from "./layout";
 import {
   HIT_MAX_M,
   HIT_MIN_M,
@@ -471,5 +481,98 @@ describe("the terminal nut", () => {
     expect(HIT_MIN_M).toBeGreaterThanOrEqual(0.02);
     expect(HIT_MAX_M).toBeGreaterThanOrEqual(0.025);
     expect(HIT_TALL).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("the bench's leads (docs/plans/beauty-pass.md B2)", () => {
+  const WIRE = { startCm: 25, lengthCm: 60 };
+  const seat = (id: TerminalId) => {
+    const [x, y, z] = nutFoot(id, WIRE);
+    return new THREE.Vector3(x, y + NUT_SEAT_M + CABLE_SEAT_M, z);
+  };
+
+  it("never runs a lead down the side of a meter case: past one, it goes over the top", () => {
+    // The strip beside each side face of a case, out to 3 cm, below the case's top.
+    const STRIP_M = 0.03;
+    const sideLength = (pts: THREE.Vector3[], f: (typeof METER_CASES)[number]) => {
+      let len = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1];
+        const b = pts[i];
+        if (!a || !b) continue;
+        const m = a.clone().add(b).multiplyScalar(0.5);
+        const out = Math.abs(m.x - f.cx) - f.hx;
+        const beside = out > 0 && out < STRIP_M && Math.abs(m.z - f.cz) < f.hz && m.y < f.top;
+        if (beside) len += a.distanceTo(b);
+      }
+      return len;
+    };
+    const diagram = (a: TerminalId, b: TerminalId) =>
+      DIAGRAM_LEADS.some(([p, q]) => (p === a && q === b) || (p === b && q === a));
+    for (const from of TERMINAL_IDS) {
+      for (const to of TERMINAL_IDS) {
+        if (from === to) continue;
+        for (const bulge of [-1, 0, 1]) {
+          const routed = Array.from({ length: ROUTE_POINTS }, () => new THREE.Vector3());
+          const plain = Array.from({ length: 11 }, () => new THREE.Vector3());
+          const isRouted = routeCable(routed, plain, from, to, seat(from), seat(to), bulge);
+          if (!diagram(from, to)) {
+            // Any other lead takes the plain droop, straight across: no detour round a case.
+            expect(isRouted, `${from}→${to}`).toBe(false);
+            const droop = Array.from({ length: 11 }, () => new THREE.Vector3());
+            shapeCable(droop, seat(from), seat(to), bulge);
+            for (let i = 0; i < 11; i++) {
+              const p = plain[i];
+              const q = droop[i];
+              expect(p && q ? p.distanceTo(q) : 1, `${from}→${to} point ${i}`).toBe(0);
+            }
+            continue;
+          }
+          const ctrl = isRouted ? routed : plain;
+          const pts = new THREE.CatmullRomCurve3(ctrl, false, "centripetal").getPoints(200);
+          for (const f of METER_CASES) {
+            const along = sideLength(pts, f);
+            expect(along, `${from}→${to}, bulge ${bulge}, beside the ${f.slot}`).toBeLessThan(0.03);
+          }
+        }
+      }
+    }
+  });
+
+  it("lifts a lead from a rest place of its colour when it is made, and puts it back when removed", () => {
+    const rest = restBookOf({ current: {} as never });
+    rest.on = 1;
+    const red = { id: "l1", a: "E+" as const, b: "K1" as const, colour: "red" as const };
+    const black = { id: "l2", a: "K2" as const, b: "A+" as const, colour: "black" as const };
+    takeRest(rest, red, 10);
+    takeRest(rest, black, 11);
+    const redSlot = rest.slotOf.get("l1")?.slot ?? -1;
+    const blackSlot = rest.slotOf.get("l2")?.slot ?? -1;
+    expect(LEAD_REST[redSlot]?.colour).toBe("red");
+    expect(LEAD_REST[blackSlot]?.colour).toBe("black");
+    expect(rest.slotOf.get("l1")?.flies).toBe(true);
+    expect(rest.taken[redSlot]).toBe("l1");
+    // Removed: its place is free again, and it flies home from the nuts it joined.
+    returnRest(rest, "l1", "E+", "K1", 12);
+    expect(rest.taken[redSlot]).toBeNull();
+    expect(rest.backAtS[redSlot]).toBe(12);
+    expect([rest.backA[redSlot], rest.backB[redSlot]]).toEqual(["E+", "K1"]);
+    // Made again: the same place, the first free red one.
+    takeRest(rest, { ...red, id: "l3" }, 13);
+    expect(rest.slotOf.get("l3")?.slot).toBe(redSlot);
+  });
+
+  it("does not fly a lead she carried: made from her hand's nut, it takes her hand's place", () => {
+    const rest = restBookOf({ current: {} as never });
+    rest.on = 1;
+    rest.hand.slot = 2;
+    rest.hand.from = "R2";
+    rest.hand.atS = 20;
+    takeRest(rest, { id: "h", a: "R2", b: "X", colour: "red" }, 20.2);
+    expect(rest.slotOf.get("h")).toEqual({ slot: 2, flies: false });
+    // With no rest places on this bench (no RestLeads layer), a lead takes none.
+    const none = restBookOf({ current: {} as never });
+    takeRest(none, { id: "n", a: "R2", b: "X", colour: "red" }, 1);
+    expect(none.slotOf.size).toBe(0);
   });
 });

@@ -1,10 +1,19 @@
+import { LEAD_REST_COUNT } from "../../apparatus/ohms-law/layout";
 import type { NibTarget } from "../../apparatus/ohms-law/PenNib";
 import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
 import type { Beat, DirectorState } from "../script/types";
 import type { TerminalId } from "../types";
 import { createLeadPicks, type LeadPicks } from "../wiring/leadPick";
-import { DROP_HEIGHT_M, type DropPose, type DropSlot, dropFrom, dropStartS } from "./motion";
+import {
+  DROP_HEIGHT_M,
+  type DropPose,
+  type DropSlot,
+  dropFrom,
+  dropStartS,
+  LEAD_DROP_GAP_S,
+  LEAD_DROP_STAGGER_S,
+} from "./motion";
 
 // What the stage's choreographer (Choreo.tsx) writes each frame and the parts read in their own
 // useFrame: one plain object, made once per page and mutated in place, so nothing re-renders
@@ -31,6 +40,8 @@ export type ChipSink = (
 export interface StageMotion {
   /** Each part's drop: height above its place, and k (0 = not on the bench yet, 1 = landed). */
   parts: Record<DropSlot, DropPose>;
+  /** Each lead's drop into its rest place (layout.ts LEAD_REST), after the parts. */
+  restLeads: DropPose[];
   /** The lead the actor is drawing (Watch, or Show me), with how much of it is drawn. */
   lead: { from: TerminalId | null; to: TerminalId | null; drawn: number };
   /** The pen nib: where it points, its tap counter, and the playback speed. */
@@ -79,7 +90,9 @@ export interface Entrance {
   namedAtS: Partial<Record<DropSlot, number>>;
   /** Entrance seconds the timed drop counts from (a stopped reading restarts it). */
   timedFromS: number;
-  /** Every part is down: the first Watch after the paper starts with the bench full. */
+  /** Entrance seconds at which the last part landed (the leads drop after it), or null. */
+  partsDownS: number | null;
+  /** Every part and lead is down: the first Watch after the paper starts with the bench full. */
   landed: boolean;
 }
 
@@ -90,7 +103,15 @@ export { DROP_SLOTS };
 const isDropSlot = (p: string): p is DropSlot => (DROP_SLOTS as readonly string[]).includes(p);
 
 export function createEntrance(): Entrance {
-  return { on: false, t: 0, byVoice: false, namedAtS: {}, timedFromS: 0, landed: false };
+  return {
+    on: false,
+    t: 0,
+    byVoice: false,
+    namedAtS: {},
+    timedFromS: 0,
+    partsDownS: null,
+    landed: false,
+  };
 }
 
 /** A reading aloud began: with speech that can be heard, the parts wait to be named. */
@@ -114,14 +135,16 @@ export function entranceNamed(e: Entrance, part: string): boolean {
 }
 
 /**
- * One frame of the entrance: advances its clock by `dtS` and writes each part's drop. `order` is
- * the timed drop's order (lowest on screen first). Returns whether a part is mid-drop.
+ * One frame of the entrance: advances its clock by `dtS` and writes each part's drop, then, once
+ * every part is down, each lead's into its rest place, one by one (`leads`, when given). `order` is
+ * the timed drop's order (lowest on screen first). Returns whether a part or lead is mid-drop.
  */
 export function entranceFrame(
   e: Entrance,
   order: readonly DropSlot[],
   dtS: number,
   parts: Record<DropSlot, DropPose>,
+  leads: readonly DropPose[] = [],
 ): boolean {
   e.t += dtS;
   let dropping = false;
@@ -139,7 +162,19 @@ export function entranceFrame(
     if (pose.k > 0 && pose.k < 1) dropping = true;
     if (pose.k >= 1) down++;
   }
-  e.landed = down === order.length;
+  if (down === order.length && e.partsDownS === null) e.partsDownS = e.t;
+  let leadsDown = 0;
+  for (let j = 0; j < leads.length; j++) {
+    const pose = leads[j];
+    if (!pose) continue;
+    if (e.partsDownS === null) {
+      pose.heightM = DROP_HEIGHT_M;
+      pose.k = 0;
+    } else dropFrom(e.t, e.partsDownS + LEAD_DROP_GAP_S + j * LEAD_DROP_STAGGER_S, pose);
+    if (pose.k > 0 && pose.k < 1) dropping = true;
+    if (pose.k >= 1) leadsDown++;
+  }
+  e.landed = down === order.length && leadsDown === leads.length;
   return dropping;
 }
 
@@ -148,6 +183,7 @@ export function createStageMotion(): StageMotion {
   for (const s of DROP_SLOTS) parts[s] = { heightM: 0, k: 1 };
   return {
     parts,
+    restLeads: Array.from({ length: LEAD_REST_COUNT }, () => ({ heightM: 0, k: 1 })),
     lead: { from: null, to: null, drawn: 1 },
     nib: { target: null, tap: 0, rate: 1 },
     marks: { targets: [], hover: null, shake: [], shakeAtS: -1 },
@@ -225,5 +261,21 @@ export function clearBench(m: StageMotion): void {
   for (const s of DROP_SLOTS) {
     m.parts[s].heightM = DROP_HEIGHT_M;
     m.parts[s].k = 0;
+  }
+  for (const pose of m.restLeads) {
+    pose.heightM = DROP_HEIGHT_M;
+    pose.k = 0;
+  }
+}
+
+/** Every part and lead in its place (Practise, Exam, and Watch past the entrance). */
+export function fillBench(m: StageMotion): void {
+  for (const s of DROP_SLOTS) {
+    m.parts[s].heightM = 0;
+    m.parts[s].k = 1;
+  }
+  for (const pose of m.restLeads) {
+    pose.heightM = 0;
+    pose.k = 1;
   }
 }

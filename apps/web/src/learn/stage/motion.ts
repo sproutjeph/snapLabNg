@@ -5,6 +5,7 @@ import {
   BEAT_GAP_S,
   ENTER_DROP_S,
   ENTER_STAGGER_S,
+  KEY_TOGGLE_AT,
   LEAD_S,
   LEAD_TAP_AT,
   NIB_TRAVEL_S,
@@ -16,7 +17,8 @@ import { STAGE_AZIMUTH_DEG } from "./shots";
 // in "What we learned" 3). Pure numbers and curves, so the tests check them without a renderer;
 // learn/stage/Choreo.tsx plays them each frame. Screen choices, not science.
 //   - The entrance: 0.9 s after Watch starts, each part drops 2.2 BC101 units (0.22 m) with a
-//     0.4 s outBounce, 0.10 s apart, lowest on screen (nearest her) first.
+//     0.4 s outBounce, 0.10 s apart, lowest on screen (nearest her) first; then the seven leads
+//     drop into their rest places one by one, 0.2 s apart, all down by about 3.5 s.
 //   - A lead: the nib taps both terminals (the director's LEAD_TAP_AT), then the lead draws
 //     itself over the last 0.6 s with an inOut cubic. The one tween past BC101's 0.4 s cap.
 //   - The callout chip springs to each beat's anchor at the beat's start, in real time (speed
@@ -112,6 +114,40 @@ export function dropAt(t: number, i: number, out: DropPose): DropPose {
 /** Seconds from the entrance beat's start until the last of `n` parts has landed. */
 export function entranceEndS(n: number): number {
   return dropStartS(Math.max(0, n - 1)) + ENTER_DROP_S;
+}
+
+/**
+ * The leads lie on the bench as apparatus (docs/plans/beauty-pass.md, Step 0 item 2): after the
+ * last part has landed they drop into their rest places one by one, LEAD_DROP_STAGGER_S apart,
+ * each with the parts' drop. The whole entrance, parts and leads, is over within ENTRANCE_MAX_S.
+ */
+export const LEAD_DROP_GAP_S = 0.1;
+export const LEAD_DROP_STAGGER_S = 0.2;
+export const ENTRANCE_MAX_S = 7;
+
+/** When the j-th lead leaves the sky, in seconds from the entrance's start, after `parts` parts. */
+export function leadDropStartS(j: number, parts: number): number {
+  return entranceEndS(parts) + LEAD_DROP_GAP_S + j * LEAD_DROP_STAGGER_S;
+}
+
+/** Seconds from the entrance's start until the last of `leads` leads has landed. */
+export function fullEntranceEndS(parts: number, leads: number): number {
+  return leads > 0 ? leadDropStartS(leads - 1, parts) + ENTER_DROP_S : entranceEndS(parts);
+}
+
+/** Where in a plug beat's action (0..1) the nib taps the box: as the plug moves, after its travel. */
+export const PLUG_TAP_AT = 0.5;
+
+/**
+ * How many times the pen nib has tapped by `actT` (0..1) into an action: a lead's two terminals
+ * (LEAD_TAP_AT), the key as it moves (KEY_TOGGLE_AT), and a plug as it is pulled or pushed
+ * (PLUG_TAP_AT). Choreo taps once each time this rises.
+ */
+export function actTaps(kind: string | undefined, actT: number): number {
+  if (kind === "lead") return (actT >= LEAD_TAP_AT[0] ? 1 : 0) + (actT >= LEAD_TAP_AT[1] ? 1 : 0);
+  if (kind === "key") return actT >= KEY_TOGGLE_AT ? 1 : 0;
+  if (kind === "plug") return actT >= PLUG_TAP_AT ? 1 : 0;
+  return 0;
 }
 
 /** inOut cubic: the lead's draw-on. */

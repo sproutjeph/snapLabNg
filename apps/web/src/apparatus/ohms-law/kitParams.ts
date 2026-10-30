@@ -215,23 +215,24 @@ interface MacroLead {
 const LAID = { reach: 0.35 } as const;
 
 /**
- * Each nut's lead, for layout v3 (layout.ts: meters in front, box, key and cells in the middle row,
- * the wire board behind). The front row's nuts (A+, A-, V+, V-) lead toward her over bare paper,
- * splayed away from each other. In the middle row, the box's leave to her left and the cells' to
- * her right, past the meters. The key stands behind the gap between the meters, which is narrower
- * than a cable's bulge band, so its nuts lead back over the wire board (MACRO_RESTS_ON draws it)
- * to the paper behind it. X and Y run out over the back of the board.
+ * Each nut's lead, for layout v4 (layout.ts: the series row of box, ammeter, key and cells nearest
+ * her, the wire board behind it, the voltmeter behind the board). The row's nuts lead toward her
+ * over the bare paper where the leads lie before they are connected, the ammeter's − and the box's
+ * clear of the box's corner. X leads back and to her left, past the voltmeter, and Y back and to
+ * her left, between the voltmeter and the tray. The voltmeter's nuts face the board 5 cm away,
+ * between it and their own case, so they lead toward her over the board (MACRO_RESTS_ON draws it)
+ * to the paper between the board and the row.
  */
 const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
   "E+": { deg: 90, ...LAID },
   "E-": { deg: 60, ...LAID },
-  K1: { deg: 270, ...LAID },
-  K2: { deg: 250, ...LAID },
+  K1: { deg: 60, ...LAID },
+  K2: { deg: 120, ...LAID },
   "A+": { deg: 60, ...LAID },
-  "A-": { deg: 120, ...LAID },
-  "V+": { deg: 60, ...LAID },
-  "V-": { deg: 120, ...LAID },
-  R1: { deg: 120, ...LAID },
+  "A-": { deg: 90, ...LAID },
+  "V+": { deg: 90, ...LAID },
+  "V-": { deg: 90, ...LAID },
+  R1: { deg: 90, ...LAID },
   R2: { deg: 150, ...LAID },
   X: { deg: 300, ...LAID },
   Y: { deg: 330, ...LAID },
@@ -240,12 +241,12 @@ const MACRO_LEADS: Readonly<Record<TerminalId, MacroLead>> = {
 /**
  * The parts besides its own that a macro's cable lies on, so the shot draws them (faded, as the
  * leads shot draws the parts it joins) instead of hiding them and leaving the cable floating over
- * bare paper. Only the key's nuts need one (see MACRO_LEADS); kitParams.test.ts checks that no
- * hidden part lifts any of the twelve cables.
+ * bare paper. Only the voltmeter's nuts need one (see MACRO_LEADS); kitParams.test.ts checks that
+ * no hidden part lifts any of the twelve cables.
  */
 const MACRO_RESTS_ON: Readonly<Partial<Record<TerminalId, readonly BenchSlot[]>>> = {
-  K1: ["wire"],
-  K2: ["wire"],
+  "V+": ["wire"],
+  "V-": ["wire"],
 };
 
 /**
