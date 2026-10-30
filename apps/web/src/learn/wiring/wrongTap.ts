@@ -1,0 +1,41 @@
+import { correctionFor } from "../lessons/ohms-law/guide";
+import type { OhmsLawBench, TerminalId } from "../types";
+
+// Practise: a wrong tap (docs/plans/wave-2-lean.md, "The experience"). When she finishes a lead
+// that no accepted circuit has, or puts a meter the wrong way round, the two nuts shake for 0.3 s
+// and the voice says why, in words from the guide (correctionFor: no digits, no values). A lead
+// in any series order the engine accepts is not wrong, whatever the script's order.
+
+export interface WrongTapOptions {
+  /** The lead the current beat is waiting for, if it is a lead beat. */
+  expected(): readonly [TerminalId, TerminalId] | undefined;
+  /** A wrong lead was just made: the spoken line, and the two terminals it joined. */
+  onWrong(line: string, ends: readonly [TerminalId, TerminalId]): void;
+}
+
+/** Watches her bench for new leads and reports the wrong ones. Returns the unsubscribe. */
+export function watchWrongTaps(
+  bench: Pick<OhmsLawBench, "subscribe" | "visual">,
+  o: WrongTapOptions,
+): () => void {
+  let seen = new Set(bench.visual.current.leads.map((l) => l.id));
+  let before = bench.visual.current.leads.map((l) => [l.a, l.b] as const);
+  return bench.subscribe(() => {
+    const leads = bench.visual.current.leads;
+    const fresh = leads.filter((l) => !seen.has(l.id));
+    // One new lead is a tap that finished a lead; more at once is an undo or a reset, not a tap.
+    if (fresh.length === 1 && leads.length === before.length + 1) {
+      const l = fresh[0];
+      if (l) {
+        const expected = o.expected();
+        const line = correctionFor(
+          { from: l.a, to: l.b },
+          { leads: before, ...(expected ? { expected } : {}) },
+        );
+        if (line) o.onWrong(line, [l.a, l.b]);
+      }
+    }
+    seen = new Set(leads.map((l) => l.id));
+    before = leads.map((l) => [l.a, l.b] as const);
+  });
+}

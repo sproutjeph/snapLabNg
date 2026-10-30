@@ -1,14 +1,17 @@
 import { type ThreeEvent, useFrame } from "@react-three/fiber";
 import { DIAGRAM_LEADS } from "@snaplab/engine";
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { getLeadCurve, Lead, type LeadCurve } from "../../apparatus/ohms-law/Lead";
 import { LEAD_RADIUS_M } from "../../apparatus/ohms-law/LeadParts";
 import type { LabAudio } from "../../audio/labAudio";
 import { flowRate } from "../../lab/flow";
+import { inOutCubic, LEAD_DRAW_S } from "../stage/motion";
+import type { StageMotion } from "../stage/stageMotion";
 import { useTerminalRegistry } from "../terminals";
-import type { LeadColour, OhmsLawBench, OhmsLawVisualState } from "../types";
+import type { LeadColour, OhmsLawBench, OhmsLawVisualState, TerminalId } from "../types";
+import { TerminalHits, TerminalMarks } from "./TerminalMarks";
 
 // The wiring layer of the V–I bench (docs/plans/ohms-law-vi.md, "Wave 2 → Wiring"), used inside
 // the Canvas under a <TerminalProvider>. It steps the bench controller each frame, routes nut
@@ -23,6 +26,15 @@ export interface BenchWiringProps {
   deskSize?: readonly [number, number];
   /** Plays the over-range clack each time a needle slams a stop (the counters rise). */
   audio?: Pick<LabAudio, "needleSlam">;
+  /**
+   * The live stage's motion (learn/stage/Choreo.tsx): the lead the actor is drawing, the rings,
+   * the hovered nut and the shake. Without it, leads appear whole and nothing is ringed.
+   */
+  motion?: Pick<StageMotion, "lead" | "marks">;
+  /** False on the demonstration bench (Watch): taps on nuts and leads do nothing (default true). */
+  interactive?: boolean;
+  /** A lead she makes draws itself from her first tap over LEAD_DRAW_S (Practise). */
+  drawHers?: boolean;
 }
 
 /** Re-renders on every discrete bench change (leads, pending, mode). Never per frame. */
@@ -39,17 +51,32 @@ const DEFAULT_DESK = [2.4, 1.6] as const;
 /** A press and release on bare desk closer than this (CSS px) is a tap, not a camera drag. */
 const TAP_SLOP_PX = 8;
 
-export function BenchWiring({ bench, quality, deskSize = DEFAULT_DESK, audio }: BenchWiringProps) {
+export function BenchWiring({
+  bench,
+  quality,
+  deskSize = DEFAULT_DESK,
+  audio,
+  motion,
+  interactive = true,
+  drawHers = false,
+}: BenchWiringProps) {
   useBenchVersion(bench);
+  // When each lead first appeared (performance.now, seconds); leads there at mount count as old.
+  const [born] = useState(() => {
+    const m = new Map<string, number>();
+    for (const l of bench.visual.current.leads) m.set(l.id, Number.NEGATIVE_INFINITY);
+    return m;
+  });
   const slamsSeen = useRef(-1);
   const deskDown = useRef<{ x: number; y: number } | null>(null);
   const registry = useTerminalRegistry();
   const state = bench.visual;
 
   useEffect(() => {
+    if (!interactive) return;
     registry.setTapHandler((id) => bench.tapTerminal(id));
     return () => registry.setTapHandler(null);
-  }, [registry, bench]);
+  }, [registry, bench, interactive]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -113,6 +140,8 @@ export function BenchWiring({ bench, quality, deskSize = DEFAULT_DESK, audio }: 
   };
 
   const leads = state.current.leads;
+  const now = performance.now() / 1000;
+  for (const l of leads) if (!born.has(l.id)) born.set(l.id, now);
   return (
     <group>
       <mesh
@@ -125,14 +154,16 @@ export function BenchWiring({ bench, quality, deskSize = DEFAULT_DESK, audio }: 
         onPointerUp={onDeskUp}
       />
       {leads.map((l) => (
-        <Lead
+        <DrawnLead
           key={l.id}
           from={l.a}
           to={l.b}
           colour={l.colour}
           state={state}
           quality={quality}
-          onTap={() => bench.removeLead(l.id)}
+          motion={motion}
+          bornS={drawHers ? (born.get(l.id) ?? Number.NEGATIVE_INFINITY) : Number.NEGATIVE_INFINITY}
+          {...(interactive ? { onTap: () => bench.removeLead(l.id) } : {})}
         />
       ))}
       {pending ? (
@@ -147,7 +178,57 @@ export function BenchWiring({ bench, quality, deskSize = DEFAULT_DESK, audio }: 
       ) : null}
       <GhostLeads state={state} quality={quality} />
       <LeadFlowDots state={state} quality={quality} />
+      {motion ? <TerminalMarks marks={motion.marks} quality={quality} /> : null}
+      {motion && interactive ? <TerminalHits marks={motion.marks} /> : null}
     </group>
+  );
+}
+
+/**
+ * One of the bench's leads, drawn on: the actor's current lead follows the director's draw
+ * (motion.lead), a lead she has just made draws from her first tap over LEAD_DRAW_S, and every
+ * other lead is whole. The draw is read every frame through a ref-like object (Lead's `drawn`).
+ */
+function DrawnLead({
+  from,
+  to,
+  colour,
+  state,
+  quality,
+  motion,
+  bornS,
+  onTap,
+}: {
+  from: TerminalId;
+  to: TerminalId;
+  colour: LeadColour;
+  state: { current: OhmsLawVisualState };
+  quality: QualityTier;
+  motion: Pick<StageMotion, "lead"> | undefined;
+  bornS: number;
+  onTap?: () => void;
+}) {
+  const drawn = useMemo(
+    () => ({
+      get current(): number {
+        const a = motion?.lead;
+        if (a && a.from === from && a.to === to) return a.drawn;
+        if (!Number.isFinite(bornS)) return 1;
+        return inOutCubic((performance.now() / 1000 - bornS) / LEAD_DRAW_S);
+      },
+    }),
+    [motion, from, to, bornS],
+  );
+  return (
+    <Lead
+      from={from}
+      to={to}
+      colour={colour}
+      state={state}
+      quality={quality}
+      drawn={drawn}
+      {...(onTap ? { onTap } : {})}
+    />
   );
 }
 
