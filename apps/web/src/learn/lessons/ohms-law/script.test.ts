@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { emptyOhmsLawRecord } from "../../readings/record";
 import { plugMoves } from "../../script/actor";
 import { createDirector } from "../../script/createDirector";
+import { BASE_RATE } from "../../script/timing";
+import { ENTRANCE_MAX_S } from "../../stage/motion";
+import { estimateSpeechS } from "../../voice/chunk";
 import type { VoiceGuide } from "../../voice/types";
 import { createOhmsLawBench } from "../../wiring/bench";
 import { OHMS_LAW_LESSON } from "./lesson";
@@ -179,4 +182,14 @@ describe("ohms-law script", () => {
     expect(maxV * 5).toBeLessThanOrEqual(18);
     expect((maxV - minV) * 5).toBeGreaterThan(18 / 3);
   }, 240_000);
+
+  it("names the connecting leads on the enter beat, in speech that fits the 7 s entrance", () => {
+    // docs/plans/beauty-pass.md B2 item 7: parts, then leads, all down within 7 s; the line that
+    // introduces them is no longer (it was 20 words, about 8.3 s).
+    const enter = S.beats[0];
+    expect(enter?.act?.kind).toBe("enter");
+    const say = enter?.say ?? "";
+    expect(say).toMatch(/connecting leads/);
+    expect(estimateSpeechS(say, BASE_RATE)).toBeLessThanOrEqual(ENTRANCE_MAX_S);
+  });
 });

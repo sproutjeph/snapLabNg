@@ -119,9 +119,9 @@ function build(): Beat[] {
   add({
     id: "enter",
     stage: "identify",
-    // Short, so the first lead follows soon after the parts land (the question's own wording is on
-    // the paper; about 5 s spoken).
-    say: "Here is the apparatus: the cells, a plug key, an ammeter, a voltmeter, a resistance box and the wire XY.",
+    // Short, so the first lead follows soon after the parts and the leads land (the question's own
+    // wording is on the paper): under 7 s spoken, the entrance's length (docs/plans/beauty-pass.md B2).
+    say: "Here are the cells, plug key, ammeter, voltmeter, resistance box, wire XY and the connecting leads.",
     instruct: "Look at each part on the bench and find it in the diagram.",
     shot: "bench",
     act: { kind: "enter", parts: ["cells", "key", "ammeter", "voltmeter", "box", "wire"] },
