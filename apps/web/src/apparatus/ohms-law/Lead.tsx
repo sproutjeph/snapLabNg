@@ -117,6 +117,9 @@ function releaseLead(book: LeadBook, claim: { id: string | null }): void {
   claim.id = null;
 }
 
+/** The cable's ink weight: BC101 draws its rope at .55 (docs/plans/wave-2-lean.md, 2b additions). */
+export const LEAD_INK_STRENGTH = 0.55;
+
 /** Where along the lead the control points sit (0 = first plug, 1 = second). */
 const CTRL_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
 /** The lowest the cable's centre goes: it lies on the desk. */
@@ -410,7 +413,10 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       if (pinsA.current) inkTag(pinsA.current, { id: pinInk, thin: true });
       if (pinsB.current) inkTag(pinsB.current, { id: pinInk, thin: true });
       if (plugs.current) inkTag(plugs.current, { id: ink, thin: true });
-      if (tagged.current) inkTag(tagged.current, { id: ink, thin: false });
+      if (tagged.current) inkTag(tagged.current, { id: ink, thin: true });
+      // The cable is a soft line, like BC101's rope (.55): the plugs keep their full ink.
+      const cableMesh = tagged.current?.children[0];
+      if (cableMesh) cableMesh.userData.inkStrength = LEAD_INK_STRENGTH;
     }
 
     const liftA = ka * PLUG_HEIGHT_M * 0.85;
