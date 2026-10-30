@@ -8,7 +8,7 @@ import {
   practicalFrom,
   ResultsLayer,
   type Run,
-  urlWithMode,
+  urlForRun,
 } from "./LearnPage";
 import { emptyOhmsLawRecord, setCell } from "./readings/record";
 import { handIn } from "./results/handIn";
@@ -33,13 +33,14 @@ describe("the practical page's flow", () => {
       const run = nextRun(paper, { kind: "choose", mode });
       expect(run).toMatchObject({ practical: mode, seed: 7, afterPaper: true });
       expect(run.n).toBeGreaterThan(paper.n);
-      expect(urlWithMode("http://localhost:5173/?practical=ohms-law&seed=7#x", mode)).toBe(
+      expect(urlForRun("http://localhost:5173/?practical=ohms-law&seed=7#x", mode, 7)).toBe(
         `/?practical=ohms-law&seed=7&mode=${mode}#x`,
       );
     }
-    // Choosing again replaces the mode rather than adding a second one.
-    expect(urlWithMode("http://h/?practical=ohms-law&mode=watch", "exam")).toBe(
-      "/?practical=ohms-law&mode=exam",
+    // A later action replaces the mode and the seed rather than adding second ones, so a reload
+    // after "Try again on a new bench" stays on the new bench.
+    expect(urlForRun("http://h/?practical=ohms-law&mode=watch&seed=7", "exam", 99)).toBe(
+      "/?practical=ohms-law&mode=exam&seed=99",
     );
   });
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { e2eHost, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
+import { e2eHost, e2eOn, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
 
 // The E2E hook (docs/plans/integration.md, "Contracts"). No textbook source: a page contract.
 
@@ -9,7 +9,7 @@ const fake = (): SnaplabE2E => ({
   targets: () => [],
   tap: () => {},
   type: () => {},
-  meters: () => ({ i: 0, v: 0 }),
+  meters: () => ({ i: null, v: null }),
   wireOhm: () => 1,
   handIn: () => {},
   result: () => null,
@@ -31,6 +31,14 @@ describe("the E2E hook", () => {
     // Without it, the fast speeds are not accepted either.
     expect(speedFrom(new URLSearchParams("speed=8"))).toBeNull();
     expect(speedFrom(new URLSearchParams("speed=2"))).toBe(2);
+  });
+
+  it("a production build never installs the hook, even with e2e=1", () => {
+    const search = new URLSearchParams("practical=ohms-law&e2e=1&speed=8");
+    expect(e2eOn(search, false)).toBe(false);
+    installE2E(search, fake, false);
+    expect(e2eHost.__snaplab).toBeUndefined();
+    expect(speedFrom(search, false)).toBeNull();
   });
 
   it("with e2e=1 forwards to the screen on show, and uninstalls", () => {

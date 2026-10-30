@@ -1,9 +1,10 @@
 import type { DirectorSpeed } from "./script/types";
 
 // The E2E test hook (docs/plans/integration.md, "Contracts"; FROZEN until I1 and I2 merge). The
-// practical page installs it as `window.__snaplab` only when the URL has `e2e=1`; without it there
-// is no hook, no silent voice and no fast speeds. The scripts in apps/web/scripts/e2e drive the
-// page through it the way she would (tap, type, hand in) and read what the page shows.
+// practical page installs it as `window.__snaplab` only in a dev build and only when the URL has
+// `e2e=1`; otherwise there is no hook, no silent voice and no fast speeds, so a production build
+// never puts wireOhm() within reach of a student's console. The scripts in apps/web/scripts/e2e
+// drive the page through it the way she would (tap, type, hand in) and read what the page shows.
 
 /** window.__snaplab, present only with ?e2e=1. */
 export interface SnaplabE2E {
@@ -17,8 +18,11 @@ export interface SnaplabE2E {
   tap(terminalId: string): void;
   /** Type into the notebook cell (row, column key), the same as her typing. */
   type(row: number, col: string, value: string): void;
-  /** The bench's current meter readings (ammeter A, voltmeter V), as the meters show them. */
-  meters(): { i: number; v: number };
+  /**
+   * The bench's current meter readings (ammeter A, voltmeter V), as the meters show them; null
+   * while a needle settles (or is off scale), and just after a change until the needle moves.
+   */
+  meters(): { i: number | null; v: number | null };
   /** The wire's true resistance in ohms (the answer her slope is checked against). For noleak only. */
   wireOhm(): number;
   handIn(): void;
@@ -44,26 +48,33 @@ declare global {
 /** Where the hook lives: `window` in the browser, the same object as `globalThis`. */
 export const e2eHost = globalThis as { __snaplab?: SnaplabE2E };
 
-/** Whether the URL asks for the E2E hook. */
-export function e2eOn(search: URLSearchParams): boolean {
-  return search.get("e2e") === "1";
+/** Whether the E2E hook is on: a dev build (`dev`) and `e2e=1` in the URL. */
+export function e2eOn(search: URLSearchParams, dev: boolean = import.meta.env.DEV): boolean {
+  return dev && search.get("e2e") === "1";
 }
 
-/** The `speed` the URL asks for: 1, 1.5 or 2, and with e2e=1 also 4 or 8; null otherwise. */
-export function speedFrom(search: URLSearchParams): DirectorSpeed | null {
+/** The `speed` the URL asks for: 1, 1.5 or 2, and with the hook on also 4 or 8; null otherwise. */
+export function speedFrom(
+  search: URLSearchParams,
+  dev: boolean = import.meta.env.DEV,
+): DirectorSpeed | null {
   const n = Number(search.get("speed"));
   if (n === 1 || n === 1.5 || n === 2) return n;
-  if (e2eOn(search) && (n === 4 || n === 8)) return n;
+  if (e2eOn(search, dev) && (n === 4 || n === 8)) return n;
   return null;
 }
 
 /**
- * Installs `window.__snaplab` when the URL has `e2e=1`, forwarding every call to `current()`, the
- * page's hook for the screen on show now (the page swaps it when the mode or the bench changes, so
- * the global stays the same object). Returns the uninstall, or a no-op without `e2e=1`.
+ * Installs `window.__snaplab` in a dev build when the URL has `e2e=1`, forwarding every call to
+ * `current()`, the page's hook for the screen on show now (the page swaps it when the mode or the
+ * bench changes, so the global stays the same object). Returns the uninstall, or a no-op when off.
  */
-export function installE2E(search: URLSearchParams, current: () => SnaplabE2E): () => void {
-  if (!e2eOn(search)) return () => {};
+export function installE2E(
+  search: URLSearchParams,
+  current: () => SnaplabE2E,
+  dev: boolean = import.meta.env.DEV,
+): () => void {
+  if (!e2eOn(search, dev)) return () => {};
   const hook: SnaplabE2E = {
     screen: () => current().screen(),
     progress: () => current().progress(),

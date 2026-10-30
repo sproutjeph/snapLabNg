@@ -11,7 +11,7 @@ import {
 } from "react";
 import { createLabAudio } from "../audio/labAudio";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
-import { installE2E, type SnaplabE2E, speedFrom } from "./e2e";
+import { e2eOn, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
 import { GraphSheet } from "./graph/GraphSheet";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { OHMS_LAW_SCRIPT } from "./lessons/ohms-law/script";
@@ -77,7 +77,7 @@ import "./results/results.css";
 //                               (demoSeedFor); Practise and Exam are her bench. ?learn= with no
 //                               mode is Practise.
 //   &seed=N   &step=N (Exam)   &beat=N   &speed=1|1.5|2   &mute=1   &dpr=1–3
-//   &e2e=1   the test hook window.__snaplab (learn/e2e.ts): a silent voice, and speed 4 or 8.
+//   &e2e=1 (dev) the test hook window.__snaplab (learn/e2e.ts): a silent voice, speed 4 or 8.
 //   &play=1 (dev) starts without a tap; &freeze=S (dev) pauses S beat seconds into the beat it
 //   starts on, for screenshots.
 // Watch plays itself from a tap on Start (iOS speaks only after a gesture). Practise: the same
@@ -165,10 +165,14 @@ export function nextRun(run: Run, a: RunAction): Run {
   return { practical, seed: a.seed, n, afterPaper: false };
 }
 
-/** `href` with its `mode` set: the URL after a paper choice (history.replaceState). */
-export function urlWithMode(href: string, mode: PracticalMode): string {
+/**
+ * `href` with the run's `mode` and `seed` set: the URL after every choice on the paper or the
+ * results (history.replaceState), so a reload stays on the same mode and the same bench.
+ */
+export function urlForRun(href: string, mode: PracticalMode, seed: number): string {
   const url = new URL(href);
   url.searchParams.set("mode", mode);
+  url.searchParams.set("seed", String(seed));
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
@@ -275,7 +279,7 @@ function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
   }
   const voice = createVoice();
   // E2E runs are silent: the voice keeps its estimated durations (learn/voice/createVoice.ts).
-  voice.muted = search.get("mute") === "1" || search.get("e2e") === "1";
+  voice.muted = search.get("mute") === "1" || e2eOn(search);
   const benchState = (): BenchState => ({
     comparison: bench.comparison,
     keyClosed: bench.visual.current.keyClosed,
@@ -312,7 +316,7 @@ function idleE2E(run: Run): SnaplabE2E {
     targets: () => [],
     tap: () => {},
     type: () => {},
-    meters: () => ({ i: Number.NaN, v: Number.NaN }),
+    meters: () => ({ i: null, v: null }),
     wireOhm: () => Number.NaN,
     handIn: () => {},
     result: () => null,
@@ -346,10 +350,14 @@ function LearnView() {
   const e2e = useRef<SnaplabE2E>(idleE2E(run));
   useEffect(() => installE2E(search, () => e2e.current), [search]);
 
+  // The run as of the last action, so two quick actions build on each other.
+  const runRef = useRef(run);
   const act = useCallback((a: RunAction) => {
-    setRun((r) => nextRun(r, a));
-    if (a.kind === "choose") {
-      history.replaceState(history.state, "", urlWithMode(location.href, a.mode));
+    const next = nextRun(runRef.current, a);
+    runRef.current = next;
+    setRun(next);
+    if (next.practical !== null) {
+      history.replaceState(history.state, "", urlForRun(location.href, next.practical, next.seed));
     }
   }, []);
 
