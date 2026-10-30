@@ -18,8 +18,10 @@ import {
   paintMaterial,
   paperMaterial,
   projectUVPerTriangle,
+  withRelief,
   woodMaterial,
 } from "../materials";
+import { INK_SOFT, SoftInk } from "./inkStyle";
 import { INK_IDS, type PartProps, tapOnly } from "./layout";
 import { hitMaterial } from "./MeterMaterials";
 import { TerminalNut } from "./TerminalNut";
@@ -99,7 +101,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 8 : 18;
+    const seg = low ? 8 : quality === "mid" ? 32 : 48;
     const woodTex = benchTexture("mahogany", quality);
     const brassTex = benchTexture("brass", quality);
     const eboniteTex = benchTexture("ebonite", quality);
@@ -129,12 +131,20 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
       brassTex,
       eboniteTex,
       tagTex,
-      woodMat: woodMaterial(21, { map: woodTex }),
+      woodMat: withRelief(woodMaterial(21, { map: woodTex }), "wood", quality),
       tagMat: paperMaterial(23, { map: tagTex }),
       tagGeo,
       hitGeo,
-      brassMat: brassSurface(22, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
-      knobMat: paintMaterial("#ffffff", 24, { map: eboniteTex, amount: 0.012 }),
+      brassMat: withRelief(
+        brassSurface(22, { map: brassTex, metalness: 0.4, roughness: 0.6 }),
+        "brass",
+        quality,
+      ),
+      knobMat: withRelief(
+        paintMaterial("#ffffff", 24, { map: eboniteTex, amount: 0.012 }),
+        "ebonite",
+        quality,
+      ),
       hitMat: hitMaterial(),
       baseGeo,
       blocksGeo,
@@ -170,13 +180,13 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
           receiveShadow={cast}
         />
       </InkGroup>
-      <InkGroup id={ids + 4} thin>
+      <SoftInk soft={INK_SOFT.label} id={ids + 4}>
         <mesh
           geometry={res.tagGeo}
           material={res.tagMat}
           position={[0, BASE_H + LABEL_LIFT, (BASE_D / 2 + BLOCK_Z + BLOCK_D / 2) / 2]}
         />
-      </InkGroup>
+      </SoftInk>
       <InkGroup id={ids + 2}>
         <mesh
           geometry={res.blocksGeo}

@@ -20,6 +20,7 @@ import {
   paperMaterial,
   projectUVPerTriangle,
   seededRandom,
+  withRelief,
   woodMaterial,
 } from "../materials";
 import { plugPositions } from "../meter-bridge/dimensions";
@@ -181,7 +182,7 @@ export function ResistanceBox({
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 8 : 18;
+    const seg = low ? 8 : quality === "mid" ? 32 : 48;
     const coils = coilsKey ? coilsKey.split(",").map(Number) : [];
     const woodTex = benchTexture("mahogany", quality);
     const brassTex = benchTexture("brass", quality);
@@ -246,12 +247,16 @@ export function ResistanceBox({
       eboniteTex,
       engraving,
       strip,
-      woodMat: woodMaterial(53, { map: woodTex }),
-      brassMat: brassSurface(58, { map: brassTex, ...brass }),
+      woodMat: withRelief(woodMaterial(53, { map: woodTex }), "wood", quality),
+      brassMat: withRelief(brassSurface(58, { map: brassTex, ...brass }), "brass", quality),
       slotMat: paintMaterial("#17130f", 56, { amount: 0.02 }),
       engravingMat,
       stripMat: paperMaterial(57, { map: strip }),
-      knobMat: paintMaterial("#ffffff", 59, { map: eboniteTex, amount: 0.012 }),
+      knobMat: withRelief(
+        paintMaterial("#ffffff", 59, { map: eboniteTex, amount: 0.012 }),
+        "ebonite",
+        quality,
+      ),
       hitMat: hitMaterial(),
       engravingGeo,
       stripGeo,

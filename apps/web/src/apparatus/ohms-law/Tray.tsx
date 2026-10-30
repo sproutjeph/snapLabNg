@@ -8,6 +8,7 @@ import {
   kitTexture,
   paintMaterial,
   paperMaterial,
+  withRelief,
   woodMaterial,
 } from "../materials";
 import { LEAD_BASE_COLOURS, seeded } from "./LeadParts";
@@ -45,18 +46,18 @@ export function Tray({ quality, position, rotationY = 0, onItemTap }: TrayProps)
     const frameTex = makeFrameTexture(quality);
     const grit = makeGritTexture(rng);
     const mats: Record<TrayMat, THREE.MeshStandardMaterial> = {
-      wood: woodMaterial(0x7a41, { map: woodTex }),
+      wood: withRelief(woodMaterial(0x7a41, { map: woodTex }), "wood", quality),
       red: paintMaterial(LEAD_BASE_COLOURS.red, 0x7a42),
       black: paintMaterial(LEAD_BASE_COLOURS.black, 0x7a43),
       yellow: paintMaterial(LEAD_BASE_COLOURS.yellow, 0x7a44),
       bootRed: paintMaterial("#8c2119", 0x7a45),
       bootBlack: paintMaterial("#1e1e22", 0x7a46),
-      brass: brassSurface(0x7a47, { map: brassTex }),
+      brass: withRelief(brassSurface(0x7a47, { map: brassTex }), "brass", quality),
       steel: brassSurface(0x7a48, { tint: "#a3a7ac" }),
       grit: paperMaterial(0x7a4a, { map: grit }),
       ceramic: paintMaterial("#ffffff", 0x7a4b, { map: ceramicTex }),
-      ebonite: bakeliteMaterial(0x7a4c, { map: bakeTex }),
-      frame: bakeliteMaterial(0x7a4d, { map: frameTex }),
+      ebonite: withRelief(bakeliteMaterial(0x7a4c, { map: bakeTex }), "bakelite", quality),
+      frame: withRelief(bakeliteMaterial(0x7a4d, { map: frameTex }), "bakelite", quality),
     };
     const coilMat = brassSurface(0x7a4e, { tint: "#b8693b" });
     const coil = new THREE.InstancedMesh(build.coilGeo, coilMat, build.coilMatrices.length);

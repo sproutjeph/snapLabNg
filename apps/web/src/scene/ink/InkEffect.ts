@@ -11,14 +11,20 @@ import { INK_HEX, PAPER_HEX } from "./palette";
 
 /**
  * Line width in CSS pixels, scaled by the device pixel ratio so it looks the same at DPR 1, 2
- * and 3. 3 px, bolder than Backcountry 101's 2.1, at the user's golden-frame review (Oct 30).
+ * and 3. 2.2 px, about Backcountry 101's 2.1 (wave 2a-real); it was 3 px at the golden-frame
+ * review (Oct 30), which read heavy beside BC101 once the parts had relief.
  */
-export const INK_THICKNESS_PX = 3;
+export const INK_THICKNESS_PX = 2.2;
 /**
  * `thin` parts (plugs, needles) draw their outline at this strength: a shade lighter. At 3 px,
  * 0.6 read as a grey halo round the plugs (round-4 review), so it is nearly full ink now.
  */
 export const INK_THIN_ALPHA = 0.9;
+/**
+ * `thin` parts draw their line this fraction of the full width (Backcountry 101's ×0.55), rounded
+ * to whole pixels in the shader. Read by ink-edges.frag.glsl's `thinRadius`.
+ */
+export const INK_THIN_RADIUS = 0.55;
 /** Relative depth jump that draws a silhouette (perspective camera). */
 export const INK_DEPTH_THRESHOLD = 0.045;
 /** Depth jump in metres that draws a silhouette (orthographic camera). */
@@ -81,6 +87,7 @@ export class InkEffect extends Effect {
         ["inkFocusMap", new THREE.Uniform(inkFocusFor(scene).texture)],
         ["inkRadius", radius],
         ["thinAlpha", new THREE.Uniform(INK_THIN_ALPHA)],
+        ["thinRadius", new THREE.Uniform(INK_THIN_RADIUS)],
         ["depthThreshold", new THREE.Uniform(INK_DEPTH_THRESHOLD)],
         ["depthThresholdM", new THREE.Uniform(INK_DEPTH_THRESHOLD_M)],
         ["creaseThreshold", new THREE.Uniform(INK_CREASE_THRESHOLD)],
