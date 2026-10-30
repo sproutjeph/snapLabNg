@@ -114,6 +114,8 @@ describe("stageNavOf", () => {
       state: {
         mode: "watch",
         beat: 0,
+        beatIndex: 0,
+        beatCount: 0,
         playing: false,
         speed: 1,
         caption: "",

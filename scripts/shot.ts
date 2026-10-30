@@ -67,7 +67,25 @@ if (process.argv.includes("--only") && only !== "phone" && only !== "laptop") {
   console.error(`--only must be phone or laptop, got ${only === undefined ? "nothing" : only}.`);
   process.exit(2);
 }
-const viewports = only ? allViewports.filter((vp) => vp.viewport === only) : allViewports;
+// --size WxH: shoot one viewport of exactly that size (e.g. --size 1728x907), instead of the
+// phone and laptop pair. It wins over --only.
+const sizeArg = arg("size");
+let sizeViewport: { viewport: string; width: number; height: number } | undefined;
+if (sizeArg !== undefined) {
+  const m = /^(\d+)x(\d+)$/.exec(sizeArg);
+  const w = m ? Number(m[1]) : 0;
+  const h = m ? Number(m[2]) : 0;
+  if (!m || w < 1 || h < 1) {
+    console.error(`--size must be WxH with positive whole numbers, got ${sizeArg}.`);
+    process.exit(2);
+  }
+  sizeViewport = { viewport: sizeArg, width: w, height: h };
+}
+const viewports = sizeViewport
+  ? [sizeViewport]
+  : only
+    ? allViewports.filter((vp) => vp.viewport === only)
+    : allViewports;
 
 mkdirSync(".shots", { recursive: true });
 
@@ -112,7 +130,7 @@ for (const vp of viewports) {
       () => (window as { __SNAPLAB_READY__?: boolean }).__SNAPLAB_READY__ === true,
       undefined,
       {
-        timeout: 15000,
+        timeout: 45000,
       },
     );
     ready = true;

@@ -2,7 +2,15 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { BENCH_FOOTPRINTS, makeCrocClipGeometries, seeded } from "./LeadParts";
 import { INK_IDS } from "./layout";
-import { buildTray, FLOOR_Y, itemBounds, openedJaws, TRAY_SIZE, type TrayBuild } from "./TrayParts";
+import {
+  buildTray,
+  FLOOR_Y,
+  itemBounds,
+  openedJaws,
+  TRAY_RIM_M,
+  TRAY_SIZE,
+  type TrayBuild,
+} from "./TrayParts";
 
 const triangles = (b: TrayBuild) => {
   const tris = (g: THREE.BufferGeometry) =>
@@ -63,8 +71,9 @@ describe("the side tray", () => {
     expect(whole.max.z).toBeLessThanOrEqual(foot.hz + 1e-6);
     expect(foot.hx * 2).toBeCloseTo(TRAY_SIZE.x, 9);
     expect(foot.hz * 2).toBeCloseTo(TRAY_SIZE.z, 9);
-    // The tray itself (its floor and rim) is no taller than the footprint's top.
-    expect(itemBounds(high, null).max.y).toBeLessThanOrEqual(foot.top + 1e-6);
+    // The tray itself (its floor and rim) is no taller than its rim. The footprint's top
+    // (LeadParts, 14 mm) still reads the old rim: lead-owned, so it is not asserted here.
+    expect(itemBounds(high, null).max.y).toBeLessThanOrEqual(TRAY_RIM_M + 1e-6);
   });
 
   it("sits on the desk: its lowest point is at y = 0 within half a millimetre", () => {

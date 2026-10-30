@@ -1,10 +1,14 @@
 /* The cream graph-paper desk and the shared pieces of the exam-paper look (docs/plans/exam-redesign.md,
    "The look"): thin ink rules, uppercase condensed labels, a classic serif for exam text, orange only
-   for the primary action. Used by the picker, the question paper and the results. Tokens only, except
-   the serif stack, which has no self-hosted file yet. */
+   for the primary action. Used by the picker, the question paper and the results. The serif is
+   self-hosted Tinos (metric-matched to Times, like a printed WAEC paper; beauty-pass D3). */
+
+@import "@fontsource/tinos/latin-400.css";
+@import "@fontsource/tinos/latin-400-italic.css";
+@import "@fontsource/tinos/latin-700.css";
 
 .xp {
-  --f-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --f-serif: "Tinos", "Times New Roman", Times, serif;
   --xp-orange: var(--accent);
   --xp-marker: #f6e58d;
   color: var(--ink);

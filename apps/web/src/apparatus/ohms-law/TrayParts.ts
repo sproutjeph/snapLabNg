@@ -53,7 +53,9 @@ export const TRAY_SIZE = { x: 0.26, z: 0.34 } as const;
 export const MAHOGANY_TILE_M: readonly [number, number] = [0.34, 0.26];
 /** The floor is 4.5 mm thick: the kit's bevel is at most a third of the thinnest side, so 1.5 mm. */
 export const FLOOR_Y = 0.0045;
-const WALL_H = 0.014;
+/** The rim stands 24 mm above the desk (it was 14 mm): deep enough to read as a tray from the bench. */
+export const TRAY_RIM_M = 0.024;
+const WALL_H = TRAY_RIM_M;
 const WALL_T = 0.016;
 const RHEO_X = -0.075;
 /** A lead's cable radius on the tray: 1.5 times the 3 mm lead of the bench, so it reads from afar. */

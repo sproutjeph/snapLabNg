@@ -7,6 +7,7 @@ import type { Covered } from "../../scene/look/types";
 import type { QualityTier } from "../meter-bridge/types";
 import { BENCH_FOOTPRINTS } from "./LeadParts";
 import { type BenchSlot, INK_IDS, OHMS_LAW_LAYOUT, TERMINAL_PART } from "./layout";
+import { NUT_CAP_INK_OFFSET } from "./TerminalNut";
 
 // The V–I kit preview's URL parameters and the view they ask for, as pure functions so a test
 // can pin them without WebGL (docs/plans/asset-pass.md, "The seam"). KitPreview.tsx mounts what
@@ -287,13 +288,14 @@ export function slotBounds(slot: BenchSlot, topPad = TOP_PAD_M): Bounds {
   );
 }
 
-/** Which ink ids belong to a part: its block of ten, and its nuts. */
+/** Which ink ids belong to a part: its block of ten, its nuts and their caps. */
 export function partInkIds(slot: BenchSlot): number[] {
   const ids: number[] = [];
   for (let i = 0; i < 10; i++) ids.push(INK_IDS[slot] + i);
   if (slot in PART_TERMINALS) {
     for (const t of PART_TERMINALS[slot as keyof typeof PART_TERMINALS]) {
-      ids.push(INK_IDS.nutBase + TERMINAL_IDS.indexOf(t));
+      const i = TERMINAL_IDS.indexOf(t);
+      ids.push(INK_IDS.nutBase + i, INK_IDS.nutBase + NUT_CAP_INK_OFFSET + i);
     }
   }
   return ids;

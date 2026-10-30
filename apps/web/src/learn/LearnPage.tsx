@@ -191,6 +191,35 @@ export function watchPose(beat: Beat | undefined, loupe: string | null): string 
   return "bench";
 }
 
+/**
+ * Whether a run starts playing by itself: only Watch, and only after a tap (the paper's choice or
+ * the results' "Watch again"). A page loaded straight into ?mode=watch waits for Start; Practise
+ * and Exam never autoplay.
+ */
+export function autoPlays(run: Run): boolean {
+  return run.practical === "watch" && run.n > 0;
+}
+
+/** Watch's graph pop-up after a step: out on Plot and Slope (if she has not opened it herself), away on the next. */
+export function watchGraphMove(
+  watch: boolean,
+  stepKey: string | undefined,
+  popup: PopupId | null,
+  auto: boolean,
+): { popup: PopupId | null; auto: boolean } {
+  if (!watch) return { popup, auto: false };
+  if (watchGraphOut(stepKey)) {
+    // Her own graph, already open, is hers: the page neither claims it nor closes it later.
+    return popup === "graph" ? { popup, auto } : { popup: "graph", auto: true };
+  }
+  return { popup: auto && popup === "graph" ? null : popup, auto: false };
+}
+
+/** Whether Watch has the graph paper out on this step: Plot and Slope only. */
+export function watchGraphOut(stepKey: string | undefined): boolean {
+  return stepKey === "plot" || stepKey === "slope";
+}
+
 /** What the results screen shows, without its buttons. */
 type ResultsView = Omit<ResultsProps, "onAgain" | "onWatch">;
 
@@ -247,6 +276,9 @@ interface Rig {
   motion: StageMotion;
   /** The run this rig was made for. */
   n: number;
+  run: Run;
+  /** The page state this rig's director reads. */
+  live: Live;
 }
 
 /** Her page state the director's `done` checks read (kept in refs, read each frame). */
@@ -305,7 +337,10 @@ function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
     // Dev only (screenshots): start without her tap. In a build, Watch starts from the Start button.
     if (import.meta.env.DEV && search.get("play") === "1") director.play();
   }
-  return { bench, director, motion, n: run.n };
+  // Choosing Watch (on the paper or on the results) is her tap: the demonstration starts at once.
+  // A page load straight into ?mode=watch has no tap yet, so it waits for Start.
+  if (autoPlays(run)) director.play();
+  return { bench, director, motion, n: run.n, run, live };
 }
 
 /** The hook's answers while no screen is up (between two runs). */
@@ -356,22 +391,30 @@ function LearnView() {
     const next = nextRun(runRef.current, a);
     runRef.current = next;
     setRun(next);
+    // Choosing Watch is her tap: iOS speaks only if speech starts inside it. A silent utterance
+    // here unlocks speech for the director's play(), which runs a moment later in an effect.
+    if (next.practical === "watch" && "speechSynthesis" in window) {
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(" "));
+    }
     if (next.practical !== null) {
       history.replaceState(history.state, "", urlForRun(location.href, next.practical, next.seed));
     }
   }, []);
 
-  if (!rig || rig.n !== run.n) {
+  if (!rig) {
     e2e.current = idleE2E(run);
     return null;
   }
+  // While a new rig is being made the last one stays on screen, so the Canvas is never torn down.
+  const stale = rig.n !== run.n;
+  if (stale) e2e.current = idleE2E(run);
   return (
     <LearnScreen
-      key={run.n}
       rig={rig}
-      run={run}
+      run={rig.run}
       search={search}
-      live={live}
+      live={rig.live}
+      stale={stale}
       onRun={act}
       e2e={e2e}
     />
@@ -442,6 +485,7 @@ function LearnScreen({
   run,
   search,
   live,
+  stale,
   onRun,
   e2e,
 }: {
@@ -449,10 +493,16 @@ function LearnScreen({
   run: Run;
   search: URLSearchParams;
   live: Live;
+  /** The rig for the newest run is not ready: this is still the last run's screen. */
+  stale: boolean;
   onRun(a: RunAction): void;
   e2e: MutableRefObject<SnaplabE2E>;
 }) {
   const { bench, director, motion } = rig;
+  // The screen is not remounted for a new run (its Canvas stays up), so a new rig resets its state
+  // below. Until that re-render, this render's state is the last run's: it must not reach `live`.
+  const [seenRig, setSeenRig] = useState(rig.n);
+  const fresh = seenRig !== rig.n;
   const paper = run.practical === null;
   const practical: PracticalMode = run.practical ?? "practice";
   const mode: LessonMode = practical === "exam" ? "exam" : "practice";
@@ -487,8 +537,10 @@ function LearnScreen({
   // Her record as of her last keystroke (the E2E hook may type twice before React renders).
   const recordRef = useRef(record);
   const [identified, setIdentified] = useState<ReadonlySet<PartId>>(() => live.identified);
-  live.record = record;
-  live.identified = identified;
+  if (!fresh) {
+    live.record = record;
+    live.identified = identified;
+  }
   const [results, setResultsState] = useState<ResultsView | null>(null);
   const resultsRef = useRef<ResultsView | null>(null);
   const [notebookOpen, setNotebookOpen] = useState(false);
@@ -611,6 +663,41 @@ function LearnScreen({
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new step closes the card.
   useEffect(() => setCard(null), [stepIndex]);
+
+  // A new run (a mode chosen, Watch again, a new bench) starts every piece of state over, as the
+  // remount used to. Adjusting state during render: React re-renders at once, before any paint.
+  const graphAuto = useRef(false);
+  const popupRef = useRef(popup);
+  popupRef.current = popup;
+  if (fresh) {
+    setSeenRig(rig.n);
+    graphAuto.current = false;
+    recordRef.current = live.record;
+    resultsRef.current = null;
+    setExamStep(0);
+    setTab("instructions");
+    setPopupState(paper ? "question" : null);
+    setGuide("peek");
+    setRecordState(live.record);
+    setIdentified(live.identified);
+    setResultsState(null);
+    setNotebookOpen(false);
+    setDiagramOpen(false);
+    setWrongLine(null);
+    setLoupe(null);
+    setReturning(false);
+    setEye(0);
+    setCard(null);
+  }
+
+  // Watch: the graph paper comes out on the Plot and Slope steps and goes away on the next one.
+  // (In Practise and Exam she opens it herself.)
+  useEffect(() => {
+    if (!watch || paper) return;
+    const move = watchGraphMove(watch, stepKey, popupRef.current, graphAuto.current);
+    graphAuto.current = move.auto;
+    setPopupState(move.popup);
+  }, [watch, paper, stepKey]);
   // The stage draws its own rings (both ends of the beat's lead); the pencil-grey ghost leads
   // still guide the Connect step in Practise.
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs it after every bench change.
@@ -667,58 +754,59 @@ function LearnScreen({
 
   // ---- The E2E hook's answers for this screen (learn/e2e.ts) ----
   const truth = useMemo(() => benchTruthForE2E(bench), [bench]);
-  e2e.current = {
-    screen: () => (resultsRef.current ? "results" : paper ? "paper" : practical),
-    progress: () => ({
-      beat: director.state.beat,
-      beats: director.script.beats.length,
-      done: director.state.finished,
-    }),
-    targets: () =>
-      practical === "practice" && !paper
-        ? nextLeadTargets(bench, director.script.beats[director.state.beat])
-        : [],
-    tap: (id) => {
-      if (!paper && !watch && resultsRef.current === null && isTerminalId(id)) {
-        bench.tapTerminal(id);
-      }
-    },
-    type: (row, col, value) => {
-      if (paper || watch || resultsRef.current !== null) return;
-      if (col !== "R" && col !== "I" && col !== "V") return;
-      if (!Number.isInteger(row) || row < 0) return;
-      let next = recordRef.current;
-      while (next.rows.length <= row) next = addRow(next);
-      setRecord(setCell(next, row, col, value));
-      if (col !== "R") parallax.reading(`${row}:${col}`);
-    },
-    meters: truth.meters,
-    wireOhm: truth.wireOhm,
-    handIn: doHandIn,
-    result: () => {
-      const r = resultsRef.current;
-      if (!r) return null;
-      const rows = checkRows(r.record, r.checks);
-      return {
-        total: r.sheet.earned,
-        max: r.sheet.available,
-        checkRows: rows.length,
-        checkOk: rows.filter((row) => row.ok).length,
-      };
-    },
-    play: () => {
-      if (!paper && resultsRef.current === null) director.play();
-    },
-    setR: (ohms) => {
-      if (paper || watch || resultsRef.current !== null) return;
-      const moves = plugMoves(bench.params.boxCoilsOhm, bench.visual.current.plugsIn, ohms);
-      for (const index of moves) bench.togglePlug(index);
-    },
-    key: (closed) => {
-      if (paper || watch || resultsRef.current !== null) return;
-      if (bench.visual.current.keyClosed !== closed) bench.toggleKey();
-    },
-  };
+  if (!stale)
+    e2e.current = {
+      screen: () => (resultsRef.current ? "results" : paper ? "paper" : practical),
+      progress: () => ({
+        beat: director.state.beat,
+        beats: director.script.beats.length,
+        done: director.state.finished,
+      }),
+      targets: () =>
+        practical === "practice" && !paper
+          ? nextLeadTargets(bench, director.script.beats[director.state.beat])
+          : [],
+      tap: (id) => {
+        if (!paper && !watch && resultsRef.current === null && isTerminalId(id)) {
+          bench.tapTerminal(id);
+        }
+      },
+      type: (row, col, value) => {
+        if (paper || watch || resultsRef.current !== null) return;
+        if (col !== "R" && col !== "I" && col !== "V") return;
+        if (!Number.isInteger(row) || row < 0) return;
+        let next = recordRef.current;
+        while (next.rows.length <= row) next = addRow(next);
+        setRecord(setCell(next, row, col, value));
+        if (col !== "R") parallax.reading(`${row}:${col}`);
+      },
+      meters: truth.meters,
+      wireOhm: truth.wireOhm,
+      handIn: doHandIn,
+      result: () => {
+        const r = resultsRef.current;
+        if (!r) return null;
+        const rows = checkRows(r.record, r.checks);
+        return {
+          total: r.sheet.earned,
+          max: r.sheet.available,
+          checkRows: rows.length,
+          checkOk: rows.filter((row) => row.ok).length,
+        };
+      },
+      play: () => {
+        if (!paper && resultsRef.current === null) director.play();
+      },
+      setR: (ohms) => {
+        if (paper || watch || resultsRef.current !== null) return;
+        const moves = plugMoves(bench.params.boxCoilsOhm, bench.visual.current.plugsIn, ohms);
+        for (const index of moves) bench.togglePlug(index);
+      },
+      key: (closed) => {
+        if (paper || watch || resultsRef.current !== null) return;
+        if (bench.visual.current.keyClosed !== closed) bench.toggleKey();
+      },
+    };
 
   return (
     <>
@@ -742,6 +830,7 @@ function LearnScreen({
           paper ? null : (
             <>
               <Player
+                key={rig.n}
                 director={director}
                 stageTitles={STAGE_TITLES}
                 onHandIn={watch || results ? undefined : doHandIn}
@@ -759,7 +848,7 @@ function LearnScreen({
             </>
           )
         }
-        checklist={<StageChecklist director={director} stageTitles={STAGE_TITLES} />}
+        checklist={<StageChecklist key={rig.n} director={director} stageTitles={STAGE_TITLES} />}
         calloutLayerRef={calloutLayer}
         activePopup={popup}
         onPopupChange={setPopup}
