@@ -3,7 +3,6 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { NO_INK } from "../ink/inkPass";
 import { PAPER_HEX } from "../ink/palette";
-import { DeskProps } from "./DeskProps";
 import { useLookTier } from "./lookTier";
 import type { LookGroundProps } from "./types";
 
@@ -11,9 +10,8 @@ import type { LookGroundProps } from "./types";
 // paper: a faint grid every GRID_M, a fainter one every GRID_FINE_M, both anti-aliased with
 // fwidth, and a light paper grain. It is unlit, so it matches the --paper background exactly,
 // and fades into it toward its edge. A ShadowMaterial catcher (#5b4027 at .42, stronger than the plan's .22 at the user's golden-frame review) takes the key
-// light's soft shadows when the canvas has shadows. The exam desk's things (answer booklet,
-// pencil, eraser, calculator) lie at its front edge as ink props. Nothing here writes depth or
-// draws ink outlines of its own, apart from the props.
+// light's soft shadows when the canvas has shadows. The desk is bare (the exam-desk props were
+// removed in Wave 2: docs/plans/wave-2-lean.md). Nothing here writes depth or draws ink outlines.
 
 /** Graph-paper squares, in metres. */
 export const GRID_M = 0.05;
@@ -135,7 +133,6 @@ export function LookGround({ sizeM = DEFAULT_SIZE_M }: LookGroundProps) {
           userData={noInk}
         />
       )}
-      <DeskProps />
     </group>
   );
 }

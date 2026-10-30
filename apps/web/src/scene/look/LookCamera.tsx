@@ -7,8 +7,10 @@ import type { Covered, LookCameraProps, LookShot } from "./types";
 // Backcountry 101, research report 2). Orthographic, azimuth 45°, elevation 41°. Each shot is
 // {focus, spanM}: the zoom fits the shot's bounds (spanM of bench, see fitShot) into the part of
 // the canvas no panel covers, in width and height, and the view offset centres the focus there.
-// When that free area is portrait (a phone), the camera looks steeper (64°) and, unless the shot
-// sets its own azimuth, turns to 82° so the bench's long side runs up the screen and fills it.
+// When that free area is portrait (a phone) and the shot does not set its own azimuth, the
+// camera looks steeper (64°) and turns to 82° so the bench's long side runs up the screen and
+// fills it. A shot with its own azimuth (a student's-seat view) keeps 41° on every screen, so
+// upright faces such as meter dials are not foreshortened.
 // The camera follows a new shot with k = 1 − e^(−8 dt); reduced motion jumps. Dragging turns
 // the azimuth only (±25°, 0.006 rad/px, inertia e^(−5 dt)), then the camera eases back to the
 // shot.
@@ -27,7 +29,8 @@ export const PORTRAIT_AZIMUTH_DEG = 82;
 const PORTRAIT_ENTER = 1.15;
 const PORTRAIT_LEAVE = 1.05;
 /** Distance from the focus, in metres; orthographic, so it only has to clear the bench. */
-const DISTANCE_M = 4;
+export const LOOK_DISTANCE_M = 4;
+const DISTANCE_M = LOOK_DISTANCE_M;
 const NEAR_M = 0.1;
 const FAR_M = 10;
 /** A shot frames a patch of desk spanM wide (x) and spanM × this deep (z)… */
@@ -291,7 +294,7 @@ export function LookCamera({
     r.focus.z += (fz - r.focus.z) * k;
     r.span += (t.shot.spanM - r.span) * k;
     r.azimuth += (shotAzimuth(t.shot, portrait) - r.azimuth) * k;
-    r.elevation += (lookElevation(portrait) - r.elevation) * k;
+    r.elevation += (lookElevation(portrait && t.shot.azimuthDeg === undefined) - r.elevation) * k;
     r.covered.left += (t.covered.left - r.covered.left) * k;
     r.covered.right += (t.covered.right - r.covered.right) * k;
     r.covered.top += (t.covered.top - r.covered.top) * k;

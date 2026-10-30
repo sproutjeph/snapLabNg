@@ -17,18 +17,17 @@ export interface PartBox {
 
 /**
  * Where the bench's parts stand: the world bounding box of each part's meshes under
- * OHMS_LAW_LAYOUT, measured in the browser on Oct 29 (three's scene, `Box3` by hand). The desk
- * props (answer booklet, calculator, pencil) are left out: losing a corner of those matters less
- * than shrinking the bench.
+ * OHMS_LAW_LAYOUT, measured in the browser on Oct 29 (three's scene, `Box3` by hand), each moved
+ * with its part to layout v3 (apparatus/ohms-law/layout.ts, Oct 30). The tray is left out: in v3 it
+ * stands far behind the board, out of the shot, and holds Identify items only.
  */
 export const BENCH_PARTS: readonly PartBox[] = [
-  { name: "resistance box", minX: -0.59, maxX: -0.27, minZ: 0.05, maxZ: 0.15, height: 0.136 },
-  { name: "ammeter", minX: -0.225, maxX: -0.095, minZ: 0.075, maxZ: 0.175, height: 0.118 },
-  { name: "plug key", minX: 0.139, maxX: 0.261, minZ: 0.09, maxZ: 0.194, height: 0.094 },
-  { name: "dry cells", minX: 0.342, maxX: 0.538, minZ: 0.05, maxZ: 0.11, height: 0.116 },
-  { name: "wire board", minX: -0.55, maxX: 0.55, minZ: -0.19, maxZ: -0.07, height: 0.104 },
-  { name: "voltmeter", minX: 0.075, maxX: 0.205, minZ: -0.305, maxZ: -0.205, height: 0.118 },
-  { name: "tray", minX: 0.25, maxX: 0.527, minZ: -0.57, maxZ: -0.23, height: 0.09 },
+  { name: "resistance box", minX: -0.54, maxX: -0.22, minZ: -0.11, maxZ: -0.01, height: 0.136 },
+  { name: "ammeter", minX: -0.215, maxX: -0.085, minZ: 0.115, maxZ: 0.215, height: 0.118 },
+  { name: "plug key", minX: -0.061, maxX: 0.061, minZ: -0.09, maxZ: 0.014, height: 0.094 },
+  { name: "dry cells", minX: 0.302, maxX: 0.498, minZ: -0.09, maxZ: -0.03, height: 0.116 },
+  { name: "wire board", minX: -0.55, maxX: 0.55, minZ: -0.31, maxZ: -0.19, height: 0.104 },
+  { name: "voltmeter", minX: 0.085, maxX: 0.215, minZ: 0.115, maxZ: 0.215, height: 0.118 },
 ];
 
 /** The footprint that holds every part. */
@@ -54,7 +53,8 @@ export const BENCH_CENTRE: readonly [number, number] = [
  * written before the tray moved to the back: they put the bench off to one side, left the tray
  * and board running off the edge of a phone, and crowded a small window's right side.
  */
-export const BENCH_SHOT: LookShot = { id: "bench", focus: [-0.02, 0, -0.19], spanM: 1.3 };
+// Layout v3 (Oct 30): the footprint's middle moved to (0, -0.05).
+export const BENCH_SHOT: LookShot = { id: "bench", focus: [0, 0, -0.05], spanM: 1.3 };
 
 /**
  * The half width of bench, in metres, that the perspective camera (?director=1) fits into the

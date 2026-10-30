@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { InkGroup } from "../../scene/ink/ink";
 import {
@@ -25,6 +25,11 @@ import {
   IMAGE_Z,
   METER_DIAL_LIFT,
   METER_DIAL_Y,
+  METER_FACE_HINGE,
+  METER_FACE_LEN,
+  METER_FACE_NORMAL,
+  METER_FACE_TILT_DEG,
+  METER_FACE_Y0,
   METER_FACE_Z,
   MIRROR_LIFT,
   NEEDLE_LIFT,
@@ -55,9 +60,10 @@ export interface MeterProps extends PartProps {
 }
 
 /**
- * A d.c. moving-coil meter: a chunky speckled-bakelite case with a round dial behind a thick
- * bezel, mirror strip, needle, zero-adjust screw, and red + and black − terminals (A+/A− or
- * V+/V−) on brass plates. The needle angle is `state.current.readout.ammeterDeg` or
+ * A d.c. moving-coil meter, the school sloping-front kind: a speckled-bakelite case whose face
+ * leans back 30 degrees (MeterImage.ts), with a round dial behind a thick bezel, mirror strip,
+ * needle and zero-adjust screw on the slope, and red + and black − terminals (A+/A− or V+/V−) on
+ * brass plates on the low ledge in front. The needle angle is `state.current.readout.ammeterDeg` or
  * `voltmeterDeg` (METER_ZERO_DEG … METER_FULL_DEG from @snaplab/engine). The dial shows only
  * the printed scale and the letter, never a reading as a number. Props frozen.
  */
@@ -65,11 +71,16 @@ export interface MeterProps extends PartProps {
 // Black − on the left, red + on the right, as on the usual school meters.
 const PLUS_X = 0.035;
 
-// Case, in metres: about 12 x 12 x 5 cm, with a low ledge in front that carries the terminals.
-// These match BENCH_FOOTPRINTS (LeadParts.ts), which the layout tests and the leads rest on.
-const CASE = { w: 0.12, h: 0.118, d: 0.05 } as const;
+// Case, in metres: 12 cm wide and 11.8 cm tall, 8 cm deep at the foot. In side view a short
+// upright apron (up to the hinge), the face sloping back to the top, a flat top and an upright
+// back. A low ledge in front carries the terminals. These match BENCH_FOOTPRINTS (LeadParts.ts),
+// which the layout tests and the leads rest on.
+const CASE = { w: 0.12, h: 0.118, back: -0.055 } as const;
 const LEDGE = { h: 0.012, d: 0.04 } as const;
-const FACE_Z = METER_FACE_Z; // front of the case (CASE.d / 2)
+/** The case's rounded edges: the bevel on its sides, and the rounding of the profile's corners. */
+const CASE_BEVEL = 0.004;
+const FACE_Z = METER_FACE_Z; // the face's own plane, in face coordinates (MeterImage.ts)
+const TILT = METER_FACE_TILT_DEG * (Math.PI / 180);
 const DIAL_Z = FACE_Z + METER_DIAL_LIFT;
 const DIAL_CY = METER_DIAL_Y + DIAL.radius; // the middle of the round dial
 const PIVOT_Y = DIAL_CY - DIAL.pivotDown;
@@ -87,8 +98,8 @@ const RING_LIP = 0.007;
 const GLASS_Z = FACE_Z + RING_LIP + 0.0002;
 /** Soft contact shadows on the face: round the bezel (out to this radius) and under the zero screw. */
 const RING_SHADOW_OUTER = RING_OUTER + 0.0075;
-/** The face is flat only up to here (the case top, 0.118, less its 6.5 mm bevel): the shadow stops there. */
-const FACE_FLAT_TOP = 0.111;
+/** The face is flat only up to here (its top, less the rounded edge): the shadow stops there. */
+const FACE_FLAT_TOP = METER_FACE_Y0 + METER_FACE_LEN - 0.008;
 const SCREW_SHADOW_R = 0.0095;
 const SHADOW_Z = FACE_Z + 0.0004;
 /**
@@ -103,6 +114,97 @@ const NUT_Z = 0.045;
 const MARK_X = 0.0105;
 /** Turns the marks to read upright from the default camera (azimuth 45 degrees). */
 const MARK_TURN = Math.PI / 4;
+
+/**
+ * The case's side profile, as (z, y) points in the meter's frame, clockwise from the front foot:
+ * the apron up to the hinge, the slope, the top, the back.
+ */
+function caseProfile(): Array<[number, number]> {
+  const topZ = METER_FACE_HINGE.z - METER_FACE_LEN * Math.sin(TILT);
+  return [
+    [FACE_Z, 0],
+    [METER_FACE_HINGE.z, METER_FACE_HINGE.y],
+    [topZ, CASE.h],
+    [CASE.back, CASE.h],
+    [CASE.back, 0],
+  ];
+}
+
+/** A convex polygon moved in by `by` on every side (each edge's line shifted, then crossed). */
+function insetConvex(pts: ReadonlyArray<[number, number]>, by: number): Array<[number, number]> {
+  const n = pts.length;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[i] as [number, number];
+    const [bx, by2] = pts[(i + 1) % n] as [number, number];
+    area += ax * by2 - bx * ay;
+  }
+  const sign = area > 0 ? 1 : -1;
+  // Each edge as a point on its shifted line and a direction.
+  const lines = pts.map((a, i) => {
+    const b = pts[(i + 1) % n] as [number, number];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    // The inward normal of a counter-clockwise polygon is the edge turned left.
+    const nx = (-dy / len) * sign;
+    const ny = (dx / len) * sign;
+    return { px: a[0] + nx * by, py: a[1] + ny * by, dx, dy };
+  });
+  return lines.map((l, i) => {
+    const p = lines[(i - 1 + n) % n] as (typeof lines)[number];
+    const den = p.dx * l.dy - p.dy * l.dx;
+    const t = ((l.px - p.px) * l.dy - (l.py - p.py) * l.dx) / den;
+    return [p.px + p.dx * t, p.py + p.dy * t];
+  });
+}
+
+/**
+ * The case: its side profile (moved in by the bevel, its upper corners rounded) extruded across
+ * the meter's width with a bevel, so every edge is rounded and the outside lands on the profile.
+ */
+function caseGeometry(low: boolean): THREE.BufferGeometry {
+  const pts = insetConvex(caseProfile(), CASE_BEVEL);
+  // Corner radii, in the order of caseProfile: the feet stay square on the desk.
+  const radii = [0, 0.003, 0.004, 0.005, 0];
+  const shape = new THREE.Shape();
+  // Shape coordinates (u, v) = (−z, y), so turning the extrusion onto x keeps z the right way.
+  const uv = (p: readonly [number, number]) => new THREE.Vector2(-p[0], p[1]);
+  pts.forEach((p, i) => {
+    const r = radii[i] ?? 0;
+    const at = uv(p);
+    const prev = uv(pts[(i - 1 + pts.length) % pts.length] as [number, number]);
+    const next = uv(pts[(i + 1) % pts.length] as [number, number]);
+    const a = r > 0 ? at.clone().add(prev.clone().sub(at).setLength(r)) : at;
+    const b = r > 0 ? at.clone().add(next.clone().sub(at).setLength(r)) : at;
+    if (i === 0) shape.moveTo(a.x, a.y);
+    else shape.lineTo(a.x, a.y);
+    if (r > 0) shape.quadraticCurveTo(at.x, at.y, b.x, b.y);
+  });
+  shape.closePath();
+  const depth = CASE.w - 2 * CASE_BEVEL;
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: CASE_BEVEL,
+    bevelSize: CASE_BEVEL,
+    bevelSegments: low ? 1 : 3,
+    curveSegments: low ? 1 : 4,
+  });
+  // (u, v, w) → (w, v, −u): the extrusion runs along x, and −u is z again.
+  geo.rotateY(Math.PI / 2);
+  geo.translate(-depth / 2, 0, 0);
+  return geo;
+}
+
+/** The face's frame: hinged on the case and leant back (MeterImage.ts, faceToMeter). */
+function FaceFrame({ children }: { children: ReactNode }) {
+  return (
+    <group position={[0, METER_FACE_HINGE.y, METER_FACE_HINGE.z]} rotation-x={-TILT}>
+      <group position={[0, -METER_FACE_Y0, -FACE_Z]}>{children}</group>
+    </group>
+  );
+}
 
 /** The + and − printed on the ledge between the terminals, drawn as bars so they stay crisp. */
 function ledgeLabelTexture(): THREE.CanvasTexture {
@@ -243,13 +345,11 @@ export function Meter({
           })
         : null;
 
-    // The case: a bevelled block with a bevelled ledge in front, speckled bakelite all over, its
-    // edges worn pale where the bevels turn. The voltmeter takes another part of the same tile.
+    // The case: the sloping-front body with a bevelled ledge in front, speckled bakelite all
+    // over, its edges worn pale where the bevels turn (the slope counts as a face, not an edge).
+    // The voltmeter takes another part of the same tile.
     const caseGeo = mergeStatic([
-      {
-        geo: bevelBox(CASE.w, CASE.h, CASE.d, 0.0065, low ? 1 : 3),
-        place: (g) => g.translate(0, CASE.h / 2, 0),
-      },
+      { geo: caseGeometry(low) },
       {
         geo: bevelBox(CASE.w, LEDGE.h, LEDGE.d, 0.0035, low ? 1 : 2),
         place: (g) => g.translate(0, LEDGE.h / 2, FACE_Z + LEDGE.d / 2),
@@ -257,7 +357,7 @@ export function Meter({
     ]);
     boxProjectUV(caseGeo, [0.12, 0.12]);
     if (kind === "voltmeter") offsetUV(caseGeo, 0.37, 0.61);
-    applyEdgeWear(caseGeo);
+    applyEdgeWear(caseGeo, undefined, [[0, METER_FACE_NORMAL.y, METER_FACE_NORMAL.z]]);
     const caseMat = withRelief(
       bakeliteMaterial(seed, { map: bakeTex, roughness: 0.9 }),
       "bakelite",
@@ -432,23 +532,6 @@ export function Meter({
             rotation-y={MARK_TURN}
           />
         </InkGroup>
-        <SoftInk soft={INK_SOFT.dial} id={ink + 1}>
-          <mesh
-            geometry={res.dialGeo}
-            material={res.dialMat}
-            position={[0, DIAL_CY, DIAL_Z]}
-            receiveShadow={cast}
-          />
-        </SoftInk>
-        <InkGroup id={ink + 5}>
-          <mesh
-            geometry={res.ringGeo}
-            material={res.ringMat}
-            position={[0, DIAL_CY, FACE_Z]}
-            castShadow={cast}
-            receiveShadow={cast}
-          />
-        </InkGroup>
         <InkGroup id={ink + 6} thin>
           <mesh
             geometry={res.platesGeo}
@@ -457,73 +540,94 @@ export function Meter({
             receiveShadow={cast}
           />
         </InkGroup>
-        <InkGroup id={ink + 3} thin>
-          <mesh geometry={res.screwGeo} material={res.brassMat} />
-          <mesh geometry={res.slotGeo} material={res.ringMat} />
-          <mesh geometry={res.cornersGeo} material={res.brassMat} />
-        </InkGroup>
-        <SoftInk soft={INK_SOFT.mirror} id={ink + 4}>
-          <mesh
-            geometry={res.mirrorGeo}
-            material={res.mirrorMat}
-            position={[0, PIVOT_Y, DIAL_Z + MIRROR_LIFT]}
-          />
-        </SoftInk>
-        <InkGroup id={ink + 2} thin>
-          <group ref={needleRef} position={[0, PIVOT_Y, DIAL_Z + NEEDLE_LIFT]}>
-            <mesh geometry={res.needleGeo} material={res.needleMat} castShadow={cast} />
-            <mesh geometry={res.needleBrassGeo} material={res.brassMat} />
-          </group>
-        </InkGroup>
-        {res.image && (
-          <group ref={pivotRef} position={[0, PIVOT_Y, DIAL_Z]}>
-            <group ref={imageRef} position={[0, 0, IMAGE_Z]}>
-              <mesh
-                geometry={res.pointerGeo}
-                material={res.image.material}
-                renderOrder={4}
-                userData={{ noInk: true }}
-                onBeforeRender={(_r, _s, camera) => {
-                  if (pivotRef.current) res.image?.syncPivot(pivotRef.current, camera);
-                }}
-              />
+        <FaceFrame>
+          <SoftInk soft={INK_SOFT.dial} id={ink + 1}>
+            <mesh
+              geometry={res.dialGeo}
+              material={res.dialMat}
+              position={[0, DIAL_CY, DIAL_Z]}
+              receiveShadow={cast}
+            />
+          </SoftInk>
+          <InkGroup id={ink + 5}>
+            <mesh
+              geometry={res.ringGeo}
+              material={res.ringMat}
+              position={[0, DIAL_CY, FACE_Z]}
+              castShadow={cast}
+              receiveShadow={cast}
+            />
+          </InkGroup>
+          <InkGroup id={ink + 3} thin>
+            <mesh geometry={res.screwGeo} material={res.brassMat} />
+            <mesh geometry={res.slotGeo} material={res.ringMat} />
+            <mesh geometry={res.cornersGeo} material={res.brassMat} />
+          </InkGroup>
+          <SoftInk soft={INK_SOFT.mirror} id={ink + 4}>
+            <mesh
+              geometry={res.mirrorGeo}
+              material={res.mirrorMat}
+              position={[0, PIVOT_Y, DIAL_Z + MIRROR_LIFT]}
+            />
+          </SoftInk>
+          <InkGroup id={ink + 2} thin>
+            <group ref={needleRef} position={[0, PIVOT_Y, DIAL_Z + NEEDLE_LIFT]}>
+              <mesh geometry={res.needleGeo} material={res.needleMat} castShadow={cast} />
+              <mesh geometry={res.needleBrassGeo} material={res.brassMat} />
             </group>
-          </group>
-        )}
-        {res.glassGeo && res.glassMat && (
-          <mesh
-            geometry={res.glassGeo}
-            material={res.glassMat}
-            position={[0, DIAL_CY, GLASS_Z]}
-            renderOrder={6}
-            userData={{ noInk: true }}
-          />
-        )}
-        {res.ringShadowGeo && res.ringShadowMat && (
-          <mesh
-            geometry={res.ringShadowGeo}
-            material={res.ringShadowMat}
-            position={[0, DIAL_CY, SHADOW_Z]}
-            renderOrder={1}
-            userData={{ noInk: true }}
-          />
-        )}
-        {res.screwShadowGeo && res.screwShadowMat && (
-          <mesh
-            geometry={res.screwShadowGeo}
-            material={res.screwShadowMat}
-            position={[0, SCREW_Y, SHADOW_Z]}
-            renderOrder={1}
-            userData={{ noInk: true }}
-          />
-        )}
+          </InkGroup>
+          {res.image && (
+            <group ref={pivotRef} position={[0, PIVOT_Y, DIAL_Z]}>
+              <group ref={imageRef} position={[0, 0, IMAGE_Z]}>
+                <mesh
+                  geometry={res.pointerGeo}
+                  material={res.image.material}
+                  renderOrder={4}
+                  userData={{ noInk: true }}
+                  onBeforeRender={(_r, _s, camera) => {
+                    if (pivotRef.current) res.image?.syncPivot(pivotRef.current, camera);
+                  }}
+                />
+              </group>
+            </group>
+          )}
+          {res.glassGeo && res.glassMat && (
+            <mesh
+              geometry={res.glassGeo}
+              material={res.glassMat}
+              position={[0, DIAL_CY, GLASS_Z]}
+              renderOrder={6}
+              userData={{ noInk: true }}
+            />
+          )}
+          {res.ringShadowGeo && res.ringShadowMat && (
+            <mesh
+              geometry={res.ringShadowGeo}
+              material={res.ringShadowMat}
+              position={[0, DIAL_CY, SHADOW_Z]}
+              renderOrder={1}
+              userData={{ noInk: true }}
+            />
+          )}
+          {res.screwShadowGeo && res.screwShadowMat && (
+            <mesh
+              geometry={res.screwShadowGeo}
+              material={res.screwShadowMat}
+              position={[0, SCREW_Y, SHADOW_Z]}
+              renderOrder={1}
+              userData={{ noInk: true }}
+            />
+          )}
+        </FaceFrame>
       </group>
       {/* Zero-adjust screw tap target, bigger than the head; it never reaches the face tap. */}
-      <mesh
-        geometry={res.hitScrewGeo}
-        material={res.hitMat}
-        onPointerDown={tapOnly(onZeroScrewTap)}
-      />
+      <FaceFrame>
+        <mesh
+          geometry={res.hitScrewGeo}
+          material={res.hitMat}
+          onPointerDown={tapOnly(onZeroScrewTap)}
+        />
+      </FaceFrame>
       <TerminalNut
         id={plus}
         part={kind}

@@ -67,8 +67,7 @@ import { WireBoard } from "./WireBoard";
 //                                                     its lead lying out of the frame (V+ and V-
 //                                                     also draw the wire board, faded, which theirs
 //                                                     lies across)
-//   &part=desk                                        the desk things alone
-//   (no part)                                         the whole bench and the desk things
+//   (no part)                                         the whole bench
 //   &az=<deg>                                         camera azimuth (default 45, the golden frame's)
 //   &zoom=<1..4>                                      this much tighter than the fitted view
 //   &turn=1                                           sweeps the azimuth ±30° about az, 8 s a round
@@ -251,27 +250,6 @@ function DumpTerminals({ registry }: { registry: TerminalRegistry }) {
   useEffect(() => {
     if (ready) console.log(JSON.stringify(terminalPositions(registry)));
   }, [ready, registry]);
-  return null;
-}
-
-/**
- * The desk things sit in LookGround (scene/look/DeskProps.tsx names their group "DeskProps"); they
- * are shown only where the subject is the desk or the whole bench, and hidden for a part alone.
- */
-function DeskVisibility({ show }: { show: boolean }) {
-  const scene = useThree((s) => s.scene);
-  useEffect(() => {
-    const desk = scene.getObjectByName("DeskProps");
-    if (!desk) {
-      if (!show)
-        console.warn("kit: no DeskProps group in the scene, so the desk things stay in view");
-      return;
-    }
-    desk.visible = show;
-    return () => {
-      desk.visible = true;
-    };
-  }, [scene, show]);
   return null;
 }
 
@@ -506,7 +484,6 @@ export default function KitPreview() {
         <KitCamera shot={shot} bounds={plan.bounds} azDeg={p.azDeg} turn={p.turn} zoom={p.zoom} />
         <LookLights shadowsDirty={shadowsDirty} />
         <LookGround />
-        <DeskVisibility show={plan.desk} />
         <TerminalProvider registry={registry}>
           <Bench plan={plan} p={p} state={state} quality={quality} kick={kick} />
           {plan.macro ? <MacroAim id={plan.macro} shot={shot} state={state} /> : null}

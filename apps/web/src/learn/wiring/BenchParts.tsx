@@ -28,6 +28,8 @@ export interface BenchPartsProps {
   onRuleTap?: () => void;
   /** An item on the tray was tapped. */
   onTrayItem?: (item: TrayItem) => void;
+  /** Draw the tray (default true). The live stage leaves it out: it holds Identify items only. */
+  tray?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function BenchParts({
   onZeroScrew,
   onRuleTap,
   onTrayItem,
+  tray = true,
 }: BenchPartsProps) {
   const L = OHMS_LAW_LAYOUT;
   const p = bench.params;
@@ -116,15 +119,17 @@ export function BenchParts({
           onRuleTap={() => onRuleTap?.()}
         />,
       )}
-      <Tray
-        {...common}
-        position={L.tray.position}
-        rotationY={L.tray.rotationY}
-        onItemTap={(item) => {
-          onTrayItem?.(item);
-          onPartTap?.(item);
-        }}
-      />
+      {tray && (
+        <Tray
+          {...common}
+          position={L.tray.position}
+          rotationY={L.tray.rotationY}
+          onItemTap={(item) => {
+            onTrayItem?.(item);
+            onPartTap?.(item);
+          }}
+        />
+      )}
     </>
   );
 }

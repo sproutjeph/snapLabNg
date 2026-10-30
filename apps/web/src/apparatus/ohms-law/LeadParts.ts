@@ -509,8 +509,9 @@ export function makeCrocClipGeometries(): {
 // Leads rest on top of whatever they cross. These boxes are the bench's parts as the Wave 0
 // parts size them (width x height x depth, centred on the part's layout position plus a z offset,
 // rotation 0). They follow the modelled parts: CellHolder (base 0.142 long, walls 0.046 high),
-// Key (base 0.092 wide on PLUG_KEY_DIMS, blocks on top), Meter (case 0.12 x 0.118 x 0.05, with the
-// nut ledge 0.012 high and 0.04 deep in front), ResistanceBox (0.30 wide on PLUG_BOX_DIMS), the
+// Key (base 0.092 wide on PLUG_KEY_DIMS, blocks on top), Meter (sloping-front case 0.12 x 0.118,
+// 0.08 deep at the foot from 0.055 behind its position to 0.025 in front, with the nut ledge 0.012
+// high and 0.04 deep in front), ResistanceBox (0.30 wide on PLUG_BOX_DIMS), the
 // wire board and the tray. The wire board's brass strips and the tray's rheostat are left out.
 // Change these with the parts.
 
@@ -530,9 +531,9 @@ export interface BenchFootprint {
 const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number, number]> = [
   ["cells", 0.142, 0.046, 0.046, 0],
   ["key", 0.092, 0.024, 0.05, 0],
-  ["ammeter", 0.12, 0.118, 0.05, 0],
+  ["ammeter", 0.12, 0.118, 0.08, -0.015],
   ["ammeter", 0.12, 0.012, 0.04, 0.045],
-  ["voltmeter", 0.12, 0.118, 0.05, 0],
+  ["voltmeter", 0.12, 0.118, 0.08, -0.015],
   ["voltmeter", 0.12, 0.012, 0.04, 0.045],
   ["box", 0.3, 0.06, 0.1, 0],
   ["wire", 1.1, 0.02, 0.12, 0],

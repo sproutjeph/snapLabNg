@@ -69,7 +69,7 @@ function ohmsLawShot(search: URLSearchParams, portrait: boolean): LookShot {
     return { id: part, focus: [x, y + 0.03, z], spanM: part === "wire" ? 1.15 : 0.42 };
   }
   // A tall phone frames the apparatus only (the camera turns it up the screen); a wide screen
-  // takes in the desk props too.
+  // takes in more of the desk round it.
   return portrait
     ? { id: "bench", focus: [-0.02, 0, -0.05], spanM: 0.9 }
     : { id: "bench", focus: [0.06, 0, -0.02], spanM: 1.3 };
