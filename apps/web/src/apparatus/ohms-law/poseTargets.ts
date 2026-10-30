@@ -11,13 +11,17 @@ export interface Bounds {
   z1: number;
 }
 
-/** The desk area the bench's parts cover (their footprints, ledges included). */
+/**
+ * The desk area the bench's parts cover (their footprints, ledges included). The tray is left out:
+ * in layout v3 it stands far behind the board, out of the shot (layout.ts).
+ */
 export function benchBounds(): Bounds {
   let x0 = Number.POSITIVE_INFINITY;
   let x1 = Number.NEGATIVE_INFINITY;
   let z0 = Number.POSITIVE_INFINITY;
   let z1 = Number.NEGATIVE_INFINITY;
   for (const f of BENCH_FOOTPRINTS) {
+    if (f.slot === "tray") continue;
     x0 = Math.min(x0, f.cx - f.hx);
     x1 = Math.max(x1, f.cx + f.hx);
     z0 = Math.min(z0, f.cz - f.hz);
