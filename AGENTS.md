@@ -82,6 +82,10 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
+| Wave 2a-shell (`docs/plans/wave-2-lean.md`): `learn/shell/**` (incl. the values in `layout.ts`), `learn/player/**` (not `stages.ts`'s exports), `learn/callouts/Callouts.tsx` and its CSS | Gemini, branch `gemini/wave-2-shell`, port 5174 |
+| Wave 2a-script: `learn/lessons/ohms-law/{script.ts,script.test.ts,guide.ts,guide.test.ts}` | Muse Code, branch `muse/wave-2-script`, port 5176 |
+| Wave 2a-stage: `learn/LearnPage.tsx` (canvas part), `learn/stage/**`, `scene/look/**`, the `DeskProps` import in `apparatus/ohms-law/kitParams.ts` | Claude subagent, `claude/wave-2-stage`, port 5177 |
+| Wave 2a-real: `apparatus/materials/**`, `apparatus/ohms-law/**` (not `Lead.tsx`, `PenNib.tsx`, `kitParams.ts`), `scene/ink/InkEffect.ts` | Claude subagent, `claude/wave-2-real`, port 5178 |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No Wave 1b slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/`, except `scripts/` and `docs/`.
