@@ -1,12 +1,18 @@
 import { type ComponentType, useEffect, useId, useRef, useState } from "react";
 import {
   IconAbout,
+  IconAnswers,
+  IconBook,
   IconChevronRight,
+  IconGraph,
   IconHome,
   IconMetreBridge,
   IconNotebook,
   IconOhm,
+  IconQuestion,
+  IconSteps,
   IconTitration,
+  IconTools,
 } from "./icons";
 
 export interface NavItem {
@@ -16,6 +22,17 @@ export interface NavItem {
   href?: string;
   current?: boolean;
 }
+
+export type PopupNavId = "question" | "instructions" | "steps" | "graph" | "answers" | "tools";
+
+const POPUP_ITEMS: Array<{ id: PopupNavId; label: string; Icon: ComponentType }> = [
+  { id: "question", label: "Question paper", Icon: IconQuestion },
+  { id: "instructions", label: "Instructions", Icon: IconBook },
+  { id: "steps", label: "Steps", Icon: IconSteps },
+  { id: "graph", label: "Graph sheet", Icon: IconGraph },
+  { id: "answers", label: "Answer sheet", Icon: IconAnswers },
+  { id: "tools", label: "Tools", Icon: IconTools },
+];
 
 /** The page's six places. The strip's practical menu lists the three practicals from here. */
 export const NAV: NavItem[] = [
@@ -42,43 +59,70 @@ export function NavList({
   variant,
   onNotebook,
   onNavigate,
+  onPopup,
 }: {
   variant: "rail" | "menu";
   onNotebook(): void;
   onNavigate?(): void;
+  onPopup?(id: PopupNavId): void;
 }) {
   return (
-    <ul className={`sh-nav sh-nav-${variant}`}>
-      {NAV.map(({ id, label, Icon, href, current }) => (
-        <li key={id} className="sh-nav-li">
-          {href ? (
-            <a
-              className="sh-nav-item"
-              href={href}
-              aria-current={current ? "page" : undefined}
-              aria-label={label}
-              onClick={onNavigate}
-            >
-              <Icon />
-              <span className="sh-nav-label sh-txt">{label}</span>
-            </a>
-          ) : (
-            <button
-              type="button"
-              className="sh-nav-item"
-              aria-label={label}
-              onClick={() => {
-                onNavigate?.();
-                onNotebook();
-              }}
-            >
-              <Icon />
-              <span className="sh-nav-label sh-txt">{label}</span>
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div className={`sh-nav-wrap sh-nav-wrap-${variant}`}>
+      <ul className={`sh-nav sh-nav-${variant}`}>
+        {NAV.map(({ id, label, Icon, href, current }) => (
+          <li key={id} className="sh-nav-li">
+            {href ? (
+              <a
+                className="sh-nav-item"
+                href={href}
+                aria-current={current ? "page" : undefined}
+                aria-label={label}
+                onClick={onNavigate}
+              >
+                <Icon />
+                <span className="sh-nav-label sh-txt">{label}</span>
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="sh-nav-item"
+                aria-label={label}
+                onClick={() => {
+                  onNavigate?.();
+                  onNotebook();
+                }}
+              >
+                <Icon />
+                <span className="sh-nav-label sh-txt">{label}</span>
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {variant === "menu" && onPopup ? (
+        <div className="sh-menu-popups">
+          <p className="sh-label sh-menu-sec">Practical</p>
+          <ul className="sh-nav sh-nav-menu">
+            {POPUP_ITEMS.map(({ id, label, Icon }) => (
+              <li key={id} className="sh-nav-li">
+                <button
+                  type="button"
+                  className="sh-nav-item"
+                  aria-label={label}
+                  onClick={() => {
+                    onNavigate?.();
+                    onPopup(id);
+                  }}
+                >
+                  <Icon />
+                  <span className="sh-nav-label sh-txt">{label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

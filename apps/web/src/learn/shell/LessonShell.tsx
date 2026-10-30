@@ -1,17 +1,32 @@
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
+import { CalloutChip, type CalloutChipProps } from "../callouts/Callouts";
 import type { IdentifyCard, Lesson, LessonMode, PracticalMode } from "../types";
 import Brand from "./Brand";
 import GuidePanel, { type GuideState, type ShellTab } from "./GuidePanel";
 import IdentifyFrame from "./IdentifyFrame";
-import { IconClose, IconDiagram } from "./icons";
-import Rail, { NavList } from "./Rail";
+import {
+  IconAnswers,
+  IconBook,
+  IconClose,
+  IconDiagram,
+  IconGraph,
+  IconNotebook,
+  IconQuestion,
+  IconSteps,
+  IconTools,
+} from "./icons";
+import Rail, { NavList, type PopupNavId } from "./Rail";
 import Sheet from "./Sheet";
 import StatusCard, { type StatusCredit } from "./StatusCard";
 import StepBar, { type StepStatus } from "./StepBar";
 import { useLayout } from "./useLayout";
 import "./shell.css";
 
-export type { GuideState, ShellTab, StatusCredit, StepStatus };
+export type { CalloutChipProps, GuideState, ShellTab, StatusCredit, StepStatus };
+
+export type PopupId = "question" | "instructions" | "steps" | "graph" | "answers" | "tools";
+
+export { CalloutChip };
 
 /** The tabs in order. Exam keeps Instructions and Examiner asks only; Examiner asks needs content. */
 const TAB_ORDER: readonly ShellTab[] = ["instructions", "why", "precautions", "examiner"];
@@ -78,31 +93,38 @@ export interface LessonShellProps {
   note?: ReactNode;
   /**
    * Watch: plays the demonstration again from its first beat. The practical menu on the strip
-   * lists it as Restart. A touch screen's player card has no Restart of its own (no room for a
-   * sixth 44 px button), so this is where it is there.
+   * lists it as Restart.
    */
   onRestart?: (() => void) | undefined;
   /** A div over the canvas and under the cards, for the callout labels (W2-callouts). */
   calloutLayerRef?: RefObject<HTMLDivElement | null>;
+
+  // ---- Pop-up layout (docs/plans/wave-2-lean.md) ----
+
+  /** Optional tools slot (Compare, Notebook, Undo, Reset) that the Tools pop-up shows. */
+  tools?: ReactNode;
+  /** Optional custom slot for the Question Paper pop-up. */
+  questionSlot?: ReactNode;
+  /** Optional custom slot for the Graph Sheet pop-up. */
+  graphSlot?: ReactNode;
+  /** Optional custom slot for the Answer Sheet pop-up. */
+  answersSlot?: ReactNode;
+  /** Controlled active pop-up. */
+  activePopup?: PopupId | null;
+  onPopupChange?(popup: PopupId | null): void;
+  /** Initial pop-up on mount (defaults to null, or "question" at start). */
+  defaultPopup?: PopupId | null;
+  /** Optional callout chip to render on the stage. */
+  callout?: { label: string; x: number; y: number; visible: boolean };
 }
 
 /**
- * The page shell around the 3D bench (docs/plans/page-layout.md): the canvas full-bleed behind
- * Backcountry-style cards in paper and ink. A dark rail on the left (laptop), the brand and a
- * status card across the top, the guide (tabs, the step's card) down the right, the step strip
- * along the foot, and the Player's card and caption laid over the stage by `overlay`.
- *
- * One layout (layout.ts) drives it: four modes by screen size, every size drawn in design px and
- * scaled with `--ui`. On a phone held upright there is no rail (the brand mark opens the menu),
- * the strip sits above a guide that folds to a peek, and the diagram and Identify card open as
- * sheets.
- *
- * Controlled and data-driven: it holds only layout state (menus, sheets, the phone's guide, the
- * diagram toggle unless you control it). It computes nothing; ✓/✕ arrive in `stepStatus`.
- *
- * Exam mode turns every hint off: no "Do this next" line, callouts or Identify card, no "Why it
- * works" or "Precautions" tab, and the status card can drop its count. The question's own words,
- * the diagram toggle and "Examiner asks" stay.
+ * The page shell around the 3D bench in the pop-up layout (docs/plans/wave-2-lean.md):
+ * - Always on screen: full-bleed stage, slim top bar (brand, player pill, progress badge),
+ *   and bottom caption pill.
+ * - Pop-ups: Question, Instructions, Steps, Graph, Answers, and Tools.
+ *   On phone: bottom sheets. On laptop: cards that slide in from the right.
+ * - CalloutChip with BC101 spring, text swap, and first-show pop animations.
  */
 export default function LessonShell({
   lesson,
@@ -133,17 +155,34 @@ export default function LessonShell({
   note,
   onRestart,
   calloutLayerRef,
+  tools,
+  questionSlot,
+  graphSlot,
+  answersSlot,
+  activePopup,
+  onPopupChange,
+  defaultPopup = null,
+  callout,
 }: LessonShellProps) {
   const uid = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const ownCalloutLayer = useRef<HTMLDivElement>(null);
   const menuBtn = useRef<HTMLButtonElement>(null);
   const layout = useLayout(rootRef);
-  // A phone (upright or sideways) has no rail, and shows the diagram and Identify card as sheets.
+
   const portrait = layout === "portrait";
   const phone = portrait || layout === "short";
 
   const step = lesson.steps[Math.min(stepIndex, lesson.steps.length - 1)];
+
+  // Pop-up management
+  const [ownPopup, setOwnPopup] = useState<PopupId | null>(defaultPopup);
+  const popup = activePopup !== undefined ? activePopup : ownPopup;
+  const setPopup = (p: PopupId | null) => {
+    setOwnPopup(p);
+    onPopupChange?.(p);
+  };
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [ownNotebookOpen, setOwnNotebookOpen] = useState(false);
   const notebookOpen = notebookOpenProp ?? ownNotebookOpen;
@@ -151,12 +190,14 @@ export default function LessonShell({
     setOwnNotebookOpen(open);
     onNotebookOpenChange?.(open);
   };
+
   const [ownDiagramOpen, setOwnDiagramOpen] = useState(false);
   const diagramShown = diagramSlot !== undefined && (diagramOpen ?? ownDiagramOpen);
   const setDiagram = (open: boolean) => {
     setOwnDiagramOpen(open);
     onDiagramOpenChange?.(open);
   };
+
   const [ownGuide, setOwnGuide] = useState<GuideState>("peek");
   const guide = guideProp ?? ownGuide;
   const setGuide = (g: GuideState) => {
@@ -170,10 +211,7 @@ export default function LessonShell({
   const tabs = TAB_ORDER.filter((t) =>
     t === "instructions" ? true : t === "examiner" ? hasExaminer : !exam,
   );
-  // A tab hidden by exam mode (or missing its content) falls back to Instructions without
-  // touching the caller's state.
   const activeTab: ShellTab = tabs.includes(tab) ? tab : "instructions";
-  // Only Instructions has a peek: any other tab shows in full.
   const guideNow: GuideState = portrait && activeTab === "instructions" ? guide : "open";
   const practicalMode: PracticalMode = practical ?? (exam ? "exam" : "practice");
   const doneCount = stepStatus.filter((s) => s === "done").length;
@@ -189,7 +227,7 @@ export default function LessonShell({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
-  // Turning the phone sideways, or onto a laptop, closes a menu left open.
+
   useEffect(() => {
     if (!phone) setMenuOpen(false);
   }, [phone]);
@@ -212,52 +250,208 @@ export default function LessonShell({
   const diagramOnStage = diagramShown && !phone;
   const showFloat = !phone && (compare !== null || diagramOnStage || card !== null);
 
+  const guidePanelNode = (
+    <GuidePanel
+      uid={uid}
+      step={step}
+      stepNumber={stepIndex + 1}
+      exam={exam}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+      tabContent={tabContent}
+      checklist={exam ? undefined : checklist}
+      note={note}
+      portrait={portrait}
+      guide={guideNow}
+      onGuideChange={setGuide}
+    />
+  );
+
+  const stepBarNode = (
+    <StepBar
+      steps={lesson.steps}
+      stepIndex={stepIndex}
+      stepStatus={stepStatus}
+      onStepChange={onStepChange}
+      title={lesson.title}
+      thumbs={thumbs}
+      lockedFrom={lockedFrom}
+      readOnly={readOnlyTabs}
+      onRestart={onRestart}
+    />
+  );
+
+  const questionPaperNode = (
+    <div className="sh-question-content">
+      <h3 className="sh-label">{lesson.title}</h3>
+      <div className="sh-question-lead">
+        <blockquote>“{step.instruction}”</blockquote>
+      </div>
+      {lesson.diagram ? (
+        <div className="sh-diagram-art">
+          {diagramSlot}
+          <p className="sh-caption">{lesson.diagram.caption}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const toolsPanelNode = (
+    <div className="sh-tools-panel">
+      {tools}
+      {diagramSlot !== undefined ? (
+        <button
+          type="button"
+          className="sh-btn sh-compare"
+          aria-pressed={diagramShown}
+          aria-label="Compare with diagram"
+          onClick={() => setDiagram(!diagramShown)}
+        >
+          <IconDiagram />
+          <span className="sh-txt">Compare with diagram</span>
+        </button>
+      ) : null}
+      {notebookSlot !== undefined ? (
+        <button
+          type="button"
+          className="sh-btn"
+          aria-label="Open notebook"
+          onClick={() => {
+            setPopup(null);
+            setNotebookOpen(true);
+          }}
+        >
+          <IconNotebook />
+          <span className="sh-txt">Notebook</span>
+        </button>
+      ) : null}
+    </div>
+  );
+
   return (
     <div
       ref={rootRef}
       className="sh-root"
       data-guide={guideNow}
       data-status={status?.credit ? "credit" : "plain"}
+      data-popup={popup ?? "none"}
     >
       <div className="sh-stage">
         <div className="sh-canvas">{children}</div>
-        <div ref={calloutLayerRef ?? ownCalloutLayer} className="sh-callout-layer" />
+        <div ref={calloutLayerRef ?? ownCalloutLayer} className="sh-callout-layer">
+          {callout && <CalloutChip {...callout} />}
+        </div>
 
         <div className="sh-band" aria-hidden="true" />
-        <Brand
-          practical={practicalMode}
-          menuRef={menuBtn}
-          {...(phone
-            ? {
-                menu: {
-                  open: menuOpen,
-                  controls: `${uid}-menu`,
-                  onToggle: () => setMenuOpen((o) => !o),
-                },
-              }
-            : {})}
-        />
+
+        {/* Slim Top Bar: Brand, Player Pill (overlay), Progress Badge & Pop-up buttons */}
+        <header className="sh-top-bar" data-region="top-bar">
+          <Brand
+            practical={practicalMode}
+            menuRef={menuBtn}
+            {...(phone
+              ? {
+                  menu: {
+                    open: menuOpen,
+                    controls: `${uid}-menu`,
+                    onToggle: () => setMenuOpen((o) => !o),
+                  },
+                }
+              : {})}
+          />
+
+          <StatusCard
+            title={lesson.title}
+            done={doneCount}
+            total={lesson.steps.length}
+            hideCount={status?.hideCount}
+            credit={status?.credit}
+          />
+
+          <nav className="sh-top-actions" aria-label="Practical pop-ups">
+            <button
+              type="button"
+              className={`sh-pop-btn${popup === "question" ? " is-active" : ""}`}
+              aria-label="Question paper"
+              aria-pressed={popup === "question"}
+              onClick={() => setPopup(popup === "question" ? null : "question")}
+            >
+              <IconQuestion />
+              <span className="sh-txt">Question</span>
+            </button>
+            <button
+              type="button"
+              className={`sh-pop-btn${popup === "instructions" ? " is-active" : ""}`}
+              aria-label="Instructions"
+              aria-pressed={popup === "instructions"}
+              onClick={() => setPopup(popup === "instructions" ? null : "instructions")}
+            >
+              <IconBook />
+              <span className="sh-txt">Instructions</span>
+            </button>
+            <button
+              type="button"
+              className={`sh-pop-btn sh-pop-btn-steps${popup === "steps" ? " is-active" : ""}`}
+              aria-label="Steps"
+              aria-pressed={popup === "steps"}
+              onClick={() => setPopup(popup === "steps" ? null : "steps")}
+            >
+              <IconSteps />
+              <span className="sh-txt">Steps</span>
+            </button>
+            <button
+              type="button"
+              className={`sh-pop-btn${popup === "graph" ? " is-active" : ""}`}
+              aria-label="Graph sheet"
+              aria-pressed={popup === "graph"}
+              onClick={() => setPopup(popup === "graph" ? null : "graph")}
+            >
+              <IconGraph />
+              <span className="sh-txt">Graph</span>
+            </button>
+            <button
+              type="button"
+              className={`sh-pop-btn${popup === "answers" ? " is-active" : ""}`}
+              aria-label="Answer sheet"
+              aria-pressed={popup === "answers"}
+              onClick={() => setPopup(popup === "answers" ? null : "answers")}
+            >
+              <IconAnswers />
+              <span className="sh-txt">Answers</span>
+            </button>
+            <button
+              type="button"
+              className={`sh-pop-btn${popup === "tools" ? " is-active" : ""}`}
+              aria-label="Tools"
+              aria-pressed={popup === "tools"}
+              onClick={() => setPopup(popup === "tools" ? null : "tools")}
+            >
+              <IconTools />
+              <span className="sh-txt">Tools</span>
+            </button>
+          </nav>
+        </header>
+
         {phone && menuOpen ? (
           <>
             <div id={`${uid}-menu`} className="sh-menu">
               <NavList
                 variant="menu"
-                onNotebook={() => setNotebookOpen(true)}
+                onNotebook={() => {
+                  setMenuOpen(false);
+                  setNotebookOpen(true);
+                }}
                 onNavigate={() => setMenuOpen(false)}
+                onPopup={(p: PopupNavId) => {
+                  setMenuOpen(false);
+                  setPopup(p);
+                }}
               />
             </div>
-            {/* Pointer-only outside-tap layer; the keyboard closes the menu with Escape. */}
             <div className="sh-menu-scrim" onPointerDown={() => setMenuOpen(false)} />
           </>
         ) : null}
-
-        <StatusCard
-          title={lesson.title}
-          done={doneCount}
-          total={lesson.steps.length}
-          hideCount={status?.hideCount}
-          credit={status?.credit}
-        />
 
         {showFloat ? (
           <div className="sh-float">
@@ -287,35 +481,89 @@ export default function LessonShell({
           compare
         ) : null}
 
+        {/* Player overlay (card in top row, caption at the bottom) */}
         {overlay}
 
-        <GuidePanel
-          uid={uid}
-          step={step}
-          stepNumber={stepIndex + 1}
-          exam={exam}
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          tabContent={tabContent}
-          checklist={exam ? undefined : checklist}
-          note={note}
-          portrait={portrait}
-          guide={guideNow}
-          onGuideChange={setGuide}
-        />
+        {/* Active Modal Pop-ups (slide-in card on laptop, bottom sheet on phone) */}
+        {popup === "question" && (
+          <Sheet
+            label="Question paper"
+            closeLabel="Close question paper"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-question"
+          >
+            {questionSlot ?? questionPaperNode}
+          </Sheet>
+        )}
 
-        <StepBar
-          steps={lesson.steps}
-          stepIndex={stepIndex}
-          stepStatus={stepStatus}
-          onStepChange={onStepChange}
-          title={lesson.title}
-          thumbs={thumbs}
-          lockedFrom={lockedFrom}
-          readOnly={readOnlyTabs}
-          onRestart={onRestart}
-        />
+        {popup === "instructions" && (
+          <Sheet
+            label="Instructions"
+            closeLabel="Close instructions"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-instructions"
+          >
+            {guidePanelNode}
+          </Sheet>
+        )}
+
+        {popup === "steps" && (
+          <Sheet
+            label="Steps"
+            closeLabel="Close steps"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-steps"
+          >
+            {stepBarNode}
+          </Sheet>
+        )}
+
+        {popup === "graph" && (
+          <Sheet
+            label="Graph sheet"
+            closeLabel="Close graph sheet"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-graph"
+          >
+            {graphSlot ?? <p className="sh-empty">Graph paper will appear here when available.</p>}
+          </Sheet>
+        )}
+
+        {popup === "answers" && (
+          <Sheet
+            label="Answer sheet"
+            closeLabel="Close answer sheet"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-answers"
+          >
+            {answersSlot ?? (
+              <p className="sh-empty">Your answers and marked results will appear here.</p>
+            )}
+          </Sheet>
+        )}
+
+        {popup === "tools" && (
+          <Sheet
+            label="Tools"
+            closeLabel="Close tools"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-tools"
+          >
+            {toolsPanelNode}
+          </Sheet>
+        )}
+
+        {/* Shelf for static markup and accessibility inspection */}
+        <div className="sh-popups-shelf" hidden aria-hidden="true">
+          {popup !== "instructions" && guidePanelNode}
+          {popup !== "steps" && stepBarNode}
+        </div>
       </div>
 
       {phone ? null : <Rail onNotebook={() => setNotebookOpen(true)} />}

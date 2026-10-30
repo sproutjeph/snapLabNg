@@ -1,24 +1,36 @@
 import { type ReactNode, type RefObject, useEffect, useRef } from "react";
 import { IconClose } from "./icons";
 
-interface SheetProps {
+export interface SheetProps {
   /** Accessible name and visible heading. */
   label: string;
   closeLabel: string;
   onClose(): void;
   /** Where focus goes on close if the element that opened the sheet has unmounted (the phone menu). */
   fallbackFocus?: RefObject<HTMLElement | null>;
+  /** Optional layout variant (default: auto). */
+  variant?: "sheet" | "card" | "auto";
+  /** Optional extra class name for the sheet panel. */
+  className?: string;
   children: ReactNode;
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * A modal sheet: a centred card on a laptop, a bottom sheet on a phone. Escape or a tap on the
- * paper outside closes it; Tab stays inside; focus returns to where it was. The key handler sits
- * on `document`, so Escape and the Tab trap still work after a click on plain text.
+ * A modal sheet: a card sliding in from the right on a laptop, a bottom sheet on a phone.
+ * Escape or a tap on the paper outside closes it; Tab stays inside; focus returns to where it was.
+ * The key handler sits on `document`, so Escape and the Tab trap still work after a click on plain text.
  */
-export default function Sheet({ label, closeLabel, onClose, fallbackFocus, children }: SheetProps) {
+export default function Sheet({
+  label,
+  closeLabel,
+  onClose,
+  fallbackFocus,
+  variant = "auto",
+  className,
+  children,
+}: SheetProps) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -72,7 +84,8 @@ export default function Sheet({ label, closeLabel, onClose, fallbackFocus, child
     >
       <div
         ref={ref}
-        className="sh-sheet"
+        className={`sh-sheet${className ? ` ${className}` : ""}`}
+        data-variant={variant}
         role="dialog"
         aria-modal="true"
         aria-label={label}
