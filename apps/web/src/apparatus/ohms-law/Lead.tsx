@@ -135,6 +135,11 @@ export function getLeadCurve(
 
 /** Seconds after her hand lets a lead go during which a lead made from its nut is that lead. */
 const HAND_S = 1;
+/**
+ * How long a place her hand let go of stays empty, waiting for the lead she made from it. Short,
+ * so a lead she drops still flies home (FLY_BACK_S) from her nut.
+ */
+const HAND_HOLD_S = 0.15;
 const nowS = () => performance.now() / 1000;
 
 /** A slot free for a new lead: nobody lifted it and it is not in her hand. */
@@ -176,6 +181,14 @@ export function takeRest(
   rest.taken[slot] = l.id;
   rest.slotOf.set(l.id, { slot, flies });
 }
+
+/** Scratch for a lead that asks again for a rest place, so the per-frame retry allocates nothing. */
+const _retry: { id: string; a: TerminalId; b: TerminalId; colour: LeadColour } = {
+  id: "",
+  a: "E+",
+  b: "E-",
+  colour: "red",
+};
 
 /** Puts lead `id` back in its rest place (it flies home from `a` and `b`, RestingLead). */
 export function returnRest(
@@ -455,6 +468,23 @@ const ROUTES: ReadonlyArray<readonly [TerminalId, TerminalId]> = [
   ["V-", "Y"],
 ];
 
+/** Writes waypoint `n` (xyz) into `out`; returns the next index. */
+function putPoint(out: Float64Array, n: number, x: number, y: number, z: number): number {
+  out[n * 3] = x;
+  out[n * 3 + 1] = y;
+  out[n * 3 + 2] = z;
+  return n + 1;
+}
+
+/**
+ * Along a lane at `z` from x0 to x1, on the desk; when the two are nearly level the lead simply
+ * crosses the lane. Returns the next index.
+ */
+function putLane(out: Float64Array, n: number, x0: number, x1: number, z: number): number {
+  if (Math.abs(x1 - x0) < LANE_MERGE_M) return putPoint(out, n, (x0 + x1) / 2, Number.NaN, z);
+  return putPoint(out, putPoint(out, n, x0, Number.NaN, z), x1, Number.NaN, z);
+}
+
 /**
  * Writes the waypoints between a lead's two seats (xyz; y NaN means on the desk) into `out` and
  * returns how many, or 0 for a lead that simply droops (shapeCable). `s` and `e` are the seats of
@@ -482,37 +512,23 @@ export function leadWaypoints(
   const p = flip ? e : s;
   const q = flip ? s : e;
   let n = 0;
-  const put = (x: number, y: number, z: number) => {
-    out[n * 3] = x;
-    out[n * 3 + 1] = y;
-    out[n * 3 + 2] = z;
-    n++;
-  };
   const F = Number.NaN;
-  // Along a lane from x0 to x1; when the two are nearly level the lead simply crosses it.
-  const lane = (x0: number, x1: number, z: number) => {
-    if (Math.abs(x1 - x0) < LANE_MERGE_M) put((x0 + x1) / 2, F, z);
-    else {
-      put(x0, F, z);
-      put(x1, F, z);
-    }
-  };
   if (r === 0 || r === 1) {
     // R2–X, E−–Y: straight back from the row's end, along the lane, then onto the board.
-    lane(p.x, q.x, LEAD_LANES.front);
+    n = putLane(out, n, p.x, q.x, LEAD_LANES.front);
   } else if (r === 3) {
     // V−–Y: forward off the ledge to the lane behind the board, along it, onto the board.
-    lane(p.x, q.x, LEAD_LANES.backNear);
+    n = putLane(out, n, p.x, q.x, LEAD_LANES.backNear);
   } else {
     // V+–X: back at the seat's height, down behind its own plug, along the ledge behind V−'s nut,
     // off the ledge's left end, forward to its lane (behind V−'s) and along it to X.
     const mid = p.x - METER_NUT_X;
     const tz = p.z - TUCK_BEHIND_M;
-    put(p.x, p.y + 0.004, tz);
-    put(p.x - 0.012, LEDGE_LANE_Y, tz);
-    put(mid - METER_NUT_X - 0.014, LEDGE_LANE_Y, tz);
-    put(mid - METER_HALF_W - 0.01, F, tz + 0.006);
-    lane(mid - METER_HALF_W - 0.015, q.x, LEAD_LANES.backFar);
+    n = putPoint(out, n, p.x, p.y + 0.004, tz);
+    n = putPoint(out, n, p.x - 0.012, LEDGE_LANE_Y, tz);
+    n = putPoint(out, n, mid - METER_NUT_X - 0.014, LEDGE_LANE_Y, tz);
+    n = putPoint(out, n, mid - METER_HALF_W - 0.01, F, tz + 0.006);
+    n = putLane(out, n, mid - METER_HALF_W - 0.015, q.x, LEAD_LANES.backFar);
   }
   if (flip) {
     for (let i = 0; i < n / 2 - 0.5; i++) {
@@ -592,6 +608,28 @@ function corner(i: number, x: number, y: number, z: number): void {
 }
 
 /**
+ * A short stiff exit at corner `k`: EXIT_STUB_M from seat `seat` toward the desk point (wx, wz),
+ * at the seat's height. Skipped when that point is too near. Returns the next corner index.
+ */
+function stubCorner(k: number, seat: THREE.Vector3, wx: number, wz: number): number {
+  const dx = wx - seat.x;
+  const dz = wz - seat.z;
+  const d = Math.hypot(dx, dz);
+  if (d < EXIT_STUB_M * 2) return k;
+  corner(k, seat.x + (dx / d) * EXIT_STUB_M, seat.y + 0.003, seat.z + (dz / d) * EXIT_STUB_M);
+  return k + 1;
+}
+
+/** Whether a lead from `a` to `b` (either way round) is one of the diagram's. */
+function isDiagramLead(a: TerminalId, b: TerminalId): boolean {
+  for (let i = 0; i < DIAGRAM_LEADS.length; i++) {
+    const l = DIAGRAM_LEADS[i];
+    if (l && ((l[0] === a && l[1] === b) || (l[0] === b && l[1] === a))) return true;
+  }
+  return false;
+}
+
+/**
  * A routed lead's ROUTE_POINTS control points from seat `s` (of `from`) to seat `e` (of `to`):
  * each seat, a short stiff exit at its height, the route's waypoints on the desk (or where the
  * route puts them), filled in along each leg. Returns false (and writes nothing) for a lead with
@@ -608,15 +646,8 @@ export function routeControl(
   if (n === 0) return false;
   let k = 0;
   corner(k++, s.x, s.y, s.z);
-  const stub = (from: THREE.Vector3, wx: number, wz: number) => {
-    const dx = wx - from.x;
-    const dz = wz - from.z;
-    const d = Math.hypot(dx, dz);
-    if (d < EXIT_STUB_M * 2) return;
-    corner(k++, from.x + (dx / d) * EXIT_STUB_M, from.y + 0.003, from.z + (dz / d) * EXIT_STUB_M);
-  };
   const w0y = _way[1] ?? 0;
-  if (Number.isNaN(w0y)) stub(s, _way[0] ?? 0, _way[2] ?? 0);
+  if (Number.isNaN(w0y)) k = stubCorner(k, s, _way[0] ?? 0, _way[2] ?? 0);
   for (let i = 0; i < n; i++) {
     const y = _way[i * 3 + 1] ?? 0;
     corner(k++, _way[i * 3] ?? 0, Number.isNaN(y) ? FLOOR_Y : y, _way[i * 3 + 2] ?? 0);
@@ -624,7 +655,7 @@ export function routeControl(
   const wly = _way[(n - 1) * 3 + 1] ?? 0;
   if (Number.isNaN(wly)) {
     // The stub before `e`, measured from e toward the last waypoint: it falls between them.
-    stub(e, _way[(n - 1) * 3] ?? 0, _way[(n - 1) * 3 + 2] ?? 0);
+    k = stubCorner(k, e, _way[(n - 1) * 3] ?? 0, _way[(n - 1) * 3 + 2] ?? 0);
   }
   corner(k++, e.x, e.y, e.z);
   spread(_poly, k, out, ROUTE_POINTS);
@@ -649,9 +680,7 @@ export function routeCable(
   if (routeControl(routed, from, to, s, e)) return true;
   // The loop's neighbours (cells to key, key to ammeter, ammeter to box) bow toward her, away from
   // the ammeter's case behind its nuts; any other lead bows the way its hash says.
-  const neighbours = DIAGRAM_LEADS.some(
-    ([a, b]) => (a === from && b === to) || (a === to && b === from),
-  );
+  const neighbours = isDiagramLead(from, to);
   const toHer = Math.sign(e.x - s.x) || 1;
   shapeCable(plain, s, e, neighbours ? Math.abs(bulge) * toHer : bulge);
   return false;
@@ -1011,6 +1040,14 @@ export function Lead({
       if (claim.id !== null) {
         if (ok && book.curve.get(claim.id) !== curve) book.curve.set(claim.id, curve);
         else if (!ok && book.curve.get(claim.id) === curve) book.curve.delete(claim.id);
+        // A lead that found every rest place lifted takes the first one put back.
+        if (book.rest.on > 0 && !book.rest.slotOf.has(claim.id) && claim.a && claim.b) {
+          _retry.id = claim.id;
+          _retry.a = claim.a;
+          _retry.b = claim.b;
+          _retry.colour = colour;
+          takeRest(book.rest, _retry, nowS());
+        }
         const info = book.rest.on > 0 ? book.rest.slotOf.get(claim.id) : undefined;
         if (info?.flies && d01 < 1) fly = info.slot;
       }
@@ -1250,7 +1287,10 @@ export function RestingLead({ slot, state, quality, drop, awake }: RestingLeadPr
     const g = root.current;
     if (!g) return;
     const rest = bookOf(state).rest;
-    const gone = rest.taken[slot] !== null || rest.held === slot;
+    // Lifted, in her hand, or just let go of her hand: the lead she made from it takes the place
+    // on its first frame, so the copy at rest must not show for the frame between.
+    const handing = rest.hand.slot === slot && nowS() - rest.hand.atS < HAND_HOLD_S;
+    const gone = rest.taken[slot] !== null || rest.held === slot || handing;
     const k = drop ? drop.k : 1;
     g.visible = !gone && k > 0;
     if (!g.visible) {

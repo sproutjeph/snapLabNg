@@ -6,10 +6,15 @@ import {
   ENTER_DROP_S,
   ENTER_STAGGER_S,
   KEY_TOGGLE_AT,
+  LEAD_DROP_GAP_S,
+  LEAD_DROP_STAGGER_S,
   LEAD_S,
   LEAD_TAP_AT,
   NIB_TRAVEL_S,
 } from "../script/timing";
+
+export { LEAD_DROP_GAP_S, LEAD_DROP_STAGGER_S };
+
 import { ease } from "../timeline";
 import { STAGE_AZIMUTH_DEG } from "./shots";
 
@@ -121,8 +126,6 @@ export function entranceEndS(n: number): number {
  * last part has landed they drop into their rest places one by one, LEAD_DROP_STAGGER_S apart,
  * each with the parts' drop. The whole entrance, parts and leads, is over within ENTRANCE_MAX_S.
  */
-export const LEAD_DROP_GAP_S = 0.1;
-export const LEAD_DROP_STAGGER_S = 0.2;
 export const ENTRANCE_MAX_S = 7;
 
 /** When the j-th lead leaves the sky, in seconds from the entrance's start, after `parts` parts. */

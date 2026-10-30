@@ -14,6 +14,7 @@ import { OHMS_LAW_SCRIPT } from "../lessons/ohms-law/script";
 import { emptyOhmsLawRecord } from "../readings/record";
 import { createDirector } from "../script/createDirector";
 import {
+  actDurationS,
   BEAT_GAP_S,
   ENTER_DROP_S,
   ENTER_STAGGER_S,
@@ -114,6 +115,21 @@ describe("the leads' entrance and the plug's tap (docs/plans/beauty-pass.md B2)"
     }
     expect(fullEntranceEndS(parts, leads)).toBeLessThanOrEqual(ENTRANCE_MAX_S);
     expect(ENTRANCE_MAX_S).toBe(7);
+  });
+
+  it("keeps the enter action going until the last lead lands, so muted Watch drops every lead", () => {
+    // With no voice to wait on, the enter beat lasts its action plus the hold (BEAT_GAP_S). The
+    // drops start ENTRANCE_DELAY_S into the beat; the action covers everything after that.
+    const enter = OHMS_LAW_SCRIPT.beats[0]?.act;
+    expect(enter?.kind).toBe("enter");
+    if (enter?.kind !== "enter") return;
+    const parts = enter.parts.length;
+    const leads = LEAD_REST.length;
+    expect(actDurationS(enter)).toBeGreaterThanOrEqual(
+      fullEntranceEndS(parts, leads) - ENTRANCE_DELAY_S,
+    );
+    // Within the 7 s entrance, hold included.
+    expect(actDurationS(enter) + BEAT_GAP_S).toBeLessThanOrEqual(ENTRANCE_MAX_S);
   });
 
   it("under the paper, lays the leads only once every part is down, then lands them all", () => {

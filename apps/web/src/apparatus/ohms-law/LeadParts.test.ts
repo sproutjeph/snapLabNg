@@ -570,6 +570,20 @@ describe("the bench's leads (docs/plans/beauty-pass.md B2)", () => {
     rest.hand.atS = 20;
     takeRest(rest, { id: "h", a: "R2", b: "X", colour: "red" }, 20.2);
     expect(rest.slotOf.get("h")).toEqual({ slot: 2, flies: false });
+    // An eighth lead finds every place lifted; asked again (Lead does each frame) once one is put
+    // back, it takes that one, so no extra copy lies at rest.
+    const full = restBookOf({ current: {} as never });
+    full.on = 1;
+    for (let i = 0; i < LEAD_REST.length; i++) {
+      takeRest(full, { id: `f${i}`, a: "E+", b: "K1", colour: "red" }, 1);
+    }
+    const extra = { id: "f8", a: "Y" as const, b: "E-" as const, colour: "black" as const };
+    takeRest(full, extra, 2);
+    expect(full.slotOf.has("f8")).toBe(false);
+    const freed = full.slotOf.get("f3")?.slot;
+    returnRest(full, "f3", "E+", "K1", 3);
+    takeRest(full, extra, 3);
+    expect(full.slotOf.get("f8")?.slot).toBe(freed);
     // With no rest places on this bench (no RestLeads layer), a lead takes none.
     const none = restBookOf({ current: {} as never });
     takeRest(none, { id: "n", a: "R2", b: "X", colour: "red" }, 1);

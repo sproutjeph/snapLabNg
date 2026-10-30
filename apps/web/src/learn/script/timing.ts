@@ -1,3 +1,4 @@
+import { LEAD_REST_COUNT } from "../../apparatus/ohms-law/layout";
 import type { PartId } from "../types";
 import { estimateSpeechS } from "../voice/chunk";
 import type { ActorAction, Script } from "./types";
@@ -8,6 +9,12 @@ import type { ActorAction, Script } from "./types";
 
 /** A parts' drop and the gap before the next part. */
 export const ENTER_DROP_S = 0.4;
+/**
+ * After the last part lands, the leads drop into their rest places (apparatus/ohms-law/layout.ts
+ * LEAD_REST) one by one: this long after it, then this far apart (docs/plans/beauty-pass.md B2).
+ */
+export const LEAD_DROP_GAP_S = 0.1;
+export const LEAD_DROP_STAGGER_S = 0.2;
 export const ENTER_STAGGER_S = 0.1;
 /** The pen nib's travel to a terminal, a plug or the key. */
 export const NIB_TRAVEL_S = 0.4;
@@ -63,7 +70,16 @@ export function voiceCapS(text: string): number {
 export function actDurationS(act: ActorAction, plugChanges = 1, writtenChars = 6): number {
   switch (act.kind) {
     case "enter":
-      return ENTER_DROP_S + Math.max(0, act.parts.length - 1) * ENTER_STAGGER_S + 0.2;
+      // The parts, then the leads into their rest places one by one (learn/stage/motion.ts), so
+      // a beat with no voice to wait on (muted, or no speech) lasts until the last lead lands.
+      return (
+        ENTER_DROP_S +
+        Math.max(0, act.parts.length - 1) * ENTER_STAGGER_S +
+        LEAD_DROP_GAP_S +
+        Math.max(0, LEAD_REST_COUNT - 1) * LEAD_DROP_STAGGER_S +
+        ENTER_DROP_S +
+        0.2
+      );
     case "lead":
       return LEAD_S;
     case "plug":
