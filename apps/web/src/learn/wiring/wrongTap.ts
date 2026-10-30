@@ -18,7 +18,9 @@ export function watchWrongTaps(
   bench: Pick<OhmsLawBench, "subscribe" | "visual">,
   o: WrongTapOptions,
 ): () => void {
-  let seen = new Set(bench.visual.current.leads.map((l) => l.id));
+  // Every lead id ever on the bench: an undo of a removal brings the same lead back, and that is
+  // not a new tap.
+  const seen = new Set(bench.visual.current.leads.map((l) => l.id));
   let before = bench.visual.current.leads.map((l) => [l.a, l.b] as const);
   return bench.subscribe(() => {
     const leads = bench.visual.current.leads;
@@ -35,7 +37,7 @@ export function watchWrongTaps(
         if (line) o.onWrong(line, [l.a, l.b]);
       }
     }
-    seen = new Set(leads.map((l) => l.id));
+    for (const l of leads) seen.add(l.id);
     before = leads.map((l) => [l.a, l.b] as const);
   });
 }

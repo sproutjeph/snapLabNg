@@ -48,8 +48,9 @@ import "./learn.css";
 //   &mode=watch|practice|exam   Watch plays the demonstration on its own bench (demoSeedFor);
 //                               Practise and Exam are her bench. Default: Watch on ?practical=,
 //                               Practise on ?learn=.
-//   &seed=N   &step=N (Exam)   &beat=N   &play=1   &speed=1|1.5|2   &mute=1   &dpr=1–3
-//   &freeze=S (dev)  pauses S beat seconds into the beat it starts on, for screenshots.
+//   &seed=N   &step=N (Exam)   &beat=N   &speed=1|1.5|2   &mute=1   &dpr=1–3
+//   &play=1 (dev) starts without a tap; &freeze=S (dev) pauses S beat seconds into the beat it
+//   starts on, for screenshots.
 // Watch plays itself from a tap on Start (iOS speaks only after a gesture). Practise: the same
 // director waits for her to do each beat; the chip and the caption follow her.
 
@@ -147,7 +148,8 @@ function makeRig(search: URLSearchParams, practical: PracticalMode, seed: number
   if (beat !== null && beat !== "" && Number.isFinite(Number(beat))) director.seek(Number(beat));
   const freeze = Number(search.get("freeze"));
   if (import.meta.env.DEV && search.has("freeze") && freeze >= 0) motion.freezeAtS = freeze;
-  if (search.get("play") === "1") director.play();
+  // Dev only (screenshots): start without her tap. In a build, Watch starts from the Start button.
+  if (import.meta.env.DEV && search.get("play") === "1") director.play();
   return { bench, director, motion };
 }
 

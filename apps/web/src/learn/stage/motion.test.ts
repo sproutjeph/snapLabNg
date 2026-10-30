@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { demoSeedFor } from "@snaplab/engine";
+import { DIAGRAM_LEADS, demoSeedFor } from "@snaplab/engine";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { BENCH_FOOTPRINTS } from "../../apparatus/ohms-law/LeadParts";
+import { routeCable } from "../../apparatus/ohms-law/Lead";
+import { BENCH_FOOTPRINTS, CABLE_SEAT_M } from "../../apparatus/ohms-law/LeadParts";
 import { fitShot, LOOK_DISTANCE_M, LOOK_ELEVATION_DEG } from "../../scene/look/LookCamera";
 import { OHMS_LAW_LESSON } from "../lessons/ohms-law/lesson";
+import { OHMS_LAW_SCRIPT } from "../lessons/ohms-law/script";
 import { emptyOhmsLawRecord } from "../readings/record";
 import { createDirector } from "../script/createDirector";
 import {
@@ -42,7 +44,7 @@ import {
   springStep,
 } from "./motion";
 import { BENCH_DRAG_DEG, BENCH_SHOT, spanAtAzimuth } from "./shots";
-import { DROP_SLOTS } from "./stageMotion";
+import { chipSpecAt, DROP_SLOTS, stageBusy } from "./stageMotion";
 
 // Watch and Practise motion on the live stage (docs/plans/wave-2-lean.md, 2b-motion). No textbook
 // source: BC101's measured pace ("What we learned" 3) and screen choices, not science.
@@ -296,7 +298,15 @@ describe("Practise feel", () => {
     expect(heard.length).toBe(1);
     expect(heard[0]?.ends).toEqual(["E+", "E-"]);
     expect(heard[0]?.line).not.toMatch(/\d/);
-    // An undo is not a tap.
+    // She takes the wrong lead off, then undoes that: the same lead comes back, but it is not a
+    // new tap, so nothing is said again.
+    const wrong = bench.visual.current.leads.find((l) => l.a === "E+" && l.b === "E-");
+    expect(wrong).toBeDefined();
+    bench.removeLead(wrong?.id ?? "");
+    bench.undo();
+    expect(bench.visual.current.leads.some((l) => l.id === wrong?.id)).toBe(true);
+    expect(heard.length).toBe(1);
+    // An undo that takes a lead away is not a tap either.
     bench.undo();
     expect(heard.length).toBe(1);
     off();
@@ -336,5 +346,93 @@ describe("the bench tools", () => {
     const src = readFileSync(join(__dirname, "..", "LearnPage.tsx"), "utf8");
     expect(src).not.toMatch(/className="ol-tools"/);
     expect(src).toMatch(/tools=\{/);
+  });
+});
+
+describe("the frameloop while a director plays", () => {
+  it("keeps the loop awake through a playing Practise narration beat, and lets it rest when paused", () => {
+    // A narration-only Practise beat has no rings, no chip spring and nothing moving: only the
+    // director's clock, which runs in advance() each frame, moves it on (and the hint ladder).
+    expect(stageBusy({ mode: "practice", playing: true, finished: false }, 0, false, false)).toBe(
+      true,
+    );
+    expect(stageBusy({ mode: "watch", playing: true, finished: false }, 0, false, false)).toBe(
+      true,
+    );
+    expect(stageBusy({ mode: "practice", playing: false, finished: false }, 0, false, false)).toBe(
+      false,
+    );
+    expect(stageBusy({ mode: "practice", playing: true, finished: true }, 0, false, false)).toBe(
+      false,
+    );
+    expect(stageBusy({ mode: "exam", playing: true, finished: false }, 0, false, false)).toBe(
+      false,
+    );
+    expect(stageBusy({ mode: "practice", playing: false, finished: false }, 2, false, false)).toBe(
+      true,
+    );
+  });
+});
+
+describe("the callout chip after a seek", () => {
+  it("shows the stage's last callout up to that beat, worked out from the script", () => {
+    const beats = OHMS_LAW_SCRIPT.beats;
+    const at = (id: string) => beats.findIndex((b) => b.id === id);
+    // rule-write has no callout of its own: the stage's rule-open callout carries on.
+    expect(chipSpecAt(beats, at("rule-write"))?.label).toBe(
+      beats[at("rule-open")]?.callouts?.[0]?.label,
+    );
+    // A new stage with no callout yet shows none (the headings follow the leads).
+    expect(chipSpecAt(beats, at("head-R"))).toBeNull();
+    // The same answer from wherever playing came from: it is a function of the beat alone.
+    expect(chipSpecAt(beats, at("row-1-i"))?.label).toBe("AMMETER, A");
+  });
+});
+
+describe("the leads round the meters", () => {
+  // Where each nut's top is, metres (kitParams.test.ts NUT_M, from ?kit=ohms-law&dump=1).
+  const NUT: Readonly<Record<string, readonly [number, number, number]>> = {
+    "E+": [0.3318, 0.0697, -0.06],
+    "E-": [0.4682, 0.0697, -0.06],
+    K1: [0.031, 0.0477, -0.06],
+    K2: [-0.031, 0.0477, -0.06],
+    "A+": [-0.115, 0.0357, 0.185],
+    "A-": [-0.185, 0.0357, 0.185],
+    "V+": [0.185, 0.0357, 0.185],
+    "V-": [0.115, 0.0357, 0.185],
+    R1: [-0.25, 0.0897, -0.066],
+    R2: [-0.51, 0.0897, -0.066],
+    X: [-0.256, 0.0577, -0.265],
+    Y: [0.2803, 0.0577, -0.265],
+  };
+  const cases = BENCH_FOOTPRINTS.filter(
+    (f) => (f.slot === "ammeter" || f.slot === "voltmeter") && f.top > 0.05,
+  );
+  const seat = (id: string) => {
+    const [x, y, z] = NUT[id] ?? [0, 0, 0];
+    return new THREE.Vector3(x, y + CABLE_SEAT_M, z);
+  };
+
+  it("never lays a diagram lead over a meter's case (its dial), whichever end she taps first", () => {
+    for (const [a, b] of DIAGRAM_LEADS) {
+      for (const [from, to] of [
+        [a, b],
+        [b, a],
+      ] as const) {
+        for (const bulge of [-1, 0, 1]) {
+          const pts = Array.from({ length: 11 }, () => new THREE.Vector3());
+          routeCable(pts, seat(from), seat(to), bulge);
+          expect(pts[0]?.distanceTo(seat(from)), `${from}`).toBeCloseTo(0, 9);
+          expect(pts[10]?.distanceTo(seat(to)), `${to}`).toBeCloseTo(0, 9);
+          const path = new THREE.CatmullRomCurve3(pts, false, "centripetal").getPoints(200);
+          for (const p of path) {
+            for (const f of cases) {
+              const inside = Math.abs(p.x - f.cx) < f.hx && Math.abs(p.z - f.cz) < f.hz;
+              expect(inside, `${from}→${to} bulge ${bulge} over the ${f.slot}`).toBe(false);
+            }
+          }
+        }
+      }
+    }
   });
 });

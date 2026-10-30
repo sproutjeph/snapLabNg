@@ -1,5 +1,7 @@
 import type { NibTarget } from "../../apparatus/ohms-law/PenNib";
+import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
+import type { Beat, DirectorState } from "../script/types";
 import type { TerminalId } from "../types";
 import { DROP_HEIGHT_M, type DropPose, type DropSlot } from "./motion";
 
@@ -91,6 +93,36 @@ export function trackEpoch(
     if (d.state.finished) m.epoch++;
     play();
   };
+}
+
+/**
+ * Whether the demand loop must keep rendering. A director that plays (Watch or Practise) needs
+ * every frame: its clock only runs in advance(), so a Practise narration beat, its hold and the
+ * hint ladder's idle clock would stall while the loop rests. Rings pulse, the chip springs, and
+ * parts move; Exam's director never plays.
+ */
+export function stageBusy(
+  s: Pick<DirectorState, "mode" | "playing" | "finished">,
+  rings: number,
+  chipSpringing: boolean,
+  moving: boolean,
+): boolean {
+  return (s.mode !== "exam" && s.playing && !s.finished) || rings > 0 || chipSpringing || moving;
+}
+
+/**
+ * The chip for beat `i`: its own first callout, or else the last one before it in the same
+ * stage, or none. From the script alone, so a seek lands on the chip playing would show.
+ */
+export function chipSpecAt(beats: readonly Beat[], i: number): CalloutSpec | null {
+  const stage = beats[i]?.stage;
+  for (let j = i; j >= 0; j--) {
+    const b = beats[j];
+    if (!b || b.stage !== stage) return null;
+    const spec = b.callouts?.[0];
+    if (spec) return spec;
+  }
+  return null;
 }
 
 /** Hides every part above its place (Watch, before the entrance). */

@@ -6,11 +6,11 @@ import { slotBounds } from "../../apparatus/ohms-law/kitParams";
 import { TERMINAL_PART } from "../../apparatus/ohms-law/layout";
 import type { CalloutSpec } from "../callouts/types";
 import type { DirectorHandle } from "../script/createDirector";
-import { KEY_TOGGLE_AT, leadPhase, partsEnteredBefore } from "../script/timing";
+import { KEY_TOGGLE_AT, type LeadPhase, leadPhaseInto, partsEnteredBefore } from "../script/timing";
 import { useTerminalRegistry } from "../terminals";
 import type { OhmsLawBench, PartId, TerminalId } from "../types";
 import { type DropSlot, dropAt, entranceOrder, inOutCubic, SHAKE_S, springStep } from "./motion";
-import { clearBench, DROP_SLOTS, type StageMotion } from "./stageMotion";
+import { chipSpecAt, clearBench, DROP_SLOTS, type StageMotion, stageBusy } from "./stageMotion";
 
 // The stage's choreographer (docs/plans/wave-2-lean.md, 2b-motion), inside the Canvas. Each frame
 // it feeds the director its time, keeps the beat's own clock (beat seconds, scaled by the speed),
@@ -65,7 +65,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     /** Where each of this beat's entering parts falls in the drop order. */
     dropIndex: new Map<DropSlot, number>(),
     spec: null as CalloutSpec | null,
-    specStage: "",
+    phase: { nibAt: "from", tapped: 0, drawn: 0 } as LeadPhase,
     cx: { x: 0, v: 0 },
     cy: { x: 0, v: 0 },
     shown: false,
@@ -113,14 +113,9 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
         let i = 0;
         for (const slot of order) if (act.parts.includes(slot)) k.dropIndex.set(slot, i++);
       }
-      // One chip: the beat's own callout, or the last one while the stage is the same.
-      const spec = beat?.callouts?.[0] ?? null;
-      if (spec) {
-        k.spec = spec;
-        k.specStage = beat?.stage ?? "";
-      } else if (beat?.stage !== k.specStage) {
-        k.spec = null;
-      }
+      // One chip: the beat's own callout, or the last one before it in the same stage. Worked
+      // out from the script, so a seek shows the same chip as playing there.
+      k.spec = chipSpecAt(script.beats, s.beat);
     }
     if (s.playing && !s.finished) k.t += dt * s.speed;
     if (m.freezeAtS !== null && s.playing && k.t >= m.freezeAtS - 1e-6) {
@@ -158,7 +153,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     m.lead.drawn = 1;
     m.nib.target = null;
     if (act?.kind === "lead") {
-      const ph = leadPhase(s.actT);
+      const ph = leadPhaseInto(s.actT, k.phase);
       m.lead.from = act.from;
       m.lead.to = act.to;
       m.lead.drawn = inOutCubic(ph.drawn);
@@ -243,7 +238,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     const playing = s.playing && !s.finished && s.mode !== "exam";
     const nibOut = m.nib.target !== null;
     m.moving = (playing && (dropping || drawing || nibOut)) || shaking;
-    m.busy = (watch && playing) || t.length > 0 || chipBusy || m.moving;
+    m.busy = stageBusy(s, t.length, chipBusy, m.moving);
   }, -2);
 
   return null;

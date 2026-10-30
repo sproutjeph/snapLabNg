@@ -77,6 +77,9 @@ const BLOBS: Readonly<Partial<Record<BenchSlot, { dx: readonly number[]; r: numb
   wire: { dx: [-0.44, -0.22, 0, 0.22, 0.44], r: 0.11 },
 };
 
+/** The slots with blobs, listed once (not per frame). */
+const BLOB_SLOTS = Object.keys(BLOBS) as BenchSlot[];
+
 /** The close-up camera's vertical field of view (ReadingLoupe fits the dial with it). */
 const LOUPE_FOV_DEG = 40;
 
@@ -422,7 +425,7 @@ function Blobs({ motion }: { motion: StageMotion | undefined }) {
   const groups = useRef<Partial<Record<BenchSlot, THREE.Group | null>>>({});
   useFrame(() => {
     if (!motion) return;
-    for (const slot of Object.keys(BLOBS) as BenchSlot[]) {
+    for (const slot of BLOB_SLOTS) {
       const g = groups.current[slot];
       const pose = slot === "tray" ? undefined : motion.parts[slot as DropSlot];
       if (!g || !pose) continue;
@@ -437,7 +440,7 @@ function Blobs({ motion }: { motion: StageMotion | undefined }) {
   });
   return (
     <>
-      {(Object.keys(BLOBS) as BenchSlot[]).map((slot) => {
+      {BLOB_SLOTS.map((slot) => {
         const [x, y, z] = L[slot].position;
         const blob = BLOBS[slot];
         if (!blob) return null;
