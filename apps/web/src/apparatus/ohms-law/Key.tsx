@@ -99,7 +99,7 @@ export function KeyK({ state, quality, position, rotationY = 0, onToggle }: KeyK
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 12 : 18;
+    const seg = low ? 8 : 18;
     const woodTex = benchTexture("mahogany", quality);
     const brassTex = benchTexture("brass", quality);
     const eboniteTex = benchTexture("ebonite", quality);

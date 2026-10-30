@@ -149,7 +149,7 @@ function wrapperTexture(rnd: () => number) {
 
 /** A coil spring along +x from x = 0 to `len`, round the axis. */
 function springGeometry(len: number, turns: number, low: boolean) {
-  const per = low ? 8 : 12;
+  const per = low ? 6 : 12;
   const n = Math.round(turns * per);
   const pts: THREE.Vector3[] = [];
   for (let i = 0; i <= n; i++) {

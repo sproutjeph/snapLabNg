@@ -181,7 +181,7 @@ export function ResistanceBox({
 
   const res = useMemo(() => {
     const bs = bevelSegments(quality);
-    const seg = low ? 12 : 18;
+    const seg = low ? 8 : 18;
     const coils = coilsKey ? coilsKey.split(",").map(Number) : [];
     const woodTex = benchTexture("mahogany", quality);
     const brassTex = benchTexture("brass", quality);
