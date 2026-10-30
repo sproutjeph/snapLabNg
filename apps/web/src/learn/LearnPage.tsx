@@ -1,17 +1,9 @@
-import { OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { MarkSheet, OhmsLawRecord } from "@snaplab/contracts";
 import { DIAGRAM_LEADS, type TerminalId } from "@snaplab/engine";
 import { markOhmsLaw } from "@snaplab/rules";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import * as THREE from "three";
 import { createLabAudio } from "../audio/labAudio";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
-import { InkComposer } from "../scene/ink/InkComposer";
-import { InkLights } from "../scene/ink/InkLights";
-import { PaperDesk } from "../scene/ink/PaperDesk";
-import type { Covered } from "../scene/look/types";
-import { ReadySignal } from "../scene/ReadySignal";
 import { GraphSheet } from "./graph/GraphSheet";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { MarkPanel } from "./MarkPanel";
@@ -20,22 +12,10 @@ import { playerCovered } from "./player/stages";
 import { OhmsLawNotebook } from "./readings/OhmsLawNotebook";
 import { useParallaxNote } from "./readings/parallax";
 import { clampEye, type LoupeTarget, MAX_EYE_DEG, type RuleEnd } from "./readings/poses";
-import { ReadingLoupe } from "./readings/ReadingLoupe";
 import { emptyOhmsLawRecord } from "./readings/record";
-import { MAX_POSE_DISTANCE_M, poseFitFactor } from "./shell/benchFrame";
 import LessonShell, { type GuideState, type ShellTab } from "./shell/LessonShell";
-import { TerminalProvider } from "./terminals";
-import { ease } from "./timeline";
-import type {
-  BenchState,
-  CameraPose,
-  IdentifyCard,
-  LessonMode,
-  OhmsLawBench,
-  PartId,
-} from "./types";
-import { BenchParts } from "./wiring/BenchParts";
-import { BenchWiring } from "./wiring/BenchWiring";
+import { Stage } from "./stage/Stage";
+import type { BenchState, IdentifyCard, LessonMode, OhmsLawBench, PartId } from "./types";
 import { createOhmsLawBench } from "./wiring/bench";
 import { CircuitDiagram } from "./wiring/CircuitDiagram";
 import "./learn.css";
@@ -45,14 +25,6 @@ import "./learn.css";
 // The engine decides every number on the bench; the rules mark what she typed; nothing here
 // computes science or shows an engine value.
 
-const BENCH_CAMERA: [number, number, number] = [0, 0.95, 1.05];
-const DEFAULT_POSE: CameraPose = {
-  azimuthDeg: 0,
-  elevationDeg: 42,
-  target: [0, 0, -0.05],
-  distanceM: 1.4,
-};
-
 /** Re-renders on every discrete bench change (leads, key, plugs, notes). Never per frame. */
 function useBenchVersion(bench: OhmsLawBench): number {
   const [version, bump] = useReducer((n: number) => n + 1, 0);
@@ -60,141 +32,11 @@ function useBenchVersion(bench: OhmsLawBench): number {
   return version;
 }
 
-/**
- * Where the shell's cards cover the canvas (the guide, status card and step strip: shell/layout.ts,
- * from the window size), so the bench is framed in the part she can see. On a phone held upright
- * the guide is folded to a peek or open, and each leaves a different window: the page keeps that
- * state (it is the shell's `guide`) and frames the bench for it.
- */
-function coveredPx(guide: GuideState): Covered {
-  return playerCovered(window.innerWidth, window.innerHeight, { guide });
-}
-
-/** The camera's vertical field of view: the Canvas below and the pose fit both read it. */
-const CAMERA_FOV_DEG = 40;
-
-/**
- * How far to back off so a pose's framing fits the uncovered part of a tall or narrow screen
- * (shell/benchFrame.ts: a pose that looks at the whole bench shows all of it on a phone).
- */
-function fitFactor(pose: CameraPose, width: number, height: number, guide: GuideState): number {
-  return poseFitFactor(pose.distanceM, CAMERA_FOV_DEG, width, height, coveredPx(guide));
-}
-
-/** Camera position for a lesson pose: azimuth about +y from the student's side, elevation up. */
-function posePosition(pose: CameraPose, k: number, out: THREE.Vector3): THREE.Vector3 {
-  const az = THREE.MathUtils.degToRad(pose.azimuthDeg);
-  const el = THREE.MathUtils.degToRad(pose.elevationDeg);
-  const d = pose.distanceM * k;
-  return out.set(
-    pose.target[0] + d * Math.sin(az) * Math.cos(el),
-    pose.target[1] + d * Math.sin(el),
-    pose.target[2] + d * Math.cos(az) * Math.cos(el),
-  );
-}
-
-const POSE_EASE_S = 0.6;
-const reducedMotion = () =>
-  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/**
- * Frames each step's pose (lesson.poses) in the part of the canvas the panels leave uncovered:
- * a view offset that always follows the size, and a short ease to the new pose when the step
- * changes (a jump the first time, and with reduced motion). A close-up owns the camera while it
- * is open; a step or size change then waits until it is back. Her own orbit within a step stays.
- */
-function PoseRig({
-  pose,
-  paused,
-  guide,
-}: {
-  pose: CameraPose;
-  paused: boolean;
-  /** The phone's guide as it stands (open, or folded to a peek): it sets how much canvas is free. */
-  guide: GuideState;
-}) {
-  const camera = useThree((st) => st.camera);
-  const controls = useThree((st) => st.controls) as unknown as {
-    target: THREE.Vector3;
-    update(): void;
-  } | null;
-  const width = useThree((st) => st.size.width);
-  const height = useThree((st) => st.size.height);
-  useEffect(() => {
-    if (!(camera instanceof THREE.PerspectiveCamera)) return;
-    const c = coveredPx(guide);
-    camera.setViewOffset(
-      width,
-      height,
-      (c.right - c.left) / 2,
-      (c.bottom - c.top) / 2,
-      width,
-      height,
-    );
-    return () => camera.clearViewOffset();
-  }, [camera, width, height, guide]);
-
-  const anim = useMemo(
-    () => ({
-      dirty: true,
-      first: true,
-      t: 1,
-      from: new THREE.Vector3(),
-      to: new THREE.Vector3(),
-      fromLook: new THREE.Vector3(),
-      toLook: new THREE.Vector3(),
-      look: new THREE.Vector3(),
-    }),
-    [],
-  );
-  // PoseRig owns the orbit target. When OrbitControls mount (first, or again after a close-up),
-  // point them where the camera already looks, so nothing turns on its own.
-  useEffect(() => {
-    if (!controls) return;
-    if (anim.first) controls.target.set(pose.target[0], pose.target[1], pose.target[2]);
-    else controls.target.copy(anim.look);
-    controls.update();
-  }, [controls, anim, pose]);
-  const poseKey = `${pose.azimuthDeg}|${pose.elevationDeg}|${pose.target.join(",")}|${pose.distanceM}`;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new pose, size or guide is what marks it dirty.
-  useEffect(() => {
-    anim.dirty = true;
-  }, [anim, poseKey, width, height, guide]);
-
-  useFrame((_, dtS) => {
-    if (paused) return;
-    if (anim.dirty) {
-      anim.dirty = false;
-      posePosition(pose, fitFactor(pose, width, height, guide), anim.to);
-      anim.toLook.set(pose.target[0], pose.target[1], pose.target[2]);
-      anim.from.copy(camera.position);
-      if (controls) anim.fromLook.copy(controls.target);
-      else anim.fromLook.copy(anim.toLook);
-      anim.t = anim.first || reducedMotion() ? 1 : 0;
-      anim.first = false;
-      if (anim.t === 1) {
-        camera.position.copy(anim.to);
-        anim.look.copy(anim.toLook);
-        camera.lookAt(anim.look);
-        if (controls) {
-          controls.target.copy(anim.look);
-          controls.update();
-        }
-        return;
-      }
-    }
-    if (anim.t >= 1) return;
-    anim.t = Math.min(1, anim.t + dtS / POSE_EASE_S);
-    const e = ease.inOut(anim.t);
-    camera.position.lerpVectors(anim.from, anim.to, e);
-    anim.look.lerpVectors(anim.fromLook, anim.toLook, e);
-    camera.lookAt(anim.look);
-    if (controls) {
-      controls.target.copy(anim.look);
-      controls.update();
-    }
-  });
-  return null;
+/** `&dpr=1.5` pins the canvas's pixel ratio (shots at a chosen ratio); otherwise the ladder runs. */
+function pinnedDpr(search: URLSearchParams): number | null {
+  const raw = search.get("dpr");
+  const n = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(n) && n >= 1 && n <= 3 ? n : null;
 }
 
 /** In guided mode, the next terminal to tap while wiring gets the pulsing ring. */
@@ -234,7 +76,8 @@ function LearnView() {
     return b;
   }, [seed, mode, search]);
   const version = useBenchVersion(bench);
-  const { tier, settings } = useQuality();
+  const { tier } = useQuality();
+  const [dprPin] = useState(() => pinnedDpr(search));
 
   const [stepIndex, setStepIndex] = useState(() => {
     const n = Number(search.get("step"));
@@ -246,6 +89,11 @@ function LearnView() {
   // shows the guide in full (the shell's own rule).
   const [guide, setGuide] = useState<GuideState>("peek");
   const framedGuide: GuideState = tab === "instructions" ? guide : "open";
+  // Where the shell's cards cover the canvas, for the stage's camera to frame the bench in the rest.
+  const covered = useCallback(
+    (w: number, h: number) => playerCovered(w, h, { guide: framedGuide }),
+    [framedGuide],
+  );
   const [record, setRecordState] = useState<OhmsLawRecord>(() => emptyOhmsLawRecord(mode));
   const [identified, setIdentified] = useState<ReadonlySet<PartId>>(() => new Set());
   const [sheet, setSheet] = useState<MarkSheet | null>(null);
@@ -254,7 +102,7 @@ function LearnView() {
   const [graphOpen, setGraphOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
 
-  // The close-up loupe: OrbitControls stay unmounted until the camera is back.
+  // The close-up loupe: the stage hands its camera to the close-up until it is back.
   const [loupe, setLoupe] = useState<{ target: LoupeTarget; ruleEnd: RuleEnd } | null>(null);
   const [returning, setReturning] = useState(false);
   const [eye, setEye] = useState(0);
@@ -295,8 +143,6 @@ function LearnView() {
   const handedIn = mode === "exam" && sheet !== null;
 
   const stepKey = lesson.steps[stepIndex]?.key;
-  const step = lesson.steps[stepIndex];
-  const pose: CameraPose = (step && lesson.poses[step.pose]) ?? lesson.poses.bench ?? DEFAULT_POSE;
   // Identify mode: on the Identify step (practice), a tap on any item opens its card.
   const [card, setCard] = useState<IdentifyCard | null>(null);
   const identifying = mode === "practice" && stepKey === "identify";
@@ -381,51 +227,29 @@ function LearnView() {
       identify={{ card, onClose: () => setCard(null) }}
     >
       <div className={(diagramOpen || card) && !graphOpen ? "ol-stage ol-float-open" : "ol-stage"}>
-        <Canvas
-          shadows={settings.shadows}
-          dpr={settings.dpr}
-          gl={{ antialias: false }}
-          camera={{ fov: CAMERA_FOV_DEG, position: BENCH_CAMERA, near: 0.02, far: 20 }}
-        >
-          <InkLights quality={tier} />
-          <PoseRig pose={pose} paused={loupe !== null || returning} guide={framedGuide} />
-          {!loupe && !returning && (
-            <OrbitControls
-              makeDefault
-              enablePan={false}
-              minDistance={0.45}
-              maxDistance={MAX_POSE_DISTANCE_M}
-              maxPolarAngle={Math.PI * 0.45}
-            />
-          )}
-          <TerminalProvider>
-            <PaperDesk quality={tier} />
-            <BenchParts
-              bench={bench}
-              quality={tier}
-              onPartTap={identify}
-              onMeterTap={(kind) => {
-                identify(kind);
-                if (!identifying) openLoupe(kind);
-              }}
-              onRuleTap={() => {
-                identify("wire");
-                if (!identifying) openLoupe("rule");
-              }}
-              onTrayItem={(item) => identify(item === "leads" ? "leads" : item)}
-            />
-            <BenchWiring bench={bench} quality={tier} audio={audio} />
-          </TerminalProvider>
-          <ReadingLoupe
-            target={loupe?.target ?? null}
-            eyeDeg={eye}
-            ruleEnd={loupe?.ruleEnd ?? "X"}
-            wire={bench.params.wire}
-            onReturned={loupeReturned}
-          />
-          <InkComposer quality={tier} />
-          <ReadySignal />
-        </Canvas>
+        <Stage
+          bench={bench}
+          quality={tier}
+          covered={covered}
+          audio={audio}
+          parts={{
+            onPartTap: identify,
+            onMeterTap: (kind) => {
+              identify(kind);
+              if (!identifying) openLoupe(kind);
+            },
+            onRuleTap: () => {
+              identify("wire");
+              if (!identifying) openLoupe("rule");
+            },
+            onTrayItem: (item) => identify(item === "leads" ? "leads" : item),
+          }}
+          loupe={loupe}
+          eyeDeg={eye}
+          loupeHeld={loupe !== null || returning}
+          onLoupeReturned={loupeReturned}
+          dpr={dprPin}
+        />
 
         <div className="ol-tools" role="toolbar" aria-label="Bench">
           <button type="button" className="ol-btn" onClick={() => setNotebookOpen(true)}>
