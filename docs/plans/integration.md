@@ -59,6 +59,7 @@ interface SnaplabE2E {
   result(): { total: number; max: number; checkRows: number; checkOk: number } | null;
 }
 ```
+- The hook installs only in a dev build (`import.meta.env.DEV`) with `e2e=1`: run the E2E scripts against `bun run dev`, never a preview build. Watch at `speed=8` takes about 171 s; give it a 4-minute timeout or more.
 - With `e2e=1`: the voice is silent and uses its estimated durations; `speed` also accepts 4 and 8 (still 1/1.5/2 in the UI).
 - DOM hooks: `data-testid` on `paper-choice-watch|practice|exam`, `paper-read`, `hand-in`, `results`, `results-check` (the reading-check table), `results-watch-again`, `results-new-bench`, `callout-chip`, `hint`, `show-me`.
 
