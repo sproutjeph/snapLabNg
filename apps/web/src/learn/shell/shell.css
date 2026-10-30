@@ -169,6 +169,9 @@
 .sh-canvas {
   position: absolute;
   inset: 0;
+  /* The stage sits above the always-visible steps strip, never under it (beauty-pass B3):
+     --sh-bar is the strip's height in CSS px on every layout. */
+  bottom: var(--sh-bar);
   overflow: hidden;
 }
 
@@ -176,6 +179,7 @@
 .sh-callout-layer {
   position: absolute;
   inset: 0;
+  bottom: var(--sh-bar);
   z-index: 2;
   pointer-events: none;
 }
@@ -1194,6 +1198,38 @@
   color: var(--paper);
 }
 
+/* The ink-outline icon of the part a step uses (beauty-pass B3, in place of the numbered ring). */
+.sh-step-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink-2);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.sh-step-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.sh-step-item.is-done .sh-step-icon {
+  border: 2.5px solid var(--ink);
+}
+
+.sh-step-item.is-lost .sh-step-icon {
+  border: 2.5px solid var(--red-ink);
+  color: var(--red-ink);
+}
+
+.sh-step[aria-current="step"] .sh-step-icon {
+  border: 2.5px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .sh-step-label {
   min-width: 0;
   margin: 0 32px 0 8px;
@@ -1596,10 +1632,18 @@
 }
 
 .sh-root[data-layout="compact"] .sh-ring,
-.sh-root[data-layout="portrait"] .sh-ring {
+.sh-root[data-layout="portrait"] .sh-ring,
+.sh-root[data-layout="compact"] .sh-step-icon,
+.sh-root[data-layout="portrait"] .sh-step-icon {
   width: 44px;
   height: 44px;
   font-size: 22px;
+}
+
+.sh-root[data-layout="compact"] .sh-step-icon svg,
+.sh-root[data-layout="portrait"] .sh-step-icon svg {
+  width: 28px;
+  height: 28px;
 }
 
 .sh-root[data-layout="compact"] .sh-step-label,
@@ -1775,10 +1819,16 @@
   height: 44px;
 }
 
-.sh-root[data-layout="short"] .sh-ring {
+.sh-root[data-layout="short"] .sh-ring,
+.sh-root[data-layout="short"] .sh-step-icon {
   width: 40px;
   height: 40px;
   font-size: 20px;
+}
+
+.sh-root[data-layout="short"] .sh-step-icon svg {
+  width: 26px;
+  height: 26px;
 }
 
 .sh-root[data-layout="short"] .sh-step-mark {

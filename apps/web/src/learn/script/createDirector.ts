@@ -162,6 +162,8 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   const state: DirectorState = {
     mode,
     beat: 0,
+    beatIndex: 0,
+    beatCount: beats.length,
     playing: false,
     speed: 1,
     caption: captionFor(0),
@@ -457,6 +459,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     }
     run.started = true;
     state.beat = i;
+    state.beatIndex = i;
     state.caption = captionFor(i);
     state.act = null;
     state.actT = 0;
@@ -501,6 +504,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     }
     state.finished = false;
     state.beat = i;
+    state.beatIndex = i;
     state.caption = captionFor(i);
     state.act = null;
     state.actT = 0;

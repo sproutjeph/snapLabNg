@@ -565,10 +565,14 @@ export default function LessonShell({
           </Sheet>
         )}
 
+        {/* The steps strip is always visible at the foot of the stage (beauty-pass B3). When
+            the Steps pop-up is open the same single strip moves into its sheet, so the page
+            never carries two copies. */}
+        {popup !== "steps" && stepBarNode}
+
         {/* Shelf for static markup and accessibility inspection */}
         <div className="sh-popups-shelf" hidden aria-hidden="true">
           {popup !== "instructions" && guidePanelNode}
-          {popup !== "steps" && stepBarNode}
         </div>
       </div>
 

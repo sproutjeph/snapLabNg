@@ -160,6 +160,83 @@ export const IconRestart = () => (
   </Icon>
 );
 
+/** Two dry cells in a holder: two short/long plate pairs in a box. */
+export const IconCells = () => (
+  <Icon>
+    <path d="M3 8h18v9H3z" />
+    <path d="M8 5v14M16 5v14" />
+    <path d="M6.5 10v5M11 10v5M14.5 10v5M19 10v5" />
+  </Icon>
+);
+
+/** A plug key: two terminal posts with a plug bar across the gap. */
+export const IconKey = () => (
+  <Icon>
+    <path d="M4 17h4M16 17h4" />
+    <circle cx="9.5" cy="17" r="1.4" />
+    <circle cx="14.5" cy="17" r="1.4" />
+    <path d="M9.5 15.5 13 8h3l-1.5 7" />
+  </Icon>
+);
+
+/** An ammeter: a dial with the letter A and a needle. */
+export const IconAmmeter = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.5 16 3.5-7 3.5 7M9.8 13.5h4.4" />
+    <path d="M12 12 15 6.5" />
+  </Icon>
+);
+
+/** A voltmeter: a dial with the letter V and a needle. */
+export const IconVoltmeter = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.5 9 3.5 7 3.5-7" />
+    <path d="M12 12 15 6.5" />
+  </Icon>
+);
+
+/** A plug-type resistance box: a case, plugs on top and a coil zig-zag inside. */
+export const IconResistanceBox = () => (
+  <Icon>
+    <path d="M3.5 10h17v9h-17z" />
+    <path d="M7 10V6.5M12 10V6.5M17 10V6.5" />
+    <circle cx="7" cy="5.5" r="1" />
+    <circle cx="12" cy="5.5" r="1" />
+    <circle cx="17" cy="5.5" r="1" />
+    <path d="M5.5 14.5h2l1-2 2 4 2-4 2 4 1-2h3" />
+  </Icon>
+);
+
+/** The resistance wire XY on its board, with the metre rule under it. */
+export const IconWire = () => (
+  <Icon>
+    <path d="M3 9h18" />
+    <path d="M5 9v3M19 9v3" />
+    <path d="M5 6.5 3.5 4M19 6.5 20.5 4" />
+    <path d="M3 16h18M5 16v2M9 16v2M13 16v2M17 16v2M21 16v2" />
+  </Icon>
+);
+
+/** Connecting leads: a curved lead with a croc clip at each end. */
+export const IconLeads = () => (
+  <Icon>
+    <path d="M6 5c8 10 10 4 12 12" />
+    <path d="M4 3.5 7 6l-1.5 2L3 5.5zM21 18.5 18 16l1.5-2 2.5 2.5z" />
+    <circle cx="6" cy="6" r="1" />
+    <circle cx="18" cy="18" r="1" />
+  </Icon>
+);
+
+/** A metre rule: a long rule with cm ticks. */
+export const IconRule = () => (
+  <Icon>
+    <path d="M3 9h18v6H3z" />
+    <path d="M6 9v3M9 9v4M12 9v3M15 9v4M18 9v3" />
+  </Icon>
+);
+
 export const IconChevronRight = () => (
   <Icon strokeWidth={2}>
     <path d="m9 5 7 7-7 7" />
