@@ -11,10 +11,14 @@ export const ENTER_DROP_S = 0.4;
 export const ENTER_STAGGER_S = 0.1;
 /** The pen nib's travel to a terminal, a plug or the key. */
 export const NIB_TRAVEL_S = 0.4;
-/** A lead: the nib goes to the first terminal and taps, goes to the second and taps, the lead draws itself in. */
-export const LEAD_S = 1.4;
+/**
+ * A lead: the nib goes to the first terminal and taps, goes to the second and taps, the lead draws
+ * itself in over the last 0.6 s. The draw is the one action past the 0.4 s tween cap: a lead
+ * crosses the bench, and the eye must follow its path (docs/plans/wave-2-lean.md).
+ */
+export const LEAD_S = 1.6;
 /** Where in a lead's action (0..1) the two taps happen. */
-export const LEAD_TAP_AT = [0.25, 0.7] as const;
+export const LEAD_TAP_AT = [0.22, 0.625] as const;
 /** One plug pulled or pushed. */
 export const PLUG_EACH_S = 0.5;
 export const KEY_S = 0.9;
@@ -28,8 +32,8 @@ export const WRITE_MAX_S = 2.5;
 export const PLOT_S = 0.6;
 export const LINE_S = 1;
 export const TRIANGLE_S = 1.2;
-/** The pause between one beat and the next. */
-export const BEAT_GAP_S = 0.4;
+/** The hold after a beat, before the next: BC101 holds every step 1.0 s (docs/plans/wave-2-lean.md). */
+export const BEAT_GAP_S = 1;
 /** The pause after she finishes a Practise action, before the next instruction. */
 export const PRACTISE_GAP_S = 0.7;
 
