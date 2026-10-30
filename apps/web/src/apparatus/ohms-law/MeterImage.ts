@@ -7,15 +7,17 @@ import { DIAL } from "./MeterDial";
 
 /** The needle floats this far above the dial: real parallax. */
 export const NEEDLE_LIFT = 0.0045;
-/** The dial paper's bottom edge, and the front of the case, in the meter's own frame (metres). */
-export const METER_DIAL_Y = 0.032;
+/** The round dial paper's bottom edge, and the front of the case, in the meter's own frame (metres). */
+export const METER_DIAL_Y = 0.033;
 export const METER_FACE_Z = 0.025;
+/** The dial paper stands this far off the face, inside the bezel. */
+export const METER_DIAL_LIFT = 0.0015;
 /** The mirror strip sits this far above the dial paper. */
 export const MIRROR_LIFT = 0.0004;
 /** Where the loupe looks: the middle of the dial paper, in the meter's own frame. */
 export const METER_DIAL_CENTER = {
-  y: METER_DIAL_Y + DIAL.height / 2,
-  z: METER_FACE_Z + 0.0002,
+  y: METER_DIAL_Y + DIAL.radius,
+  z: METER_FACE_Z + METER_DIAL_LIFT,
 } as const;
 
 /** The image is the needle reflected in the mirror strip (relative to the dial plane). */
