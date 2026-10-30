@@ -550,8 +550,11 @@ export function buildTray(quality: QualityTier, rng: () => number): TrayBuild {
   );
 
   // The winding: one torus, instanced along the tube between two bare bands of ceramic.
-  const coilGeo = new THREE.TorusGeometry(0.0199, 0.0015, low ? 3 : 4, low ? 12 : 22);
-  const coilN = low ? 20 : 38;
+  // On low the turns are fatter and fewer sides, so the winding still reads as one tight coil.
+  const coilGeo = low
+    ? new THREE.TorusGeometry(0.0193, 0.0022, 3, 12)
+    : new THREE.TorusGeometry(0.0199, 0.0015, 4, 22);
+  const coilN = low ? 28 : 38;
   const coilMatrices: THREE.Matrix4[] = [];
   for (let i = 0; i < coilN; i++) {
     const z = -0.074 + (0.148 * i) / (coilN - 1);
