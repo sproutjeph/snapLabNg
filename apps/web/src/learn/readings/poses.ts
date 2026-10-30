@@ -1,6 +1,6 @@
 import { cmToX } from "../../apparatus/meter-bridge/dimensions";
 import { OHMS_LAW_LAYOUT } from "../../apparatus/ohms-law/layout";
-import { METER_DIAL_CENTER } from "../../apparatus/ohms-law/MeterImage";
+import { METER_DIAL_CENTER, METER_FACE_NORMAL } from "../../apparatus/ohms-law/MeterImage";
 
 // Close-up camera poses for the readings loupe (like lab/loupe.ts, for the V–I bench).
 
@@ -34,7 +34,10 @@ export function fitDistance(widthM: number, heightM: number, fovDeg: number, asp
   return Math.min(0.45, Math.max(forHeight, forWidth));
 }
 
-/** Straight in front of a meter's dial; the eye swings sideways about the dial centre. */
+/**
+ * Square to a meter's dial, along the sloping face's normal; the eye swings sideways about the
+ * dial centre.
+ */
 export function meterPose(
   kind: "ammeter" | "voltmeter",
   eyeDeg: number,
@@ -50,8 +53,8 @@ export function meterPose(
   out.target[1] = cy;
   out.target[2] = cz;
   out.position[0] = cx + Math.sin(a) * distanceM;
-  out.position[1] = cy;
-  out.position[2] = cz + Math.cos(a) * distanceM;
+  out.position[1] = cy + Math.cos(a) * distanceM * METER_FACE_NORMAL.y;
+  out.position[2] = cz + Math.cos(a) * distanceM * METER_FACE_NORMAL.z;
   return out;
 }
 

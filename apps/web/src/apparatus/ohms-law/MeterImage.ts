@@ -14,11 +14,42 @@ export const METER_FACE_Z = 0.025;
 export const METER_DIAL_LIFT = 0.0015;
 /** The mirror strip sits this far above the dial paper. */
 export const MIRROR_LIFT = 0.0004;
+
+// A sloping-front panel meter: the face leans back METER_FACE_TILT_DEG from upright, so from the
+// student's seat (the stage's 41 degree elevation, learn/stage/shots.ts) the dial reads nearly
+// round. The face's parts are laid out in "face coordinates", the coordinates of the old upright
+// face (y up the face, z out of it, the face itself at METER_FACE_Z), and the face is hinged on
+// the case at METER_FACE_HINGE: face y = METER_FACE_Y0 is the hinge, and face z = METER_FACE_Z is
+// the sloping surface. faceToMeter is the one mapping; Meter.tsx nests its groups the same way.
+
+/** How far the face leans back from upright. */
+export const METER_FACE_TILT_DEG = 30;
+const TILT = (METER_FACE_TILT_DEG * Math.PI) / 180;
+/** Where the slope starts, in the meter's own frame: the top of the front apron, over the ledge. */
+export const METER_FACE_HINGE = { y: 0.0227, z: METER_FACE_Z } as const;
+/** The face coordinate (y) that lands on the hinge. */
+export const METER_FACE_Y0 = 0.0095;
+/** The length of the sloping face, from the hinge to the case top. */
+export const METER_FACE_LEN = 0.11;
+/** The face's outward normal in the meter's frame (no x part). */
+export const METER_FACE_NORMAL = { y: Math.sin(TILT), z: Math.cos(TILT) } as const;
+
+/** Face coordinates to the meter's own frame, in place. */
+export function faceToMeter<T extends { y: number; z: number }>(p: T): T {
+  const s = p.y - METER_FACE_Y0;
+  const n = p.z - METER_FACE_Z;
+  const y = METER_FACE_HINGE.y + s * Math.cos(TILT) + n * Math.sin(TILT);
+  const z = METER_FACE_HINGE.z - s * Math.sin(TILT) + n * Math.cos(TILT);
+  p.y = y;
+  p.z = z;
+  return p;
+}
+
 /** Where the loupe looks: the middle of the dial paper, in the meter's own frame. */
-export const METER_DIAL_CENTER = {
+export const METER_DIAL_CENTER: { readonly y: number; readonly z: number } = faceToMeter({
   y: METER_DIAL_Y + DIAL.radius,
   z: METER_FACE_Z + METER_DIAL_LIFT,
-} as const;
+});
 
 /** The image is the needle reflected in the mirror strip (relative to the dial plane). */
 export const IMAGE_Z = -(NEEDLE_LIFT - 2 * MIRROR_LIFT);

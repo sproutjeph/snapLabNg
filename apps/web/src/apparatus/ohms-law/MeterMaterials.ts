@@ -340,12 +340,22 @@ const WORN: readonly [number, number, number] = [3.1, 2.55, 2.1];
  * `worn` (a warm, lighter multiplier) where the normal turns away from every axis, which is the
  * middle of each bevel. Use it with `vertexColors: true` on a material whose own colour is white:
  * the part then shows its brown under-layer along its edges, as old bakelite does. Needs normals.
+ * `faces` adds the unit normals of flat faces that are not square to an axis (a sloping meter
+ * face), so they stay unworn too.
  */
-export function applyEdgeWear(geo: THREE.BufferGeometry, worn: readonly number[] = WORN): void {
+export function applyEdgeWear(
+  geo: THREE.BufferGeometry,
+  worn: readonly number[] = WORN,
+  faces: ReadonlyArray<readonly [number, number, number]> = [],
+): void {
   const nor = geo.getAttribute("normal");
   const out = new Float32Array(nor.count * 3);
   for (let i = 0; i < nor.count; i++) {
-    const m = Math.max(Math.abs(nor.getX(i)), Math.abs(nor.getY(i)), Math.abs(nor.getZ(i)));
+    const nx = nor.getX(i);
+    const ny = nor.getY(i);
+    const nz = nor.getZ(i);
+    let m = Math.max(Math.abs(nx), Math.abs(ny), Math.abs(nz));
+    for (const [fx, fy, fz] of faces) m = Math.max(m, Math.abs(nx * fx + ny * fy + nz * fz));
     const t = Math.min(1, Math.max(0, (1 - m - 0.02) / 0.1));
     const wear = t * t * (3 - 2 * t);
     for (let c = 0; c < 3; c++) out[i * 3 + c] = 1 + ((worn[c] ?? 1) - 1) * wear;
