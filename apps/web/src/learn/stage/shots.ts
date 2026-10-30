@@ -154,7 +154,46 @@ function closeShot(
   width: number,
   height: number,
 ): LookShot {
-  const { azimuthDeg } = CLOSE[name];
+  return fittedShot(name, frameCorners(name), CLOSE[name].azimuthDeg, covered, width, height);
+}
+
+/** The slots the phone's bench shot holds: every part on the bench (the tray stands behind). */
+const PHONE_BENCH_SLOTS: readonly BenchSlot[] = [
+  "box",
+  "key",
+  "cells",
+  "ammeter",
+  "voltmeter",
+  "wire",
+];
+
+/**
+ * The bench on a phone held upright, where the whole bench is a thin strip: every part, but the
+ * wire board's ends are cropped to the width of the other parts (the box and the cells hold the
+ * outermost terminals, R2 and E−, so all twelve stay in), and the bench is as big as the free area
+ * allows rather than at the laptop's fixed span.
+ */
+export function phoneBenchCorners(): Array<[number, number, number]> {
+  const others = PHONE_BENCH_SLOTS.filter((s) => s !== "wire").map((s) => slotBounds(s, 0.025));
+  const xMin = Math.min(...others.map((b) => b.x0)) - PAPER_M;
+  const xMax = Math.max(...others.map((b) => b.x1)) + PAPER_M;
+  return PHONE_BENCH_SLOTS.flatMap((slot) => {
+    const b = slotBounds(slot, 0.025);
+    const xs = [Math.max(xMin, b.x0 - PAPER_M), Math.min(xMax, b.x1 + PAPER_M)];
+    const zs = [b.z0 - PAPER_M, b.z1 + PAPER_M];
+    const ys = [0, b.h];
+    return xs.flatMap((x) => ys.flatMap((y) => zs.map((z): [number, number, number] => [x, y, z])));
+  });
+}
+
+function fittedShot(
+  id: string,
+  corners: ReadonlyArray<readonly [number, number, number]>,
+  azimuthDeg: number,
+  covered: Covered,
+  width: number,
+  height: number,
+): LookShot {
   const az = azimuthDeg * DEG;
   const el = LOOK_ELEVATION_DEG * DEG;
   const right = [Math.cos(az), 0, -Math.sin(az)] as const;
@@ -163,7 +202,7 @@ function closeShot(
   let sx1 = Number.NEGATIVE_INFINITY;
   let sy0 = Number.POSITIVE_INFINITY;
   let sy1 = Number.NEGATIVE_INFINITY;
-  for (const [x, y, z] of frameCorners(name)) {
+  for (const [x, y, z] of corners) {
     const sx = x * right[0] + z * right[2];
     const sy = x * up[0] + y * up[1] + z * up[2];
     sx0 = Math.min(sx0, sx);
@@ -194,7 +233,7 @@ function closeShot(
       else lo = mid;
     }
   }
-  return { id: name, focus, spanM: hi, azimuthDeg };
+  return { id, focus, spanM: hi, azimuthDeg };
 }
 
 /**
@@ -233,12 +272,18 @@ export function spanAtAzimuth(
   return hi;
 }
 
-/** The named shot for a canvas this size under these cards. */
+/**
+ * The named shot for a canvas this size under these cards. `portrait` (LookCamera's isPortrait for
+ * the free area: a phone held upright) crops the bench shot's sides (phoneBenchCorners).
+ */
 export function stageShot(
   name: StageShotName,
   covered: Covered,
   width: number,
   height: number,
+  portrait = false,
 ): LookShot {
-  return name === "bench" ? BENCH_SHOT : closeShot(name, covered, width, height);
+  if (name !== "bench") return closeShot(name, covered, width, height);
+  if (!portrait) return BENCH_SHOT;
+  return fittedShot("bench", phoneBenchCorners(), STAGE_AZIMUTH_DEG, covered, width, height);
 }

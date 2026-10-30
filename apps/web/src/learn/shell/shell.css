@@ -2293,3 +2293,17 @@
     }
   }
 }
+
+/* The question paper in its pop-up (docs/plans/integration.md, I1): QuestionPaper scrolls inside
+   and pins its choices, so the sheet's body gives it a definite height. */
+.sh-sheet-question .sh-sheet-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px;
+}
+
+.sh-sheet-question .sh-sheet-body > .qp {
+  flex: 1 1 auto;
+}

@@ -158,8 +158,8 @@ function StageCamera({
   // A copy the drag may turn: LookCamera reads its shot every frame, so turning this one object
   // turns the camera without a React render per pointer move.
   const shot = useMemo<LookShot>(
-    () => ({ ...stageShot(name, c, width, height) }),
-    [name, c, width, height],
+    () => ({ ...stageShot(name, c, width, height, portrait) }),
+    [name, c, width, height, portrait],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new fit is what the camera eases to.
   useEffect(() => loop.wake(RENDER_S), [loop, c.left, c.right, c.top, c.bottom]);

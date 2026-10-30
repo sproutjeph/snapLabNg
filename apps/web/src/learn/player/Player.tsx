@@ -1,8 +1,9 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import type { Director } from "../script/types";
+import type { Director, DirectorSpeed } from "../script/types";
 import { useLayout } from "../shell/useLayout";
 import {
   IconHand,
+  IconHandIn,
   IconPause,
   IconPlay,
   IconRepeat,
@@ -27,9 +28,12 @@ export interface PlayerProps {
   director: Director;
   /** Stage titles by Step.key. The Player no longer shows them (the shell does); kept for callers. */
   stageTitles?: Readonly<Record<string, string>>;
+  /** Practise and Exam: hand her notebook in for marking (the page shows the results). */
+  onHandIn?: (() => void) | undefined;
 }
 
-const SPEEDS = [1, 1.5, 2] as const;
+/** The speeds the button cycles through (E2E runs may also set 4 and 8; the button then goes to 1). */
+const SPEEDS: readonly DirectorSpeed[] = [1, 1.5, 2];
 const speedLabel = (s: number) => `${s}x`;
 
 function mmss(totalS: number): string {
@@ -49,7 +53,7 @@ function useElapsed(running: boolean): number {
   return s;
 }
 
-export function Player({ director }: PlayerProps) {
+export function Player({ director, onHandIn }: PlayerProps) {
   const handle = handleOf(director);
   const [, bump] = useReducer((n: number) => n + 1, 0);
   const [muted, setMuted] = useState(() => handle?.voice.muted ?? false);
@@ -91,8 +95,20 @@ export function Player({ director }: PlayerProps) {
       <MuteIcon />
     </button>
   ) : null;
+  const handInButton =
+    onHandIn && s.mode !== "watch" ? (
+      <button
+        type="button"
+        className="dp-btn dp-btn-text dp-handin"
+        data-testid="hand-in"
+        onClick={onHandIn}
+      >
+        <IconHandIn />
+        <span className="dp-label">Hand in</span>
+      </button>
+    ) : null;
 
-  // ---- Exam: the clock and the mute button, nothing else ----
+  // ---- Exam: the clock, hand-in and the mute button, nothing else ----
   if (s.mode === "exam") {
     return (
       <div ref={root} className={rootClass}>
@@ -100,6 +116,7 @@ export function Player({ director }: PlayerProps) {
           <div className="dp-clock" role="timer" aria-label="Time used">
             {mmss(elapsed)}
           </div>
+          {handInButton}
           {muteButton}
         </div>
       </div>
@@ -180,6 +197,7 @@ export function Player({ director }: PlayerProps) {
               <button
                 type="button"
                 className="dp-btn dp-btn-accent dp-btn-text"
+                data-testid="show-me"
                 disabled={!s.playing || s.hint === 3}
                 onClick={() => director.showMe()}
               >
@@ -187,6 +205,7 @@ export function Player({ director }: PlayerProps) {
                 <span className="dp-label">Show me</span>
               </button>
             ) : null}
+            {handInButton}
             {muteButton}
           </div>
         )}

@@ -4,7 +4,7 @@ import type { DirectorHandle } from "../script/createDirector";
 import type { Beat, DirectorState } from "../script/types";
 import type { TerminalId } from "../types";
 import { createLeadPicks, type LeadPicks } from "../wiring/leadPick";
-import { DROP_HEIGHT_M, type DropPose, type DropSlot } from "./motion";
+import { DROP_HEIGHT_M, type DropPose, type DropSlot, dropFrom, dropStartS } from "./motion";
 
 // What the stage's choreographer (Choreo.tsx) writes each frame and the parts read in their own
 // useFrame: one plain object, made once per page and mutated in place, so nothing re-renders
@@ -58,11 +58,90 @@ export interface StageMotion {
   /** Which lead is hovered or selected for removal, and the first-lead hint (wiring/leadPick.ts). */
   leads: LeadPicks;
   remove: RemoveSink | null;
+  /** The parts landing while the question paper is open (Entrance, below). */
+  entrance: Entrance;
+}
+
+/**
+ * The entrance under the question paper (docs/plans/integration.md, I1). While the paper is open
+ * the entrance, not the director, places the parts: each drops as "Read it to me" names it, or,
+ * when nothing is reading aloud (speech unavailable, muted, or the reading stopped early), on the
+ * timed drop (0.9 s, then one part every 0.1 s).
+ */
+export interface Entrance {
+  /** The paper is open. */
+  on: boolean;
+  /** Seconds since the paper opened (real time). */
+  t: number;
+  /** A reading aloud is naming the parts: a part not named yet waits above the bench. */
+  byVoice: boolean;
+  /** Entrance seconds at which each part was named. */
+  namedAtS: Partial<Record<DropSlot, number>>;
+  /** Entrance seconds the timed drop counts from (a stopped reading restarts it). */
+  timedFromS: number;
+  /** Every part is down: the first Watch after the paper starts with the bench full. */
+  landed: boolean;
 }
 
 const DROP_SLOTS: readonly DropSlot[] = ["cells", "key", "ammeter", "voltmeter", "box", "wire"];
 
 export { DROP_SLOTS };
+
+const isDropSlot = (p: string): p is DropSlot => (DROP_SLOTS as readonly string[]).includes(p);
+
+export function createEntrance(): Entrance {
+  return { on: false, t: 0, byVoice: false, namedAtS: {}, timedFromS: 0, landed: false };
+}
+
+/** A reading aloud began: with speech that can be heard, the parts wait to be named. */
+export function entranceReading(e: Entrance, audible: boolean): void {
+  if (!e.on) return;
+  e.byVoice = audible;
+}
+
+/** The reading stopped: the parts not named yet drop on the timed drop, from now. */
+export function entranceStopped(e: Entrance): void {
+  if (!e.on || !e.byVoice) return;
+  e.byVoice = false;
+  e.timedFromS = e.t;
+}
+
+/** The reader named `part`: it drops now (once). Returns whether it starts a drop. */
+export function entranceNamed(e: Entrance, part: string): boolean {
+  if (!e.on || !e.byVoice || !isDropSlot(part) || e.namedAtS[part] !== undefined) return false;
+  e.namedAtS[part] = e.t;
+  return true;
+}
+
+/**
+ * One frame of the entrance: advances its clock by `dtS` and writes each part's drop. `order` is
+ * the timed drop's order (lowest on screen first). Returns whether a part is mid-drop.
+ */
+export function entranceFrame(
+  e: Entrance,
+  order: readonly DropSlot[],
+  dtS: number,
+  parts: Record<DropSlot, DropPose>,
+): boolean {
+  e.t += dtS;
+  let dropping = false;
+  let down = 0;
+  for (let i = 0; i < order.length; i++) {
+    const slot = order[i];
+    if (!slot) continue;
+    const pose = parts[slot];
+    const named = e.namedAtS[slot];
+    if (named !== undefined) dropFrom(e.t, named, pose);
+    else if (e.byVoice) {
+      pose.heightM = DROP_HEIGHT_M;
+      pose.k = 0;
+    } else dropFrom(e.t, e.timedFromS + dropStartS(i), pose);
+    if (pose.k > 0 && pose.k < 1) dropping = true;
+    if (pose.k >= 1) down++;
+  }
+  e.landed = down === order.length;
+  return dropping;
+}
 
 export function createStageMotion(): StageMotion {
   const parts = {} as Record<DropSlot, DropPose>;
@@ -79,6 +158,7 @@ export function createStageMotion(): StageMotion {
     freezeAtS: null,
     leads: createLeadPicks(),
     remove: null,
+    entrance: createEntrance(),
   };
 }
 
