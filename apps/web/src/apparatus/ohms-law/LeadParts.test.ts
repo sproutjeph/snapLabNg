@@ -315,7 +315,8 @@ describe("a lead's sideways sag", () => {
 
 describe("what a cable rests on, unchanged by the asset pass", () => {
   // The footprints' tops, from the Wave 1 table in LeadParts.ts (cells 4.6 cm, key 2.4, a meter's
-  // case 11.8 and its nut ledge 1.2, box 6, wire board 2, tray 1.4); floorAt(x, z) is the highest
+  // case 11.8 and its nut ledge 1.2, box 6, wire board 2, tray 2.4 since the beauty pass deepened
+  // its rim, docs/plans/beauty-pass.md B1); floorAt(x, z) is the highest
   // top within 1.5 cm, sloping down to the desk over that distance.
   it("is the top of each part at its middle, and the desk well away from all of them", () => {
     const expected: Record<string, number> = {
@@ -323,7 +324,7 @@ describe("what a cable rests on, unchanged by the asset pass", () => {
       key: 0.024,
       box: 0.06,
       wire: 0.02,
-      tray: 0.014,
+      tray: 0.024,
     };
     for (const f of BENCH_FOOTPRINTS) {
       const want = expected[f.slot];

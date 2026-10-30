@@ -129,8 +129,11 @@ export function poseChanged(memo: PoseMemo, v: OhmsLawVisualState): boolean {
 /** The bench's parts, by their ink-id block (apparatus/ohms-law/layout.ts INK_IDS). */
 export type StagePart = "cells" | "key" | "ammeter" | "voltmeter" | "box" | "wire" | "tray";
 
-/** The ids every focus keeps: the twelve terminal nuts (100+) and the twenty lead ids (140+). */
-const NUT_IDS = 12;
+/**
+ * The ids every focus keeps: the terminal nuts (100–111), their caps (120–131, TerminalNut gives
+ * each cap nutBase + 20 + its index) and the twenty lead ids (140+).
+ */
+const NUT_IDS = 32;
 const LEAD_IDS = 20;
 
 /**

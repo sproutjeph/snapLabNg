@@ -537,7 +537,7 @@ const FOOT_SIZES: ReadonlyArray<readonly [BenchSlot, number, number, number, num
   ["voltmeter", 0.12, 0.012, 0.04, 0.045],
   ["box", 0.3, 0.06, 0.1, 0],
   ["wire", 1.1, 0.02, 0.12, 0],
-  ["tray", 0.26, 0.014, 0.34, 0],
+  ["tray", 0.26, 0.024, 0.34, 0],
 ];
 
 export const BENCH_FOOTPRINTS: readonly BenchFootprint[] = FOOT_SIZES.map(

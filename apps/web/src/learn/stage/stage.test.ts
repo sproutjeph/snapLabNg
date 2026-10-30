@@ -80,6 +80,11 @@ describe("the stage's focus", () => {
     expect(ids?.has(INK_IDS.box)).toBe(false);
   });
 
+  it("keeps the nut caps' own ink ids (nutBase + 20 + terminal index) in focus too", () => {
+    const ids = stageFocusIds(["box"]);
+    for (let i = 0; i < 12; i++) expect(ids?.has(INK_IDS.nutBase + 20 + i)).toBe(true);
+  });
+
   it("puts everything in focus when no part is named", () => {
     expect(stageFocusIds(null)).toBeNull();
     expect(stageFocusIds([])).toBeNull();
