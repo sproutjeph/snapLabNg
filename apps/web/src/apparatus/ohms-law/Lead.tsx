@@ -7,6 +7,8 @@ import { inkTag } from "../../scene/ink/ink";
 import { acquireTexture, brassSurface, releaseTexture } from "../materials";
 import type { QualityTier } from "../meter-bridge/types";
 import {
+  BENCH_FOOTPRINTS,
+  type BenchFootprint,
   CABLE_SEAT_M,
   floorAt,
   hashString,
@@ -260,6 +262,114 @@ export function shapeCable(
   }
 }
 
+// ---- Round the meters, not over them ----------------------------------------------------------
+// A meter's terminals stand on a low ledge in front of its tall sloping case. A lead from one to a
+// part behind the meter, laid straight, rests on the case (restOnBench) and so crosses the dial.
+// Instead it leaves the nut sideways along the ledge, drops to the desk beside the case, and only
+// then droops away to its other end; if that end is right behind the case it also runs down the
+// case's side first. The rest of the cable is shapeCable's droop from there.
+
+/** The meters' cases: the tall footprints (the ledges are 1.2 cm high). */
+const METER_CASES: readonly BenchFootprint[] = BENCH_FOOTPRINTS.filter(
+  (f) => (f.slot === "ammeter" || f.slot === "voltmeter") && f.top > 0.05,
+);
+/** Desk left between the cable and a case's side, metres. */
+const CASE_CLEAR_M = 0.022;
+/** Samples along a straight lead when looking for a case it would cross. */
+const CROSS_SAMPLES = 24;
+
+const _route = Array.from({ length: CTRL_T.length }, () => new THREE.Vector3());
+const _w1 = new THREE.Vector3();
+const _w2 = new THREE.Vector3();
+const _rs = new THREE.Vector3();
+const _re = new THREE.Vector3();
+
+/** The meter case a straight cable from `s` to `e` would lie over (in plan), or null. */
+export function caseCrossed(s: THREE.Vector3, e: THREE.Vector3): BenchFootprint | null {
+  for (const f of METER_CASES) {
+    for (let i = 1; i < CROSS_SAMPLES; i++) {
+      const t = i / CROSS_SAMPLES;
+      const x = s.x + (e.x - s.x) * t;
+      const z = s.z + (e.z - s.z) * t;
+      if (Math.abs(x - f.cx) < f.hx + 0.004 && Math.abs(z - f.cz) < f.hz + 0.004) return f;
+    }
+  }
+  return null;
+}
+
+/** True when the seat `p` is on the ledge in front of case `f`. */
+function onLedgeOf(f: BenchFootprint, p: THREE.Vector3): boolean {
+  return (
+    Math.abs(p.x - f.cx) <= f.hx + 0.01 && p.z > f.cz + f.hz - 0.005 && p.z < f.cz + f.hz + 0.06
+  );
+}
+
+/**
+ * The detour from a nut on case `f`'s ledge (`s`) to `e`: out along the ledge on the nut's own
+ * side (never past the other nut), down that side of the case to behind it, then shapeCable's
+ * droop. Behind both cases (the meters stand side by side in the front row) the droop is clear
+ * of them. Fills all of `pts` (CTRL_T.length points).
+ */
+function detour(
+  pts: THREE.Vector3[],
+  f: BenchFootprint,
+  s: THREE.Vector3,
+  e: THREE.Vector3,
+  bulge: number,
+): void {
+  const side = s.x >= f.cx ? 1 : -1;
+  const sideX = f.cx + side * (f.hx + CASE_CLEAR_M);
+  _w1.set(sideX, FLOOR_Y, s.z);
+  _w2.set(sideX, FLOOR_Y, f.cz - f.hz - CASE_CLEAR_M);
+  shapeCable(_route, _w2, e, bulge);
+  // Out of the plug a little stiffly, along the ledge, down beside the case and along its side.
+  pts[0]?.copy(s);
+  pts[1]?.set(s.x + (_w1.x - s.x) * 0.25, s.y + 0.004, s.z);
+  pts[2]?.set(s.x + (_w1.x - s.x) * 0.75, Math.max(FLOOR_Y, s.y - 0.01), s.z);
+  pts[3]?.copy(_w1);
+  pts[4]?.copy(_w2);
+  // The droop's own control points from t = .25 on.
+  let k = 5;
+  for (const i of [3, 5, 6, 8, 9, 10]) {
+    const q = _route[i];
+    if (q) pts[k++]?.copy(q);
+  }
+}
+
+/**
+ * The cable's control points from seat `s` to seat `e`: shapeCable's droop, unless the droop
+ * would cross a meter's case, when the cable goes round it (detour). Allocates nothing.
+ */
+export function routeCable(
+  pts: THREE.Vector3[],
+  s: THREE.Vector3,
+  e: THREE.Vector3,
+  bulge: number,
+): void {
+  const f = caseCrossed(s, e);
+  if (f && onLedgeOf(f, s)) {
+    detour(pts, f, s, e, bulge);
+    return;
+  }
+  if (f && onLedgeOf(f, e)) {
+    // Worked from the meter's end, then turned round.
+    _rs.copy(s);
+    _re.copy(e);
+    detour(pts, f, _re, _rs, -bulge);
+    const n = CTRL_T.length;
+    for (let i = 0; i < n / 2 - 0.5; i++) {
+      const a = pts[i];
+      const b = pts[n - 1 - i];
+      if (!a || !b) continue;
+      _w1.copy(a);
+      a.copy(b);
+      b.copy(_w1);
+    }
+    return;
+  }
+  shapeCable(pts, s, e, bulge);
+}
+
 /**
  * An insulated flexible lead with a banana plug at each end, sagging between two terminals
  * (a tube on a Catmull-Rom curve). Both ends' world positions are read from the registry
@@ -461,7 +571,10 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
 
     res.s.set(_a.x, _a.y + liftA + CABLE_SEAT_M, _a.z);
     res.e.set(_b.x, _b.y + liftB + CABLE_SEAT_M, _b.z);
-    shapeCable(res.pts, res.s, res.e, res.bulge);
+    // A real lead goes round a meter's case, never over its dial; the free plug she carries
+    // keeps the plain droop (the kit's tests frame it).
+    if (to === "pointer") shapeCable(res.pts, res.s, res.e, res.bulge);
+    else routeCable(res.pts, res.s, res.e, res.bulge);
     for (let i = 0; i <= res.mainN; i++) {
       res.curve.getPoint((i / res.mainN) * d01, _pt);
       restOnBench(_pt);
