@@ -1,6 +1,6 @@
 # Plan: the beauty pass (the V–I practical)
 
-Status: **APPROVED by the user on Oct 30**, with D1–D3 as recommended. Written after Integration closed on main e380677.
+Status: **DONE Oct 30 (main b8a9e68)**. APPROVED by the user on Oct 30, with D1–D3 as recommended. Written after Integration closed on main e380677.
 
 ## Goal
 Make the Ohm's-law practical (`/?practical=ohms-law`) look and move like Backcountry 101 from the first tap to the results. This plan clears the polish queued in Waves 1b and 2 and in Integration, then runs a bug bash on main and freezes. It is the last row of `docs/plans/exam-redesign.md` Progress ("Beauty pass and bug bash; freeze at 23:59 on Nov 2"), and its done-criterion 5.
@@ -109,5 +109,6 @@ beatCount: number; // beats in this script
 - [x] Plan approved (Oct 30), D1–D3 as recommended
 - [x] Step 0: three items from the user (steps strip, leads as apparatus, organised bench)
 - [x] Seam: ownership rows, `@fontsource/tinos`
-- [ ] B1 merged · [ ] B2 merged · [ ] B3 merged · [ ] B4 merged
-- [ ] Bug bash and fps; freeze
+- [x] B1 merged (#110, signed off) · [x] B2 merged (#113: user approved in Chrome, review SHIP; fix round for the muted entrance timing, benchFrame v4 and three Lead minors; phone bench 37.6%, accepted by the user, no steeper camera) · [x] B3 merged (#112, Muse, signed off) · [x] B4 merged (#111, review FIX round, signed off; noleak and watch E2E green)
+- [x] Bug bash and fps; freeze (Oct 30): four checks green on main (1,129 tests; web 845); exam, noleak, practise and watch E2E pass on phone and laptop; fps on M1 Pro: laptop DPR 2 about 59 after the first 5 s (34 while loading), phone `quality=low` DPR 3 57–60; no console errors (one THREE.Clock deprecation warning); the user checked a real phone over LAN and it looked good.
+- Later (not in this pass): a steeper phone camera for 45% (`elevationDeg` on `LookShot`); the THREE.Clock warning; the small cm numerals beside the tens.
