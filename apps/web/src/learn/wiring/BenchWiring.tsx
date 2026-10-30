@@ -4,6 +4,7 @@ import { useEffect, useMemo, useReducer, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { getLeadCurve, Lead, type LeadCurve } from "../../apparatus/ohms-law/Lead";
+import { LEAD_RADIUS_M } from "../../apparatus/ohms-law/LeadParts";
 import type { LabAudio } from "../../audio/labAudio";
 import { flowRate } from "../../lab/flow";
 import { useTerminalRegistry } from "../terminals";
@@ -351,7 +352,9 @@ function LeadFlowDots({
       const total = cum[curve.count - 1] ?? 0;
       if (!(total > 1e-4)) continue;
       const du = (Math.sign(iA) * rate * MAX_SPEED_M_S * dt) / total;
-      const size = DOT_M * (0.5 + 0.5 * rate);
+      // A dot is a bead on the cable: its centre is on the cable's line, so its radius is the
+      // cable's plus DOT_M scaled by the rate, or the cable would hide it.
+      const size = LEAD_RADIUS_M + DOT_M * (0.5 + 0.5 * rate);
       for (let k = 0; k < perLead; k++) {
         const slot = i * perLead + k;
         let u = (phase[slot] ?? 0) + du;
