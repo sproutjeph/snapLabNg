@@ -72,6 +72,10 @@ const DIAL_Z = FACE_Z + METER_DIAL_LIFT;
 const DIAL_CY = METER_DIAL_Y + DIAL.radius; // the middle of the round dial
 const PIVOT_Y = DIAL_CY - DIAL.pivotDown;
 const SCREW_Y = 0.0195;
+/** The four corner screws of the face. */
+const CORNER_X = 0.0515;
+const CORNER_TOP = 0.1105;
+const CORNER_BOTTOM = 0.0185;
 const DEG = Math.PI / 180;
 const SHAKE_S = 0.4;
 /** The bezel ring: its outer radius and how far its lip stands off the face. */
@@ -240,6 +244,22 @@ export function Meter({
     const slotGeo = new THREE.BoxGeometry(0.0098, 0.0017, 0.001);
     slotGeo.rotateZ(0.5);
     slotGeo.translate(0, SCREW_Y, FACE_Z + 0.003);
+    // Four mounting screws at the corners of the face, as on the approved golden frame's meters.
+    const cornerScrew = (side: number, y: number) => {
+      const geo = new THREE.CylinderGeometry(0.0034, 0.0034, 0.0022, low ? 8 : 10);
+      geo.rotateX(Math.PI / 2);
+      return {
+        geo,
+        place: (g: THREE.BufferGeometry) => g.translate(side * CORNER_X, y, FACE_Z + 0.0011),
+      };
+    };
+    const cornersGeo = mergeStatic([
+      cornerScrew(-1, CORNER_TOP),
+      cornerScrew(1, CORNER_TOP),
+      cornerScrew(-1, CORNER_BOTTOM),
+      cornerScrew(1, CORNER_BOTTOM),
+    ]);
+    boxProjectUV(cornersGeo, [0.1, 0.1]);
 
     // The needle, with its counterweight, and the brass hub and post that turn with it.
     const tail = new THREE.CylinderGeometry(0.0027, 0.0027, 0.0014, low ? 10 : 16);
@@ -301,6 +321,7 @@ export function Meter({
       platesGeo,
       screwGeo,
       slotGeo,
+      cornersGeo,
       needleGeo,
       needleBrassGeo: mergeStatic([{ geo: hubGeo }, { geo: postGeo }]),
       pointerGeo: pointerGeometry(),
@@ -397,6 +418,7 @@ export function Meter({
         <InkGroup id={ink + 3} thin>
           <mesh geometry={res.screwGeo} material={res.brassMat} />
           <mesh geometry={res.slotGeo} material={res.ringMat} />
+          <mesh geometry={res.cornersGeo} material={res.brassMat} />
         </InkGroup>
         <InkGroup id={ink + 4} thin>
           <mesh

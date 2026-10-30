@@ -125,16 +125,16 @@ export function disposeAll(bag: Record<string, unknown>): void {
 
 // Mostly ivory and grey, a little tan, a rare rust fleck: like the references' cases.
 const FLECKS = [
-  "#f1e8cf",
-  "#f1e8cf",
-  "#f1e8cf",
-  "#f8f3e6",
-  "#e6d7ae",
-  "#e6d7ae",
-  "#d4c08a",
+  "#ece8de",
+  "#ece8de",
+  "#f4f1e8",
+  "#c9c6bc",
+  "#c9c6bc",
+  "#c9c6bc",
   "#9a978e",
   "#9a978e",
   "#6f6c66",
+  "#e6d7ae",
   "#d9a05a",
 ] as const;
 
@@ -158,13 +158,13 @@ function paintMeterBakelite(w: number): THREE.CanvasTexture {
     if (nx && ny) draw(x + nx, y + ny);
   };
 
-  ctx.fillStyle = "#171515";
+  ctx.fillStyle = "#141414";
   ctx.fillRect(0, 0, w, w);
   // Mottle: big soft patches, warm brown and cool grey, so no face is one flat black.
   for (let i = 0; i < 60; i++) {
     const r = (50 + rnd() * 170) * k;
     const warm = rnd() < 0.5;
-    const a = (0.04 + rnd() * 0.05) * (warm ? 0.7 : 1);
+    const a = (0.04 + rnd() * 0.05) * (warm ? 0.45 : 1);
     wrapped(rnd() * w, rnd() * w, r, (x, y) => {
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, warm ? `rgba(104,66,40,${a})` : `rgba(70,76,88,${a})`);
@@ -198,8 +198,8 @@ function paintMeterBakelite(w: number): THREE.CanvasTexture {
     });
   }
   // Chips: a few large irregular flecks, some with a dark heart.
-  for (let i = 0; i < 70; i++) {
-    const r = (3.8 + rnd() * 4.2) * k;
+  for (let i = 0; i < 95; i++) {
+    const r = (4 + rnd() * 6) * k;
     const sides = 5 + Math.floor(rnd() * 3);
     const rot = rnd() * Math.PI * 2;
     const offsets = Array.from({ length: sides }, () => 0.6 + rnd() * 0.6);
@@ -333,7 +333,7 @@ export function offsetUV(geo: THREE.BufferGeometry, du: number, dv: number): voi
   uv.needsUpdate = true;
 }
 
-const WORN: readonly [number, number, number] = [3.4, 2.7, 2.1];
+const WORN: readonly [number, number, number] = [3.1, 2.55, 2.1];
 
 /**
  * Edge wear for a bevelled part. Writes a `color` attribute that is 1 on flat faces and rises to
