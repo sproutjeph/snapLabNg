@@ -1,5 +1,13 @@
 # Build log
 
+## Oct 30 (Day 5)
+- Exam redesign Wave 1b, run as background workflows with up to 4 writers at once.
+  - #86 the asset seam: `?kit=ohms-law` mounts the real look, with ten subjects and `dpr`, `zoom`, `turn` and `dump`; `shot.ts --only`; ten Muse Image references ($0.10, no rerolls).
+  - Four asset groups, each modelled against its own reference, then shot at DPR 3 and 2: #87 the leads and terminal nuts (chunky 1.5× plugs, 1.9× cables), #88 the wire board and tray, #89 the resistance box, key and cells, #91 the meters and desk props. Every terminal kept 0 mm drift.
+  - #90 the page layout: Backcountry's cards over a full-bleed stage, measured against BC101 at three sizes to within 0.6 px, with Peek on the phone.
+  - The user signed off every group in real Chrome. Main is green: 758 web tests.
+  - Midway the user asked for a lean finish: fewer gate rounds, polish moved to the beauty pass. An account billing error once killed the workflows; they resumed from their worktrees.
+
 ## Oct 29 (Day 4)
 - Exam redesign Wave 1, four writers in parallel worktrees, each gated by verifier, visual QA and a fresh code review: #79 the picker, the question paper with read-aloud, the results sheet; #80 the director (Watch, Practise, Exam from one script), the speech queue and the player; #81 Ohm's law apparatus v2 and the wood, brass and bakelite materials kit; #82 the look (ortho camera, soft shadows, graph-paper desk, ink outlines, anti-aliasing, DPR ladder). The user approved the golden frame with three tweaks, then flagged pixelation: the cause was shots captured at DPR 1 with no AA, now fixed and re-checked in real Chrome beside Backcountry 101. Next: the asset pass (a reference image and an iterate-until-it-matches loop for each part, about $0.15 of Muse Image) and BC101's page layout and motion, both written into the plans.
 - Exam redesign Wave 0 (`claude/exam-seams`, plan `docs/plans/exam-redesign.md`): the seams for question → Watch → Practise → Exam. In the engine: `displayedValue` (what a dial shows), `demoSeedFor` (the Watch bench's wire is always ≥ 20% from hers, so a copied slope fails accuracy) and `effectiveXyOhm` (R_XY ∥ R_V, the supervisor's value). In the rules: `checkReadingsAgainstBench` (you wrote / meter showed, within a division, zero-error corrections allowed). The frozen web contracts for Waves 1–2, the bench supervisor (fenced by a boundary test), hand-in for 21 marks, stubs and preview switches. Nine Muse Image design targets ($0.12), with the direction approved by the user. Gates: science PASS ×2, verifier green (529 tests), code review after one fix round. Built by subagents, the lead orchestrating.

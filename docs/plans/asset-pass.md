@@ -8,9 +8,9 @@ Inputs:
 
 ## Progress (a fresh session reads this first)
 - [x] Prerequisites (Oct 29): W1-look merged (the seam imports its files); the pending edit to `exam-redesign.md` (Wave 1 handoff notes) committed; AGENTS.md "Who owns what" gets the four rows below.
-- [ ] 1b-0: the seam (`claude/asset-seam`) and the 10 reference images merged; reference gate passed
-- [ ] G4 leads and terminal, G2 box/key/cells, G3 board and tray, G1 meters and desk props: gates passed, user sign-off, merged (this order)
-- [ ] Whole-bench integration shot at DPR 3 and DPR 2, and the user's last look in Chrome
+- [x] 1b-0: the seam (`claude/asset-seam`) and the 10 reference images merged; reference gate passed
+- [x] G4 leads and terminal (#87), G3 board and tray (#88), G2 box/key/cells (#89), G1 meters and desk props (#91): gates passed, user sign-off in Chrome on Oct 30, merged. Lean finish (the user's call): the tray's deeper rim, bevelled rheostat parts, croc-clip jaws, the nut-cap ink id and phone-size cm numerals go to the beauty pass
+- [x] Whole-bench integration shot at DPR 3 and DPR 2, and the user's last look in Chrome
 
 ## Goal
 The golden frame was approved, but the parts are still plain: Backcountry 101 earns its feel from each object being drawn well. Give every V–I bench part the same treatment its author uses: **one reference image per asset (Muse Image), then model it in isolation, shoot it at real pixel density, compare, fix, repeat.**

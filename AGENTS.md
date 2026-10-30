@@ -82,13 +82,6 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `apparatus/ohms-law/KitPreview.tsx` (plan: `docs/plans/asset-pass.md`, 1b-0) | Claude subagent `apparatus-modeller`, while `claude/asset-seam` is open |
-| `scripts/shot.ts`, `scripts/design-targets.ts` (additive `--set asset-pass`), `docs/design/asset-pass/**` (plan: `docs/plans/asset-pass.md`, 1b-0) | Claude subagent `implementer`, while `claude/asset-seam-scripts` is open |
-| G4: `apparatus/ohms-law/{Lead.tsx,LeadParts.ts,TerminalNut.tsx}`; named owner of `layout.ts` and `BENCH_FOOTPRINTS`/`floorAt` (additive, with the lead's OK) (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-leads` is open |
-| G2: `apparatus/ohms-law/{ResistanceBox,Key,CellHolder}.tsx`; `apparatus/materials/**` (additive only) (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-bench` is open |
-| G3: `apparatus/ohms-law/{WireBoard.tsx,WireBoardTextures.ts,Tray.tsx,TrayParts.ts}` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-board` is open |
-| G1: `apparatus/ohms-law/{Meter.tsx,MeterDial.ts,MeterImage.ts,MeterMaterials.ts}` (`MeterMaterials.ts` additive only), `scene/look/DeskProps.tsx` (plan: `docs/plans/asset-pass.md`) | Claude subagent `apparatus-modeller`, while `claude/asset-meters` is open |
-| `learn/shell/**`, `learn/player/**` and their CSS; in `learn/LearnPage.tsx` only its `coveredPx` (to `playerCovered`); `learn/script/DirectorPreview.tsx` (mount the new shell) (plan: `docs/plans/page-layout.md`) | Claude subagent `ui-builder`, while `claude/page-layout` is open |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No Wave 1b slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/`, except `scripts/` and `docs/`.
