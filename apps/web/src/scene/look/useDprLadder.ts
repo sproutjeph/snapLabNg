@@ -12,11 +12,19 @@ export function useLadderDpr(ladder: DprLadder): number {
   return useSyncExternalStore(ladder.subscribe, ladder.dpr, ladder.dpr);
 }
 
-export function useDprLadder(ladder: DprLadder, enabled = true): void {
+/**
+ * `maxGapS`: on a demand frameloop, a longer gap between frames is the loop resting, not a slow
+ * frame, so it is not counted (default: every frame counts).
+ */
+export function useDprLadder(
+  ladder: DprLadder,
+  enabled = true,
+  maxGapS = Number.POSITIVE_INFINITY,
+): void {
   const setDpr = useThree((s) => s.setDpr);
   useFrame((state, delta) => {
     if (!enabled) return;
-    ladder.frame(delta);
+    if (delta <= maxGapS) ladder.frame(delta);
     const dpr = ladder.dpr();
     if (state.viewport.dpr !== dpr) setDpr(dpr);
   });

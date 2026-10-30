@@ -27,7 +27,8 @@ export const PORTRAIT_AZIMUTH_DEG = 82;
 const PORTRAIT_ENTER = 1.15;
 const PORTRAIT_LEAVE = 1.05;
 /** Distance from the focus, in metres; orthographic, so it only has to clear the bench. */
-const DISTANCE_M = 4;
+export const LOOK_DISTANCE_M = 4;
+const DISTANCE_M = LOOK_DISTANCE_M;
 const NEAR_M = 0.1;
 const FAR_M = 10;
 /** A shot frames a patch of desk spanM wide (x) and spanM × this deep (z)… */
