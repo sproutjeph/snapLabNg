@@ -234,6 +234,17 @@ function build(): Beat[] {
       focus: ["box"],
       callouts: [{ anchor: "box", label: `RESISTANCE BOX, R = ${ohm} Ω`, kind: "do" }],
     });
+    // R goes in the table before the key closes: the key is closed only to read (2b additions).
+    add({
+      id: `${r}-r`,
+      stage,
+      say: `Write R = ${ohm} Ω in the first column of the row.`,
+      instruct: `Write ${ohm} in the R column of this row.`,
+      shot: "bench",
+      act: { kind: "write", field: { kind: "cell", row, col: "R" }, value: { text: String(ohm) } },
+      done: (s) => s.record.rows.some((r) => r.R.value === ohm),
+      focus: ["box"],
+    });
     add({
       id: `${r}-key-on`,
       stage,
@@ -245,16 +256,6 @@ function build(): Beat[] {
       done: (s) => s.keyClosed,
       focus: ["key", "ammeter", "voltmeter"],
       callouts: [{ anchor: "key", label: "PLUG KEY, K", sub: "Close the key", kind: "do" }],
-    });
-    add({
-      id: `${r}-r`,
-      stage,
-      say: `Write R = ${ohm} Ω in the first column of the row.`,
-      instruct: `Write ${ohm} in the R column of this row.`,
-      shot: "bench",
-      act: { kind: "write", field: { kind: "cell", row, col: "R" }, value: { text: String(ohm) } },
-      done: (s) => s.record.rows.some((r) => r.R.value === ohm),
-      focus: ["box"],
     });
     add({
       id: `${r}-i-loupe`,
