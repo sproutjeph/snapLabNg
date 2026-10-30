@@ -1,6 +1,24 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { Step } from "../types";
-import { IconChevronLeft, IconChevronRight, IconLock, MarkCross, MarkTick } from "./icons";
+import { type ComponentType, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import type { PartId, Step } from "../types";
+import {
+  IconAmmeter,
+  IconBook,
+  IconCells,
+  IconChevronLeft,
+  IconChevronRight,
+  IconGraph,
+  IconKey,
+  IconLeads,
+  IconLock,
+  IconNotebook,
+  IconResistanceBox,
+  IconRule,
+  IconSteps,
+  IconVoltmeter,
+  IconWire,
+  MarkCross,
+  MarkTick,
+} from "./icons";
 import PracticalMenu from "./PracticalMenu";
 import { useSlider } from "./useLayout";
 
@@ -13,7 +31,7 @@ interface StepBarProps {
   onStepChange(index: number): void;
   /** The practical's name, for the selector at the strip's left. */
   title: string;
-  /** Step.key to the URL of its picture. A step with none shows a numbered ink ring. */
+  /** Step.key to the URL of its picture. A step with none shows its ink-outline part icon. */
   thumbs?: Readonly<Record<string, string>> | undefined;
   /** Cards from this index on are locked: shown, but not selectable yet. */
   lockedFrom?: number | undefined;
@@ -31,6 +49,61 @@ const STATUS_WORD: Record<StepStatus, string> = {
 
 const reducedMotion = () =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** The ink icon a step card shows: the part that step uses, by step key then by its first callout. */
+export type StepIconId =
+  | "cells"
+  | "key"
+  | "ammeter"
+  | "voltmeter"
+  | "box"
+  | "wire"
+  | "leads"
+  | "graph"
+  | "rule"
+  | "book"
+  | "notebook"
+  | "steps";
+
+const PART_ICON: Partial<Record<PartId, StepIconId>> = {
+  cells: "cells",
+  key: "key",
+  ammeter: "ammeter",
+  voltmeter: "voltmeter",
+  box: "box",
+  wire: "wire",
+  leads: "leads",
+};
+
+const KEY_ICON: Record<string, StepIconId> = {
+  "measure-xy": "wire",
+  connect: "leads",
+  plot: "graph",
+  slope: "graph",
+  precautions: "notebook",
+  law: "book",
+  length: "rule",
+};
+
+export function stepIconId(step: Step): StepIconId {
+  const part = step.callouts?.[0]?.part;
+  return KEY_ICON[step.key] ?? (part ? PART_ICON[part] : undefined) ?? "steps";
+}
+
+const STEP_ICONS: Record<StepIconId, ComponentType> = {
+  cells: IconCells,
+  key: IconKey,
+  ammeter: IconAmmeter,
+  voltmeter: IconVoltmeter,
+  box: IconResistanceBox,
+  wire: IconWire,
+  leads: IconLeads,
+  graph: IconGraph,
+  rule: IconRule,
+  book: IconBook,
+  notebook: IconNotebook,
+  steps: IconSteps,
+};
 
 /**
  * The step strip along the foot: the practical selector on a raised tab, then one card per
@@ -124,6 +197,8 @@ export default function StepBar({
               const locked = lockedAt(i);
               const selectable = canSelect(i);
               const thumb = thumbs?.[s.key];
+              const iconId = stepIconId(s);
+              const StepIcon = STEP_ICONS[iconId];
               const word = locked ? "locked" : STATUS_WORD[status];
               return (
                 <li
@@ -148,15 +223,17 @@ export default function StepBar({
                       if (selectable) onStepChange(i);
                     }}
                   >
-                    <span className="sh-step-pic" aria-hidden="true">
+                    <span className="sh-step-pic" data-step-icon={iconId} aria-hidden="true">
                       {thumb ? (
                         <img src={thumb} alt="" draggable={false} />
                       ) : (
-                        <span className="sh-ring">{i + 1}</span>
+                        <span className="sh-step-icon">
+                          <StepIcon />
+                        </span>
                       )}
                     </span>
                     <span className="sh-step-label sh-txt" aria-hidden="true">
-                      {thumb ? <b>{i + 1}.</b> : null}
+                      <b>{i + 1}.</b>
                       <span>{s.title}</span>
                     </span>
                     {status === "done" && (

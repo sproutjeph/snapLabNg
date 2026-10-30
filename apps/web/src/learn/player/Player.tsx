@@ -214,7 +214,9 @@ export function Player({ director, onHandIn }: PlayerProps) {
       <div className="dp-dock">
         {/* Always mounted, so a screen reader is already listening when the first words arrive. */}
         <p className="dp-caption" aria-live="polite" data-region="caption">
-          {s.caption}
+          {s.caption
+            ? `${(s.beatIndex ?? s.beat) + 1}/${s.beatCount ?? 0} · ${s.caption}`
+            : s.caption}
         </p>
       </div>
     </div>

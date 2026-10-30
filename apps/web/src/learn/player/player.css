@@ -317,12 +317,13 @@
 
 /* ---- The caption: an ink pill centered in the free stage, at the bottom ---- */
 
-/* Not zoomed: it spans the free stage, and the pill (zoomed) sits in the middle of it. */
+/* Not zoomed: it spans the free stage, and the pill (zoomed) sits in the middle of it. Its foot
+   is the top of the always-visible steps strip (--sh-bar, beauty-pass B3), never the strip. */
 .dp-dock {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(24px * var(--ui, 1));
+  bottom: calc(var(--sh-bar, 0px) + 24px * var(--ui, 1));
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -331,12 +332,12 @@
 .dp[data-layout="compact"] .dp-dock,
 .dp[data-layout="short"] .dp-dock {
   right: 0;
-  bottom: calc(16px * var(--ui, 1));
+  bottom: calc(var(--sh-bar, 0px) + 16px * var(--ui, 1));
 }
 
 .dp[data-layout="portrait"] .dp-dock {
   right: 0;
-  bottom: calc(24px * var(--ui, 1));
+  bottom: calc(var(--sh-bar, 0px) + 24px * var(--ui, 1));
   top: auto;
 }
 

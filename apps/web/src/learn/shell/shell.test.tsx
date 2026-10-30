@@ -231,11 +231,53 @@ describe("step strip", () => {
     expect(html()).not.toContain("aria-disabled");
   });
 
-  it("shows a picture where there is one, and a numbered ink ring where there is not", () => {
+  it("shows a picture where there is one, and an ink-outline part icon where there is not", () => {
     const out = html({ thumbs: { identify: "/thumbs/ohms-law/identify.webp" } });
     expect(out).toContain('<img src="/thumbs/ohms-law/identify.webp" alt=""');
-    expect(out.match(/class="sh-ring"/g)).toHaveLength(total - 1);
-    expect(html().match(/class="sh-ring"/g)).toHaveLength(total);
+    expect(out.match(/class="sh-step-icon"/g)).toHaveLength(total - 1);
+    expect(html().match(/class="sh-step-icon"/g)).toHaveLength(total);
+    expect(html()).not.toContain('class="sh-ring"');
+  });
+
+  it("renders one card per step with an icon, a name and a tick for done steps", () => {
+    const stepStatus: StepStatus[] = lesson.steps.map((_, i) => (i === 0 ? "done" : "todo"));
+    const out = html({ stepStatus });
+    expect(out.match(/class="sh-step"/g)).toHaveLength(total);
+    expect(out.match(/data-step-icon=/g)).toHaveLength(total);
+    expect(out).toContain("sh-step-mark is-done");
+    // The part each step uses: cells to identify, the wire to measure, leads to connect,
+    // the box for the R steps, the graph to plot and slope, a rule for the length.
+    const icons = [...out.matchAll(/data-step-icon="([^"]+)"/g)].map((m) => m[1]);
+    expect(icons).toEqual([
+      "cells",
+      "wire",
+      "leads",
+      "box",
+      "box",
+      "box",
+      "graph",
+      "graph",
+      "notebook",
+      "book",
+      "rule",
+    ]);
+    for (const s of lesson.steps) expect(out).toContain(s.title);
+  });
+
+  it("keeps one always-visible strip, outside the hidden shelf, and the canvas above it", () => {
+    const out = html();
+    expect(out.match(/class="sh-strip"/g)).toHaveLength(1);
+    const shelf = out.slice(out.indexOf("sh-popups-shelf"));
+    expect(shelf).not.toContain("sh-strip");
+    const css = readFileSync(fileURLToPath(new URL("./shell.css", import.meta.url)), "utf8");
+    const canvas = css.match(/\.sh-canvas\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(canvas).toContain("bottom: var(--sh-bar)");
+  });
+
+  it("self-hosts Tinos as the paper's serif face (beauty-pass D3)", () => {
+    const css = readFileSync(fileURLToPath(new URL("../paper/desk.css", import.meta.url)), "utf8");
+    expect(css).toContain('@import "@fontsource/tinos/latin-400.css"');
+    expect(css).toContain('--f-serif: "Tinos"');
   });
 
   it("names the practical on the selector, with previous and next buttons", () => {

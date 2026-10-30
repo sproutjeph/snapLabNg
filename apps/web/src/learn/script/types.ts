@@ -67,6 +67,10 @@ export type DirectorSpeed = 1 | 1.5 | 2 | 4 | 8;
 export interface DirectorState {
   mode: PracticalMode;
   beat: number;
+  /** 0-based index of the current beat (same value as `beat`, named for the caption). */
+  beatIndex: number;
+  /** Beats in this script. */
+  beatCount: number;
   playing: boolean;
   speed: DirectorSpeed;
   /** The words on screen: the narration in Watch, the instruction in Practise. */

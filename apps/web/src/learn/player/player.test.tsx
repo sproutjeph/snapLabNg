@@ -168,6 +168,14 @@ describe("Player markup", () => {
     expect(html("watch", SAMPLE_SCRIPT, 1)).toContain("Read the length XY on the metre rule.");
   });
 
+  it("the caption reads `3/11 · <say>`: beat number over beat count, then the words", () => {
+    const d = directorAt("watch", SAMPLE_SCRIPT, 2);
+    expect(d.state.beatIndex).toBe(2);
+    expect(d.state.beatCount).toBe(SAMPLE_SCRIPT.beats.length);
+    const out = renderToStaticMarkup(createElement(Player, { director: d }));
+    expect(out).toContain(`3/${SAMPLE_SCRIPT.beats.length} · Write it in centimetres.`);
+  });
+
   it("Practise has no speed, and Show me only on a beat that allows it", () => {
     const onLead = html("practice", SAMPLE_SCRIPT, 4);
     expect(onLead).toContain("Show me");
