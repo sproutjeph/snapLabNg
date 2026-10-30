@@ -9,7 +9,7 @@ Inputs:
 - [x] BC101 measured at 1728×907, 1440×900 and 390×844 (the phone was the unknown); its layout rules read from source (below)
 - [x] The user approved this plan on Oct 29: **D1 Peek** by default on the phone; **D2** the credit slot shows the paper's source; **D3** numbered ink rings now, baked thumbnails after the asset pass
 - [x] Lead adds the ownership row to AGENTS.md (with `LearnPage.tsx`'s `coveredPx` and `learn/script/DirectorPreview.tsx` granted to this slice); `ui-builder` builds in `claude/page-layout` (port 5181, worktree)
-- [ ] Gates (four checks, `verifier`, `visual-qa`, `code-reviewer`), then the user's look in Chrome beside BC101; merge
+- [x] Gates, the user's look in Chrome beside BC101 (APPROVED Oct 30; on touch Watch drops Restart into the practical menu), merged as #90
 - [ ] Lead follow-ups after the merge (see Needs from lead): `LearnPage` framing, `DirectorPreview`, baked thumbnails
 
 ## Goal
