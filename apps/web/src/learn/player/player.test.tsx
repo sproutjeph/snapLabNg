@@ -142,17 +142,16 @@ describe("stages", () => {
     expect(humaniseStage("measure-xy")).toBe("Measure xy");
   });
 
-  it("covers what the page's cards cover: the guide, status card and strip", () => {
-    // Backcountry 101's cards at 1440 x 900 and 390 x 844 (docs/plans/page-layout.md); the full
-    // table is in shell/layout.test.ts.
+  it("covers only always-on chrome: 0 right, slim top bar, 0 bottom", () => {
+    // Wave 2 lean (docs/plans/wave-2-lean.md): pop-ups overlay the stage and never refit it.
     const laptop = playerCovered(1440, 900);
-    expect(laptop.right).toBeCloseTo(440.8, 0);
-    expect(laptop.top).toBeCloseTo(86.7, 0);
-    expect(laptop.bottom).toBeCloseTo(136.7, 0);
+    expect(laptop.right).toBe(0);
+    expect(laptop.top).toBeCloseTo(56.7, 0);
+    expect(laptop.bottom).toBe(0);
     const phone = playerCovered(390, 844);
     expect(phone.right).toBe(0);
-    expect(phone.top).toBeCloseTo(119.7, 0);
-    expect(phone.bottom).toBeCloseTo(490.5, 0);
+    expect(phone.top).toBeCloseTo(99.8, 0);
+    expect(phone.bottom).toBe(0);
   });
 });
 

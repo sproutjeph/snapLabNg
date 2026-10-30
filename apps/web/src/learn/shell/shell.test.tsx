@@ -3,10 +3,17 @@ import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { computeChipPlacement } from "../callouts/Callouts";
 import { OHMS_LAW_LESSON } from "../lessons/ohms-law/lesson";
 import { MODE_NOTE } from "../player/stages";
 import type { LessonMode } from "../types";
-import LessonShell, { type LessonShellProps, type ShellTab, type StepStatus } from "./LessonShell";
+import LessonShell, {
+  CalloutChip,
+  type LessonShellProps,
+  type PopupId,
+  type ShellTab,
+  type StepStatus,
+} from "./LessonShell";
 import { layoutFor } from "./layout";
 import { PracticalMenuBody } from "./PracticalMenu";
 import { creditFromSource } from "./StatusCard";
@@ -433,5 +440,101 @@ describe("applyLayout", () => {
     expect(short.data.layout).toBe("short");
     expect(short.data.brand).toBe("badge");
     expect(short.props.get("--guide-w")).toBe(`${layoutFor(640, 360).guideW}px`);
+  });
+});
+
+describe("pop-up layout and callout chip (Wave 2a-shell)", () => {
+  it("a pop-up opens only from a tap and closes on Escape and outside tap", () => {
+    let activePopup: PopupId | null = null;
+    const onPopupChange = (p: PopupId | null) => {
+      activePopup = p;
+    };
+
+    // 1. Initially no modal pop-up is active
+    expect(activePopup).toBeNull();
+    const closedHtml = html({ activePopup });
+    expect(closedHtml).not.toContain("sh-sheet-instructions");
+
+    // 2. Tapping the pop-up button opens it
+    onPopupChange("instructions");
+    expect(activePopup).toBe("instructions");
+    const openHtml = html({ activePopup });
+    expect(openHtml).toContain("sh-sheet-instructions");
+
+    // 3. Tapping outside (scrim pointer-down) closes it
+    const onPointerDown = (target: unknown, currentTarget: unknown) => {
+      if (target === currentTarget) onPopupChange(null);
+    };
+    const scrimEl = { class: "sh-scrim" };
+    onPointerDown(scrimEl, scrimEl);
+    expect(activePopup).toBeNull();
+
+    // 4. Tap another button (e.g. tools) to open
+    onPopupChange("tools");
+    expect(activePopup).toBe("tools");
+
+    // 5. Escape key closes it
+    const onKeyDown = (e: { key: string }) => {
+      if (e.key === "Escape") onPopupChange(null);
+    };
+    onKeyDown({ key: "Escape" });
+    expect(activePopup).toBeNull();
+  });
+
+  it("the chip keeps inside the stage at every edge", () => {
+    const sw = 1728;
+    const sh = 907;
+    const chipW = 120;
+    const chipH = 40;
+
+    // Test corners and edges
+    const points: Array<[number, number]> = [
+      [0, 0],
+      [sw, 0],
+      [0, sh],
+      [sw, sh],
+      [sw / 2, 0],
+      [sw / 2, sh],
+      [0, sh / 2],
+      [sw, sh / 2],
+    ];
+
+    for (const [x, y] of points) {
+      const p = computeChipPlacement(x, y, sw, sh, chipW, chipH);
+      expect(p.chipX).toBeGreaterThanOrEqual(12);
+      expect(p.chipX + chipW).toBeLessThanOrEqual(sw - 12);
+      expect(p.chipY).toBeGreaterThanOrEqual(68);
+      expect(p.chipY + chipH).toBeLessThanOrEqual(sh - 52);
+    }
+
+    // Also verify phone screen (390 x 844)
+    const phonePoints: Array<[number, number]> = [
+      [0, 0],
+      [390, 0],
+      [0, 844],
+      [390, 844],
+    ];
+
+    for (const [x, y] of phonePoints) {
+      const p = computeChipPlacement(x, y, 390, 844, chipW, chipH, 8, 70, 52);
+      expect(p.chipX).toBeGreaterThanOrEqual(8);
+      expect(p.chipX + chipW).toBeLessThanOrEqual(390 - 8);
+      expect(p.chipY).toBeGreaterThanOrEqual(70);
+      expect(p.chipY + chipH).toBeLessThanOrEqual(844 - 52);
+    }
+
+    // Static markup renders the chip correctly
+    const out = renderToStaticMarkup(
+      createElement(CalloutChip, {
+        label: "CELL + → AMMETER +",
+        x: 200,
+        y: 300,
+        visible: true,
+      }),
+    );
+    expect(out).toContain("CELL + → AMMETER +");
+    expect(out).toContain("cc-chip");
+    expect(out).toContain("cc-dot");
+    expect(out).toContain("cc-leader-svg");
   });
 });

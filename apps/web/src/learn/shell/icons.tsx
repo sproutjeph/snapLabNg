@@ -118,6 +118,40 @@ export const IconPage = () => (
   </Icon>
 );
 
+export const IconQuestion = () => (
+  <Icon strokeWidth={1.7}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M9.5 9.5a2.8 2.8 0 0 1 5 1.5c0 1.5-2 2-2 3" />
+    <circle cx="12" cy="16.5" r="0.75" fill="currentColor" />
+  </Icon>
+);
+
+export const IconSteps = () => (
+  <Icon strokeWidth={1.8}>
+    <path d="M4 19h4v-4h4v-4h4V7h4" />
+  </Icon>
+);
+
+export const IconGraph = () => (
+  <Icon strokeWidth={1.7}>
+    <path d="M4 4v16h16" />
+    <path d="m7 14 4-5 4 3 5-7" />
+  </Icon>
+);
+
+export const IconAnswers = () => (
+  <Icon strokeWidth={1.7}>
+    <path d="m9 11 3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </Icon>
+);
+
+export const IconTools = () => (
+  <Icon strokeWidth={1.7}>
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </Icon>
+);
+
 /** Back to the start: the practical menu's Restart (the player's button has the same mark). */
 export const IconRestart = () => (
   <Icon strokeWidth={1.8}>

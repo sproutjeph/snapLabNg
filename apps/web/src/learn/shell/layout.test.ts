@@ -6,7 +6,6 @@ import {
   COMPACT_GUIDE_W,
   coveredFor,
   layoutFor,
-  PORTRAIT_PEEK_GUIDE_H,
   PORTRAIT_PLAYER_BOTTOM,
   PORTRAIT_STRIP_H,
   WIDE_GUIDE_W,
@@ -94,23 +93,33 @@ describe("layoutFor", () => {
   });
 });
 
-describe("coveredFor / playerCovered against the measured cards", () => {
-  it("1728 × 907: guide + edge on the right, status on top, strip below", () => {
-    nearCovered(playerCovered(1728, 907), [0, 481.7, 94.7, 149.3]);
+describe("coveredFor / playerCovered against always-on chrome", () => {
+  it("1728 × 907: top bar on top, caption on bottom, leaves >= 85% of laptop", () => {
+    const c = playerCovered(1728, 907);
+    nearCovered(c, [0, 0, 61.9, 0]);
+    const withCaption = playerCovered(1728, 907, { caption: true });
+    nearCovered(withCaption, [0, 0, 61.9, 47.4]);
+    const freeArea = (907 - withCaption.top - withCaption.bottom) / 907;
+    expect(freeArea).toBeGreaterThanOrEqual(0.85);
   });
 
-  it("1440 × 900", () => {
-    nearCovered(playerCovered(1440, 900), [0, 440.8, 86.7, 136.7]);
+  it("1440 × 900: slim top bar, 0 right, 0 bottom", () => {
+    nearCovered(playerCovered(1440, 900), [0, 0, 56.7, 0]);
   });
 
-  it("390 × 844: the band and player row above, the strip and open guide below", () => {
-    nearCovered(playerCovered(390, 844), [0, 0, 119.7, 490.5]);
+  it("390 × 844: portrait top bar above, leaves >= 70% of phone", () => {
+    const c = playerCovered(390, 844);
+    nearCovered(c, [0, 0, 99.8, 0]);
+    const withCaption = playerCovered(390, 844, { caption: true });
+    nearCovered(withCaption, [0, 0, 99.8, 47.2]);
+    const freeArea = (844 - withCaption.top - withCaption.bottom) / 844;
+    expect(freeArea).toBeGreaterThanOrEqual(0.7);
   });
 
-  it("390 × 844 with the guide folded to a peek leaves more stage (bottom 226.7)", () => {
-    nearCovered(playerCovered(390, 844, { guide: "peek" }), [0, 0, 119.7, 226.7]);
-    const peek = (PORTRAIT_PEEK_GUIDE_H + PORTRAIT_STRIP_H) * layoutFor(390, 844).ui;
-    near(playerCovered(390, 844, { guide: "peek" }).bottom, peek, 0.01);
+  it("pop-ups overlay the stage and never refit it (guide option keeps signature)", () => {
+    const peek = playerCovered(390, 844, { guide: "peek" });
+    const open = playerCovered(390, 844, { guide: "open" });
+    expect(peek).toEqual(open);
   });
 
   it("a showing caption adds 52 design px to the bottom, in every mode", () => {
@@ -125,20 +134,19 @@ describe("coveredFor / playerCovered against the measured cards", () => {
       const plain = coveredFor(l).bottom;
       near(coveredFor(l, { caption: true }).bottom - plain, CAPTION_PX * l.ui, 0.001);
     }
-    near(playerCovered(1728, 907, { caption: true }).bottom, 196.7);
+    near(playerCovered(1728, 907, { caption: true }).bottom, 47.4);
   });
 
-  it("compact covers the narrower guide and its 12 px edge", () => {
+  it("compact has 0 right edge (pop-ups overlay)", () => {
     const l = layoutFor(1024, 768);
-    near(coveredFor(l).right, (COMPACT_GUIDE_W + 12) * l.ui, 0.001);
+    expect(coveredFor(l).right).toBe(0);
   });
 
-  it("short covers the guide down the right, the player row above and a thin strip below", () => {
+  it("short has 0 right edge and player row on top", () => {
     const l = layoutFor(844, 390);
     const c = coveredFor(l);
-    near(c.right, ((l.guideW ?? 0) + 6) * l.ui, 0.001);
+    expect(c.right).toBe(0);
     near(c.top, 58 * l.ui, 0.001);
-    near(c.bottom, 100 * l.ui, 0.001);
   });
 
   it("the canvas is the shell minus the rail, so left is always 0", () => {

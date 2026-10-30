@@ -1377,19 +1377,24 @@
   inset: 0;
   z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-end;
   background: color-mix(in srgb, var(--ink) 40%, transparent);
 }
 
 .sh-sheet {
   display: flex;
   flex-direction: column;
-  width: min(760px, calc(100% - 32px));
-  max-height: calc(100% - 48px);
+  width: min(520px, calc(100% - 32px));
+  height: 100%;
+  max-height: 100%;
   background: var(--card);
   border: var(--rule);
-  border-radius: var(--radius);
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 0 24px rgba(40, 30, 20, 0.16);
 }
 
 .sh-sheet-body {
@@ -1405,6 +1410,97 @@
 .sh-sheet .sh-icon-btn {
   width: var(--tap);
   height: var(--tap);
+}
+
+/* Slim top bar & pop-up actions */
+.sh-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(68px * var(--ui, 1));
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sh-top-actions {
+  position: absolute;
+  top: 18px;
+  right: 540px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+  zoom: var(--ui, 1);
+}
+
+.sh-root[data-layout="portrait"] .sh-top-actions,
+.sh-root[data-layout="short"] .sh-top-actions {
+  display: none;
+}
+
+.sh-root[data-status="plain"] .sh-top-actions {
+  right: 340px;
+}
+
+.sh-root[data-layout="compact"] .sh-top-actions {
+  right: 480px;
+}
+
+.sh-root[data-layout="compact"][data-status="plain"] .sh-top-actions {
+  right: 340px;
+}
+
+.sh-menu-popups {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sh-menu-sec {
+  padding: 0 16px 6px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.sh-popups-shelf {
+  display: none;
+}
+
+.sh-sheet-instructions .sh-guide,
+.sh-sheet-steps .sh-strip {
+  position: static;
+  width: 100%;
+  height: auto;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+  zoom: 1;
+}
+
+.sh-sheet-instructions .sh-guide-body {
+  max-height: none;
+}
+
+.sh-question-content {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sh-question-lead {
+  font-family: var(--f-serif, serif);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.sh-tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px;
 }
 
 /* ---- Compact: a laptop below 0.7 of the design canvas ------------------------------------ */
@@ -2102,6 +2198,31 @@
 
   .sh-sheet {
     animation: sh-rise 180ms ease-out;
+  }
+
+  .sh-pop-btn {
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  .sh-sheet {
+    animation: sh-slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sh-root[data-layout="portrait"] .sh-sheet,
+  .sh-root[data-layout="short"] .sh-sheet {
+    animation: sh-rise 0.25s ease-out;
+  }
+
+  @keyframes sh-slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
 
   @keyframes sh-pop {

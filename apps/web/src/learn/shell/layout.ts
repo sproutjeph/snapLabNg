@@ -47,11 +47,13 @@ const COMPACT_DESIGN_H = 860;
 export const COMPACT_CREDIT_MIN_LW = 1400 + RAIL_W;
 
 /** Wide and compact: the bottom of the status card, and the height of the step strip. */
-export const STATUS_BOTTOM = 104;
+export const STATUS_BOTTOM = 68;
+export const TOP_BAR_H = 68;
 export const STRIP_H = 164;
 
 /** Short (a landscape phone): the player's bottom, the strip's height, the guide's gap. */
 export const SHORT_PLAYER_BOTTOM = 58;
+export const SHORT_TOP_BAR_H = 58;
 export const SHORT_STRIP_H = 100;
 export const SHORT_GUIDE_EDGE = 6;
 /** Short shrinks the brand to its mark when the stage beside the guide is narrower than this. */
@@ -59,7 +61,8 @@ export const SHORT_BRAND_MIN_STAGE = 600;
 
 /** Portrait (a phone held upright): the band, the player's bottom, the strip, the folded guide. */
 export const PORTRAIT_BAND_H = 68;
-export const PORTRAIT_PLAYER_BOTTOM = 132;
+export const PORTRAIT_PLAYER_BOTTOM = 110;
+export const PORTRAIT_TOP_BAR_H = 110;
 export const PORTRAIT_STRIP_H = 150;
 export const PORTRAIT_PEEK_GUIDE_H = 100;
 /** The guide is at least this tall, and leaves the stage window at least this much. */
@@ -107,41 +110,37 @@ export function layoutFor(widthPx: number, heightPx: number): LayoutInfo {
 }
 
 /**
- * The part of the canvas the cards cover, in CSS px, for LookCamera's `covered`. Canvas-local:
- * the canvas is the shell minus the rail column, so `left` is always 0. Wide and compact cover
- * the guide on the right, the status card on top and the strip below; short the guide, the
- * player and a thinner strip; portrait the band and player row on top and the strip and guide
- * below (a folded guide leaves more stage).
+ * The part of the canvas the always-on chrome covers, in CSS px, for LookCamera's `covered`.
+ * Canvas-local: the canvas is the shell minus the rail column, so `left` is always 0.
+ * In the pop-up layout (docs/plans/wave-2-lean.md), pop-ups overlay the stage and never refit it.
+ * Only the slim top bar and the bottom caption count in covered chrome, leaving at least 85% of
+ * a laptop and 70% of a phone free.
  */
 export function coveredFor(l: LayoutInfo, o: CoveredOptions = {}): Covered {
   const caption = o.caption ? CAPTION_PX : 0;
   const u = l.ui;
   switch (l.mode) {
     case "wide":
-      return {
-        left: 0,
-        right: (WIDE_GUIDE_W + WIDE_GUIDE_EDGE) * u,
-        top: STATUS_BOTTOM * u,
-        bottom: (STRIP_H + caption) * u,
-      };
     case "compact":
       return {
         left: 0,
-        right: (COMPACT_GUIDE_W + COMPACT_GUIDE_EDGE) * u,
-        top: STATUS_BOTTOM * u,
-        bottom: (STRIP_H + caption) * u,
+        right: 0,
+        top: TOP_BAR_H * u,
+        bottom: caption * u,
       };
     case "short":
       return {
         left: 0,
-        right: ((l.guideW ?? 320) + SHORT_GUIDE_EDGE) * u,
-        top: SHORT_PLAYER_BOTTOM * u,
-        bottom: (SHORT_STRIP_H + caption) * u,
+        right: 0,
+        top: SHORT_TOP_BAR_H * u,
+        bottom: caption * u,
       };
-    case "portrait": {
-      const open = l.lh - (l.sceneBottom ?? l.lh - PORTRAIT_STRIP_H - PORTRAIT_MIN_GUIDE);
-      const below = o.guide === "peek" ? PORTRAIT_PEEK_GUIDE_H + PORTRAIT_STRIP_H : open;
-      return { left: 0, right: 0, top: PORTRAIT_PLAYER_BOTTOM * u, bottom: (below + caption) * u };
-    }
+    case "portrait":
+      return {
+        left: 0,
+        right: 0,
+        top: PORTRAIT_TOP_BAR_H * u,
+        bottom: caption * u,
+      };
   }
 }

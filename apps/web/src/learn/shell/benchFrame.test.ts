@@ -116,7 +116,7 @@ describe("the bench frame", () => {
 
   it("turns the bench up the screen only in a window taller than wide", () => {
     expect(frame(390, 844, "peek").portrait).toBe(true);
-    expect(frame(390, 844, "open").portrait).toBe(false);
+    expect(frame(390, 844, "open").portrait).toBe(true);
     expect(frame(1440, 900, "peek").portrait).toBe(false);
     expect(frame(844, 390, "peek").portrait).toBe(false);
   });
