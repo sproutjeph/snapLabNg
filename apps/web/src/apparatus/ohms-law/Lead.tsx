@@ -7,6 +7,8 @@ import { inkTag } from "../../scene/ink/ink";
 import { acquireTexture, brassSurface, releaseTexture } from "../materials";
 import type { QualityTier } from "../meter-bridge/types";
 import {
+  BENCH_FOOTPRINTS,
+  type BenchFootprint,
   CABLE_SEAT_M,
   floorAt,
   hashString,
@@ -28,7 +30,11 @@ export interface LeadProps {
   state: { current: OhmsLawVisualState };
   quality: QualityTier;
   /** Tap the lead to remove it. */
-  onTap?: () => void;
+  onTap?: (pointerType?: string) => void;
+  /** The pointer entered (true) or left (false) the lead's tap target. */
+  onHover?: (on: boolean) => void;
+  /** Read every frame: draw the whole lead highlighted (it is picked for removal). */
+  highlight?: { readonly current: boolean };
   /**
    * How much of the lead is drawn, 0..1 (default 1): the cable grows from the `from` plug along
    * its curve, and the far plug pops in as it arrives. Pass a ref-like object and change its
@@ -117,6 +123,9 @@ function releaseLead(book: LeadBook, claim: { id: string | null }): void {
   claim.id = null;
 }
 
+/** The cable's ink weight: BC101 draws its rope at .55 (docs/plans/wave-2-lean.md, 2b additions). */
+export const LEAD_INK_STRENGTH = 0.55;
+
 /** Where along the lead the control points sit (0 = first plug, 1 = second). */
 const CTRL_T = [0, 0.04, 0.12, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.96, 1] as const;
 /** The lowest the cable's centre goes: it lies on the desk. */
@@ -124,6 +133,28 @@ const FLOOR_Y = LEAD_RADIUS_M + 0.0004;
 /** How far the pointer's plug floats above the bench point while she carries it. */
 const CARRY_LIFT_M = 0.022;
 const HIT_RADIUS_M = 0.007;
+/** The tap target is at least this many CSS px across, so a thin cable is easy to hit on a phone. */
+export const LEAD_HIT_PX = 32;
+/** …but never fatter than this, metres, so it does not reach over the nuts beside it. */
+export const LEAD_HIT_MAX_M = 0.02;
+/** The highlight of a lead picked for removal: the look's warm accent, as an emissive glow. */
+const LEAD_LIT = new THREE.Color("#e0662a");
+const LEAD_UNLIT = new THREE.Color(0, 0, 0);
+
+/** The tap tube's radius at `metresPerPx` (rounded to half a millimetre, so it rebuilds rarely). */
+export function leadHitRadius(metresPerPx: number): number {
+  const r = Math.min(LEAD_HIT_MAX_M, Math.max(HIT_RADIUS_M, (LEAD_HIT_PX / 2) * metresPerPx));
+  return Math.round(r * 2000) / 2000;
+}
+
+/**
+ * The share of a lead (curve parameter, 0 at `from`) its tap tube covers: the middle, leaving
+ * each end to its nut, which takes its own taps.
+ */
+export function leadHitRange(spanM: number): readonly [number, number] {
+  const t0 = Math.min(0.4, Math.max(0.14, 0.05 / Math.max(spanM, 0.05)));
+  return [t0, 1 - t0];
+}
 
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
@@ -131,6 +162,9 @@ const _pt = new THREE.Vector3();
 const _la = new THREE.Vector3();
 const _lb = new THREE.Vector3();
 const _inv = new THREE.Matrix4();
+const _cam = new THREE.Vector3();
+/** Marks a lead's tap tube, so the nuts' big targets let a tap through to it. */
+export const LEAD_HIT_DATA = { leadHit: true } as const;
 
 /** Lifts a sampled world point onto whatever it would sink into (a part's top, or the desk). */
 function restOnBench(p: THREE.Vector3): void {
@@ -257,6 +291,114 @@ export function shapeCable(
   }
 }
 
+// ---- Round the meters, not over them ----------------------------------------------------------
+// A meter's terminals stand on a low ledge in front of its tall sloping case. A lead from one to a
+// part behind the meter, laid straight, rests on the case (restOnBench) and so crosses the dial.
+// Instead it leaves the nut sideways along the ledge, drops to the desk beside the case, and only
+// then droops away to its other end; if that end is right behind the case it also runs down the
+// case's side first. The rest of the cable is shapeCable's droop from there.
+
+/** The meters' cases: the tall footprints (the ledges are 1.2 cm high). */
+const METER_CASES: readonly BenchFootprint[] = BENCH_FOOTPRINTS.filter(
+  (f) => (f.slot === "ammeter" || f.slot === "voltmeter") && f.top > 0.05,
+);
+/** Desk left between the cable and a case's side, metres. */
+const CASE_CLEAR_M = 0.022;
+/** Samples along a straight lead when looking for a case it would cross. */
+const CROSS_SAMPLES = 24;
+
+const _route = Array.from({ length: CTRL_T.length }, () => new THREE.Vector3());
+const _w1 = new THREE.Vector3();
+const _w2 = new THREE.Vector3();
+const _rs = new THREE.Vector3();
+const _re = new THREE.Vector3();
+
+/** The meter case a straight cable from `s` to `e` would lie over (in plan), or null. */
+export function caseCrossed(s: THREE.Vector3, e: THREE.Vector3): BenchFootprint | null {
+  for (const f of METER_CASES) {
+    for (let i = 1; i < CROSS_SAMPLES; i++) {
+      const t = i / CROSS_SAMPLES;
+      const x = s.x + (e.x - s.x) * t;
+      const z = s.z + (e.z - s.z) * t;
+      if (Math.abs(x - f.cx) < f.hx + 0.004 && Math.abs(z - f.cz) < f.hz + 0.004) return f;
+    }
+  }
+  return null;
+}
+
+/** True when the seat `p` is on the ledge in front of case `f`. */
+function onLedgeOf(f: BenchFootprint, p: THREE.Vector3): boolean {
+  return (
+    Math.abs(p.x - f.cx) <= f.hx + 0.01 && p.z > f.cz + f.hz - 0.005 && p.z < f.cz + f.hz + 0.06
+  );
+}
+
+/**
+ * The detour from a nut on case `f`'s ledge (`s`) to `e`: out along the ledge on the nut's own
+ * side (never past the other nut), down that side of the case to behind it, then shapeCable's
+ * droop. Behind both cases (the meters stand side by side in the front row) the droop is clear
+ * of them. Fills all of `pts` (CTRL_T.length points).
+ */
+function detour(
+  pts: THREE.Vector3[],
+  f: BenchFootprint,
+  s: THREE.Vector3,
+  e: THREE.Vector3,
+  bulge: number,
+): void {
+  const side = s.x >= f.cx ? 1 : -1;
+  const sideX = f.cx + side * (f.hx + CASE_CLEAR_M);
+  _w1.set(sideX, FLOOR_Y, s.z);
+  _w2.set(sideX, FLOOR_Y, f.cz - f.hz - CASE_CLEAR_M);
+  shapeCable(_route, _w2, e, bulge);
+  // Out of the plug a little stiffly, along the ledge, down beside the case and along its side.
+  pts[0]?.copy(s);
+  pts[1]?.set(s.x + (_w1.x - s.x) * 0.25, s.y + 0.004, s.z);
+  pts[2]?.set(s.x + (_w1.x - s.x) * 0.75, Math.max(FLOOR_Y, s.y - 0.01), s.z);
+  pts[3]?.copy(_w1);
+  pts[4]?.copy(_w2);
+  // The droop's own control points from t = .25 on.
+  let k = 5;
+  for (const i of [3, 5, 6, 8, 9, 10]) {
+    const q = _route[i];
+    if (q) pts[k++]?.copy(q);
+  }
+}
+
+/**
+ * The cable's control points from seat `s` to seat `e`: shapeCable's droop, unless the droop
+ * would cross a meter's case, when the cable goes round it (detour). Allocates nothing.
+ */
+export function routeCable(
+  pts: THREE.Vector3[],
+  s: THREE.Vector3,
+  e: THREE.Vector3,
+  bulge: number,
+): void {
+  const f = caseCrossed(s, e);
+  if (f && onLedgeOf(f, s)) {
+    detour(pts, f, s, e, bulge);
+    return;
+  }
+  if (f && onLedgeOf(f, e)) {
+    // Worked from the meter's end, then turned round.
+    _rs.copy(s);
+    _re.copy(e);
+    detour(pts, f, _re, _rs, -bulge);
+    const n = CTRL_T.length;
+    for (let i = 0; i < n / 2 - 0.5; i++) {
+      const a = pts[i];
+      const b = pts[n - 1 - i];
+      if (!a || !b) continue;
+      _w1.copy(a);
+      a.copy(b);
+      b.copy(_w1);
+    }
+    return;
+  }
+  shapeCable(pts, s, e, bulge);
+}
+
 /**
  * An insulated flexible lead with a banana plug at each end, sagging between two terminals
  * (a tube on a Catmull-Rom curve). Both ends' world positions are read from the registry
@@ -265,7 +407,17 @@ export function shapeCable(
  * world space, rests on the bench parts' footprints (`floorAt`), and stacks its plugs on any
  * earlier leads at the same nut. A fatter invisible tube along the middle takes the tap.
  */
-export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: LeadProps) {
+export function Lead({
+  from,
+  to,
+  colour,
+  state,
+  quality,
+  onTap,
+  onHover,
+  highlight,
+  drawn = 1,
+}: LeadProps) {
   const registry = useTerminalRegistry();
   const root = useRef<THREE.Group>(null);
   const plugA = useRef<THREE.Group>(null);
@@ -325,7 +477,8 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       bulge,
       main: new Float32Array((mainN + 1) * 3),
       mid: new Float32Array((hitN + 1) * 3),
-      last: new Float32Array(9).fill(Number.NaN),
+      last: new Float32Array(10).fill(Number.NaN),
+      lit: false,
       ink: -1,
       s: new THREE.Vector3(),
       e: new THREE.Vector3(),
@@ -352,12 +505,29 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     [res],
   );
 
-  useFrame(() => {
+  useFrame((st) => {
     const g = root.current;
     if (!g) return;
     const hit = hitMesh.current;
     const dRaw = typeof drawn === "number" ? drawn : drawn.current;
     const d01 = Number.isFinite(dRaw) ? Math.max(0, Math.min(dRaw, 1)) : 1;
+    const lit = highlight?.current === true;
+    if (lit !== res.lit) {
+      res.lit = lit;
+      const c = lit ? LEAD_LIT : LEAD_UNLIT;
+      res.cableMat.emissive.copy(c);
+      res.plugMat.emissive.copy(c);
+      res.cableMat.emissiveIntensity = lit ? 0.55 : 1;
+      res.plugMat.emissiveIntensity = lit ? 0.55 : 1;
+    }
+    // Metres per CSS px on the bench (orthographic shot, or the close-up's perspective), for a
+    // tap tube a finger can find (TerminalNut sizes its target the same way).
+    const m5 = Math.max(1e-6, Math.abs(st.camera.projectionMatrix.elements[5] ?? 1));
+    let worldH = 2 / m5;
+    if (!(st.camera as THREE.OrthographicCamera).isOrthographicCamera) {
+      worldH *= Math.max(0.05, st.camera.getWorldPosition(_cam).distanceTo(_a.set(0, 0, 0)));
+    }
+    const hitR = leadHitRadius(worldH / Math.max(1, st.size.height));
     const okA = registry.worldPosition(from, _a);
     let okB = true;
     if (to === "pointer") {
@@ -410,7 +580,10 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       if (pinsA.current) inkTag(pinsA.current, { id: pinInk, thin: true });
       if (pinsB.current) inkTag(pinsB.current, { id: pinInk, thin: true });
       if (plugs.current) inkTag(plugs.current, { id: ink, thin: true });
-      if (tagged.current) inkTag(tagged.current, { id: ink, thin: false });
+      if (tagged.current) inkTag(tagged.current, { id: ink, thin: true });
+      // The cable is a soft line, like BC101's rope (.55): the plugs keep their full ink.
+      const cableMesh = tagged.current?.children[0];
+      if (cableMesh) cableMesh.userData.inkStrength = LEAD_INK_STRENGTH;
     }
 
     const liftA = ka * PLUG_HEIGHT_M * 0.85;
@@ -425,7 +598,8 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
       l[5] === _b.z &&
       l[6] === liftA &&
       l[7] === liftB &&
-      l[8] === d01
+      l[8] === d01 &&
+      l[9] === hitR
     ) {
       return;
     }
@@ -438,6 +612,7 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     l[6] = liftA;
     l[7] = liftB;
     l[8] = d01;
+    l[9] = hitR;
 
     // Everything is worked out in world space (the footprints are world boxes), then moved
     // into the parent's space, so a transformed parent cannot break the lead.
@@ -455,7 +630,10 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
 
     res.s.set(_a.x, _a.y + liftA + CABLE_SEAT_M, _a.z);
     res.e.set(_b.x, _b.y + liftB + CABLE_SEAT_M, _b.z);
-    shapeCable(res.pts, res.s, res.e, res.bulge);
+    // A real lead goes round a meter's case, never over its dial; the free plug she carries
+    // keeps the plain droop (the kit's tests frame it).
+    if (to === "pointer") shapeCable(res.pts, res.s, res.e, res.bulge);
+    else routeCable(res.pts, res.s, res.e, res.bulge);
     for (let i = 0; i <= res.mainN; i++) {
       res.curve.getPoint((i / res.mainN) * d01, _pt);
       restOnBench(_pt);
@@ -469,23 +647,29 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
     if (to !== "pointer") {
       // The tap target covers the middle only, so the ends stay free for tapping the nuts.
       const span = Math.hypot(_b.x - _a.x, _b.z - _a.z);
-      const t0 = Math.min(0.4, Math.max(0.14, 0.05 / Math.max(span, 0.05)));
+      const [t0, t1] = leadHitRange(span);
       for (let i = 0; i <= res.hitN; i++) {
-        res.curve.getPoint(t0 + ((1 - 2 * t0) * i) / res.hitN, _pt);
+        res.curve.getPoint(t0 + ((t1 - t0) * i) / res.hitN, _pt);
         restOnBench(_pt);
         _pt.applyMatrix4(_inv);
         res.mid[i * 3] = _pt.x;
         res.mid[i * 3 + 1] = _pt.y;
         res.mid[i * 3 + 2] = _pt.z;
       }
-      writeTube(res.hit, res.mid, res.hitN, 5, HIT_RADIUS_M);
+      writeTube(res.hit, res.mid, res.hitN, 5, hitR);
     }
   });
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
-    onTap?.();
+    onTap?.(e.nativeEvent.pointerType);
   };
+  const onOver = (e: ThreeEvent<PointerEvent>) => {
+    if (e.nativeEvent.pointerType === "touch") return;
+    e.stopPropagation();
+    onHover?.(true);
+  };
+  const onOut = () => onHover?.(false);
   return (
     <group ref={root} visible={false}>
       <group ref={tagged}>
@@ -512,6 +696,9 @@ export function Lead({ from, to, colour, state, quality, onTap, drawn = 1 }: Lea
           material={res.hitMat}
           frustumCulled={false}
           onPointerDown={onDown}
+          onPointerOver={onOver}
+          onPointerOut={onOut}
+          userData={LEAD_HIT_DATA}
           visible={false}
         />
       ) : null}

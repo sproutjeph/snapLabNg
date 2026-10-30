@@ -96,10 +96,26 @@ export interface LeadPhase {
 }
 
 export function leadPhase(actT: number): LeadPhase {
+  return leadPhaseInto(actT, { nibAt: "from", tapped: 0, drawn: 0 });
+}
+
+/** leadPhase, written into `out` (for a per-frame caller: allocates nothing). */
+export function leadPhaseInto(actT: number, out: LeadPhase): LeadPhase {
   const [first, second] = LEAD_TAP_AT;
-  if (actT < first) return { nibAt: "from", tapped: 0, drawn: 0 };
-  if (actT < second) return { nibAt: "to", tapped: 1, drawn: 0 };
-  return { nibAt: "to", tapped: 2, drawn: Math.min(1, (actT - second) / (1 - second)) };
+  if (actT < first) {
+    out.nibAt = "from";
+    out.tapped = 0;
+    out.drawn = 0;
+  } else if (actT < second) {
+    out.nibAt = "to";
+    out.tapped = 1;
+    out.drawn = 0;
+  } else {
+    out.nibAt = "to";
+    out.tapped = 2;
+    out.drawn = Math.min(1, (actT - second) / (1 - second));
+  }
+  return out;
 }
 
 /**

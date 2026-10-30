@@ -1423,15 +1423,61 @@
   pointer-events: none;
 }
 
+/* The pop-up buttons and the player share the top row (docs/plans/wave-2-lean.md, 2b fix): the
+   buttons are six 44 px icons, 2 px apart (274 design px, --sh-actions-w), right of the player
+   card, which player.css anchors 10 px to their left. With their words under the icons the row
+   was wider than the room between the brand and the status card, and the player lay over them;
+   the words stay in the page, clipped, as the buttons' names, and each has a tooltip. */
+.sh-root {
+  --sh-actions-w: 274px;
+}
+
 .sh-top-actions {
   position: absolute;
   top: 18px;
   right: 540px;
+  width: var(--sh-actions-w);
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
   pointer-events: auto;
   zoom: var(--ui, 1);
+}
+
+.sh-pop-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sh-pop-btn:hover,
+.sh-pop-btn.is-active {
+  border-color: var(--line);
+  background: var(--card);
+}
+
+.sh-pop-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.sh-root .sh-pop-btn .sh-txt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .sh-root[data-layout="portrait"] .sh-top-actions,

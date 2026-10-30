@@ -374,6 +374,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn${popup === "question" ? " is-active" : ""}`}
               aria-label="Question paper"
+              title="Question paper"
               aria-pressed={popup === "question"}
               onClick={() => setPopup(popup === "question" ? null : "question")}
             >
@@ -384,6 +385,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn${popup === "instructions" ? " is-active" : ""}`}
               aria-label="Instructions"
+              title="Instructions"
               aria-pressed={popup === "instructions"}
               onClick={() => setPopup(popup === "instructions" ? null : "instructions")}
             >
@@ -394,6 +396,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn sh-pop-btn-steps${popup === "steps" ? " is-active" : ""}`}
               aria-label="Steps"
+              title="Steps"
               aria-pressed={popup === "steps"}
               onClick={() => setPopup(popup === "steps" ? null : "steps")}
             >
@@ -404,6 +407,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn${popup === "graph" ? " is-active" : ""}`}
               aria-label="Graph sheet"
+              title="Graph sheet"
               aria-pressed={popup === "graph"}
               onClick={() => setPopup(popup === "graph" ? null : "graph")}
             >
@@ -414,6 +418,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn${popup === "answers" ? " is-active" : ""}`}
               aria-label="Answer sheet"
+              title="Answer sheet"
               aria-pressed={popup === "answers"}
               onClick={() => setPopup(popup === "answers" ? null : "answers")}
             >
@@ -424,6 +429,7 @@ export default function LessonShell({
               type="button"
               className={`sh-pop-btn${popup === "tools" ? " is-active" : ""}`}
               aria-label="Tools"
+              title="Tools"
               aria-pressed={popup === "tools"}
               onClick={() => setPopup(popup === "tools" ? null : "tools")}
             >

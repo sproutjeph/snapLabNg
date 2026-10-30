@@ -7,14 +7,27 @@ import { InkGroup } from "../../scene/ink/ink";
 import { INK_BLUE, paintMaterial } from "../materials";
 import { INK_IDS } from "./layout";
 
+/** Where the nib points (see PenNibProps.target). */
+export type NibTarget = TerminalId | readonly [number, number, number] | null;
+
+/** A value read every frame: a plain value, or a ref-like object whose `.current` is read. */
+type Live<T> = T | { readonly current: T };
+
+function read<T>(v: Live<T>): T {
+  return typeof v === "object" && v !== null && "current" in v ? v.current : (v as T);
+}
+
 export interface PenNibProps {
   /**
    * Where the nib points: a terminal (followed through the terminal registry, so it moves with
-   * the part), a world position, or null to put the pen away (it shrinks out of sight).
+   * the part), a world position, or null to put the pen away (it shrinks out of sight). A
+   * ref-like `{ current }` is read every frame, so a scene can drive it without a React render.
    */
-  target: TerminalId | readonly [number, number, number] | null;
+  target: Live<NibTarget>;
   /** A counter: each time it changes, the nib dips to the target and back (a tap). */
-  tap?: number;
+  tap?: Live<number>;
+  /** How fast the nib's own motion runs (Watch's 1×, 1.5× or 2×); default 1. */
+  rate?: Live<number>;
   quality: "low" | "mid" | "high";
 }
 
@@ -34,14 +47,19 @@ const _arr = new THREE.Vector3();
  * allocates nothing there, and sits at the scene root (it works in world space). The tip is the
  * origin of the model, so what it points at is exactly where its tip is.
  */
-export function PenNib({ target, tap = 0, quality }: PenNibProps) {
+export function PenNib({
+  target: targetIn,
+  tap: tapIn = 0,
+  rate: rateIn = 1,
+  quality,
+}: PenNibProps) {
   const registry = useTerminalRegistry();
   const root = useRef<THREE.Group>(null);
   const cur = useRef(new THREE.Vector3());
   const seen = useRef(false);
   const grow = useRef(0);
   const tapT = useRef(TAP_S);
-  const lastTap = useRef(tap);
+  const lastTap = useRef(read(tapIn));
 
   const res = useMemo(() => {
     const seg = quality === "low" ? 8 : 16;
@@ -111,11 +129,14 @@ export function PenNib({ target, tap = 0, quality }: PenNibProps) {
   useFrame((_, dtRaw) => {
     const g = root.current;
     if (!g) return;
-    const dt = Math.min(dtRaw, 0.05);
+    const target = read(targetIn);
+    const tap = read(tapIn);
+    const rate = read(rateIn);
+    const dt = Math.min(dtRaw, 0.05) * (Number.isFinite(rate) && rate > 0 ? rate : 1);
     let ok = target !== null;
     if (target !== null) {
       if (typeof target === "string") ok = registry.worldPosition(target, _t);
-      else _t.set(target[0], target[1], target[2]);
+      else _t.set(target[0] ?? 0, target[1] ?? 0, target[2] ?? 0);
     }
     if (tap !== lastTap.current) {
       lastTap.current = tap;

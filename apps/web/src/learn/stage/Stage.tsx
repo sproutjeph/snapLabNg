@@ -3,25 +3,29 @@ import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { type BenchSlot, OHMS_LAW_LAYOUT } from "../../apparatus/ohms-law/layout";
+import { PenNib } from "../../apparatus/ohms-law/PenNib";
 import type { LabAudio } from "../../audio/labAudio";
 import { lookFor } from "../../quality/tier";
 import { InkComposer } from "../../scene/ink/InkComposer";
 import { useInkFocus } from "../../scene/ink/inkFocus";
-import { BlobShadow } from "../../scene/look/BlobShadow";
+import { BLOB_OPACITY, BlobShadow } from "../../scene/look/BlobShadow";
 import { createDprLadder } from "../../scene/look/dprLadder";
 import { isPortrait, LOOK_DISTANCE_M, LookCamera } from "../../scene/look/LookCamera";
 import { LookGround } from "../../scene/look/LookGround";
 import { LookLights } from "../../scene/look/LookLights";
 import { LookTier } from "../../scene/look/lookTier";
-import type { Covered } from "../../scene/look/types";
+import type { Covered, LookShot } from "../../scene/look/types";
 import { useDprLadder, useLadderDpr } from "../../scene/look/useDprLadder";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { LoupeTarget, RuleEnd } from "../readings/poses";
 import { ReadingLoupe } from "../readings/ReadingLoupe";
+import type { DirectorHandle } from "../script/createDirector";
 import { TerminalProvider } from "../terminals";
-import type { OhmsLawBench } from "../types";
+import type { OhmsLawBench, PracticalMode } from "../types";
 import { BenchParts, type BenchPartsProps } from "../wiring/BenchParts";
 import { BenchWiring } from "../wiring/BenchWiring";
+import { Choreo } from "./Choreo";
+import { DevProbe } from "./DevProbe";
 import {
   benchBusy,
   createPoseMemo,
@@ -37,7 +41,16 @@ import {
   type StagePart,
   stageFocusIds,
 } from "./frameloop";
-import { shotForPose, stageShot } from "./shots";
+import type { DropSlot } from "./motion";
+import {
+  BENCH_DRAG_DEG,
+  BENCH_DRAG_DEG_PER_PX,
+  STAGE_AZIMUTH_DEG,
+  shotForPose,
+  spanAtAzimuth,
+  stageShot,
+} from "./shots";
+import type { StageMotion } from "./stageMotion";
 
 // The live practical's stage (docs/plans/wave-2-lean.md, 2a-stage): the V–I bench through the
 // look that ?look=ohms-law signed off (scene/look/LookPreview.tsx), full-bleed behind the shell.
@@ -64,6 +77,9 @@ const BLOBS: Readonly<Partial<Record<BenchSlot, { dx: readonly number[]; r: numb
   box: { dx: [-0.15, 0, 0.15], r: 0.11 },
   wire: { dx: [-0.44, -0.22, 0, 0.22, 0.44], r: 0.11 },
 };
+
+/** The slots with blobs, listed once (not per frame). */
+const BLOB_SLOTS = Object.keys(BLOBS) as BenchSlot[];
 
 /** The close-up camera's vertical field of view (ReadingLoupe fits the dial with it). */
 const LOUPE_FOV_DEG = 40;
@@ -97,6 +113,15 @@ export interface StageProps {
   dpr?: number | null;
   /** The step's camera pose (lesson.ts); shots.ts picks the named shot for it and the screen. */
   pose?: string | undefined;
+  /**
+   * The director (Watch or Practise): the stage feeds it time every frame and plays its beats
+   * (learn/stage/Choreo.tsx). Exam passes it too; it then does nothing.
+   */
+  director?: DirectorHandle | null;
+  /** The motion the stage writes and the parts read (createStageMotion); the page owns it. */
+  motion?: StageMotion;
+  /** Watch's demonstration bench takes no taps; Practise draws her leads on. */
+  practical?: PracticalMode;
 }
 
 function prefersReducedMotion(): boolean {
@@ -130,17 +155,84 @@ function StageCamera({
   const portrait = isPortrait(c, width, height, wasPortrait.current);
   wasPortrait.current = portrait;
   const name = shotForPose(pose, portrait);
-  const shot = useMemo(() => stageShot(name, c, width, height), [name, c, width, height]);
+  // A copy the drag may turn: LookCamera reads its shot every frame, so turning this one object
+  // turns the camera without a React render per pointer move.
+  const shot = useMemo<LookShot>(
+    () => ({ ...stageShot(name, c, width, height) }),
+    [name, c, width, height],
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new fit is what the camera eases to.
   useEffect(() => loop.wake(RENDER_S), [loop, c.left, c.right, c.top, c.bottom]);
-  return (
-    <LookCamera
-      shot={shot}
-      covered={c}
-      drag={!portrait && name === "bench"}
-      reducedMotion={reducedMotion}
-    />
-  );
+  useBenchDrag(shot, name === "bench" && !portrait && !reducedMotion, c, width, height);
+  // LookCamera's own drag fits the shot for ±25° and so shrinks the bench; the stage turns it
+  // ±8° itself instead (useBenchDrag), and the bench fills the free area.
+  return <LookCamera shot={shot} covered={c} drag={false} reducedMotion={reducedMotion} />;
+}
+
+/** Pointer travel before a press on the canvas counts as a drag (taps on parts stay taps). */
+const DRAG_START_PX = 6;
+
+/**
+ * Drag turns the bench shot at most ±BENCH_DRAG_DEG about its own azimuth, and lets go back to
+ * it; the span follows the turn, so the bench keeps its size on screen. It turns `shot` in place.
+ */
+function useBenchDrag(
+  shot: LookShot,
+  enabled: boolean,
+  covered: Covered,
+  width: number,
+  height: number,
+): void {
+  const gl = useThree((s) => s.gl);
+  const fit = useRef({ covered, width, height });
+  fit.current = { covered, width, height };
+  useEffect(() => {
+    if (!enabled) return;
+    const baseAz = shot.azimuthDeg ?? STAGE_AZIMUTH_DEG;
+    const base: LookShot = { ...shot, azimuthDeg: baseAz };
+    const turn = (deg: number) => {
+      const az = baseAz + Math.max(-BENCH_DRAG_DEG, Math.min(BENCH_DRAG_DEG, deg));
+      const f = fit.current;
+      shot.azimuthDeg = az;
+      shot.spanM =
+        az === baseAz ? base.spanM : spanAtAzimuth(base, az, f.covered, f.width, f.height);
+    };
+    const el = gl.domElement;
+    let pointer = -1;
+    let startX = 0;
+    let dragging = false;
+    const down = (e: PointerEvent) => {
+      if (!e.isPrimary || pointer !== -1) return;
+      pointer = e.pointerId;
+      startX = e.clientX;
+      dragging = false;
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointer) return;
+      const dx = e.clientX - startX;
+      if (!dragging && Math.abs(dx) < DRAG_START_PX) return;
+      dragging = true;
+      // Dragging right turns the bench toward her right, like turning it by hand (LookCamera).
+      turn(-dx * BENCH_DRAG_DEG_PER_PX);
+    };
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pointer) return;
+      pointer = -1;
+      // LookCamera eases back to the shot's own azimuth.
+      turn(0);
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      turn(0);
+    };
+  }, [enabled, shot, gl]);
 }
 
 const _dir = new THREE.Vector3();
@@ -216,11 +308,13 @@ function Heartbeat({
   loop,
   held,
   shadowsDirty,
+  motion,
 }: {
   bench: OhmsLawBench;
   loop: StageLoop;
   held: boolean;
   shadowsDirty: { current: boolean };
+  motion: StageMotion | undefined;
 }) {
   const invalidate = useThree((s) => s.invalidate);
   const get = useThree((s) => s.get);
@@ -293,8 +387,11 @@ function Heartbeat({
     }
     // The rubber-band lead follows the pointer and casts a shadow: keep its shadow with it.
     if (v.pendingFrom !== null) shadowsDirty.current = true;
+    // Parts dropping, a lead drawing, the nib, a shake: their shadows move with them.
+    if (motion?.moving) shadowsDirty.current = true;
     const awake = loop.tick(dt);
-    const next = awake || heldRef.current || benchBusy(v);
+    // A beat that plays keeps the loop awake, and so does a pulsing ring or a springing chip.
+    const next = awake || heldRef.current || benchBusy(v) || motion?.busy === true;
     loop.frameEnd(next);
     if (next) invalidate();
   });
@@ -320,19 +417,47 @@ function Focus({ parts }: { parts: readonly StagePart[] | null | undefined }) {
   return null;
 }
 
-/** Contact blobs under each part, so they sit on the desk on every tier. */
-function Blobs() {
+/**
+ * Contact blobs under each part, so they sit on the desk on every tier. While a part drops in,
+ * its blob fades in as it nears the desk (the drop's k, squared, so it darkens on landing).
+ */
+function Blobs({ motion }: { motion: StageMotion | undefined }) {
   const L = OHMS_LAW_LAYOUT;
+  const groups = useRef<Partial<Record<BenchSlot, THREE.Group | null>>>({});
+  useFrame(() => {
+    if (!motion) return;
+    for (const slot of BLOB_SLOTS) {
+      const g = groups.current[slot];
+      const pose = slot === "tray" ? undefined : motion.parts[slot as DropSlot];
+      if (!g || !pose) continue;
+      g.visible = pose.k > 0;
+      const opacity = BLOB_OPACITY * pose.k * pose.k;
+      for (const child of g.children) {
+        const u = ((child as THREE.Mesh).material as THREE.ShaderMaterial | undefined)?.uniforms
+          ?.blobOpacity;
+        if (u) u.value = opacity;
+      }
+    }
+  });
   return (
     <>
-      {(Object.keys(BLOBS) as BenchSlot[]).flatMap((slot) => {
+      {BLOB_SLOTS.map((slot) => {
         const [x, y, z] = L[slot].position;
         const blob = BLOBS[slot];
-        if (!blob) return [];
+        if (!blob) return null;
         const { dx, r } = blob;
-        return dx.map((d) => (
-          <BlobShadow key={`${slot}${d}`} position={[x + d, y, z]} radiusM={r} />
-        ));
+        return (
+          <group
+            key={slot}
+            ref={(g) => {
+              groups.current[slot] = g;
+            }}
+          >
+            {dx.map((d) => (
+              <BlobShadow key={d} position={[x + d, y, z]} radiusM={r} />
+            ))}
+          </group>
+        );
       })}
     </>
   );
@@ -351,6 +476,9 @@ export function Stage({
   focus = null,
   dpr: pinned = null,
   pose,
+  director = null,
+  motion,
+  practical = "practice",
 }: StageProps) {
   const look = useMemo(() => lookFor(quality, window.devicePixelRatio || 1), [quality]);
   // The ladder lives outside the Canvas, so a re-render keeps its rung (scene/look/dprLadder.ts).
@@ -358,6 +486,30 @@ export function Stage({
   const ladderDpr = useLadderDpr(ladder);
   const dpr = pinned ?? ladderDpr;
   const loop = useMemo(createStageLoop, []);
+  // The pen nib reads the motion's nib every frame, through ref-like views of it.
+  const nib = useMemo(
+    () =>
+      motion
+        ? {
+            target: {
+              get current() {
+                return motion.nib.target;
+              },
+            },
+            tap: {
+              get current() {
+                return motion.nib.tap;
+              },
+            },
+            rate: {
+              get current() {
+                return motion.nib.rate;
+              },
+            },
+          }
+        : null,
+    [motion],
+  );
   const shadowsDirty = useRef(true);
   // Anything the page changes (the step, the ring, the hints, a close-up, the guide) re-renders
   // the stage: give it frames to show.
@@ -374,10 +526,29 @@ export function Stage({
         <StageCamera covered={covered} loop={loop} pose={pose} />
         <LookLights shadowsDirty={shadowsDirty} />
         <LookGround />
-        <Blobs />
+        <Blobs motion={motion} />
         <TerminalProvider>
-          <BenchParts bench={bench} quality={quality} {...parts} tray={false} />
-          <BenchWiring bench={bench} quality={quality} {...(audio ? { audio } : {})} />
+          {motion ? <Choreo director={director} bench={bench} motion={motion} /> : null}
+          <BenchParts
+            bench={bench}
+            quality={quality}
+            {...parts}
+            tray={false}
+            interactive={practical !== "watch"}
+            {...(motion ? { drops: motion.parts } : {})}
+          />
+          <BenchWiring
+            bench={bench}
+            quality={quality}
+            {...(audio ? { audio } : {})}
+            {...(motion ? { motion } : {})}
+            interactive={practical !== "watch"}
+            drawHers={practical === "practice"}
+          />
+          {nib ? (
+            <PenNib target={nib.target} tap={nib.tap} rate={nib.rate} quality={quality} />
+          ) : null}
+          {import.meta.env.DEV ? <DevProbe bench={bench} /> : null}
         </TerminalProvider>
         {loupeHeld && (
           <CloseUpCamera>
@@ -392,7 +563,13 @@ export function Stage({
         )}
         <InkComposer quality={quality} />
         <Focus parts={focus} />
-        <Heartbeat bench={bench} loop={loop} held={loupeHeld} shadowsDirty={shadowsDirty} />
+        <Heartbeat
+          bench={bench}
+          loop={loop}
+          held={loupeHeld}
+          shadowsDirty={shadowsDirty}
+          motion={motion}
+        />
         <Ladder ladder={ladder} enabled={pinned === null} />
         <ReadySignal />
       </LookTier.Provider>

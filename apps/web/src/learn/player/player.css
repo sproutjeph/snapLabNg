@@ -44,9 +44,21 @@
   box-shadow: 0 2px 6px rgba(60, 45, 25, 0.06);
 }
 
+/* Wide and compact: in the top row, 10 px left of the shell's pop-up buttons (shell.css
+   .sh-top-actions: right 540 px, or 480 in compact, or 340 beside a plain status card; 274 px
+   wide), so the two never overlap (docs/plans/wave-2-lean.md, 2b fix). */
+.dp[data-layout="wide"] .dp-card,
 .dp[data-layout="compact"] .dp-card {
-  left: 50%;
-  transform: translateX(-50%);
+  left: auto;
+  transform: none;
+  right: calc(540px + var(--sh-actions-w, 274px) + 10px);
+}
+
+/* Compact (about 1000–1200 px) has no room for both between the brand and the status card: the
+   card drops to a second row, under the pop-up buttons and right-aligned with them. */
+.dp[data-layout="compact"] .dp-card {
+  top: 76px;
+  right: 480px;
 }
 
 .dp[data-layout="short"] .dp-card {
@@ -75,19 +87,13 @@
   padding: 0 3px;
 }
 
-/* Compact and narrow: the status card folds its credit to a mark, so the card sits against it.
-   (After short and portrait, so the rules run from least to most specific.) */
-.dp[data-layout="compact"][data-credit="mark"] .dp-card {
-  right: 382px;
-}
-
-/* A status card with no credit is narrower, so the card sits against it. */
+/* A status card with no credit is narrower, and the pop-up buttons sit against it. */
 .sh-root[data-status="plain"] .dp[data-layout="wide"] .dp-card {
-  right: 334px;
+  right: calc(340px + var(--sh-actions-w, 274px) + 10px);
 }
 
 .sh-root[data-status="plain"] .dp[data-layout="compact"] .dp-card {
-  right: 332px;
+  right: 340px;
 }
 
 .dp-group {
