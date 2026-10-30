@@ -8,6 +8,8 @@ export interface ResultsProps {
   mode: "practice" | "exam";
   /** markOhmsLaw(record, { teacherXyOhm: supervisor.effectiveOhm() }): 21 marks. */
   sheet: MarkSheet;
+  /** Watch's end: the actor's own record, marked on the demonstration bench. */
+  demo?: boolean;
   /** checkReadingsAgainstBench(record, supervisor.log(), divisions), per row and column. */
   checks: readonly ReadingCheck[];
   /** Her record as handed in: her slope is read from her graph, as written. */

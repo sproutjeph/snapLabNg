@@ -95,13 +95,18 @@ export interface DropPose {
   k: number;
 }
 
-/** The i-th part's drop at `t` seconds into the entrance beat. Writes `out`; allocates nothing. */
-export function dropAt(t: number, i: number, out: DropPose): DropPose {
-  const raw = (t - dropStartS(i)) / ENTER_DROP_S;
+/** A part's drop at `t` seconds, for a drop that leaves the sky at `startS`. Allocates nothing. */
+export function dropFrom(t: number, startS: number, out: DropPose): DropPose {
+  const raw = (t - startS) / ENTER_DROP_S;
   const k = Math.min(1, Math.max(0, raw));
   out.k = raw < 0 ? 0 : k;
   out.heightM = DROP_HEIGHT_M * (1 - ease.outBounce(k));
   return out;
+}
+
+/** The i-th part's drop at `t` seconds into the entrance beat. Writes `out`; allocates nothing. */
+export function dropAt(t: number, i: number, out: DropPose): DropPose {
+  return dropFrom(t, dropStartS(i), out);
 }
 
 /** Seconds from the entrance beat's start until the last of `n` parts has landed. */

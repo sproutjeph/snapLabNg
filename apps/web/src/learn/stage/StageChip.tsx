@@ -83,19 +83,16 @@ export function StageChip({
 
   if (!host) return null;
   const stage = size[0] > 0 && size[1] > 0 ? { stageWidth: size[0], stageHeight: size[1] } : {};
+  const visible = laid.visible && laid.label !== "";
   return createPortal(
     <div
       ref={wrap}
       className="ol-chip"
+      // The E2E hook (learn/e2e.ts): present only while a chip is on screen.
+      data-testid={visible ? "callout-chip" : undefined}
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
     >
-      <CalloutChip
-        label={laid.label}
-        x={laid.x}
-        y={laid.y}
-        visible={laid.visible && laid.label !== ""}
-        {...stage}
-      />
+      <CalloutChip label={laid.label} x={laid.x} y={laid.y} visible={visible} {...stage} />
     </div>,
     host,
   );

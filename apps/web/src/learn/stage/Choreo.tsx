@@ -12,7 +12,14 @@ import { useTerminalRegistry } from "../terminals";
 import type { OhmsLawBench, PartId, TerminalId } from "../types";
 import { chipTarget, forgetLead, HINT_TEXT } from "../wiring/leadPick";
 import { type DropSlot, dropAt, entranceOrder, inOutCubic, SHAKE_S, springStep } from "./motion";
-import { chipSpecAt, clearBench, DROP_SLOTS, type StageMotion, stageBusy } from "./stageMotion";
+import {
+  chipSpecAt,
+  clearBench,
+  DROP_SLOTS,
+  entranceFrame,
+  type StageMotion,
+  stageBusy,
+} from "./stageMotion";
 
 // The stage's choreographer (docs/plans/wave-2-lean.md, 2b-motion), inside the Canvas. Each frame
 // it feeds the director its time, keeps the beat's own clock (beat seconds, scaled by the speed),
@@ -138,6 +145,8 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
 
     // ---- The beat's own clock ----
     if (s.beat !== k.beat || m.epoch !== k.epoch) {
+      // A seek, previous, next or replay plays Watch's own entrance again, even after the paper's.
+      if (k.epoch !== -1 && m.epoch !== k.epoch) m.entrance.landed = false;
       k.beat = s.beat;
       k.epoch = m.epoch;
       k.t = 0;
@@ -160,14 +169,19 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       director.pause();
     }
 
-    // ---- The entrance (Watch): parts land in turn; Practise and Exam start with a full bench ----
+    // ---- The entrance: under the question paper, parts land as the paper names them (or on the
+    // timed drop); in Watch, in turn on the enter beat, unless the paper's entrance has already put
+    // them down; Practise and Exam start with a full bench ----
     let dropping = false;
-    if (watch && !s.finished) {
+    const entrance = m.entrance;
+    if (entrance.on) {
+      dropping = entranceFrame(entrance, order, dt, m.parts);
+    } else if (watch && !s.finished) {
       clearBench(m);
       for (const slot of DROP_SLOTS) {
         const pose = m.parts[slot];
         const i = k.dropIndex.get(slot);
-        if (k.entered.has(slot)) {
+        if (k.entered.has(slot) || entrance.landed) {
           pose.heightM = 0;
           pose.k = 1;
         } else if (i !== undefined) {
@@ -276,7 +290,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     // Paused, nothing on the bench moves: the loop may rest even mid-drop or mid-draw.
     const playing = s.playing && !s.finished && s.mode !== "exam";
     const nibOut = m.nib.target !== null;
-    m.moving = (playing && (dropping || drawing || nibOut)) || shaking;
+    m.moving = (playing && (dropping || drawing || nibOut)) || shaking || (entrance.on && dropping);
     m.busy =
       stageBusy(s, t.length, chipBusy, m.moving) || placeRemove(m, bench, state.camera, state.size);
   }, -2);

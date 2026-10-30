@@ -32,6 +32,14 @@ function Icon({
   );
 }
 
+/** Hand in: a written page with a tick. */
+export const IconHandIn = () => (
+  <Icon>
+    <path d="M6 3.5h8.5L18 7v13.5H6z" />
+    <path d="M9 13.5l2.2 2.2 4-4.4" />
+  </Icon>
+);
+
 /** Back to the start of the demonstration. */
 export const IconRestart = () => (
   <Icon>
