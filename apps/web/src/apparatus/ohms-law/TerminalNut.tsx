@@ -25,6 +25,12 @@ import {
 } from "./LeadParts";
 import { INK_IDS, TERMINAL_LABELS } from "./layout";
 
+/**
+ * A coloured cap's ink id is its nut's (INK_IDS.nutBase + the terminal's index) plus this, so the
+ * outline between the cap and the brass reads. The ids 120–131 are free: leads start at 140.
+ */
+export const NUT_CAP_INK_OFFSET = 20;
+
 export interface TerminalNutProps {
   id: TerminalId;
   part: PartId;
@@ -285,7 +291,9 @@ export function TerminalNut({
   const registry = useTerminalRegistry();
   useTerminal(id, part, TERMINAL_LABELS[id], attach);
   const reduced = useMemo(prefersReducedMotion, []);
-  const inkId = INK_IDS.nutBase + Math.max(0, TERMINAL_IDS.indexOf(id));
+  const nutIndex = Math.max(0, TERMINAL_IDS.indexOf(id));
+  const inkId = INK_IDS.nutBase + nutIndex;
+  const capInkId = INK_IDS.nutBase + NUT_CAP_INK_OFFSET + nutIndex;
 
   const res = useMemo(() => {
     const seed = hashString(`nut-${id}`);
@@ -365,7 +373,9 @@ export function TerminalNut({
         <group name="knob">
           <mesh geometry={res.knurl} material={res.brassMat} castShadow receiveShadow />
           {res.cap && res.capMat ? (
-            <mesh geometry={res.cap} material={res.capMat} castShadow receiveShadow />
+            <InkGroup id={capInkId} thin>
+              <mesh geometry={res.cap} material={res.capMat} castShadow receiveShadow />
+            </InkGroup>
           ) : null}
           <mesh geometry={res.socket} material={res.socketMat} />
         </group>
