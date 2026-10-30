@@ -40,7 +40,9 @@ export interface LeadProps {
 /**
  * A lead's sampled cable centreline, published so the current-flow dots can follow it. Points
  * run from the `from` plug to the `to` plug, xyz packed, in the Lead's parent space (the same
- * space as its siblings). `version` rises each time the points are rewritten.
+ * space as its siblings). `version` rises each time the points are rewritten. The cable is a tube
+ * of LEAD_RADIUS_M round this line, so whatever rides on it (the dots) must stand out past that
+ * radius, or the cable hides it.
  */
 export interface LeadCurve {
   readonly points: Float32Array;
@@ -219,8 +221,10 @@ function writeTube(
 }
 
 /**
- * Sets the curve's control points: a drooping cable from plug top `s` to plug top `e`. Exported
- * so the kit's tests use this path, not a copy of it; its shape is frozen with them.
+ * Sets the curve's control points: a drooping cable from seat `s` to seat `e`. A seat is where
+ * the cable's centreline starts, CABLE_SEAT_M above a plug's foot: inside its boot, a little
+ * below the plug's top. Exported so the kit's tests use this path, not a copy of it; its shape is
+ * frozen with them.
  */
 export function shapeCable(
   pts: THREE.Vector3[],
