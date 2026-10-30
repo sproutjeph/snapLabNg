@@ -28,6 +28,7 @@ import type {
   ActorAction,
   Director,
   DirectorOptions,
+  DirectorSpeed,
   DirectorState,
   RecordField,
   ValueSource,
@@ -82,7 +83,7 @@ export const HINT_HIGHLIGHT_S = 40;
 /** Previous restarts the current beat when it has run longer than this. */
 export const PREV_RESTART_S = 1.5;
 
-const SPEEDS = [1, 1.5, 2] as const;
+const SPEEDS: readonly DirectorSpeed[] = [1, 1.5, 2, 4, 8];
 /** The fastest the voice is asked to go: above this, voices garble. */
 const MAX_VOICE_RATE = 2;
 /** Headless settling steps the bench in chunks of this many seconds (12 engine steps each). */
@@ -250,8 +251,12 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
             // Only finish the lead we started: if the first tap did not take (a full terminal)
             // or she tapped somewhere else since, a second tap would make a wrong lead.
             if (bench.visual.current.pendingFrom !== act.from) return;
+            const before = bench.visual.current.leads.length;
             bench.tapTerminal(act.to);
-            if (announce) emit({ kind: "lead", from: act.from, to: act.to });
+            // Only a lead that was made snaps: a tap on a full terminal makes none.
+            if (announce && bench.visual.current.leads.length > before) {
+              emit({ kind: "lead", from: act.from, to: act.to });
+            }
           },
         },
       ];

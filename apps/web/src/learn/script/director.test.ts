@@ -655,6 +655,23 @@ describe("Practise", () => {
       r.run(0.5);
       expect(r.bench.visual.current.leads).toHaveLength(0);
     });
+
+    it("show me on a full terminal emits no lead event", () => {
+      const r = rig(script(showMeBeat()), { mode: "practice" });
+      // K1, the beat's second terminal, already takes as many leads as a nut holds (3).
+      for (const other of ["A+", "V+", "V-"] as const) {
+        r.bench.tapTerminal(other);
+        r.bench.tapTerminal("K1");
+      }
+      expect(r.bench.visual.current.leads).toHaveLength(3);
+      const kinds: string[] = [];
+      r.director.onEvent((e) => kinds.push(e.kind));
+      r.director.play();
+      r.director.showMe();
+      r.run(3);
+      expect(r.bench.visual.current.leads).toHaveLength(3);
+      expect(kinds).not.toContain("lead");
+    });
   });
 
   it("Show me runs only on showMe beats", () => {

@@ -61,11 +61,14 @@ export interface Script {
   beats: readonly Beat[];
 }
 
+/** Playback speeds. The player offers 1, 1.5 and 2; 4 and 8 are for E2E runs (`e2e=1`). */
+export type DirectorSpeed = 1 | 1.5 | 2 | 4 | 8;
+
 export interface DirectorState {
   mode: PracticalMode;
   beat: number;
   playing: boolean;
-  speed: 1 | 1.5 | 2;
+  speed: DirectorSpeed;
   /** The words on screen: the narration in Watch, the instruction in Practise. */
   caption: string;
   /** Practise: waiting for her to finish the beat's action. */
@@ -90,7 +93,7 @@ export interface Director {
   prev(): void;
   /** Deterministic: resets the bench and applies every earlier beat's action instantly. */
   seek(beat: number): void;
-  setSpeed(s: 1 | 1.5 | 2): void;
+  setSpeed(s: DirectorSpeed): void;
   showMe(): void;
   /** Real time since the last call, from useFrame. */
   advance(dtS: number): void;
@@ -101,7 +104,12 @@ export interface Director {
 interface DirectorOptionsBase {
   script: Script;
   voice: VoiceGuide;
-  /** What a beat's `done` reads in Practise; the page owns her record and what she identified. */
+  /**
+   * What a beat's `done` reads in Practise; the page owns her record and what she identified.
+   * Hand back the same `record` object until she edits it, and a new object after each edit: the
+   * director counts a new record object as activity, so a fresh object on every call resets the
+   * idle clock each frame and the hint ladder never fires.
+   */
   benchState: () => BenchState;
 }
 
