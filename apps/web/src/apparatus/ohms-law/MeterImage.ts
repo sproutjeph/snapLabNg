@@ -6,7 +6,7 @@ import { DIAL } from "./MeterDial";
 // is square to the dial (docs/plans/ohms-law-vi.md, Readings). Pure appearance: no value here.
 
 /** The needle floats this far above the dial: real parallax. */
-export const NEEDLE_LIFT = 0.0045;
+export const NEEDLE_LIFT = 0.0024;
 /** The round dial paper's bottom edge, and the front of the case, in the meter's own frame (metres). */
 export const METER_DIAL_Y = 0.033;
 export const METER_FACE_Z = 0.025;

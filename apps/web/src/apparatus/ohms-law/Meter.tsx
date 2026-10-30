@@ -80,20 +80,23 @@ const DEG = Math.PI / 180;
 const SHAKE_S = 0.4;
 /** The bezel ring: its outer radius and how far its lip stands off the face. */
 const RING_OUTER = 0.0418;
-const RING_LIP = 0.0046;
-/** The glass highlight floats just over the lip. */
+const RING_LIP = 0.007;
+/** The glass highlight floats just over the lip, and over the hub's top (about 6.7 mm off the face). */
 const GLASS_Z = FACE_Z + RING_LIP + 0.0002;
 /** Soft contact shadows on the face: round the bezel (out to this radius) and under the zero screw. */
 const RING_SHADOW_OUTER = RING_OUTER + 0.0075;
+/** The face is flat only up to here (the case top, 0.118, less its 6.5 mm bevel): the shadow stops there. */
+const FACE_FLAT_TOP = 0.111;
 const SCREW_SHADOW_R = 0.0095;
 const SHADOW_Z = FACE_Z + 0.0004;
 /**
  * The terminals' brass plates, and the ledge's + and − marks between them. A plate is a 4.5 mm
  * block so its edge can be rounded by 1.5 mm (a rounded edge is at most a third of the thinnest
- * side), sunk into the ledge until only `shows` of it stands above: the brass the student sees is
- * as thin as before, and the nuts stand where they did.
+ * side), sunk into the ledge until only `shows` of it stands above. G4's washer foot rests on the
+ * ledge top, so the plate's top is a hair above it: the washer seats on the brass, never buried,
+ * and the nuts stand where they did.
  */
-const PLATE = { w: 0.03, h: 0.0045, d: 0.03, radius: 0.0015, shows: 0.0012 } as const;
+const PLATE = { w: 0.03, h: 0.0045, d: 0.03, radius: 0.0015, shows: 0.0003 } as const;
 const NUT_Z = 0.045;
 const MARK_X = 0.0105;
 /** Turns the marks to read upright from the default camera (azimuth 45 degrees). */
@@ -119,6 +122,20 @@ function ledgeLabelTexture(): THREE.CanvasTexture {
     bar(x(-MARK_X), h / 2, len, thick);
   }
   return canvasTexture(canvas, 4);
+}
+
+/**
+ * The soft shadow round the bezel, a square plane cut off at the top of the flat face so it never
+ * floats past onto the bevel. The plane's middle is the dial's middle; its texture is cropped to match.
+ */
+function ringShadowGeometry() {
+  const r = RING_SHADOW_OUTER;
+  const top = Math.min(r, FACE_FLAT_TOP - DIAL_CY);
+  const geo = new THREE.PlaneGeometry(r * 2, r + top);
+  geo.translate(0, (top - r) / 2, 0);
+  const uv = geo.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * ((r + top) / (2 * r)));
+  return geo;
 }
 
 function needleShape() {
@@ -154,19 +171,19 @@ function ringGeometry(segments: number, low: boolean) {
   const ri = DIAL.radius;
   const full = [
     [ro + 0.0005, -0.0004],
-    [ro, 0.002],
-    [ro - 0.0007, 0.0036],
+    [ro, 0.003],
+    [ro - 0.0007, 0.0052],
     [ro - 0.0016, RING_LIP - 0.0002],
     [ri + 0.0021, RING_LIP],
-    [ri + 0.0013, 0.004],
-    [ri + 0.0006, 0.0027],
+    [ri + 0.0013, 0.006],
+    [ri + 0.0006, 0.0042],
     [ri, METER_DIAL_LIFT - 0.0001],
   ];
   const light = [
     [ro + 0.0005, -0.0004],
     [ro - 0.001, RING_LIP - 0.0003],
     [ri + 0.0021, RING_LIP],
-    [ri + 0.0006, 0.0028],
+    [ri + 0.0006, 0.0042],
     [ri, METER_DIAL_LIFT - 0.0001],
   ];
   const profile = (low ? light : full).map(([r, z]) => new THREE.Vector2(r, z));
@@ -350,9 +367,7 @@ export function Meter({
       brassMat: brassSurface(seed, { map: brassTex, tint: "#fff0d2" }),
       glassGeo: glassTex ? new THREE.PlaneGeometry(DIAL.radius * 2, DIAL.radius * 2) : null,
       glassMat: decal(glassTex),
-      ringShadowGeo: ringShadowTex
-        ? new THREE.PlaneGeometry(RING_SHADOW_OUTER * 2, RING_SHADOW_OUTER * 2)
-        : null,
+      ringShadowGeo: ringShadowTex ? ringShadowGeometry() : null,
       ringShadowMat: decal(ringShadowTex),
       screwShadowGeo: screwShadowTex
         ? new THREE.PlaneGeometry(SCREW_SHADOW_R * 2, SCREW_SHADOW_R * 2)

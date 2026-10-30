@@ -413,8 +413,9 @@ export function pencilBody() {
     const ny = nor.getY(i);
     const nz = nor.getZ(i);
     const side = Math.abs(nor.getX(i)) < 0.5;
-    const face = Math.round(Math.atan2(ny, nz) / (Math.PI / 3));
-    const shade = !side ? 0.8 : face % 2 === 0 ? 1 : 0.84;
+    // Face centres sit at k + 0.5 sixths of a turn: floor gives the face index with no tie.
+    const face = Math.floor(Math.atan2(ny, nz) / (Math.PI / 3));
+    const shade = !side ? 0.8 : (face & 1) === 0 ? 1 : 0.84;
     colour.set([shade, shade, shade], i * 3);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colour, 3));
