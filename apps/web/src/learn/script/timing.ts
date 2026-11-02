@@ -37,6 +37,15 @@ export const WRITE_BASE_S = 0.5;
 export const WRITE_PER_CHAR_S = 0.05;
 export const WRITE_MAX_S = 2.5;
 export const PLOT_S = 0.6;
+/**
+ * A whole table row at once (guided Watch, rows 3 to 7): a short run to the box, each plug, the
+ * key closing, the meters read once the needle rests, the key opening. Screen choices.
+ */
+export const ROW_LEAD_IN_S = 0.2;
+export const ROW_PLUG_EACH_S = 0.25;
+export const ROW_KEY_ON_S = 0.4;
+export const ROW_READ_S = 0.5;
+export const ROW_KEY_OFF_S = 0.35;
 export const LINE_S = 1;
 export const TRIANGLE_S = 1.2;
 /** The hold after a beat, before the next: BC101 holds every step 1.0 s (docs/plans/wave-2-lean.md). */
@@ -92,6 +101,14 @@ export function actDurationS(act: ActorAction, plugChanges = 1, writtenChars = 6
       return Math.min(WRITE_MAX_S, WRITE_BASE_S + WRITE_PER_CHAR_S * writtenChars);
     case "plot":
       return PLOT_S;
+    case "row":
+      return (
+        ROW_LEAD_IN_S +
+        ROW_PLUG_EACH_S * Math.max(0, plugChanges) +
+        ROW_KEY_ON_S +
+        ROW_READ_S +
+        ROW_KEY_OFF_S
+      );
     case "line":
       return LINE_S;
     case "triangle":

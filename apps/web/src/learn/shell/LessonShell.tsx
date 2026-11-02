@@ -72,6 +72,11 @@ export interface LessonShellProps {
    */
   practical?: PracticalMode;
   /**
+   * The guided demo (?mode=guided): the rail, the pop-up buttons, the phone menu and "Compare
+   * with diagram" are left out, so the stage and the player are all there is to watch.
+   */
+  guided?: boolean;
+  /**
    * Laid over the stage in the same coordinate space, above the callouts and the canvas: the
    * Player (its card, caption and clock).
    */
@@ -144,6 +149,7 @@ export default function LessonShell({
   identify,
   children,
   practical,
+  guided = false,
   overlay,
   checklist,
   status,
@@ -172,6 +178,8 @@ export default function LessonShell({
 
   const portrait = layout === "portrait";
   const phone = portrait || layout === "short";
+  // The guided demo has no menu to open: the brand mark is plain art.
+  const menuAvailable = phone && !guided;
 
   const step = lesson.steps[Math.min(stepIndex, lesson.steps.length - 1)];
 
@@ -235,7 +243,7 @@ export default function LessonShell({
   if (!step) return null;
 
   const compare =
-    diagramSlot !== undefined ? (
+    diagramSlot !== undefined && !guided ? (
       <button
         type="button"
         className="sh-btn sh-compare"
@@ -336,6 +344,7 @@ export default function LessonShell({
       data-guide={guideNow}
       data-status={status?.credit ? "credit" : "plain"}
       data-popup={popup ?? "none"}
+      data-flow={guided ? "guided" : undefined}
     >
       <div className="sh-stage">
         <div className="sh-canvas">{children}</div>
@@ -350,7 +359,7 @@ export default function LessonShell({
           <Brand
             practical={practicalMode}
             menuRef={menuBtn}
-            {...(phone
+            {...(menuAvailable
               ? {
                   menu: {
                     open: menuOpen,
@@ -369,77 +378,79 @@ export default function LessonShell({
             credit={status?.credit}
           />
 
-          <nav className="sh-top-actions" aria-label="Practical pop-ups">
-            <button
-              type="button"
-              className={`sh-pop-btn${popup === "question" ? " is-active" : ""}`}
-              aria-label="Question paper"
-              title="Question paper"
-              aria-pressed={popup === "question"}
-              onClick={() => setPopup(popup === "question" ? null : "question")}
-            >
-              <IconQuestion />
-              <span className="sh-txt">Question</span>
-            </button>
-            <button
-              type="button"
-              className={`sh-pop-btn${popup === "instructions" ? " is-active" : ""}`}
-              aria-label="Instructions"
-              title="Instructions"
-              aria-pressed={popup === "instructions"}
-              onClick={() => setPopup(popup === "instructions" ? null : "instructions")}
-            >
-              <IconBook />
-              <span className="sh-txt">Instructions</span>
-            </button>
-            <button
-              type="button"
-              className={`sh-pop-btn sh-pop-btn-steps${popup === "steps" ? " is-active" : ""}`}
-              aria-label="Steps"
-              title="Steps"
-              aria-pressed={popup === "steps"}
-              onClick={() => setPopup(popup === "steps" ? null : "steps")}
-            >
-              <IconSteps />
-              <span className="sh-txt">Steps</span>
-            </button>
-            <button
-              type="button"
-              className={`sh-pop-btn${popup === "graph" ? " is-active" : ""}`}
-              aria-label="Graph sheet"
-              title="Graph sheet"
-              aria-pressed={popup === "graph"}
-              onClick={() => setPopup(popup === "graph" ? null : "graph")}
-            >
-              <IconGraph />
-              <span className="sh-txt">Graph</span>
-            </button>
-            <button
-              type="button"
-              className={`sh-pop-btn${popup === "answers" ? " is-active" : ""}`}
-              aria-label="Answer sheet"
-              title="Answer sheet"
-              aria-pressed={popup === "answers"}
-              onClick={() => setPopup(popup === "answers" ? null : "answers")}
-            >
-              <IconAnswers />
-              <span className="sh-txt">Answers</span>
-            </button>
-            <button
-              type="button"
-              className={`sh-pop-btn${popup === "tools" ? " is-active" : ""}`}
-              aria-label="Tools"
-              title="Tools"
-              aria-pressed={popup === "tools"}
-              onClick={() => setPopup(popup === "tools" ? null : "tools")}
-            >
-              <IconTools />
-              <span className="sh-txt">Tools</span>
-            </button>
-          </nav>
+          {guided ? null : (
+            <nav className="sh-top-actions" aria-label="Practical pop-ups">
+              <button
+                type="button"
+                className={`sh-pop-btn${popup === "question" ? " is-active" : ""}`}
+                aria-label="Question paper"
+                title="Question paper"
+                aria-pressed={popup === "question"}
+                onClick={() => setPopup(popup === "question" ? null : "question")}
+              >
+                <IconQuestion />
+                <span className="sh-txt">Question</span>
+              </button>
+              <button
+                type="button"
+                className={`sh-pop-btn${popup === "instructions" ? " is-active" : ""}`}
+                aria-label="Instructions"
+                title="Instructions"
+                aria-pressed={popup === "instructions"}
+                onClick={() => setPopup(popup === "instructions" ? null : "instructions")}
+              >
+                <IconBook />
+                <span className="sh-txt">Instructions</span>
+              </button>
+              <button
+                type="button"
+                className={`sh-pop-btn sh-pop-btn-steps${popup === "steps" ? " is-active" : ""}`}
+                aria-label="Steps"
+                title="Steps"
+                aria-pressed={popup === "steps"}
+                onClick={() => setPopup(popup === "steps" ? null : "steps")}
+              >
+                <IconSteps />
+                <span className="sh-txt">Steps</span>
+              </button>
+              <button
+                type="button"
+                className={`sh-pop-btn${popup === "graph" ? " is-active" : ""}`}
+                aria-label="Graph sheet"
+                title="Graph sheet"
+                aria-pressed={popup === "graph"}
+                onClick={() => setPopup(popup === "graph" ? null : "graph")}
+              >
+                <IconGraph />
+                <span className="sh-txt">Graph</span>
+              </button>
+              <button
+                type="button"
+                className={`sh-pop-btn${popup === "answers" ? " is-active" : ""}`}
+                aria-label="Answer sheet"
+                title="Answer sheet"
+                aria-pressed={popup === "answers"}
+                onClick={() => setPopup(popup === "answers" ? null : "answers")}
+              >
+                <IconAnswers />
+                <span className="sh-txt">Answers</span>
+              </button>
+              <button
+                type="button"
+                className={`sh-pop-btn${popup === "tools" ? " is-active" : ""}`}
+                aria-label="Tools"
+                title="Tools"
+                aria-pressed={popup === "tools"}
+                onClick={() => setPopup(popup === "tools" ? null : "tools")}
+              >
+                <IconTools />
+                <span className="sh-txt">Tools</span>
+              </button>
+            </nav>
+          )}
         </header>
 
-        {phone && menuOpen ? (
+        {menuAvailable && menuOpen ? (
           <>
             <div id={`${uid}-menu`} className="sh-menu">
               <NavList
@@ -576,7 +587,7 @@ export default function LessonShell({
         </div>
       </div>
 
-      {phone ? null : <Rail onNotebook={() => setNotebookOpen(true)} />}
+      {phone || guided ? null : <Rail onNotebook={() => setNotebookOpen(true)} />}
 
       {notebookOpen ? (
         <Sheet

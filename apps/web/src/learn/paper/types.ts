@@ -22,4 +22,9 @@ export interface QuestionPaperProps {
   onItemRead?(part: PartId): void;
   /** She chose how to go on. */
   onChoose(mode: PracticalMode): void;
+  /**
+   * Guided Watch (?mode=guided): the reading starts at once, the mode choices give way to Skip,
+   * and the page goes on when the reading ends or she skips. Without it the paper is as before.
+   */
+  guided?: { onDone(): void; onSkip(): void } | undefined;
 }

@@ -1,8 +1,9 @@
 import type { DiagramComparison } from "@snaplab/engine";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircuitDiagram } from "../wiring/CircuitDiagram";
 import "./desk.css";
 import "./paper.css";
+import { readingRefused, voiceNeverStarted } from "./guidedReading";
 import { createReadAloud, IDLE_VIEW, type ReadView } from "./readAloud";
 import type { QuestionPaperProps } from "./types";
 
@@ -91,11 +92,29 @@ function headings(source: string, title: string) {
     : { eyebrow: source, heading: title, sub: "WASSCE-style" };
 }
 
-export function QuestionPaper({ question, voice, onItemRead, onChoose }: QuestionPaperProps) {
+/** Whether the browser can speak at all. */
+function canSpeak(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+
+export function QuestionPaper({
+  question,
+  voice,
+  onItemRead,
+  onChoose,
+  guided,
+}: QuestionPaperProps) {
   const [view, setView] = useState<ReadView>(IDLE_VIEW);
   const [muted, setMuted] = useState(voice.muted);
+  // Guided: speech was refused until a tap, so the paper asks for one.
+  const [needsTap, setNeedsTap] = useState(false);
   const itemRef = useRef(onItemRead);
   itemRef.current = onItemRead;
+  const guidedRef = useRef(guided);
+  guidedRef.current = guided;
+  const isGuided = guided !== undefined;
+  const startedAt = useRef(0);
+  const tapped = useRef(false);
   const reader = useMemo(
     () =>
       createReadAloud({
@@ -103,20 +122,78 @@ export function QuestionPaper({ question, voice, onItemRead, onChoose }: Questio
         voice,
         onChange: setView,
         onItemRead: (p) => itemRef.current?.(p),
+        onDone: () => {
+          const g = guidedRef.current;
+          if (!g) return;
+          // A voice that is audible and refused to speak ends every sentence at once: that is
+          // not a reading. Ask for a tap instead of going on.
+          const refused = readingRefused(performance.now() - startedAt.current, {
+            muted: voice.muted,
+            speechAvailable: canSpeak(),
+            tapped: tapped.current,
+          });
+          if (refused) setNeedsTap(true);
+          else g.onDone();
+        },
       }),
     [question, voice],
   );
   useEffect(() => () => reader.stop(), [reader]);
 
-  // Keep the sentence being read in sight.
+  const startReading = useCallback(() => {
+    startedAt.current = performance.now();
+    reader.start();
+  }, [reader]);
+
+  // Guided: read at once. If the voice has not been heard within a moment, ask for a tap. The
+  // reader is left running (a cold or network voice may yet start); the prompt goes away if it
+  // does, and only the tap restarts the reading.
+  useEffect(() => {
+    if (!isGuided) return;
+    startReading();
+    if (voice.muted || !canSpeak()) return;
+    const t0 = performance.now();
+    let heard = false;
+    let offered = false;
+    const id = setInterval(() => {
+      const waited = performance.now() - t0;
+      if (window.speechSynthesis.speaking) {
+        heard = true;
+        if (offered) {
+          offered = false;
+          setNeedsTap(false);
+        }
+      }
+      const facts = { muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current };
+      if (!offered && voiceNeverStarted(waited, heard, facts)) {
+        offered = true;
+        setNeedsTap(true);
+      }
+      if (waited >= 10000) clearInterval(id);
+    }, 100);
+    return () => clearInterval(id);
+  }, [isGuided, voice, startReading]);
+
+  const tapToStart = () => {
+    tapped.current = true;
+    setNeedsTap(false);
+    // Inside the tap, so the browser lets this speech through; the old reading is cut first.
+    reader.stop();
+    startReading();
+  };
+
+  // Keep the sentence being read in view: the scroll box shows it a quarter of the way down.
   const items = useRef<(HTMLLIElement | null)[]>([]);
+  const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (view.instr === null) return;
+    const box = scroller.current;
+    const item = items.current[view.instr];
+    if (!box || !item) return;
     const quiet = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    items.current[view.instr]?.scrollIntoView({
-      block: "nearest",
-      behavior: quiet ? "auto" : "smooth",
-    });
+    const at = item.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    const top = box.scrollTop + at - box.clientHeight * 0.25;
+    box.scrollTo({ top: Math.max(0, top), behavior: quiet ? "auto" : "smooth" });
   }, [view.instr]);
 
   const { eyebrow, heading, sub } = headings(question.source, question.title);
@@ -151,7 +228,7 @@ export function QuestionPaper({ question, voice, onItemRead, onChoose }: Questio
             </button>
           </header>
 
-          <div className="qp-scroll">
+          <div className="qp-scroll" ref={scroller}>
             <ol className="qp-list">
               {question.instructions.map((ins, i) => (
                 <li
@@ -179,34 +256,65 @@ export function QuestionPaper({ question, voice, onItemRead, onChoose }: Questio
             </ol>
           </div>
 
+          {needsTap ? (
+            <div className="qp-tap">
+              <button
+                type="button"
+                className="xp-btn xp-btn-primary qp-tap-btn"
+                data-testid="paper-tap"
+                onClick={tapToStart}
+              >
+                <IconSpeaker />
+                Tap to start
+              </button>
+              <p>Your browser needs a tap before it will read aloud.</p>
+            </div>
+          ) : null}
+
           <footer className="qp-foot">
-            <button
-              type="button"
-              className="xp-btn xp-btn-primary qp-read"
-              data-testid="paper-read"
-              onClick={() => (reading ? reader.stop() : reader.start())}
-            >
-              {reading ? <IconStop /> : <IconSpeaker />}
-              {reading ? "Stop reading" : "Read it to me"}
-            </button>
-            <fieldset className="qp-modes">
-              <legend className="qp-sr">How do you want to do it?</legend>
-              {MODES.map((m) => (
+            {guided ? (
+              <button
+                type="button"
+                className="xp-btn xp-btn-primary qp-skip"
+                data-testid="paper-skip"
+                onClick={() => {
+                  reader.stop();
+                  guided.onSkip();
+                }}
+              >
+                Skip
+              </button>
+            ) : (
+              <>
                 <button
-                  key={m.mode}
                   type="button"
-                  className={`xp-btn qp-mode${m.mode === "practice" ? " xp-btn-primary" : ""}`}
-                  data-testid={`paper-choice-${m.mode}`}
-                  onClick={() => {
-                    reader.stop();
-                    onChoose(m.mode);
-                  }}
+                  className="xp-btn xp-btn-primary qp-read"
+                  data-testid="paper-read"
+                  onClick={() => (reading ? reader.stop() : reader.start())}
                 >
-                  <span>{m.label}</span>
-                  <small>{m.sub}</small>
+                  {reading ? <IconStop /> : <IconSpeaker />}
+                  {reading ? "Stop reading" : "Read it to me"}
                 </button>
-              ))}
-            </fieldset>
+                <fieldset className="qp-modes">
+                  <legend className="qp-sr">How do you want to do it?</legend>
+                  {MODES.map((m) => (
+                    <button
+                      key={m.mode}
+                      type="button"
+                      className={`xp-btn qp-mode${m.mode === "practice" ? " xp-btn-primary" : ""}`}
+                      data-testid={`paper-choice-${m.mode}`}
+                      onClick={() => {
+                        reader.stop();
+                        onChoose(m.mode);
+                      }}
+                    >
+                      <span>{m.label}</span>
+                      <small>{m.sub}</small>
+                    </button>
+                  ))}
+                </fieldset>
+              </>
+            )}
           </footer>
         </div>
       </div>

@@ -21,7 +21,7 @@ export const OHMS_LAW_SHOTS: readonly LookShot[] = [{ id: "bench", focus: [0, 0,
 export const OHMS_LAW_RESISTANCES = [0, 1, 5, 10, 20, 40, 60] as const;
 
 /** Which part each terminal belongs to, for focus sets. Mirrors PART_TERMINALS in the engine. */
-const TERMINAL_PART: Readonly<Record<TerminalId, PartId>> = {
+export const TERMINAL_PART: Readonly<Record<TerminalId, PartId>> = {
   "E+": "cells",
   "E-": "cells",
   K1: "key",
@@ -53,7 +53,7 @@ export const TERMINAL_WORDS: Readonly<Record<TerminalId, string>> = {
 };
 
 /** Chip label for a lead beat: both ends, the way the callout names them on the bench. */
-const LEAD_CHIPS: Readonly<Record<string, string>> = {
+export const LEAD_CHIPS: Readonly<Record<string, string>> = {
   "E+>K1": "CELLS + → KEY",
   "K2>A+": "KEY → AMMETER +",
   "A->R1": "AMMETER − → RESISTANCE BOX",
@@ -94,19 +94,19 @@ const LEAD_SAY: ReadonlyArray<readonly [string, string]> = [
   ],
 ];
 
-const PRECAUTIONS = [
+export const PRECAUTIONS = [
   "The key was opened between readings.",
   "Parallax was avoided by reading each meter with the pointer over its image in the mirror.",
 ] as const;
 
 // Ohm's law, stated in full with its condition (WAEC expected answer; Nelkon & Parker).
-const LAW =
+export const LAW =
   "Ohm's law: the current flowing through a metallic conductor is directly proportional to the potential difference across its ends, provided the temperature and other physical conditions remain constant.";
 
 // (b)(ii): d = 0.2 mm, R = 7 Ω, ρ = 8.8 × 10⁻⁷ Ω m, π = 22/7. Watch writes the method — the
 // formula and the substitution — and stops before the final value: the expected result is
 // never shown before she hands in (AGENTS.md). She works the length out herself in Practise.
-const LENGTH_CALC =
+export const LENGTH_CALC =
   "A = πd²/4 = (22/7 × (0.2 × 10⁻³)²)/4 = 3.143 × 10⁻⁸ m²\nL = RA/ρ = (7 × 3.143 × 10⁻⁸)/(8.8 × 10⁻⁷)";
 
 /** A record field she has actually written something in. */

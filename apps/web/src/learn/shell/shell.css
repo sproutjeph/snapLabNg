@@ -2357,3 +2357,24 @@
 .sh-sheet-question .sh-sheet-body > .qp {
   flex: 1 1 auto;
 }
+
+/* The guided demo (?mode=guided): no rail, so the stage takes the whole width; a sheet (the
+   question paper reading itself, the graph) leaves the bench undimmed and the player usable. */
+.sh-root[data-flow="guided"] .sh-stage {
+  left: 0;
+}
+
+.sh-root[data-flow="guided"] .sh-scrim {
+  background: transparent;
+  pointer-events: none;
+}
+
+.sh-root[data-flow="guided"] .sh-sheet {
+  pointer-events: auto;
+}
+
+/* On a phone the paper takes the lower part, so the bench shows above it. */
+.sh-root[data-flow="guided"][data-layout="portrait"] .sh-sheet-question,
+.sh-root[data-flow="guided"][data-layout="short"] .sh-sheet-question {
+  height: 58%;
+}

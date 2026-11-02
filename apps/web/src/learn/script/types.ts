@@ -32,6 +32,12 @@ export type ActorAction =
   | { kind: "loupe"; target: "ammeter" | "voltmeter" | "rule" | null }
   | { kind: "write"; field: RecordField; value: ValueSource }
   | { kind: "plot"; row: number }
+  /**
+   * One whole table row at once (guided Watch, rows 3 to 7): set R, close the key, read both
+   * meters once the needle rests, write R, I and V, open the key. Quick, and a seek applies it
+   * in one go like any other action.
+   */
+  | { kind: "row"; row: number; ohm: number }
   | { kind: "line" }
   | { kind: "triangle" }
   | { kind: "wait"; s: number };
@@ -40,10 +46,21 @@ export interface Beat {
   id: string;
   /** The Step.key of the question stage this beat belongs to. */
   stage: string;
-  /** Watch narration. Never a practice-bench value. */
+  /**
+   * Watch narration. Never a practice-bench value, except the demonstration's own slope: the
+   * token `{slope}` (in `say` or `spoken`) becomes the number the actor wrote for s, once it has
+   * (guided Watch's conclusion only).
+   */
   say: string;
   /** Practise: the one instruction she hears. */
   instruct: string;
+  /**
+   * Watch: what the voice says when it differs from the caption (symbols and short forms the
+   * caption can print but a voice cannot say). Absent: the voice says `say`.
+   */
+  spoken?: string;
+  /** Watch: the hold after this beat, in beat seconds (default BEAT_GAP_S). */
+  gapS?: number;
   /** A LookShot.id from the script's shots. */
   shot: string;
   callouts?: readonly CalloutSpec[];
