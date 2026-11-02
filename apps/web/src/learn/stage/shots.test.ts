@@ -166,6 +166,9 @@ describe("the stage's named shots", () => {
     expect(shotForPose("readings", false)).toBe("meters");
     expect(shotForPose("readings", true)).toBe("meters");
     expect(shotForPose("box", true)).toBe("boxKey");
+    // "Box close-up" on a phone: the box alone. A laptop's bench shot already has the plugs apart.
+    expect(shotForPose("boxClose", true)).toBe("box");
+    expect(shotForPose("boxClose", false)).toBe("bench");
     expect(shotForPose("wire", true)).toBe("board");
   });
 
@@ -178,6 +181,7 @@ describe("the stage's named shots", () => {
   it("keeps the box and key with both meters, and the wire board, inside a phone's free area", () => {
     fitsInFree("boxKey", ["box", "key", "ammeter", "voltmeter"], 390, 844);
     fitsInFree("board", ["wire"], 390, 844);
+    fitsInFree("box", ["box"], 390, 844);
   });
 
   it("makes the meters bigger than the bench shot does, and as big as the free area allows", () => {

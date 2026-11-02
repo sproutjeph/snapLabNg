@@ -48,6 +48,21 @@
   top: 66px;
 }
 
+/* Phone upright only: a close-up of the resistance box alone, so its plugs stand apart (the box
+   and key shot holds four parts). A laptop's bench shot already has the plugs well apart. */
+.ol-boxview {
+  display: none;
+}
+
+.sh-root[data-layout="portrait"] .ol-boxview {
+  display: block;
+  position: absolute;
+  z-index: 4;
+  top: 140px;
+  right: 16px;
+  min-height: 44px;
+}
+
 .ol-btn {
   min-height: var(--tap);
   padding: 0 14px;
@@ -106,7 +121,8 @@
   position: absolute;
   left: 16px;
   right: calc(var(--sh-guide) + 16px);
-  bottom: calc(var(--sh-bar) + 16px);
+  /* The canvas already ends at the strip (beauty pass B3): the strip is not counted again. */
+  bottom: 16px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -275,12 +291,12 @@
    carry the layout in their selectors, so they are more specific and win.) */
 .ol-float-open .ol-tools {
   top: auto;
-  bottom: calc(var(--sh-bar) + 12px);
+  bottom: 12px;
 }
 
 .ol-float-open .ol-note {
   top: auto;
-  bottom: calc(var(--sh-bar) + 68px);
+  bottom: 68px;
 }
 
 /* A phone held upright. The Compare button and the player share the row under the brand, and

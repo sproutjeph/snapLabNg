@@ -564,13 +564,19 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       speakBeat(spokenFor(i));
       if (b.act) beginAct(b.act, i);
     } else if (mode === "practice") {
-      speakBeat(b.instruct);
       if (b.done) {
         const st = opts.benchState();
         run.lastRecord = st.record;
-        if (b.done(st)) run.doneS = 0;
-        else state.waiting = true;
-      }
+        if (b.done(st)) {
+          // She is already past this beat (her leads came ahead of the guide): do not read it out
+          // (the next beat would cut it off 0.7 s later), and let the guide catch up at once.
+          run.voiceDone = true;
+          run.doneS = PRACTISE_GAP_S;
+        } else {
+          speakBeat(b.instruct);
+          state.waiting = true;
+        }
+      } else speakBeat(b.instruct);
     }
     notify();
   }

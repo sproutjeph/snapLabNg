@@ -529,6 +529,23 @@ describe("Practise", () => {
     expect(r.bench.visual.current.leads).toHaveLength(0);
   });
 
+  it("goes past a beat she has already done without reading it out, and catches up at once", () => {
+    const ahead = { v: true };
+    const r = rig(
+      script(
+        beat("a", "A.", { instruct: "Do A.", done: () => ahead.v }),
+        beat("b", "B.", { instruct: "Do B.", done: () => ahead.v }),
+        beat("c", "C.", { instruct: "Do C.", done: () => false }),
+      ),
+      { mode: "practice" },
+    );
+    r.director.play();
+    r.runUntil(() => r.director.state.beat === 2, 5);
+    // Beats a and b were done before the guide came to them: only the one she is on is read.
+    expect(r.said).toEqual(["Do C."]);
+    expect(r.director.state.waiting).toBe(true);
+  });
+
   it("speaks the instruction and shows it as the caption", () => {
     const r = rig(script(beat("a", "Narration.", { instruct: "Do this." })), { mode: "practice" });
     expect(r.director.state.caption).toBe("Do this.");

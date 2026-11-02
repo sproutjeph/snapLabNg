@@ -269,6 +269,13 @@ export function watchGraphOut(stepKey: string | undefined): boolean {
 /** What the results screen shows, without its buttons. */
 type ResultsView = Omit<ResultsProps, "onAgain" | "onWatch">;
 
+/** The circuit as she has set it: leads by their ends, the key and the plugs. */
+function benchCircuit(bench: OhmsLawBench): string {
+  const v = bench.visual.current;
+  const ends = v.leads.map((l) => (l.a < l.b ? `${l.a}|${l.b}` : `${l.b}|${l.a}`)).sort();
+  return `${ends.join(",")};K${v.keyClosed ? 1 : 0};${v.plugsIn.map((p) => (p ? 1 : 0)).join("")}`;
+}
+
 /** Only results the page shows: before hand-in this is null and nothing of them is drawn. */
 export function ResultsLayer({
   results,
@@ -647,7 +654,13 @@ function LearnScreen({
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
   // Practise: the last wrong lead's correction, shown until her next lead.
-  const [wrongLine, setWrongLine] = useState<string | null>(null);
+  // It is kept with the lead it is about, and goes when that lead is removed.
+  const [wrong, setWrong] = useState<{ line: string; leadId: string } | null>(null);
+  const wrongLine = wrong?.line ?? null;
+  const setWrongLine = useCallback(
+    (line: string | null, leadId = "") => setWrong(line === null ? null : { line, leadId }),
+    [],
+  );
 
   const showResults = useCallback((r: ResultsView) => {
     resultsRef.current = r;
@@ -670,6 +683,8 @@ function LearnScreen({
     setEye(0);
     setDiagramOpen(false);
   }, []);
+  // Phone: the box pose can come close to the resistance box alone, so its plugs can be tapped.
+  const [boxClose, setBoxClose] = useState(false);
   const closeLoupe = useCallback(() => {
     setLoupe(null);
     setReturning(true);
@@ -720,12 +735,18 @@ function LearnScreen({
         // The wrong lead is the one picked for removal: lit, with its Remove chip, one tap away.
         motion.leads.selected = id;
         const said = `${line} ${WRONG_LEAD_TAIL}`;
-        setWrongLine(said);
+        setWrongLine(said, id);
         director.voice.stop();
         director.voice.say(said);
       },
     });
-  }, [practical, paper, bench, director, motion]);
+  }, [practical, paper, bench, director, motion, setWrongLine]);
+  // The correction is about one lead: once that lead is off the bench (removed, undone, reset),
+  // the line goes with it. (An undone removal bringing it back does not bring the line back.)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs it after every bench change.
+  useEffect(() => {
+    if (wrong && !bench.visual.current.leads.some((l) => l.id === wrong.leadId)) setWrong(null);
+  }, [bench, wrong, version]);
 
   // Watch's last beat opens the demonstration's own mark sheet: the actor's record, handed in on
   // the demonstration bench.
@@ -753,6 +774,9 @@ function LearnScreen({
   const handedIn = mode === "exam" && results !== null;
 
   const stepKey = lesson.steps[stepIndex]?.key;
+  // The close-up is for one step at a time: a new step starts from the box and key shot again.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the step key is what resets it.
+  useEffect(() => setBoxClose(false), [stepKey]);
   // The guided demo docks the paper while it reads, then the readings table and the graph; the
   // camera frames the bench in what they leave (shell/dock.ts).
   const dock: GuidedDock | null = !guided
@@ -882,7 +906,18 @@ function LearnScreen({
   const status = watch
     ? nav.stepStatus
     : stepStatuses(lesson, state, results?.sheet ?? null, mode, bench.visual.current.leads.length);
-  const latestNote = practical === "practice" ? bench.notes[bench.notes.length - 1] : undefined;
+  // A bench note is about the circuit she had when it was written: it stays only while the leads,
+  // the key and the plugs are as they were ("The cells are short-circuited" goes once that is fixed).
+  const circuitNow = benchCircuit(bench);
+  const noteFirstSeen = useRef<{ bench: unknown; id: string; circuit: string } | null>(null);
+  const newest = practical === "practice" ? bench.notes[bench.notes.length - 1] : undefined;
+  if (
+    newest &&
+    (noteFirstSeen.current?.bench !== bench || noteFirstSeen.current.id !== newest.id)
+  ) {
+    noteFirstSeen.current = { bench, id: newest.id, circuit: circuitNow };
+  }
+  const latestNote = newest && noteFirstSeen.current?.circuit === circuitNow ? newest : undefined;
   const hint = practical === "practice" && !paper ? (wrongLine ?? latestNote?.text) : undefined;
 
   // Watch shows the demonstration's own notebook and graph, which the actor fills in.
@@ -890,7 +925,9 @@ function LearnScreen({
   const noEdit = useCallback(() => {}, []);
   const pose = watch
     ? watchPose(director.script.beats[director.state.beat], director.state.loupe)
-    : lesson.steps[stepIndex]?.pose;
+    : lesson.steps[stepIndex]?.pose === "box" && boxClose
+      ? "boxClose"
+      : lesson.steps[stepIndex]?.pose;
 
   // ---- The E2E hook's answers for this screen (learn/e2e.ts) ----
   const truth = useMemo(() => benchTruthForE2E(bench), [bench]);
@@ -1152,6 +1189,18 @@ function LearnScreen({
               </button>
             </fieldset>
           )}
+
+          {!watch && !paper && !loupe && !identifying && lesson.steps[stepIndex]?.pose === "box" ? (
+            <button
+              type="button"
+              className="ol-btn ol-boxview"
+              data-testid="box-view"
+              aria-pressed={boxClose}
+              onClick={() => setBoxClose((on) => !on)}
+            >
+              {boxClose ? "Whole bench" : "Box close-up"}
+            </button>
+          ) : null}
 
           {hint && !loupe && (
             <p className="ol-note" role="status" data-testid="hint">

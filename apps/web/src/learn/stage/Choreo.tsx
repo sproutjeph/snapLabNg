@@ -62,6 +62,15 @@ function slotOf(anchor: PartId | TerminalId): DropSlot | null {
   return isDrop(part) ? part : null;
 }
 
+/**
+ * The callout chip for the resistance box stands at the box's front edge on the bench, not over its
+ * middle, where it covered half the plugs (phone, R = 1 Ω and Repeat).
+ */
+const BOX_CHIP_ANCHOR: readonly [number, number, number] = (() => {
+  const b = slotBounds("box", 0);
+  return [(b.x0 + b.x1) / 2, 0, b.z1];
+})();
+
 /** How far up a part's footprint top its tag's dot stands; the box's plugs stand well above its body. */
 const TAG_RISE = 0.8;
 const BOX_TAG_RISE = 2;
@@ -284,8 +293,11 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       if (ok && spec) {
         if (isTerminal(spec.anchor)) ok = registry.worldPosition(spec.anchor, _p);
         else if (slot) {
-          const [x, y, z] = PART_ANCHOR[slot];
-          _p.set(x, y + m.parts[slot].heightM, z);
+          if (slot === "box") _p.set(...BOX_CHIP_ANCHOR);
+          else {
+            const [x, y, z] = PART_ANCHOR[slot];
+            _p.set(x, y + m.parts[slot].heightM, z);
+          }
         } else ok = false;
       }
       if (ok) {

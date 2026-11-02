@@ -56,6 +56,16 @@ export const HIT_MIN_M = 0.02;
 /** Vertical stretch of the target: 4 cm half-height, centred 3 cm up, so it spans -1 to 7 cm. */
 export const HIT_TALL = 2;
 
+/**
+ * A meter's dial, ring and glass carry this, and a nut's tap target yields to them: the targets are
+ * taller and wider than the nuts, so seen from the bench camera they reach up over the lower dial,
+ * and a tap to read the meter would start or finish a lead. A ray that crosses the dial face
+ * passes over its nut, never through it (the nuts stand on the ledge in front, below the dial).
+ */
+export const DIAL_HIT_DATA = { partHit: true } as const;
+export const onDialFace = (e: { intersections: ReadonlyArray<{ object: THREE.Object3D }> }) =>
+  e.intersections.some((i) => i.object.userData.partHit === true);
+
 export type NutCap = NonNullable<TerminalNutProps["cap"]>;
 
 /** The lead colour whose speckled skin each insulating cap shares. */
@@ -363,6 +373,7 @@ export function TerminalNut({
   });
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
+    if (onDialFace(e)) return;
     e.stopPropagation();
     registry.tap(id);
   };
