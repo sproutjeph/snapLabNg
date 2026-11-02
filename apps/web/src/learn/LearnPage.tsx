@@ -25,10 +25,10 @@ import { OHMS_LAW_SCRIPT } from "./lessons/ohms-law/script";
 import { stepStatuses } from "./marking";
 import { PaperSheet, StepCard } from "./paper/GuidedPaper";
 import { createGuidedWatch } from "./paper/guidedReading";
-import { OHMS_LAW_QUESTION } from "./paper/ohmsLawQuestion";
 import { PRINTED, QuestionPaper } from "./paper/QuestionPaper";
 import { IDLE_VIEW, type ReadView } from "./paper/readAloud";
 import { createSentenceTracker } from "./paper/sentenceTracker";
+import { type PaperContext, paperContextFrom } from "./paper/snapContext";
 import { Player } from "./player/Player";
 import { StageChecklist } from "./player/StageChecklist";
 import { MODE_NOTE, playerCovered } from "./player/stages";
@@ -348,7 +348,6 @@ const lesson = OHMS_LAW_LESSON;
 /** What the voice adds after every wrong lead's correction (the user, PR #100). */
 export const WRONG_LEAD_TAIL = "Tap the wire to remove it.";
 const STAGE_TITLES = Object.fromEntries(lesson.steps.map((st) => [st.key, st.title]));
-const CREDIT = creditFromSource(OHMS_LAW_QUESTION.source);
 
 interface Rig {
   bench: ReturnType<typeof createOhmsLawBench>;
@@ -373,6 +372,8 @@ function makeRig(
   live: Live,
   /** The last guided voice's mute, carried from the paper into Watch; null for none. */
   carriedMute: boolean | null = null,
+  /** Which question the paper shows; a snapped one may bring its own guided script. */
+  ctx: PaperContext = paperContextFrom(search),
 ): Rig {
   // Under the paper: her bench, with a Practise director that never plays.
   const practical = run.practical ?? "practice";
@@ -409,7 +410,8 @@ function makeRig(
     record: live.record,
     identified: live.identified,
   });
-  const base = { script: run.guided ? OHMS_LAW_GUIDED_SCRIPT : OHMS_LAW_SCRIPT, voice, benchState };
+  const guidedScript = ctx.watchScript ?? OHMS_LAW_GUIDED_SCRIPT;
+  const base = { script: run.guided ? guidedScript : OHMS_LAW_SCRIPT, voice, benchState };
   const options: DirectorOptions =
     practical === "watch" ? { ...base, mode: "watch", bench } : { ...base, mode: practical, bench };
   const director = createDirector(options);
@@ -466,6 +468,8 @@ function idleE2E(run: Run): SnaplabE2E {
 
 function LearnView() {
   const search = useMemo(() => new URLSearchParams(location.search), []);
+  // Which question the paper shows: the app's, or the one she snapped (?question=snapped).
+  const ctx = useMemo(() => paperContextFrom(search), [search]);
   const [run, setRun] = useState<Run>(() => initialRun(search, readSeed(search)));
   // What the director's checks read: her record and what she identified, as of now.
   const live = useMemo<Live>(
@@ -481,13 +485,13 @@ function LearnView() {
   // The mute the last rig's voice ended with: a guided Watch keeps what she chose on the paper.
   const carriedMute = useRef<boolean | null>(null);
   useEffect(() => {
-    const made = makeRig(search, run, live, carriedMute.current);
+    const made = makeRig(search, run, live, carriedMute.current, ctx);
     setRig(made);
     return () => {
       carriedMute.current = made.director.voice.muted;
       made.director.dispose();
     };
-  }, [search, run, live]);
+  }, [search, run, live, ctx]);
 
   // The E2E hook (?e2e=1 only): one global for the page's life, answering for the screen on show.
   const e2e = useRef<SnaplabE2E>(idleE2E(run));
@@ -525,6 +529,7 @@ function LearnView() {
       rig={rig}
       run={rig.run}
       search={search}
+      ctx={ctx}
       live={rig.live}
       stale={stale}
       onRun={act}
@@ -628,6 +633,7 @@ function LearnScreen({
   rig,
   run,
   search,
+  ctx,
   live,
   stale,
   onRun,
@@ -636,6 +642,7 @@ function LearnScreen({
   rig: Rig;
   run: Run;
   search: URLSearchParams;
+  ctx: PaperContext;
   live: Live;
   /** The rig for the newest run is not ready: this is still the last run's screen. */
   stale: boolean;
@@ -939,7 +946,7 @@ function LearnScreen({
     if (!guidedWatch) return;
     const beats = director.script.beats;
     const tracker = createSentenceTracker({
-      question: OHMS_LAW_QUESTION,
+      question: ctx.watchQuestion,
       rate: () => director.voice.rate,
       onChange: setReadView,
       onItemRead,
@@ -998,7 +1005,7 @@ function LearnScreen({
       tracker.stop();
       if (poll) clearInterval(poll);
     };
-  }, [guidedWatch, director, motion, onItemRead]);
+  }, [guidedWatch, director, motion, onItemRead, ctx.watchQuestion]);
   // Her tap lets the browser speak: the run starts over, the parts drop on their names again.
   const guidedTap = useCallback(() => {
     tapped.current = true;
@@ -1132,7 +1139,7 @@ function LearnScreen({
         readOnlyTabs={practical === "exam" ? undefined : nav.readOnlyTabs}
         tab={tab}
         onTabChange={setTab}
-        status={{ credit: CREDIT, hideCount: practical === "exam" }}
+        status={{ credit: creditFromSource(ctx.question.source), hideCount: practical === "exam" }}
         note={MODE_NOTE[practical]}
         guide={guide}
         onGuideChange={setGuide}
@@ -1152,7 +1159,7 @@ function LearnScreen({
                   step={
                     dock === "paper" ? undefined : (
                       <StepCard
-                        question={OHMS_LAW_QUESTION}
+                        question={ctx.watchQuestion}
                         view={paperView}
                         onSkip={skipReading}
                       />
@@ -1161,10 +1168,12 @@ function LearnScreen({
                 >
                   {dock === "paper" ? (
                     <PaperSheet
-                      question={OHMS_LAW_QUESTION}
+                      question={ctx.watchQuestion}
                       view={paperView}
                       comparison={bench.comparison}
                       onSkip={skipReading}
+                      herDiagram={ctx.photo}
+                      note={ctx.watchNote}
                     />
                   ) : dock === "readings" ? (
                     <ReadingsBoard
@@ -1214,19 +1223,23 @@ function LearnScreen({
         questionSlot={
           paper ? (
             <QuestionPaper
-              question={OHMS_LAW_QUESTION}
+              question={ctx.question}
               voice={paperVoice}
               onItemRead={onItemRead}
               onChoose={choose}
+              herDiagram={ctx.photo}
+              note={ctx.note}
             />
           ) : undefined
         }
         paperSlot={
           paper ? undefined : (
             <PaperSheet
-              question={OHMS_LAW_QUESTION}
+              question={guidedWatch ? ctx.watchQuestion : ctx.question}
               view={guidedWatch ? paperView : IDLE_VIEW}
               comparison={guidedWatch ? bench.comparison : PRINTED}
+              herDiagram={ctx.photo}
+              note={guidedWatch ? ctx.watchNote : ctx.lost ? ctx.note : null}
             />
           )
         }

@@ -51,7 +51,11 @@ export const GUIDED_STAGES = [
   "length",
 ] as const;
 
-const Q = OHMS_LAW_QUESTION.instructions;
+/**
+ * The sentences the script reads: the app's Q3B, or, while `guidedScriptFor` builds, a snapped
+ * question's own words for the same eleven steps. Only that build reassigns it (synchronously).
+ */
+let Q: readonly { text: string }[] = OHMS_LAW_QUESTION.instructions;
 
 /** R as a word, for the voice. */
 const OHM_WORDS: Readonly<Record<number, string>> = {
@@ -687,16 +691,37 @@ export function cardAt(beats: readonly Beat[], i: number): Beat["card"] | null {
   return null;
 }
 
-export const OHMS_LAW_GUIDED_SCRIPT: Script = {
-  lessonId: "ohms_law_vi",
-  shots: OHMS_LAW_SHOTS,
-  beats: [
-    ...identifyBeats(),
-    ...measureBeats(),
-    ...connectBeats(),
-    ...readingBeats(),
-    ...plotBeats(),
-    ...slopeBeats(),
-    ...closingBeats(),
-  ],
-};
+function buildScript(): Script {
+  return {
+    lessonId: "ohms_law_vi",
+    shots: OHMS_LAW_SHOTS,
+    beats: [
+      ...identifyBeats(),
+      ...measureBeats(),
+      ...connectBeats(),
+      ...readingBeats(),
+      ...plotBeats(),
+      ...slopeBeats(),
+      ...closingBeats(),
+    ],
+  };
+}
+
+export const OHMS_LAW_GUIDED_SCRIPT: Script = buildScript();
+
+/**
+ * The same script reading a snapped question's own sentences: `texts[k]` is her words for the
+ * question's step k (all eleven). Every beat, act and value is the app's; only the words read and
+ * the character ranges change. Throws when a clause's phrase ("Tabulate", "against", ...) is not
+ * in her sentence, so the caller can fall back to the app's copy.
+ */
+export function guidedScriptFor(texts: readonly string[]): Script {
+  if (texts.length !== GUIDED_STAGES.length) throw new Error("a sentence is needed for each step");
+  const saved = Q;
+  Q = texts.map((text) => ({ text }));
+  try {
+    return buildScript();
+  } finally {
+    Q = saved;
+  }
+}
