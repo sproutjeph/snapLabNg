@@ -45,8 +45,9 @@ export function guidedConclusionLines(slope: string | null): string[] {
     `The slope s = ΔV/ΔI is the resistance of wire XY: about ${slope ?? "…"} Ω.`,
     "Precautions: the key was opened between readings, and the meters were read with the eye directly above the pointer to avoid parallax.",
     // (b)(ii): A = πd²/4 = 3.143 × 10⁻⁸ m² (d = 0.2 mm, π = 22/7); L = RA/ρ with R = 7 Ω and
-    // ρ = 8.8 × 10⁻⁷ Ω m: 7 × 3.143 × 10⁻⁸ ÷ 8.8 × 10⁻⁷ = 0.25 m.
-    "(b)(ii) L = RA/ρ = 7 × (22/7 × 0.0002²/4) ÷ (8.8 × 10⁻⁷) = 0.25 m.",
+    // ρ = 8.8 × 10⁻⁷ Ω m. Like Watch's LENGTH_CALC it stops before the answer: the expected
+    // result is never shown before hand-in (AGENTS.md).
+    "(b)(ii) L = RA/ρ = (7 × 3.143 × 10⁻⁸) ÷ (8.8 × 10⁻⁷): work out the length yourself.",
   ];
 }
 
@@ -388,8 +389,8 @@ function conclusionBeats(): Beat[] {
     ),
     c(
       "conclude-length",
-      "(b)(ii) L = RA/ρ = (7 × 3.143 × 10⁻⁸)/(8.8 × 10⁻⁷) = 0.25 m.",
-      "Part b two: the length is R A over rho, nought point two five metres.",
+      "(b)(ii) L = RA/ρ = (7 × 3.143 × 10⁻⁸) ÷ (8.8 × 10⁻⁷). Work out L yourself.",
+      "Part b two: the length is R A over rho. Work it out yourself.",
     ),
   ];
 }

@@ -105,7 +105,8 @@ describe("a browser that refuses speech until a tap", () => {
     expect(readingRefused(40, { ...audible, tapped: true })).toBe(false);
   });
 
-  it("asks for a tap when the voice has not been heard within about 1.2 s", () => {
+  it("asks for a tap when the voice has not been heard within about 2.5 s (a cold or network voice may take a moment)", () => {
+    expect(SPEECH_START_WAIT_MS).toBeGreaterThanOrEqual(2500);
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS - 100, false, audible)).toBe(false);
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS, false, audible)).toBe(true);
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS, true, audible)).toBe(false);

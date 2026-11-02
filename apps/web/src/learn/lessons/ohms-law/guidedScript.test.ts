@@ -160,16 +160,29 @@ describe("the guided script's shape", () => {
     expect(tail[1]?.say).toMatch(/Ohm's law/);
     expect(tail[2]?.say).toContain("{slope}");
     expect(tail[3]?.say).toMatch(/parallax/);
-    expect(tail[4]?.say).toMatch(/0\.25 m/);
+    expect(tail[4]?.say).toMatch(/L = RA\/ρ = \(7 × 3\.143 × 10⁻⁸\) ÷ \(8\.8 × 10⁻⁷\)/);
     // The separate precautions, law and length stages of Watch are gone.
     expect(G.beats.some((b) => b.stage === "precautions" || b.stage === "length")).toBe(false);
+  });
+
+  it("never shows or says the (b)(ii) answer: the expected result is not shown before hand-in", () => {
+    // Mirrors script.test.ts: Watch's record carries the method and never "0.25".
+    for (const b of G.beats) {
+      for (const text of [b.say, b.spoken ?? ""]) {
+        expect(text, b.id).not.toContain("0.25");
+        expect(text, b.id).not.toMatch(/nought point two five|zero point two five/i);
+      }
+    }
+    for (const line of guidedConclusionLines("3.00")) expect(line).not.toContain("0.25");
   });
 
   it("gives the end panel the five lines, the slope as the demonstration wrote it", () => {
     const lines = guidedConclusionLines("3.00");
     expect(lines).toHaveLength(5);
     expect(lines[2]).toBe("The slope s = ΔV/ΔI is the resistance of wire XY: about 3.00 Ω.");
-    expect(lines[4]).toBe("(b)(ii) L = RA/ρ = 7 × (22/7 × 0.0002²/4) ÷ (8.8 × 10⁻⁷) = 0.25 m.");
+    expect(lines[4]).toBe(
+      "(b)(ii) L = RA/ρ = (7 × 3.143 × 10⁻⁸) ÷ (8.8 × 10⁻⁷): work out the length yourself.",
+    );
   });
 });
 

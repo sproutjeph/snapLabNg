@@ -3,7 +3,7 @@
 // one, so the paper asks for a tap instead of going on to Watch with the question unread.
 
 /** How long the voice gets to start before the paper asks for a tap. */
-export const SPEECH_START_WAIT_MS = 1200;
+export const SPEECH_START_WAIT_MS = 2500;
 /** A whole reading that is audible and ends sooner than this was refused, not read. */
 export const MIN_READING_MS = 3000;
 

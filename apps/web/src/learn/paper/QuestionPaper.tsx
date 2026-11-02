@@ -145,32 +145,40 @@ export function QuestionPaper({
     reader.start();
   }, [reader]);
 
-  // Guided: read at once. If the voice has not started within a moment, ask for a tap.
+  // Guided: read at once. If the voice has not been heard within a moment, ask for a tap. The
+  // reader is left running (a cold or network voice may yet start); the prompt goes away if it
+  // does, and only the tap restarts the reading.
   useEffect(() => {
     if (!isGuided) return;
     startReading();
     if (voice.muted || !canSpeak()) return;
     const t0 = performance.now();
     let heard = false;
+    let offered = false;
     const id = setInterval(() => {
-      if (window.speechSynthesis.speaking) heard = true;
       const waited = performance.now() - t0;
-      const facts = { muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current };
-      if (voiceNeverStarted(waited, heard, facts)) {
-        clearInterval(id);
-        reader.stop();
-        setNeedsTap(true);
-      } else if (waited >= 1500) {
-        clearInterval(id);
+      if (window.speechSynthesis.speaking) {
+        heard = true;
+        if (offered) {
+          offered = false;
+          setNeedsTap(false);
+        }
       }
+      const facts = { muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current };
+      if (!offered && voiceNeverStarted(waited, heard, facts)) {
+        offered = true;
+        setNeedsTap(true);
+      }
+      if (waited >= 10000) clearInterval(id);
     }, 100);
     return () => clearInterval(id);
-  }, [isGuided, reader, voice, startReading]);
+  }, [isGuided, voice, startReading]);
 
   const tapToStart = () => {
     tapped.current = true;
     setNeedsTap(false);
-    // Inside the tap, so the browser lets this speech through.
+    // Inside the tap, so the browser lets this speech through; the old reading is cut first.
+    reader.stop();
     startReading();
   };
 

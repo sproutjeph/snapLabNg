@@ -8,6 +8,7 @@ import {
   initialRun,
   nextRun,
   paperFirst,
+  persistMute,
   practicalFrom,
   ResultsLayer,
   type Run,
@@ -212,5 +213,48 @@ describe("the guided demo's flow (?mode=guided)", () => {
       },
     });
     expect(homeMuted()).toBe(false);
+  });
+
+  const fakeVoice = () => {
+    let muted = false;
+    return {
+      say() {},
+      stop() {},
+      speaking: false,
+      rate: 1,
+      get muted() {
+        return muted;
+      },
+      set muted(m: boolean) {
+        muted = m;
+      },
+    };
+  };
+
+  it("writes a mute change to snaplab.muted, so the home page and the practical agree", () => {
+    const written: string[] = [];
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: (_k: string, v: string) => written.push(v),
+    });
+    const voice = fakeVoice();
+    persistMute(voice);
+    voice.muted = true;
+    voice.muted = false;
+    expect(written).toEqual(["1", "0"]);
+    expect(voice.muted).toBe(false);
+  });
+
+  it("keeps working when storage refuses the write", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    });
+    const voice = fakeVoice();
+    persistMute(voice);
+    voice.muted = true;
+    expect(voice.muted).toBe(true);
   });
 });

@@ -312,7 +312,13 @@ interface Live {
   identified: ReadonlySet<PartId>;
 }
 
-function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
+function makeRig(
+  search: URLSearchParams,
+  run: Run,
+  live: Live,
+  /** The last guided voice's mute, carried from the paper into Watch; null for none. */
+  carriedMute: boolean | null = null,
+): Rig {
   // Under the paper: her bench, with a Practise director that never plays.
   const practical = run.practical ?? "practice";
   const first = run.n === 0;
@@ -337,7 +343,10 @@ function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
   const voice = createVoice();
   // E2E runs are silent: the voice keeps its estimated durations (learn/voice/createVoice.ts).
   // The guided demo also keeps the mute she chose on the home page.
-  voice.muted = search.get("mute") === "1" || e2eOn(search) || (run.guided && homeMuted());
+  voice.muted =
+    search.get("mute") === "1" || e2eOn(search) || (run.guided && (carriedMute ?? homeMuted()));
+  // Guided: a mute or unmute anywhere (the paper, the player) is kept for the home page too.
+  if (run.guided) persistMute(voice);
   const benchState = (): BenchState => ({
     comparison: bench.comparison,
     keyClosed: bench.visual.current.keyClosed,
@@ -404,10 +413,15 @@ function LearnView() {
   // Made in an effect and torn down on unmount (StrictMode runs it twice: the first rig is
   // disposed, the second is the one on screen). Each run makes a new one.
   const [rig, setRig] = useState<Rig | null>(null);
+  // The mute the last rig's voice ended with: a guided Watch keeps what she chose on the paper.
+  const carriedMute = useRef<boolean | null>(null);
   useEffect(() => {
-    const made = makeRig(search, run, live);
+    const made = makeRig(search, run, live, carriedMute.current);
     setRig(made);
-    return () => made.director.dispose();
+    return () => {
+      carriedMute.current = made.director.voice.muted;
+      made.director.dispose();
+    };
   }, [search, run, live]);
 
   // The E2E hook (?e2e=1 only): one global for the page's life, answering for the screen on show.
@@ -462,6 +476,32 @@ export function homeMuted(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Writes the home page's mute key (localStorage `snaplab.muted`), so the page and the practical agree. */
+export function writeHomeMuted(muted: boolean): void {
+  try {
+    localStorage.setItem("snaplab.muted", muted ? "1" : "0");
+  } catch {
+    // Storage blocked: the mute still holds for this page.
+  }
+}
+
+/** Makes every change of `voice.muted` also write the home page's key. */
+export function persistMute(voice: VoiceGuide): void {
+  const d = Object.getOwnPropertyDescriptor(voice, "muted");
+  const get = d?.get;
+  const set = d?.set;
+  if (!get || !set) return;
+  Object.defineProperty(voice, "muted", {
+    configurable: true,
+    enumerable: true,
+    get: () => get.call(voice) as boolean,
+    set: (m: boolean) => {
+      set.call(voice, m);
+      writeHomeMuted(m);
+    },
+  });
 }
 
 /** Whether a reading aloud will be heard: speech exists and the voice is not muted. */
