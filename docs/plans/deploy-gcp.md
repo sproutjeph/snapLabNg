@@ -70,3 +70,15 @@ unset; the WS origin check. The four checks and the five E2E scripts pass unchan
 ## Done when
 The judges' URL loads the site from Firebase Hosting, every mode runs, a snapped question is read live, the examiner
 voice works, `/healthz` reports `mode: live`, the key is only in Secret Manager, and the ledger survives a redeploy.
+
+## Progress
+- Nov 2: live. Site https://snaplab-ng-2026.web.app (Firebase Hosting); API https://snaplab-api-595375763343.us-east1.run.app
+  (Cloud Run `snaplab-api`, project `snaplab-ng-2026`, `MODE=live`, one instance, ledger at
+  `gs://snaplab-ng-2026-data/ledger.json`). The organisation blocks `allUsers`, so the service runs with
+  `--no-invoker-iam-check` (set by the user). CORS allows only the two Hosting origins. Walked in Chrome: home,
+  Snap your question → Try a sample read live (~13 s) → Build the bench → guided Watch.
+- Cloud Run's front end answers `/healthz` itself (404), so the container's health route is not reachable there; nothing
+  in the site uses it.
+- Redeploy: API `gcloud run deploy snaplab-api --source . --project snaplab-ng-2026 --region us-east1` (keeps env, secret
+  and volume); site `VITE_API_ORIGIN=https://snaplab-api-595375763343.us-east1.run.app bun run build` then
+  `firebase deploy --only hosting --project snaplab-ng-2026`.
