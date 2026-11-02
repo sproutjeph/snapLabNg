@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { VoiceGuide } from "../voice/types";
 import {
+  benchHeld,
   MIN_READING_MS,
   readingRefused,
   SPEECH_START_WAIT_MS,
@@ -111,5 +112,20 @@ describe("a browser that refuses speech until a tap", () => {
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS, false, audible)).toBe(true);
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS, true, audible)).toBe(false);
     expect(voiceNeverStarted(SPEECH_START_WAIT_MS, false, { ...audible, muted: true })).toBe(false);
+  });
+});
+
+describe("the bench while the guided reading waits to be heard", () => {
+  const facts = { muted: false, speechAvailable: true, tapped: false };
+
+  it("stays empty until the voice is heard, so a refused reading drops nothing", () => {
+    expect(benchHeld(false, facts)).toBe(true);
+    expect(benchHeld(true, facts)).toBe(false);
+  });
+
+  it("never waits when muted, without speech, or once she has tapped to start", () => {
+    expect(benchHeld(false, { ...facts, muted: true })).toBe(false);
+    expect(benchHeld(false, { ...facts, speechAvailable: false })).toBe(false);
+    expect(benchHeld(false, { ...facts, tapped: true })).toBe(false);
   });
 });

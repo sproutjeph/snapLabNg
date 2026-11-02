@@ -28,3 +28,11 @@ export function readingRefused(elapsedMs: number, f: ReadingFacts): boolean {
 export function voiceNeverStarted(waitedMs: number, heard: boolean, f: ReadingFacts): boolean {
   return !f.tapped && !f.muted && f.speechAvailable && !heard && waitedMs >= SPEECH_START_WAIT_MS;
 }
+
+/**
+ * Whether the bench stays empty while the guided reading waits to be heard: a reading the browser
+ * may yet refuse must not drop the parts (they drop on their names once she taps to start).
+ */
+export function benchHeld(heard: boolean, f: ReadingFacts): boolean {
+  return !f.tapped && !f.muted && f.speechAvailable && !heard;
+}

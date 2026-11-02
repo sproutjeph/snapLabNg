@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { CircuitDiagram } from "../wiring/CircuitDiagram";
 import "./desk.css";
 import "./paper.css";
-import { readingRefused, voiceNeverStarted } from "./guidedReading";
+import { benchHeld, readingRefused, voiceNeverStarted } from "./guidedReading";
 import { createReadAloud, IDLE_VIEW, type ReadView } from "./readAloud";
 import type { QuestionPaperProps } from "./types";
 
@@ -151,6 +151,9 @@ export function QuestionPaper({
   useEffect(() => {
     if (!isGuided) return;
     startReading();
+    const start = { muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current };
+    // Until the voice is heard, the bench stays empty: a refused reading must not drop the parts.
+    if (benchHeld(false, start)) guidedRef.current?.onHold?.(true);
     if (voice.muted || !canSpeak()) return;
     const t0 = performance.now();
     let heard = false;
@@ -158,6 +161,7 @@ export function QuestionPaper({
     const id = setInterval(() => {
       const waited = performance.now() - t0;
       if (window.speechSynthesis.speaking) {
+        if (!heard) guidedRef.current?.onHold?.(false);
         heard = true;
         if (offered) {
           offered = false;
@@ -177,8 +181,10 @@ export function QuestionPaper({
   const tapToStart = () => {
     tapped.current = true;
     setNeedsTap(false);
-    // Inside the tap, so the browser lets this speech through; the old reading is cut first.
+    // Inside the tap, so the browser lets this speech through; the old reading is cut first, and
+    // the parts go back up to drop on their names as the new reading says them.
     reader.stop();
+    guidedRef.current?.onRestart?.();
     startReading();
   };
 

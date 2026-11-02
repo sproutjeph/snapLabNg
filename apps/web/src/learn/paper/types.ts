@@ -26,5 +26,14 @@ export interface QuestionPaperProps {
    * Guided Watch (?mode=guided): the reading starts at once, the mode choices give way to Skip,
    * and the page goes on when the reading ends or she skips. Without it the paper is as before.
    */
-  guided?: { onDone(): void; onSkip(): void } | undefined;
+  guided?:
+    | {
+        onDone(): void;
+        onSkip(): void;
+        /** Keep the bench empty (true) while the reading waits to be heard, or let it fill (false). */
+        onHold?(held: boolean): void;
+        /** She tapped to start: the reading starts over, so the parts go back up to drop again. */
+        onRestart?(): void;
+      }
+    | undefined;
 }

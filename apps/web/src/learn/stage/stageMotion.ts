@@ -119,6 +119,11 @@ export interface Entrance {
   t: number;
   /** A reading aloud is naming the parts: a part not named yet waits above the bench. */
   byVoice: boolean;
+  /**
+   * Guided: the reading has not been heard yet (the browser may be refusing speech until a tap):
+   * every part and lead waits above the bench, and nothing drops, not even on the timed drop.
+   */
+  held: boolean;
   /** Entrance seconds at which each part was named. */
   namedAtS: Partial<Record<DropSlot, number>>;
   /** Entrance seconds at which the leads ("connecting wires") were named, or null. */
@@ -142,6 +147,7 @@ export function createEntrance(): Entrance {
     on: false,
     t: 0,
     byVoice: false,
+    held: false,
     namedAtS: {},
     leadsNamedAtS: null,
     timedFromS: 0,
@@ -154,6 +160,27 @@ export function createEntrance(): Entrance {
 export function entranceReading(e: Entrance, audible: boolean): void {
   if (!e.on) return;
   e.byVoice = audible;
+}
+
+/** Holds the bench empty (true), or lets it fill again from now (false). */
+export function entranceHold(e: Entrance, held: boolean): void {
+  if (!e.on || e.held === held) return;
+  e.held = held;
+  if (!held) e.timedFromS = e.t;
+}
+
+/**
+ * The reading starts over (her tap after speech was refused): every part and lead goes back up
+ * and the hold ends, so each drops again as the new reading names it.
+ */
+export function entranceReset(e: Entrance): void {
+  if (!e.on) return;
+  e.held = false;
+  e.namedAtS = {};
+  e.leadsNamedAtS = null;
+  e.partsDownS = null;
+  e.timedFromS = e.t;
+  e.landed = false;
 }
 
 /** The reading stopped: the parts not named yet drop on the timed drop, from now. */
@@ -193,6 +220,18 @@ export function entranceFrame(
   leads: readonly DropPose[] = [],
 ): boolean {
   e.t += dtS;
+  if (e.held) {
+    for (const slot of order) {
+      parts[slot].heightM = DROP_HEIGHT_M;
+      parts[slot].k = 0;
+    }
+    for (const pose of leads) {
+      pose.heightM = DROP_HEIGHT_M;
+      pose.k = 0;
+    }
+    e.landed = false;
+    return false;
+  }
   let dropping = false;
   let down = 0;
   for (let i = 0; i < order.length; i++) {

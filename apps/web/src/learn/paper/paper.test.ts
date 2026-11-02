@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LEAD_REST } from "../../apparatus/ohms-law/layout";
 import { OHMS_LAW_LESSON } from "../lessons/ohms-law/lesson";
+import type { DropPose } from "../stage/motion";
+import { entranceOrder } from "../stage/motion";
+import {
+  createEntrance,
+  DROP_SLOTS,
+  entranceFrame,
+  entranceHold,
+  entranceNamed,
+  entranceReading,
+  entranceReset,
+  entranceStopped,
+} from "../stage/stageMotion";
 import type { PartId } from "../types";
 import { createVoice } from "../voice/createVoice";
 import type { VoiceGuide } from "../voice/types";
@@ -342,5 +355,61 @@ describe("Read it to me: each part drops as its own name is said", () => {
     said[0]?.onWord?.(SENTENCE_1.indexOf("wires"));
     vi.advanceTimersByTime(20000);
     expect(items.filter((p) => p === "leads")).toEqual(["leads"]);
+  });
+});
+
+describe("guided paper: a refused reading drops nothing until she taps", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("keeps the bench empty while speech is refused, then drops each part on its name after the tap", () => {
+    const { voice, said } = fakeVoice();
+    const e = createEntrance();
+    e.on = true;
+    const parts = Object.fromEntries(DROP_SLOTS.map((s) => [s, { heightM: 0, k: 0 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      DropPose
+    >;
+    const leads: DropPose[] = LEAD_REST.map(() => ({ heightM: 0, k: 0 }));
+    const order = entranceOrder(DROP_SLOTS);
+    const frames = (s: number) => {
+      for (let i = 0; i < Math.round(s * 60); i++) entranceFrame(e, order, 1 / 60, parts, leads);
+    };
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => entranceNamed(e, p),
+    });
+    // The guided paper opens: the reading starts, not heard yet, so the bench is held.
+    entranceReading(e, true);
+    entranceHold(e, true);
+    reader.start();
+    // The browser refuses: every sentence ends at once, naming every part, and the reading stops.
+    for (const s of [...said]) s.onEnd?.();
+    entranceStopped(e);
+    frames(5);
+    expect(DROP_SLOTS.every((s) => parts[s].k === 0)).toBe(true);
+    expect(leads.every((l) => l.k === 0)).toBe(true);
+
+    // Her tap: the reading starts over and the parts drop as it names them.
+    said.length = 0;
+    reader.stop();
+    entranceReset(e);
+    entranceReading(e, true);
+    reader.start();
+    frames(1);
+    expect(DROP_SLOTS.every((s) => parts[s].k === 0)).toBe(true);
+    const s1 = OHMS_LAW_QUESTION.instructions[0]?.text ?? "";
+    said[0]?.onWord?.(s1.indexOf("an ammeter"));
+    frames(1);
+    expect(parts.ammeter.k).toBe(1);
+    expect(DROP_SLOTS.filter((s) => parts[s].k > 0)).toEqual(["ammeter"]);
+    expect(leads.every((l) => l.k === 0)).toBe(true);
+    said[0]?.onWord?.(s1.indexOf("connecting wires"));
+    frames(3);
+    expect(leads.every((l) => l.k === 1)).toBe(true);
+    expect(parts.key.k).toBe(0);
+    expect(parts.wire.k).toBe(0);
   });
 });
