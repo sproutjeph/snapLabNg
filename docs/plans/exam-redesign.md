@@ -12,7 +12,7 @@ Inputs:
 - [x] Decisions D1–D3 answered: D1 demo bench plus reveal after hand-in (21 marks, with the engine as supervisor); D2 Muse Image targets (≤ 12 images, ≤ ₦170); D3 viva as a COULD
 - [x] Design targets: 9 Muse Image targets in `docs/design/exam-redesign/` ($0.12); **direction approved by the user on Oct 29** (cream graph-paper desk, blue-black ink #1d2430, wood, brass and bakelite). Best references: `golden-frame`, `watch-mode`, `materials-closeup`. `metre-bridge` is weak (a knife-like jockey, screws instead of plugs), so W2-hero must not copy those parts.
 - [x] Wave 0: seams and contracts (lead) merged (`claude/exam-seams`: science PASS ×2, verifier green, code review SHIP after one fix round)
-- [x] Wave 1: paper and picker (#79), director and voice (#80), apparatus v2 (#81), look (#82) merged; **golden frame approved by the user** on Oct 29 with three tweaks, then re-checked in real Chrome beside BC101 after the anti-aliasing fix (renders: `docs/design/exam-redesign/golden-render-{phone,laptop}.jpg`)
+- [x] Wave 1: paper and picker (#79), director and voice (#80), apparatus v2 (#81), look (#82) merged; **golden frame approved by the user** on Oct 29 with three tweaks, then re-checked in real Chrome beside BC101 after the anti-aliasing fix (the renders were pruned on Nov 2; they are in git history)
 - [x] Wave 1b (Oct 30): the asset pass (`docs/plans/asset-pass.md`) and the Backcountry page layout (see "Page layout" below), run in parallel at max effort (the user opted in to ultracode)
 - [ ] Wave 2: Watch script, guided Practise, callouts and motion, hero look merged
 - [x] Integration (Oct 30, `docs/plans/integration.md`): the practical page end to end (#105), E2E green on main (#107)
