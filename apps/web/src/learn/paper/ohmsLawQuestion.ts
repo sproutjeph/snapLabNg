@@ -9,16 +9,17 @@ export const OHMS_LAW_QUESTION: PracticalQuestion = {
   source: "WASSCE (SC) 2018, Physics Paper 3, Question 3B",
   title: "Ohm's law (V–I)",
   // Each text must appear word for word in an instruction; the first place it appears is where the
-  // voice names it, and that is when the item lands on the bench. The plug key and the wire are
-  // named by the paper only as "other necessary materials" and "the resistance wire".
+  // voice names it, and that is when the item lands on the bench. The wire XY on its metre rule
+  // lands at "XY" (instruction 2, just before "the resistance wire"), the plug key at "key K"
+  // (instruction 4), the first place the paper names each.
   apparatus: [
     { part: "ammeter", text: "an ammeter" },
     { part: "voltmeter", text: "a voltmeter" },
     { part: "box", text: "a resistance box" },
     { part: "leads", text: "connecting wires" },
     { part: "cells", text: "dry cells" },
-    { part: "key", text: "other necessary materials" },
-    { part: "wire", text: "the resistance wire" },
+    { part: "wire", text: "XY" },
+    { part: "key", text: "key K" },
   ],
   instructions: [
     {

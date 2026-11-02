@@ -121,6 +121,8 @@ export interface Entrance {
   byVoice: boolean;
   /** Entrance seconds at which each part was named. */
   namedAtS: Partial<Record<DropSlot, number>>;
+  /** Entrance seconds at which the leads ("connecting wires") were named, or null. */
+  leadsNamedAtS: number | null;
   /** Entrance seconds the timed drop counts from (a stopped reading restarts it). */
   timedFromS: number;
   /** Entrance seconds at which the last part landed (the leads drop after it), or null. */
@@ -141,6 +143,7 @@ export function createEntrance(): Entrance {
     t: 0,
     byVoice: false,
     namedAtS: {},
+    leadsNamedAtS: null,
     timedFromS: 0,
     partsDownS: null,
     landed: false,
@@ -160,16 +163,26 @@ export function entranceStopped(e: Entrance): void {
   e.timedFromS = e.t;
 }
 
-/** The reader named `part`: it drops now (once). Returns whether it starts a drop. */
+/**
+ * The reader named `part`: it drops now (once). "leads" starts the seven leads dropping one by one,
+ * whether or not every part is down yet. Returns whether it starts a drop.
+ */
 export function entranceNamed(e: Entrance, part: string): boolean {
-  if (!e.on || !e.byVoice || !isDropSlot(part) || e.namedAtS[part] !== undefined) return false;
+  if (!e.on || !e.byVoice) return false;
+  if (part === "leads") {
+    if (e.leadsNamedAtS !== null) return false;
+    e.leadsNamedAtS = e.t;
+    return true;
+  }
+  if (!isDropSlot(part) || e.namedAtS[part] !== undefined) return false;
   e.namedAtS[part] = e.t;
   return true;
 }
 
 /**
- * One frame of the entrance: advances its clock by `dtS` and writes each part's drop, then, once
- * every part is down, each lead's into its rest place, one by one (`leads`, when given). `order` is
+ * One frame of the entrance: advances its clock by `dtS` and writes each part's drop, then each
+ * lead's into its rest place, one by one (`leads`, when given): from the moment the reader named
+ * them, or, when they were never named, once every part is down. `order` is
  * the timed drop's order (lowest on screen first). Returns whether a part or lead is mid-drop.
  */
 export function entranceFrame(
@@ -200,10 +213,15 @@ export function entranceFrame(
   for (let j = 0; j < leads.length; j++) {
     const pose = leads[j];
     if (!pose) continue;
-    if (e.partsDownS === null) {
+    if (e.leadsNamedAtS !== null) dropFrom(e.t, e.leadsNamedAtS + j * LEAD_DROP_STAGGER_S, pose);
+    else if (e.byVoice || e.partsDownS === null) {
       pose.heightM = DROP_HEIGHT_M;
       pose.k = 0;
-    } else dropFrom(e.t, e.partsDownS + LEAD_DROP_GAP_S + j * LEAD_DROP_STAGGER_S, pose);
+    } else {
+      // Never named: after the last part (or, after a stopped reading, from the timed drop's start).
+      const from = Math.max(e.partsDownS, e.timedFromS);
+      dropFrom(e.t, from + LEAD_DROP_GAP_S + j * LEAD_DROP_STAGGER_S, pose);
+    }
     if (pose.k > 0 && pose.k < 1) dropping = true;
     if (pose.k >= 1) leadsDown++;
   }

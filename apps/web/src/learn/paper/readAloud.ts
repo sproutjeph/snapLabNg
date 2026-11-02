@@ -1,12 +1,16 @@
 import type { PartId } from "../types";
+import { WORDS_PER_S } from "../voice/chunk";
 import type { VoiceGuide } from "../voice/types";
 import type { PracticalQuestion } from "./types";
 
 // "Read it to me": the question read aloud, one utterance per instruction. A pure controller (no
 // DOM), so it is tested with a fake voice. It reports which instruction and which word the voice
 // is on, and when it names each apparatus item, so the stage can land the item on the bench.
-// Where the browser gives no word events (iOS) or the voice is muted, an estimated clock drives
-// the same highlight by sentence, so the entrance still plays and a beat never waits on `onend`.
+// Each item is named at its own character offset in the spoken text. Word events are not to be
+// trusted alone: iOS and Chrome's network voices send few or none, and some arrive late. So each
+// name is also scheduled from the voice's last known place (the utterance's start, or the last
+// word event) at the estimated speech pace, and whichever comes first, the word event or the
+// estimate, names it; every word event moves the estimates on from where the voice really is.
 
 /** The words the browser would mis-say, with what to say instead. Longest first. */
 const SPOKEN: ReadonlyArray<readonly [string, string]> = [
@@ -88,11 +92,16 @@ export interface ReadView {
 
 export const IDLE_VIEW: ReadView = { instr: null, word: null, naming: null, reading: false };
 
-/** Speech runs at about 14 characters a second at rate 1. */
-export const CHARS_PER_SECOND = 14;
-/** How long to wait for a word event before the estimated clock takes over. */
-export const WORD_EVENT_WAIT_MS = 1500;
-const TICK_MS = 120;
+/** The number of words in `spoken` from index `from` up to (not including) index `to`. */
+function wordsBetween(spoken: string, from: number, to: number): number {
+  if (to <= from) return 0;
+  return spoken.slice(from, to).split(/\s+/).filter(Boolean).length;
+}
+
+/** Milliseconds the voice takes to say `words` words at `rate` (voice/chunk.ts's pace). */
+function wordsMs(words: number, rate: number): number {
+  return (words / (WORDS_PER_S * Math.max(rate, 0.1))) * 1000;
+}
 
 export interface ReadAloud {
   start(): void;
@@ -113,21 +122,26 @@ export interface ReadAloudOptions {
 export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
   const { question, voice } = opts;
   const triggers = itemTriggers(question);
+  const spokenOf = question.instructions.map((ins) => toSpoken(ins.text));
+  /** Where each trigger's name begins in its instruction's spoken text. */
+  const spokenAt = triggers.map((t) => {
+    const from = spokenOf[t.instr]?.from ?? [];
+    const k = from.findIndex((f) => f >= t.at);
+    return k < 0 ? from.length : k;
+  });
   let gen = 0;
   let view: ReadView = IDLE_VIEW;
   let fired = new Set<PartId>();
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let wait: ReturnType<typeof setTimeout> | null = null;
+  /** The estimated namings still to come for the instruction being read. */
+  let estimates: ReturnType<typeof setTimeout>[] = [];
 
   const set = (next: ReadView) => {
     view = next;
     opts.onChange(next);
   };
   const clearClocks = () => {
-    if (timer !== null) clearInterval(timer);
-    if (wait !== null) clearTimeout(wait);
-    timer = null;
-    wait = null;
+    for (const id of estimates) clearTimeout(id);
+    estimates = [];
   };
   /** Fires every item of instruction `i` named at or before character `upTo`. */
   const reach = (i: number, upTo: number): PartId | null => {
@@ -141,23 +155,29 @@ export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
     }
     return last;
   };
+  /**
+   * The voice is at spoken index `from` of instruction `i` now: schedule each name still to come
+   * at the estimated pace from here, replacing the estimates made from an earlier place.
+   */
+  const estimateFrom = (i: number, from: number, g: number) => {
+    clearClocks();
+    const spoken = spokenOf[i]?.spoken ?? "";
+    triggers.forEach((t, k) => {
+      if (t.instr !== i || fired.has(t.part)) return;
+      const ms = wordsMs(wordsBetween(spoken, from, spokenAt[k] ?? 0), voice.rate);
+      estimates.push(
+        setTimeout(() => {
+          if (g !== gen || view.instr !== i) return;
+          const named = reach(i, t.at);
+          if (named) set({ ...view, naming: named });
+        }, ms),
+      );
+    });
+  };
 
   const begin = (i: number, g: number) => {
-    clearClocks();
-    const text = question.instructions[i]?.text ?? "";
     set({ instr: i, word: null, naming: view.naming, reading: true });
-    // No word event soon: estimate the position by the clock, sentence by sentence.
-    wait = setTimeout(() => {
-      if (g !== gen || view.instr !== i || view.word !== null) return;
-      // The wait has already passed in silence: start the clock where the voice should be by now.
-      let at = (WORD_EVENT_WAIT_MS / 1000) * CHARS_PER_SECOND * voice.rate;
-      timer = setInterval(() => {
-        if (g !== gen) return;
-        at += ((CHARS_PER_SECOND * voice.rate) / 1000) * TICK_MS;
-        const named = reach(i, Math.min(at, text.length));
-        if (named) set({ ...view, naming: named });
-      }, TICK_MS);
-    }, WORD_EVENT_WAIT_MS);
+    estimateFrom(i, 0, g);
   };
 
   return {
@@ -176,10 +196,11 @@ export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
         voice.say(spoken, {
           onWord(ci) {
             if (g !== gen) return;
-            const at = from[Math.min(Math.max(ci, 0), from.length - 1)] ?? 0;
-            // Word events are real: the estimated clock is not needed.
-            clearClocks();
+            const si = Math.min(Math.max(ci, 0), from.length - 1);
+            const at = from[si] ?? 0;
             const named = reach(i, at);
+            // The voice is here now: the names still to come are estimated from this place.
+            estimateFrom(i, si, g);
             set({
               instr: i,
               word: wordAt(ins.text, at),

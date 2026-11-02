@@ -43,6 +43,7 @@ import {
   fullEntranceEndS,
   inOutCubic,
   LEAD_DRAW_S,
+  LEAD_DROP_STAGGER_S,
   leadBeatS,
   leadDropStartS,
   MAX_TWEEN_S,
@@ -52,7 +53,15 @@ import {
   springStep,
 } from "./motion";
 import { BENCH_DRAG_DEG, BENCH_SHOT, spanAtAzimuth } from "./shots";
-import { chipSpecAt, createEntrance, DROP_SLOTS, entranceFrame, stageBusy } from "./stageMotion";
+import {
+  chipSpecAt,
+  createEntrance,
+  DROP_SLOTS,
+  entranceFrame,
+  entranceNamed,
+  entranceStopped,
+  stageBusy,
+} from "./stageMotion";
 
 // Watch and Practise motion on the live stage (docs/plans/wave-2-lean.md, 2b-motion). No textbook
 // source: BC101's measured pace ("What we learned" 3) and screen choices, not science.
@@ -149,6 +158,56 @@ describe("the leads' entrance and the plug's tap (docs/plans/beauty-pass.md B2)"
     }
     for (let i = 0; i < 60 * 8; i++) entranceFrame(e, order, 1 / 60, parts, leads);
     expect(leads.every((l) => l.k === 1)).toBe(true);
+    expect(e.landed).toBe(true);
+  });
+
+  it("under a reading aloud, the leads drop one by one when 'connecting wires' is said, before the parts are down", () => {
+    const e = createEntrance();
+    e.on = true;
+    e.byVoice = true;
+    const parts = Object.fromEntries(DROP_SLOTS.map((s) => [s, { heightM: 0, k: 0 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      DropPose
+    >;
+    const leads: DropPose[] = LEAD_REST.map(() => ({ heightM: 0, k: 0 }));
+    const order = entranceOrder(DROP_SLOTS);
+    const run = (s: number) => {
+      for (let i = 0; i < Math.round(s * 60); i++) entranceFrame(e, order, 1 / 60, parts, leads);
+    };
+    run(1);
+    expect(leads.every((l) => l.k === 0)).toBe(true);
+    expect(entranceNamed(e, "leads")).toBe(true);
+    expect(entranceNamed(e, "leads")).toBe(false);
+    // Lead j leaves the sky LEAD_DROP_STAGGER_S after lead j - 1: half-way through, the first is
+    // down and the last is still in the sky; no part has been named, so none has dropped.
+    run(LEAD_DROP_STAGGER_S * 3 + 0.4);
+    expect(leads[0]?.k).toBe(1);
+    expect(leads.at(-1)?.k).toBe(0);
+    const ks = leads.map((l) => l.k);
+    for (let j = 1; j < ks.length; j++) expect(ks[j] ?? 0).toBeLessThanOrEqual(ks[j - 1] ?? 0);
+    expect(DROP_SLOTS.every((s) => parts[s].k === 0)).toBe(true);
+    run(2);
+    expect(leads.every((l) => l.k === 1)).toBe(true);
+  });
+
+  it("muted or stopped, the leads keep the timed drop after the parts", () => {
+    const e = createEntrance();
+    e.on = true;
+    e.byVoice = false;
+    expect(entranceNamed(e, "leads")).toBe(false);
+    e.byVoice = true;
+    const parts = Object.fromEntries(DROP_SLOTS.map((s) => [s, { heightM: 0, k: 0 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      DropPose
+    >;
+    const leads: DropPose[] = LEAD_REST.map(() => ({ heightM: 0, k: 0 }));
+    const order = entranceOrder(DROP_SLOTS);
+    for (let i = 0; i < 60; i++) entranceFrame(e, order, 1 / 60, parts, leads);
+    entranceStopped(e);
+    for (let i = 0; i < 60 * 8; i++) {
+      entranceFrame(e, order, 1 / 60, parts, leads);
+      if (e.partsDownS === null) expect(leads.every((l) => l.k === 0)).toBe(true);
+    }
     expect(e.landed).toBe(true);
   });
 
