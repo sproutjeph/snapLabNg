@@ -404,7 +404,7 @@ export async function runSnap(
 }
 
 /** A short, safe message for the client: never model text, never server paths. */
-function errorText(e: unknown): string {
+export function errorText(e: unknown): string {
   if (!(e instanceof Error)) return "the stage failed";
   if (e.name === "ZodError") return "the model's answer failed validation";
   if (e.name === "SyntaxError") return "the model's answer was not valid JSON";
