@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../meter-bridge/types";
 import { FLASK_DIMS, flaskInnerRadiusAtHeight, flaskLiquidHeight } from "./dimensions";
+import { glassFresnel } from "./glassFresnel";
 import type { TitrationVisualState } from "./types";
 
 export interface ConicalFlaskProps {
@@ -167,7 +168,7 @@ export function ConicalFlask({ state, quality, position = [0, 0, 0], onSwirl }: 
     const initialH = flaskLiquidHeight(25);
     updateLiquidVertices(liquidData, initialH, 0, FLASK_DIMS.innerBaseRadius - 0.0008);
 
-    const glassMat =
+    const glassMatBase =
       quality === "low"
         ? new THREE.MeshStandardMaterial({
             color: "#e0f2fe",
@@ -187,6 +188,8 @@ export function ConicalFlask({ state, quality, position = [0, 0, 0], onSwirl }: 
             side: THREE.DoubleSide,
             depthWrite: false,
           });
+
+    const glassMat = glassFresnel(glassMatBase, quality);
 
     const liquidMat = new THREE.MeshStandardMaterial({
       color: "#f472b6",

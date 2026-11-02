@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { parseOverride } from "../../quality/tier";
 import { InkComposer } from "../../scene/ink/InkComposer";
 import { InkLights } from "../../scene/ink/InkLights";
+import { NO_INK } from "../../scene/ink/inkPass";
 import { PaperDesk } from "../../scene/ink/PaperDesk";
 import { ReadySignal } from "../../scene/ReadySignal";
 import type { QualityTier } from "../meter-bridge/types";
@@ -40,9 +41,94 @@ function writeDemoFlaskColor(readingCm3: number, out: [number, number, number]):
 // three-quarter view, no HUD. The burette top is cropped; the reading is pre-set so the meniscus
 // and its graduations show.
 const HERO_READING_CM3 = 30.0;
-const HERO_FOV = 24;
-const HERO_TARGET: readonly [number, number, number] = [0.04, 0.25, 0.04];
-const HERO_CAM: readonly [number, number, number] = [0.5, 0.82, 1.5];
+const HERO_FOV = 20;
+const HERO_TARGET: readonly [number, number, number] = [0.0, 0.46, 0.0];
+const HERO_CAM: readonly [number, number, number] = [0.85, 1.4, 2.85];
+
+/**
+ * Soft key light from the upper left (no shadow of its own; the contact blobs and the sun's
+ * shadow do that) and a faint warm bounce from the right and low, on top of InkLights' sun. Hero
+ * still only.
+ */
+function HeroLights() {
+  return (
+    <>
+      <directionalLight position={[-1.3, 2.2, 1.4]} color="#fff4e2" intensity={1.0} />
+      <directionalLight position={[1.6, 0.35, 0.9]} color="#ffd7a6" intensity={0.55} />
+    </>
+  );
+}
+
+// [x, z, radius x, radius z, y, opacity] of each soft contact blob under an item.
+const HERO_BLOBS: readonly (readonly [number, number, number, number, number, number])[] = [
+  [0.0, 0.0, 0.1, 0.1, 0.0009, 0.34], // white tile
+  [0.0, 0.0, 0.058, 0.058, 0.0092, 0.3], // flask on the tile
+  [-0.06, -0.15, 0.115, 0.1, 0.0009, 0.38], // stand base
+  [-0.14, -0.045, 0.06, 0.06, 0.0009, 0.34], // beaker
+  [0.15, -0.03, 0.048, 0.048, 0.0009, 0.34], // small beaker
+  [-0.03, 0.15, 0.2, 0.026, 0.0009, 0.3], // pipette along the front
+];
+
+/** Soft dark blobs on the desk under each item, so nothing floats on the paper. */
+function HeroContactShadows() {
+  const res = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
+      g.addColorStop(0, "rgba(40,30,20,1)");
+      g.addColorStop(0.55, "rgba(40,30,20,0.55)");
+      g.addColorStop(1, "rgba(40,30,20,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 128, 128);
+    }
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    const geo = new THREE.PlaneGeometry(2, 2);
+    geo.rotateX(-Math.PI / 2);
+    const mats = HERO_BLOBS.map(
+      (b) =>
+        new THREE.MeshBasicMaterial({
+          map,
+          transparent: true,
+          opacity: b[5],
+          depthWrite: false,
+        }),
+    );
+    return { map, geo, mats };
+  }, []);
+  useEffect(
+    () => () => {
+      res.map.dispose();
+      res.geo.dispose();
+      for (const m of res.mats) m.dispose();
+    },
+    [res],
+  );
+  return (
+    <group>
+      {res.mats.map((material, i) => {
+        const b = HERO_BLOBS[i];
+        if (!b) return null;
+        return (
+          <mesh
+            // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list
+            key={i}
+            geometry={res.geo}
+            material={material}
+            position={[b[0], b[4], b[1]]}
+            scale={[b[2], 1, b[3]]}
+            renderOrder={-5}
+            userData={{ [NO_INK]: true }}
+            raycast={() => null}
+          />
+        );
+      })}
+    </group>
+  );
+}
 
 function PreviewCameraRig({ zoomBurette, hero }: { zoomBurette: boolean; hero: boolean }) {
   const camera = useThree((s) => s.camera);
@@ -168,8 +254,11 @@ function DemoScene({
         target={hero ? [...HERO_TARGET] : [0, zoomBurette ? ZOOM_BURETTE_TARGET_Y : TARGET_Y, 0]}
         makeDefault
       />
-      <PaperDesk quality={quality} size={[1.4, 0.9]} y={0} />
+      {hero ? <HeroLights /> : null}
+      <PaperDesk quality={quality} size={hero ? [3.4, 2.4] : [1.4, 0.9]} y={0} />
+      {hero ? <HeroContactShadows /> : null}
       <TitrationKit
+        hero={hero}
         state={visualRef}
         quality="high"
         onStopcockChange={onStopcockChange}

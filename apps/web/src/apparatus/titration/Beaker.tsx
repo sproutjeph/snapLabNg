@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../meter-bridge/types";
 import { BEAKER_DIMS } from "./dimensions";
+import { glassFresnel } from "./glassFresnel";
 
 export interface BeakerProps {
   quality: QualityTier;
@@ -70,7 +71,7 @@ export function Beaker({ quality, position = [0, 0, 0] }: BeakerProps) {
 
     const scaleTex = createBeakerScaleTexture();
 
-    const glassMat =
+    const glassMatBase =
       quality === "low"
         ? new THREE.MeshStandardMaterial({
             color: "#e0f2fe",
@@ -90,6 +91,8 @@ export function Beaker({ quality, position = [0, 0, 0] }: BeakerProps) {
             side: THREE.DoubleSide,
             depthWrite: false,
           });
+
+    const glassMat = glassFresnel(glassMatBase, quality);
 
     const liquidMat = new THREE.MeshStandardMaterial({
       color: "#bae6fd",
