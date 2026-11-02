@@ -47,6 +47,7 @@ import { LookLights } from "../scene/look/LookLights";
 import { LookTier } from "../scene/look/lookTier";
 import type { Covered } from "../scene/look/types";
 import { ReadySignal } from "../scene/ReadySignal";
+import { canvasOpacity, posterOpacity, wakeOnResize } from "./HomeBench3D.logic";
 
 // The live card art for the home page's Ohm's law card: the SAME wired bench the practical
 // opens (the parts and leads of apparatus/ohms-law, placed by OHMS_LAW_LAYOUT, the diagram's
@@ -274,11 +275,14 @@ function Turntable({
   bounds,
   baseDeg,
   still,
+  epoch,
   onSettled,
 }: {
   bounds: Bounds;
   baseDeg: number;
   still: boolean;
+  /** Bumps when a resize wakes a settled view: the still-frame count starts over. */
+  epoch: number;
   onSettled: () => void;
 }) {
   const shot = useMemo(() => {
@@ -301,6 +305,10 @@ function Turntable({
     return e;
   }, [bounds, baseDeg, still]);
   const frames = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: epoch is the trigger, not a value read
+  useEffect(() => {
+    frames.current = 0;
+  }, [epoch]);
   useFrame((st) => {
     const az = still ? baseDeg : swingAzimuth(st.clock.elapsedTime, baseDeg);
     shot.azimuthDeg = az;
@@ -418,6 +426,9 @@ export default function HomeBench3D({
   const [failed, setFailed] = useState(false);
   const [shown, setShown] = useState(false);
   const [settled, setSettled] = useState(false);
+  const [epoch, setEpoch] = useState(0);
+  const settledRef = useRef(false);
+  const shadowsDirtyRef = useRef(true);
   const [inView, setInView] = useState(true);
   const [tabVisible, setTabVisible] = useState(() => !document.hidden);
   const live = webgl && tier !== "low" && !failed;
@@ -431,6 +442,24 @@ export default function HomeBench3D({
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // A resize clears the canvas, and a settled (stopped) loop cannot redraw it: wake it for
+  // another run of still frames.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let first = true;
+    const ro = new ResizeObserver(() => {
+      const wake = wakeOnResize(settledRef.current, first);
+      first = false;
+      if (!wake) return;
+      settledRef.current = false;
+      shadowsDirtyRef.current = true;
+      setSettled(false);
+      setEpoch((e) => e + 1);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useEffect(() => {
     const on = () => setTabVisible(!document.hidden);
     document.addEventListener("visibilitychange", on);
@@ -442,13 +471,15 @@ export default function HomeBench3D({
   const state = useMemo(() => ({ current: benchState() }), []);
   const bounds = useMemo(() => planKit(parseKitParams("?part=leads")).bounds, []);
   const drawn = useMemo(() => ({ current: 0 }), []);
-  const shadowsDirty = useRef(true);
   const fail = useCallback(() => setFailed(true), []);
   const onShown = useCallback(() => {
     setShown(true);
     onReady?.();
   }, [onReady]);
-  const onSettled = useCallback(() => setSettled(true), []);
+  const onSettled = useCallback(() => {
+    settledRef.current = true;
+    setSettled(true);
+  }, []);
 
   const running = inView && tabVisible && !settled;
   return (
@@ -472,7 +503,7 @@ export default function HomeBench3D({
         style={{
           ...FILL_BOX,
           objectFit: "cover",
-          opacity: shown ? 0 : 1,
+          opacity: posterOpacity(shown, live),
           transition: "opacity .6s",
         }}
       />
@@ -480,7 +511,7 @@ export default function HomeBench3D({
         <div
           style={{
             ...FILL_BOX,
-            opacity: shown ? 1 : 0,
+            opacity: canvasOpacity(shown, live),
             transition: "opacity .6s",
           }}
         >
@@ -494,8 +525,14 @@ export default function HomeBench3D({
               aria-hidden
             >
               <LookTier.Provider value={tier}>
-                <Turntable bounds={bounds} baseDeg={azimuth} still={still} onSettled={onSettled} />
-                <LookLights shadowsDirty={shadowsDirty} />
+                <Turntable
+                  bounds={bounds}
+                  baseDeg={azimuth}
+                  still={still}
+                  epoch={epoch}
+                  onSettled={onSettled}
+                />
+                <LookLights shadowsDirty={shadowsDirtyRef} />
                 <RimLight />
                 <LookGround sizeM={2.6} />
                 <TerminalProvider registry={registry}>
@@ -504,7 +541,7 @@ export default function HomeBench3D({
                     quality={tier}
                     drawn={drawn}
                     still={still}
-                    shadowsDirty={shadowsDirty}
+                    shadowsDirty={shadowsDirtyRef}
                   />
                 </TerminalProvider>
                 <InkComposer quality={tier} />
