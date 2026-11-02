@@ -69,10 +69,10 @@ export const QuestionFallback = z.enum(["app_question", "retry_later", "none"]);
 export type QuestionFallback = z.infer<typeof QuestionFallback>;
 
 /**
- * The `POST /api/question` event stream, server → client. Order: `accepted`; then `question` (or
- * an `error{stage:"read"}`, which ends the stream with `done`); then a `part_outline` per drawn
- * part as SAM finishes, each SAM call followed by its `timing`; `done` last. A SAM failure does
- * not stop the stream: the part keeps Spark's box.
+ * The `POST /api/question` event stream, server → client. Order: `accepted`, then `cache_hit` on a
+ * replay; then `question` (or an `error{stage:"read"}`, after which only `done` follows), and
+ * Spark's `timing`; then a `part_outline` per drawn part as SAM finishes, each SAM call followed by
+ * its `timing`; `done` last. A SAM failure does not stop the stream: the part keeps Spark's box.
  */
 export const QuestionEvent = z.discriminatedUnion("type", [
   z.strictObject({

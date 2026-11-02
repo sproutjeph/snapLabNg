@@ -7,7 +7,10 @@ import type { Box, QuestionRead } from "@snaplab/contracts";
 export interface SnappedPaper {
   /** Spark's reading of her paper, as validated from the `question` event. */
   question: QuestionRead;
-  /** Object URLs of her photos, in the order sent (the diagram is `question.diagram.photo`). */
+  /**
+   * Object URLs of her photos, in the order sent (the diagram is `question.diagram.photo`). The
+   * store owns them once set: the snap page must not revoke URLs it passed to setSnappedPaper.
+   */
   photos: readonly string[];
   /** SAM's outline box per drawn part (index into `question.diagram.parts`), when SAM found one. */
   outlines: ReadonlyMap<number, Box>;
