@@ -24,7 +24,9 @@ const EXAMINER_TIMEOUT_MS = 20_000;
 /** The caller's IP. Proxy headers are trusted only when TRUST_PROXY=1 (behind a proxy such as Cloud Run). */
 function clientIp(c: Context, cfg: Config): string {
   if (cfg.trustProxy) {
-    const h = c.req.header("x-forwarded-for")?.split(",")[0];
+    // Google's front end appends the real client to whatever X-Forwarded-For she sent, so only
+    // the last entry is trustworthy; the first is hers to forge.
+    const h = c.req.header("x-forwarded-for")?.split(",").at(-1);
     if (h?.trim()) return h.trim();
   }
   // Under Bun.serve, Hono passes the server as the context's env, and Bun reports the

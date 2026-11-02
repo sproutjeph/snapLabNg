@@ -34,7 +34,8 @@ function openUpstream(url: string): Upstream {
 
 function clientIp(req: Request, server: Server<SocketData>, cfg: Config): string {
   if (cfg.trustProxy) {
-    const h = req.headers.get("x-forwarded-for")?.split(",")[0];
+    // The last entry is the one Google's front end appended (the first can be forged).
+    const h = req.headers.get("x-forwarded-for")?.split(",").at(-1);
     if (h?.trim()) return h.trim();
   }
   return server.requestIP(req)?.address ?? "unknown";

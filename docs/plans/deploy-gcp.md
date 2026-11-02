@@ -34,7 +34,7 @@ A public SnapLab for judges, free at judging traffic:
    The PWA's `/api` bypass also matches the API origin.
 2. API: CORS on `/api/*` for the origins in `ALLOWED_ORIGINS` (comma list; `hono/cors`, already in Hono), and the
    same check on the `/ws/examiner` upgrade's `Origin`. Unset = same-origin only, as today.
-3. Client IP: Cloud Run sends `X-Forwarded-For`; the code already reads its first entry when `TRUST_PROXY=1`
+3. Client IP: Cloud Run sends `X-Forwarded-For`; the code reads its **last** entry when `TRUST_PROXY=1` (Google appends the real client; the first entry can be forged)
    (comments drop the Fly wording).
 4. `Dockerfile`: the entrypoint's `chown /data` must not fail on a Cloud Storage mount (mounted with uid/gid 1000).
    `fly.toml` is removed.
