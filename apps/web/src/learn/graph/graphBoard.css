@@ -1,0 +1,247 @@
+/* The Watch demonstration graph board: a large read-only 2 mm graph sheet in faint pencil,
+   with blue-black ink for axes, plotted points, best-fit line, slope triangle and working. */
+
+.gb-root {
+  --gb-max-h: 76vh;
+  container-type: inline-size;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 14px 16px 20px;
+  border: 1px solid var(--ink-2);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.14);
+}
+
+.gb-root *,
+.gb-root *::before,
+.gb-root *::after {
+  box-sizing: border-box;
+}
+
+.gb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+@container (min-width: 760px) {
+  .gb-root {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 18px;
+    --gb-max-h: 84vh;
+  }
+}
+
+.gb-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: var(--rule);
+}
+
+.gb-sec:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.gb-h {
+  margin: 0;
+  font-family: var(--f-cond);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.gb-scales,
+.gb-deltas {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.gb-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  background: var(--card);
+  border-left: 2px solid var(--ink-2);
+}
+
+.gb-kv dt {
+  font-family: var(--f-cond);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gb-kv dd {
+  margin: 0;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.gb-meaning {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--card);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.gb-viewport {
+  overflow: hidden;
+  max-width: 100%;
+  border: var(--rule);
+  background: var(--paper-2);
+  padding: 6px;
+}
+
+.gb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.gb-sheet {
+  fill: var(--card);
+}
+
+.gb-g2,
+.gb-g10,
+.gb-g50 {
+  fill: none;
+  stroke: var(--pencil);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.gb-g2 {
+  stroke-width: 0.5px;
+  opacity: 0.35;
+}
+
+.gb-g10 {
+  stroke-width: 0.75px;
+  opacity: 0.55;
+}
+
+.gb-g50 {
+  stroke-width: 1.1px;
+  opacity: 0.8;
+}
+
+.gb-frame {
+  fill: transparent;
+  stroke: var(--ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gb-axis-label {
+  font-family: var(--f-body);
+  font-size: 0.8px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.gb-tick {
+  font-family: var(--f-body);
+  font-size: 0.55px;
+  fill: var(--ink-2);
+}
+
+.gb-line {
+  stroke: var(--ink);
+  stroke-width: 1.85px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.gb-triangle polygon {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.3px;
+  stroke-dasharray: 4 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.gb-square {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.gb-point {
+  pointer-events: none;
+}
+
+.gb-point path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.85px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gb-point[data-latest="1"] circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gb-point[data-latest="1"] {
+    animation: gb-pop 0.28s ease-out both;
+  }
+
+  .gb-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    animation: gb-draw 0.55s ease-out both;
+  }
+}
+
+@keyframes gb-pop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gb-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

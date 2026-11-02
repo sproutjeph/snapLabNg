@@ -1,0 +1,104 @@
+/* The Watch demonstration readings board: exercise-book ruled paper, double red margin line,
+   and blue-black ink with the newest row highlighted. */
+
+.rb-book {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 14px 16px 20px;
+  border: 1px solid var(--ink-2);
+  border-left: 3px double var(--red-ink);
+  border-radius: 10px;
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    var(--line) 31px,
+    var(--line) 32px
+  );
+  color: var(--ink);
+  font-family: var(--f-body);
+  box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.14);
+}
+
+.rb-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rb-h {
+  margin: 0;
+  font-family: var(--f-cond);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.rb-length {
+  margin: 0 0 10px;
+  padding: 4px 8px;
+  background: var(--card);
+  border-left: 2px solid var(--ink-2);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-length-label {
+  font-family: var(--f-cond);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-right: 6px;
+}
+
+.rb-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.rb-table {
+  width: 100%;
+  min-width: 260px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-table th,
+.rb-table td {
+  padding: 6px 10px;
+  text-align: center;
+  font-size: 17px;
+  border-bottom: var(--rule);
+}
+
+.rb-table thead th {
+  font-family: var(--f-cond);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  border-bottom: 1.5px solid var(--ink-2);
+}
+
+.rb-row.is-highlighted {
+  background: var(--card);
+  font-weight: 600;
+}
+
+.rb-row.is-highlighted td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.rb-empty {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
+}
