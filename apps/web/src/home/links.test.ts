@@ -15,6 +15,10 @@ describe("home links", () => {
     expect(practicalIn("exam")).toBe("/?practical=ohms-law&mode=exam");
   });
 
+  it("opens Watch in guided mode", () => {
+    expect(ROUTES.guidedWatch).toBe("/?practical=ohms-law&mode=guided");
+  });
+
   it("adds a query param to an existing query string", () => {
     expect(withParam("/?flow=1", "teacher", "1")).toBe("/?flow=1&teacher=1");
   });

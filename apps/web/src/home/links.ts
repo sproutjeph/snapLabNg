@@ -6,6 +6,8 @@ export const ROUTES = {
   ohmsLaw: "/?learn=ohms-law",
   /** The question paper: she hears the question, then chooses Watch, Practise or Exam. */
   practical: "/?practical=ohms-law",
+  /** Watch as the guided demo: the question is read aloud and the practical solves itself. */
+  guidedWatch: "/?practical=ohms-law&mode=guided",
 } as const;
 
 /** The V–I practical opened straight in one mode (the picker's Watch, Practise and Exam). */
