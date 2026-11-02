@@ -46,7 +46,7 @@ import {
   offsetUV,
   seeded,
 } from "./MeterMaterials";
-import { TerminalNut } from "./TerminalNut";
+import { DIAL_HIT_DATA, TerminalNut } from "./TerminalNut";
 
 export interface MeterProps extends PartProps {
   kind: "ammeter" | "voltmeter";
@@ -547,6 +547,7 @@ export function Meter({
               material={res.dialMat}
               position={[0, DIAL_CY, DIAL_Z]}
               receiveShadow={cast}
+              userData={DIAL_HIT_DATA}
             />
           </SoftInk>
           <InkGroup id={ink + 5}>
@@ -556,6 +557,7 @@ export function Meter({
               position={[0, DIAL_CY, FACE_Z]}
               castShadow={cast}
               receiveShadow={cast}
+              userData={DIAL_HIT_DATA}
             />
           </InkGroup>
           <InkGroup id={ink + 3} thin>
@@ -597,7 +599,7 @@ export function Meter({
               material={res.glassMat}
               position={[0, DIAL_CY, GLASS_Z]}
               renderOrder={6}
-              userData={{ noInk: true }}
+              userData={{ noInk: true, ...DIAL_HIT_DATA }}
             />
           )}
           {res.ringShadowGeo && res.ringShadowMat && (

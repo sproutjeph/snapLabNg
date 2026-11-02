@@ -56,6 +56,43 @@ export const HIT_MIN_M = 0.02;
 /** Vertical stretch of the target: 4 cm half-height, centred 3 cm up, so it spans -1 to 7 cm. */
 export const HIT_TALL = 2;
 
+/**
+ * A meter's dial, ring and glass carry this, and a nut's tap target yields to them: the targets are
+ * taller and wider than the nuts, so seen from the bench camera they reach up over the lower dial,
+ * and a tap to read the meter would start or finish a lead. A ray that crosses the dial face
+ * passes over its nut, never through it (the nuts stand on the ledge in front, below the dial).
+ */
+export const DIAL_HIT_DATA = { partHit: true } as const;
+/** A tap this close to the nut's own axis (metres) is a tap on the nut, whatever lies behind it. */
+export const NUT_TAP_R_M = 0.014;
+/** The nut targets are centred this far over the nut's foot. */
+export const HIT_CENTRE_M = 0.03;
+const _centre = new THREE.Vector3();
+
+/**
+ * Whether a meter's dial takes a tap that the nut's big target also caught. It does when the dial
+ * is the nearer hit along the ray, or when the ray passes the real nut by more than its own radius
+ * (the target reaches over the dial; the nut does not). A tap on the nut itself, with the dial
+ * seen behind it, stays the nut's. `e.object` is the nut's target mesh.
+ */
+export function onDialFace(e: {
+  intersections: ReadonlyArray<{ object: THREE.Object3D; distance: number }>;
+  ray: THREE.Ray;
+  object: THREE.Object3D;
+}): boolean {
+  let dial = Number.POSITIVE_INFINITY;
+  let own = Number.POSITIVE_INFINITY;
+  for (const h of e.intersections) {
+    if (h.object.userData.partHit === true) dial = Math.min(dial, h.distance);
+    else if (h.object === e.object) own = Math.min(own, h.distance);
+  }
+  if (dial === Number.POSITIVE_INFINITY) return false;
+  if (dial < own) return true;
+  e.object.getWorldPosition(_centre);
+  _centre.y += NUT_TOP_M / 2 - HIT_CENTRE_M;
+  return e.ray.distanceToPoint(_centre) > NUT_TAP_R_M;
+}
+
 export type NutCap = NonNullable<TerminalNutProps["cap"]>;
 
 /** The lead colour whose speckled skin each insulating cap shares. */
@@ -363,6 +400,7 @@ export function TerminalNut({
   });
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
+    if (onDialFace(e)) return;
     e.stopPropagation();
     registry.tap(id);
   };

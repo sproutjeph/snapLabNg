@@ -10,7 +10,7 @@ import type { Script } from "../script/types";
 import type { BenchState } from "../types";
 import type { VoiceGuide } from "../voice/types";
 import { createOhmsLawBench } from "../wiring/bench";
-import { Player } from "./Player";
+import { HandInDialog, Player } from "./Player";
 import { StageChecklist } from "./StageChecklist";
 import { humaniseStage, playerCovered, stageIndexOf, stagesOf } from "./stages";
 
@@ -249,6 +249,25 @@ describe("Player markup", () => {
     expect(speed).toBeGreaterThan(-1);
     expect(divider).toBeGreaterThan(speed);
     expect(mute).toBeGreaterThan(divider);
+  });
+});
+
+describe("Hand in", () => {
+  it("asks first: the dialog offers Keep working and Hand in, and the page opens without it", () => {
+    const dialog = renderToStaticMarkup(
+      createElement(HandInDialog, { onKeep: () => {}, onHandIn: () => {} }),
+    );
+    expect(dialog).toContain("Hand in now? You can&#x27;t change your answers after this.");
+    expect(dialog).toContain("Keep working");
+    expect(dialog).toContain('role="alertdialog"');
+    // Not open until she taps Hand in, in Exam and in Practise.
+    for (const mode of ["exam", "practice"] as const) {
+      const page = renderToStaticMarkup(
+        createElement(Player, { director: directorAt(mode), onHandIn: () => {} }),
+      );
+      expect(page).toContain('data-testid="hand-in"');
+      expect(page).not.toContain("hand-in-confirm");
+    }
   });
 });
 

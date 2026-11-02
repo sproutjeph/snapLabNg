@@ -399,7 +399,10 @@ describe("learn.css (the lesson page's overlays)", () => {
     expect(body(".ol-tools")).toContain("var(--sh-guide)");
     expect(body(".ol-note")).toContain("var(--sh-head)");
     expect(body(".ol-note")).toContain("var(--sh-guide)");
-    expect(body(".ol-loupe")).toContain("var(--sh-bar)");
+    // The canvas ends at the strip (beauty pass B3), so the loupe bar sits 16 px above the canvas
+    // foot and does not add the strip's height again.
+    expect(body(".ol-loupe")).toMatch(/bottom:\s*16px/);
+    expect(body(".ol-loupe")).not.toContain("var(--sh-bar)");
     expect(body(".ol-loupe")).toContain("var(--sh-guide)");
     expect(body(".ol-graph")).toContain("var(--sh-head)");
     expect(body(".ol-graph")).toContain("var(--sh-bar)");

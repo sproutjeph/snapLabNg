@@ -133,6 +133,22 @@ X* laptop Exam, P* phone). E2E before: watch, exam, noleak pass at both sizes; p
 2. bad — phone: the metre-rule close-up bar covered the tick marks under X and Y, so the length could not be read
    (P05/P06). Same cause and fix as 1 (P20).
 
+**Fixed on `claude/practise-exam-fixes` (Nov 2)** — items 3, 4, 5, 6, 7, 8 and 10 below; 9 (flaky E2E) is still "run one at a time".
+- 3: the wrong-lead line is kept with its lead and goes when that lead is off the bench (remove, undo, reset): `LearnPage.tsx`.
+- 4: a bench note shows only for the circuit it was written for (leads, key, plugs); any change to them hides it: `LearnPage.tsx`.
+- 5: Hand in (Practise and Exam) opens an in-page dialog first, "Hand in now? You can't change your answers after this."
+  with Keep working (focused, Escape) and Hand in: `player/Player.tsx`, `player.css`. The E2E scripts hand in through the
+  `window.__snaplab` hook, so they are unchanged.
+- 6: a Practise beat whose `done` already holds is not read out and is passed at once: `script/createDirector.ts`.
+- 7: the laptop close-up bar and the float-open toolbar and note no longer add `--sh-bar` (`learn.css`; `shell.test.tsx` pins `bottom: 16px`).
+- 8: a meter's dial, ring and glass carry `partHit`, and the nuts' tap targets (`TerminalNut`, `TerminalHits`) yield to them,
+  as they yield to a lead: `apparatus/ohms-law/Meter.tsx`, `TerminalNut.tsx`, `learn/wiring/TerminalMarks.tsx`. Checked on the bench shot
+  at 390×844 and 1440×900: taps over the ammeter and voltmeter dials all open the close-up (phone 0 misses; laptop 1 point on the dial's rim).
+- 10: phone, steps R = 1 Ω and Repeat: a "Box close-up" button (portrait only, `ol-boxview`) takes the box-alone shot
+  (`stage/shots.ts` "box", from above, plugs ~32 px apart at 390×844); "Whole bench" goes back to the box and key shot
+  (key and meters). The box chip now anchors at the box's front edge, not over the plugs (`stage/Choreo.tsx`).
+  Still open: the chip was not re-shot in Practise; the box and key shot (default) still has the plugs ~12 px apart.
+
 **Waiting for slice A** (its files; proposed change)
 3. bad — Practise: the wrong-lead line stays after the lead is gone ("…Tap the wire to remove it." through the rest of the
    run, P23/L24). `LearnPage.tsx:549` is cleared only by the next lead (`:613`). Clear it on Undo lead (`:843`), the Tools

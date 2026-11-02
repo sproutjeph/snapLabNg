@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../../apparatus/meter-bridge/types";
 import { mergeAll } from "../../apparatus/ohms-law/LeadParts";
-import { HIT_TALL, NUT_TOP_M } from "../../apparatus/ohms-law/TerminalNut";
+import { HIT_TALL, NUT_TOP_M, onDialFace } from "../../apparatus/ohms-law/TerminalNut";
 import { SHAKE_S, shakeAt } from "../stage/motion";
 import type { StageMotion } from "../stage/stageMotion";
 import { useTerminalRegistry } from "../terminals";
@@ -241,8 +241,9 @@ export function TerminalHits({ marks }: { marks: StageMotion["marks"] }) {
 
   // These targets are bigger than the nuts: where one lies over a lead's own tap tube, the lead
   // wins, so a tap on the cable takes it, not the nut beside it.
+  // And a meter's dial wins over the nuts' targets, which reach up over it (TerminalNut.tsx).
   const onLead = (e: ThreeEvent<PointerEvent>) =>
-    e.intersections.some((i) => i.object.userData.leadHit === true);
+    onDialFace(e) || e.intersections.some((i) => i.object.userData.leadHit === true);
   const down = (id: TerminalId) => (e: ThreeEvent<PointerEvent>) => {
     if (onLead(e)) return;
     e.stopPropagation();

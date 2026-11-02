@@ -32,13 +32,24 @@ export const STAGE_AZIMUTH_DEG = 12;
  * bottom, the scale reading upward) and fills the upright free area.
  */
 export const BOARD_PHONE_AZIMUTH_DEG = -70;
+/**
+ * The resistance box close-up on a phone: seen from her left, so the box runs up the screen and its
+ * plugs stand well apart (the box and key shot holds four parts, which leaves them ~12 px).
+ */
+export const BOX_PHONE_AZIMUTH_DEG = -90;
 /** Room round the bench's footprint for nuts, plugs and leads, in metres of span. */
 const BENCH_MARGIN_M = 0.04;
 /** Paper left round the parts of a close shot, in metres. */
 export const PAPER_M = 0.012;
 
-export type StageShotName = "bench" | "meters" | "boxKey" | "board";
-export const STAGE_SHOT_NAMES: readonly StageShotName[] = ["bench", "meters", "boxKey", "board"];
+export type StageShotName = "bench" | "meters" | "boxKey" | "box" | "board";
+export const STAGE_SHOT_NAMES: readonly StageShotName[] = [
+  "bench",
+  "meters",
+  "boxKey",
+  "box",
+  "board",
+];
 
 /**
  * The shot each lesson pose takes. A laptop sees the whole bench except for a reading; a phone
@@ -48,8 +59,24 @@ export const STAGE_SHOT_NAMES: readonly StageShotName[] = ["bench", "meters", "b
 export const SHOT_FOR_POSE: Readonly<
   Record<"laptop" | "phone", Readonly<Record<string, StageShotName>>>
 > = {
-  laptop: { bench: "bench", connect: "bench", wire: "bench", readings: "meters", box: "bench" },
-  phone: { bench: "bench", connect: "bench", wire: "board", readings: "meters", box: "boxKey" },
+  laptop: {
+    bench: "bench",
+    connect: "bench",
+    wire: "bench",
+    readings: "meters",
+    box: "bench",
+    boxClose: "bench",
+  },
+  // `boxClose` is the box pose after she taps "Box close-up" (LearnPage): the box alone, so each
+  // plug stands well apart and can be tapped.
+  phone: {
+    bench: "bench",
+    connect: "bench",
+    wire: "board",
+    readings: "meters",
+    box: "boxKey",
+    boxClose: "box",
+  },
 };
 
 /**
@@ -118,6 +145,7 @@ const CLOSE: Readonly<Record<Exclude<StageShotName, "bench">, CloseFrame>> = {
     topPad: 0.025,
     azimuthDeg: STAGE_AZIMUTH_DEG,
   },
+  box: { slots: ["box"], topPad: 0.02, azimuthDeg: BOX_PHONE_AZIMUTH_DEG },
   board: { slots: ["wire"], topPad: 0.025, azimuthDeg: BOARD_PHONE_AZIMUTH_DEG },
 };
 

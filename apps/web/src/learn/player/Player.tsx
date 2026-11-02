@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Director, DirectorSpeed } from "../script/types";
 import { useLayout } from "../shell/useLayout";
 import {
@@ -61,6 +62,8 @@ export function Player({ director, onHandIn }: PlayerProps) {
   useLayout(root);
   const s = director.state;
   const elapsed = useElapsed(s.mode === "exam");
+  // Hand in asks first: a stray tap must not end the run (an in-page dialog, never window.confirm).
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => director.subscribe(bump), [director]);
 
@@ -95,13 +98,23 @@ export function Player({ director, onHandIn }: PlayerProps) {
       <MuteIcon />
     </button>
   ) : null;
+  const confirmDialog =
+    confirming && onHandIn ? (
+      <HandInConfirm
+        onKeep={() => setConfirming(false)}
+        onHandIn={() => {
+          setConfirming(false);
+          onHandIn();
+        }}
+      />
+    ) : null;
   const handInButton =
     onHandIn && s.mode !== "watch" ? (
       <button
         type="button"
         className="dp-btn dp-btn-text dp-handin"
         data-testid="hand-in"
-        onClick={onHandIn}
+        onClick={() => setConfirming(true)}
       >
         <IconHandIn />
         <span className="dp-label">Hand in</span>
@@ -119,6 +132,7 @@ export function Player({ director, onHandIn }: PlayerProps) {
           {handInButton}
           {muteButton}
         </div>
+        {confirmDialog}
       </div>
     );
   }
@@ -211,6 +225,8 @@ export function Player({ director, onHandIn }: PlayerProps) {
         )}
       </div>
 
+      {confirmDialog}
+
       <div className="dp-dock">
         {/* Always mounted, so a screen reader is already listening when the first words arrive. */}
         <p className="dp-caption" aria-live="polite" data-region="caption">
@@ -218,6 +234,104 @@ export function Player({ director, onHandIn }: PlayerProps) {
             ? `${(s.beatIndex ?? s.beat) + 1}/${s.beatCount ?? 0} · ${s.caption}`
             : s.caption}
         </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Hand in now?" before the notebook is marked. It is drawn on the document body, above every
+ * layer, and "Keep working" has the focus, so a stray tap or Enter does not end the run.
+ */
+function HandInConfirm({ onKeep, onHandIn }: { onKeep(): void; onHandIn(): void }) {
+  const keep = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  // The page re-renders every second in Exam, so the handler is held in a ref and the effect runs
+  // once: focus goes to Keep working on open only, and a Tab to Hand in is not taken back.
+  const keepRef = useRef(onKeep);
+  keepRef.current = onKeep;
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    keep.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        keepRef.current();
+        return;
+      }
+      const el = root.current;
+      if (e.key !== "Tab" || !el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>("button"));
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+      if (!el.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      // Back to the button that opened it (it is gone once the exam is handed in).
+      if (before && before !== document.body && before.isConnected) before.focus();
+    };
+  }, []);
+  return createPortal(
+    <HandInDialog rootRef={root} keepRef={keep} onKeep={onKeep} onHandIn={onHandIn} />,
+    document.body,
+  );
+}
+
+/** The dialog's markup (exported for the markup test; the portal cannot render on the server). */
+export function HandInDialog({
+  rootRef,
+  keepRef,
+  onKeep,
+  onHandIn,
+}: {
+  rootRef?: React.Ref<HTMLDivElement>;
+  keepRef?: React.Ref<HTMLButtonElement>;
+  onKeep(): void;
+  onHandIn(): void;
+}) {
+  return (
+    <div ref={rootRef} className="dp-confirm" data-testid="hand-in-confirm">
+      <div
+        className="dp-confirm-card"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dp-confirm-title"
+      >
+        <p id="dp-confirm-title" className="dp-confirm-text">
+          Hand in now? You can't change your answers after this.
+        </p>
+        <div className="dp-confirm-actions">
+          <button
+            ref={keepRef}
+            type="button"
+            className="dp-confirm-btn"
+            data-testid="hand-in-keep"
+            onClick={onKeep}
+          >
+            Keep working
+          </button>
+          <button
+            type="button"
+            className="dp-confirm-btn dp-confirm-go"
+            data-testid="hand-in-confirm-yes"
+            onClick={onHandIn}
+          >
+            Hand in
+          </button>
+        </div>
       </div>
     </div>
   );
