@@ -196,8 +196,11 @@ export function initialRun(search: URLSearchParams, seed: number): Run {
 }
 
 export type RunAction =
-  /** A choice on the paper (or the paper closed: Practise, its primary choice). */
-  | { kind: "choose"; mode: PracticalMode }
+  /**
+   * A choice on the paper (or the paper closed: Practise, its primary choice). `guided`: Watch on a
+   * snapped question plays guided Watch, where her question's reading drives the bench.
+   */
+  | { kind: "choose"; mode: PracticalMode; guided?: boolean }
   /** Results' "Watch the demonstration again": Watch from its first beat, the same seed. */
   | { kind: "watchAgain" }
   /** Results' "Try again on a new bench": Practise (Exam, if she was in Exam) on a new seed. */
@@ -206,12 +209,14 @@ export type RunAction =
 export function nextRun(run: Run, a: RunAction): Run {
   const n = run.n + 1;
   if (a.kind === "choose") {
+    const guided = a.mode === "watch" && (a.guided === true || run.guided);
     return {
       practical: a.mode,
       seed: run.seed,
       n,
-      afterPaper: run.practical === null,
-      guided: run.guided && a.mode === "watch",
+      // Guided Watch drops the parts again as the reading names them.
+      afterPaper: run.practical === null && !guided,
+      guided,
     };
   }
   if (a.kind === "watchAgain") {
@@ -906,7 +911,15 @@ function LearnScreen({
     },
     [motion],
   );
-  const choose = useCallback((m: PracticalMode) => onRun({ kind: "choose", mode: m }), [onRun]);
+  const choose = useCallback(
+    (m: PracticalMode) =>
+      onRun(
+        ctx.snapped && m === "watch"
+          ? { kind: "choose", mode: m, guided: true }
+          : { kind: "choose", mode: m },
+      ),
+    [onRun, ctx.snapped],
+  );
   // Closing the paper without a choice goes on with its primary choice, Practise. Guided: the
   // header card's full paper pauses the run while it is open and resumes it when it closes.
   const resumeAfterPaper = useRef(false);

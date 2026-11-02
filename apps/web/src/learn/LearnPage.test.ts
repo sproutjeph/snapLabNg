@@ -51,6 +51,20 @@ describe("the practical page's flow", () => {
     );
   });
 
+  it("Watch chosen on a snapped question's paper plays guided Watch", () => {
+    const paper = initialRun(q("practical=ohms-law&question=snapped&seed=7"), 7);
+    const run = nextRun(paper, { kind: "choose", mode: "watch", guided: true });
+    // The reading drops the parts again as it names them, so the bench is not already set.
+    expect(run).toMatchObject({ practical: "watch", guided: true, afterPaper: false });
+    expect(
+      urlForRun("http://h/?practical=ohms-law&question=snapped&seed=7", "watch", 7, run.guided),
+    ).toBe("/?practical=ohms-law&question=snapped&seed=7&mode=guided");
+    // Practise and Exam from the same paper are never guided.
+    for (const mode of ["practice", "exam"] as const) {
+      expect(nextRun(paper, { kind: "choose", mode, guided: true }).guided).toBe(false);
+    }
+  });
+
   it("?mode= skips the paper", () => {
     for (const mode of ["watch", "practice", "exam"] as const) {
       const search = q(`practical=ohms-law&mode=${mode}`);
