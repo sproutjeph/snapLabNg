@@ -19,6 +19,8 @@ export interface Config {
   /** Recorded examiner turns, replayed in fixtures mode. */
   examinerFixtureDir: string;
   recordDir: string;
+  /** Recorded Spark and SAM answers for /api/question: replayed in fixtures mode, written when recording. */
+  questionFixtureDir: string;
   spendCapUsd: number;
   spendDailyCapUsd: number;
   spendLedgerPath: string;
@@ -56,6 +58,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     recordDir: fromRoot(
       env.RECORD_DIR ?? `fixtures/recorded/${new Date().toISOString().slice(0, 10)}`,
     ),
+    questionFixtureDir: fromRoot(env.QUESTION_FIXTURE_DIR ?? "fixtures/recorded/2026-11-02-q3b"),
     spendCapUsd: num(env.SPEND_CAP_USD, 20),
     spendDailyCapUsd: num(env.SPEND_DAILY_CAP_USD, 5),
     spendLedgerPath: fromRoot(env.SPEND_LEDGER_PATH ?? ".spend/ledger.json"),
