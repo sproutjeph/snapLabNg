@@ -36,7 +36,15 @@ function writeDemoFlaskColor(readingCm3: number, out: [number, number, number]):
   out[2] = pinkB + (clearB - pinkB) * t;
 }
 
-function PreviewCameraRig({ zoomBurette }: { zoomBurette: boolean }) {
+// Hero pose for the home page still (?kit=titration&hero=1): the lower two thirds of the set,
+// three-quarter view, no HUD. The burette top is cropped; the reading is pre-set so the meniscus
+// and its graduations show.
+const HERO_READING_CM3 = 30.0;
+const HERO_FOV = 24;
+const HERO_TARGET: readonly [number, number, number] = [0.04, 0.25, 0.04];
+const HERO_CAM: readonly [number, number, number] = [0.5, 0.82, 1.5];
+
+function PreviewCameraRig({ zoomBurette, hero }: { zoomBurette: boolean; hero: boolean }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls);
   const size = useThree((s) => s.size);
@@ -55,6 +63,16 @@ function PreviewCameraRig({ zoomBurette }: { zoomBurette: boolean }) {
       }
       return;
     }
+    if (hero) {
+      camera.fov = HERO_FOV;
+      camera.position.set(HERO_CAM[0], HERO_CAM[1], HERO_CAM[2]);
+      camera.lookAt(HERO_TARGET[0], HERO_TARGET[1], HERO_TARGET[2]);
+      camera.updateProjectionMatrix();
+      if (controls && "update" in controls && typeof controls.update === "function") {
+        controls.update();
+      }
+      return;
+    }
     const aspect = size.width / Math.max(size.height, 1);
     const scale = aspect < 1 ? Math.max(1.05, 0.58 / Math.max(aspect, 0.3)) : 1.0;
     const dist = BASE_DIST * scale;
@@ -65,7 +83,7 @@ function PreviewCameraRig({ zoomBurette }: { zoomBurette: boolean }) {
     if (controls && "update" in controls && typeof controls.update === "function") {
       controls.update();
     }
-  }, [camera, controls, size.width, size.height, zoomBurette]);
+  }, [camera, controls, size.width, size.height, zoomBurette, hero]);
 
   return null;
 }
@@ -75,6 +93,7 @@ interface DemoSceneProps {
   visualRef: { current: TitrationVisualState };
   swirlTimerRef: { current: number };
   zoomBurette: boolean;
+  hero: boolean;
   onStopcockChange: (open: number) => void;
   onSwirl: () => void;
   onFunnelToggle: () => void;
@@ -86,6 +105,7 @@ function DemoScene({
   visualRef,
   swirlTimerRef,
   zoomBurette,
+  hero,
   onStopcockChange,
   onSwirl,
   onFunnelToggle,
@@ -143,8 +163,11 @@ function DemoScene({
   return (
     <>
       <InkLights quality={quality} />
-      <PreviewCameraRig zoomBurette={zoomBurette} />
-      <OrbitControls target={[0, zoomBurette ? ZOOM_BURETTE_TARGET_Y : TARGET_Y, 0]} makeDefault />
+      <PreviewCameraRig zoomBurette={zoomBurette} hero={hero} />
+      <OrbitControls
+        target={hero ? [...HERO_TARGET] : [0, zoomBurette ? ZOOM_BURETTE_TARGET_Y : TARGET_Y, 0]}
+        makeDefault
+      />
       <PaperDesk quality={quality} size={[1.4, 0.9]} y={0} />
       <TitrationKit
         state={visualRef}
@@ -166,15 +189,18 @@ export default function KitPreview() {
     return params.get("zoom") === "burette";
   }, []);
 
-  const initialReading = zoomBurette ? ZOOM_BURETTE_READING_CM3 : 0.0;
+  const hero = useMemo(() => new URLSearchParams(location.search).get("hero") === "1", []);
+
+  const initialReading = zoomBurette ? ZOOM_BURETTE_READING_CM3 : hero ? HERO_READING_CM3 : 0.0;
   const initialColor: [number, number, number] = [0, 0, 0];
-  writeDemoFlaskColor(initialReading, initialColor);
+  writeDemoFlaskColor(hero ? 20 : initialReading, initialColor);
 
   const visualRef = useRef<TitrationVisualState>({
     buretteReadingCm3: initialReading,
     stopcockOpen: 0,
     dropping: false,
-    flaskVolumeCm3: 25.0 + initialReading,
+    // The hero still shows a deeper pink pool than the true 25 cm³ so the colour reads at card size.
+    flaskVolumeCm3: hero ? 95 : 25.0 + initialReading,
     flaskColor: initialColor,
     swirlPhase: 0,
     funnelOn: true,
@@ -228,6 +254,7 @@ export default function KitPreview() {
           visualRef={visualRef}
           swirlTimerRef={swirlTimerRef}
           zoomBurette={zoomBurette}
+          hero={hero}
           onStopcockChange={handleStopcockChange}
           onSwirl={handleSwirl}
           onFunnelToggle={handleFunnelToggle}
@@ -236,95 +263,97 @@ export default function KitPreview() {
       </Canvas>
 
       {/* Demo HUD controls */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 12,
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          gap: 6,
-          alignItems: "center",
-          padding: "7px 11px",
-          borderRadius: 10,
-          background: "rgba(15, 23, 42, 0.86)",
-          border: "1px solid rgba(148, 163, 184, 0.28)",
-          color: "#f8fafc",
-          fontFamily: "ui-sans-serif, system-ui, sans-serif",
-          fontSize: 12,
-          userSelect: "none",
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ fontWeight: 600, marginRight: 4 }}>
-          <strong style={{ fontVariantNumeric: "tabular-nums" }}>{readingText} cm³</strong>
-        </span>
-        <button
-          type="button"
-          onPointerDown={() => handleStopcockChange(1)}
-          onPointerUp={() => handleStopcockChange(0)}
-          onPointerLeave={() => handleStopcockChange(0)}
+      {hero ? null : (
+        <div
           style={{
-            padding: "5px 9px",
-            borderRadius: 6,
-            border: "1px solid #3b82f6",
-            background: "#1d4ed8",
-            color: "#ffffff",
-            fontWeight: 600,
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          Hold Stopcock
-        </button>
-        <button
-          type="button"
-          onClick={handleSwirl}
-          style={{
-            padding: "5px 9px",
-            borderRadius: 6,
-            border: "1px solid #475569",
-            background: "#1e293b",
+            position: "absolute",
+            bottom: 12,
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            padding: "7px 11px",
+            borderRadius: 10,
+            background: "rgba(15, 23, 42, 0.86)",
+            border: "1px solid rgba(148, 163, 184, 0.28)",
             color: "#f8fafc",
-            fontWeight: 600,
+            fontFamily: "ui-sans-serif, system-ui, sans-serif",
             fontSize: 12,
-            cursor: "pointer",
+            userSelect: "none",
+            whiteSpace: "nowrap",
           }}
         >
-          Swirl
-        </button>
-        <button
-          type="button"
-          onClick={handleFunnelToggle}
-          style={{
-            padding: "5px 9px",
-            borderRadius: 6,
-            border: "1px solid #475569",
-            background: funnelOn ? "#334155" : "#0f172a",
-            color: "#f8fafc",
-            fontWeight: 600,
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          Funnel: {funnelOn ? "On" : "Off"}
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          style={{
-            padding: "5px 8px",
-            borderRadius: 6,
-            border: "1px solid #475569",
-            background: "transparent",
-            color: "#cbd5e1",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          Refill
-        </button>
-      </div>
+          <span style={{ fontWeight: 600, marginRight: 4 }}>
+            <strong style={{ fontVariantNumeric: "tabular-nums" }}>{readingText} cm³</strong>
+          </span>
+          <button
+            type="button"
+            onPointerDown={() => handleStopcockChange(1)}
+            onPointerUp={() => handleStopcockChange(0)}
+            onPointerLeave={() => handleStopcockChange(0)}
+            style={{
+              padding: "5px 9px",
+              borderRadius: 6,
+              border: "1px solid #3b82f6",
+              background: "#1d4ed8",
+              color: "#ffffff",
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Hold Stopcock
+          </button>
+          <button
+            type="button"
+            onClick={handleSwirl}
+            style={{
+              padding: "5px 9px",
+              borderRadius: 6,
+              border: "1px solid #475569",
+              background: "#1e293b",
+              color: "#f8fafc",
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Swirl
+          </button>
+          <button
+            type="button"
+            onClick={handleFunnelToggle}
+            style={{
+              padding: "5px 9px",
+              borderRadius: 6,
+              border: "1px solid #475569",
+              background: funnelOn ? "#334155" : "#0f172a",
+              color: "#f8fafc",
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Funnel: {funnelOn ? "On" : "Off"}
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            style={{
+              padding: "5px 8px",
+              borderRadius: 6,
+              border: "1px solid #475569",
+              background: "transparent",
+              color: "#cbd5e1",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Refill
+          </button>
+        </div>
+      )}
     </div>
   );
 }

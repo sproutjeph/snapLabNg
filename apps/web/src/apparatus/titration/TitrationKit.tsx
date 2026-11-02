@@ -1,8 +1,9 @@
 import { Beaker } from "./Beaker";
 import { Burette } from "./Burette";
 import { ConicalFlask } from "./ConicalFlask";
-import { TITRATION_LAYOUT } from "./dimensions";
+import { BEAKER_DIMS, BURETTE_DIMS, FLASK_DIMS, TITRATION_LAYOUT } from "./dimensions";
 import { Funnel } from "./Funnel";
+import { GlassGlints } from "./GlassGlints";
 import { Pipette } from "./Pipette";
 import { RetortStand } from "./RetortStand";
 import type { TitrationKitProps } from "./types";
@@ -37,6 +38,30 @@ export function TitrationKit({
         quality={quality}
         onStopcockChange={onStopcockChange}
         onFunnelToggle={onFunnelToggle}
+      />
+
+      {/* Window reflections on the glass, so it reads as glass on the paper ground */}
+      <GlassGlints
+        quality={quality}
+        rTop={FLASK_DIMS.neckRadius}
+        rBottom={FLASK_DIMS.baseRadius}
+        height={FLASK_DIMS.bodyHeight}
+        position={[0, FLASK_DIMS.baseY, 0]}
+      />
+      <GlassGlints
+        quality={quality}
+        rTop={BURETTE_DIMS.outerRadius}
+        rBottom={BURETTE_DIMS.outerRadius}
+        height={BURETTE_DIMS.topY - BURETTE_DIMS.tubeBottomY}
+        position={[0, BURETTE_DIMS.tubeBottomY, 0]}
+        theta={0.7}
+      />
+      <GlassGlints
+        quality={quality}
+        rTop={BEAKER_DIMS.radius}
+        rBottom={BEAKER_DIMS.radius}
+        height={BEAKER_DIMS.height}
+        position={TITRATION_LAYOUT.beakerPos}
       />
 
       {/* Filter funnel in the top of the burette (visible when state.current.funnelOn is true) */}

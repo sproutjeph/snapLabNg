@@ -21,6 +21,13 @@ const DIR_Y = BASE_CAM_Y / BASE_DIST;
 const DIR_Z = BASE_CAM_Z / BASE_DIST;
 const TARGET_Z = -0.08;
 
+// Hero pose for the home page still (?kit=meter-bridge&hero=1): the whole bench in a three-quarter
+// view from the front-left, no UI.
+const HERO = new URLSearchParams(location.search).get("hero") === "1";
+const HERO_FOV = 30;
+const HERO_TARGET: readonly [number, number, number] = [0.02, 0, -0.1];
+const HERO_CAM: readonly [number, number, number] = [-0.5, 0.82, 1.38];
+
 function PreviewCameraRig() {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls);
@@ -28,6 +35,16 @@ function PreviewCameraRig() {
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    if (HERO) {
+      camera.fov = HERO_FOV;
+      camera.position.set(HERO_CAM[0], HERO_CAM[1], HERO_CAM[2]);
+      camera.lookAt(HERO_TARGET[0], HERO_TARGET[1], HERO_TARGET[2]);
+      camera.updateProjectionMatrix();
+      if (controls && "update" in controls && typeof controls.update === "function") {
+        controls.update();
+      }
+      return;
+    }
     const aspect = size.width / Math.max(size.height, 1);
     const scale = aspect < 1 ? 1.52 / Math.max(aspect, 0.25) : 1.08;
     const dist = BASE_DIST * scale;
@@ -53,7 +70,7 @@ function DemoScene({ quality }: { quality: QualityTier }) {
     <>
       <InkLights quality={quality} />
       <PreviewCameraRig />
-      <OrbitControls target={[0, 0, TARGET_Z]} makeDefault />
+      <OrbitControls target={HERO ? [...HERO_TARGET] : [0, 0, TARGET_Z]} makeDefault />
       <PaperDesk quality={quality} size={[2.2, 1.2]} y={-BRIDGE_BASE.height} />
       <MeterBridgeKit
         state={visual}
