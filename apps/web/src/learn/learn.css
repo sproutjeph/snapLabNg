@@ -86,7 +86,11 @@
      --sh-guide  how much of the right the guide takes, with its gap to the edge (a phone upright: 0)
    The rules without a layout are for a laptop (wide and compact: the Compare button top left, the
    guide down the right). A phone held upright (portrait) and a phone on its side (short) change
-   them further down, each picked by the shell's data-layout. */
+   them further down, each picked by the shell's data-layout.
+   On a phone the note and the close-up bar are placed from the canvas's own foot: since beauty
+   pass B3 the canvas (and .ol-stage in it) already ends at the strip, so --sh-bar would count the
+   strip twice and lift them into the middle of the bench. --ol-foot keeps them just above the
+   caption pill (the player's dock: 24 design px up, a pill of up to two lines). */
 .ol-tools {
   position: absolute;
   z-index: 2;
@@ -145,6 +149,8 @@
   font-family: var(--f-body);
   font-size: 15px;
   line-height: 1.4;
+  /* Words only: a tap on the note reaches the bench under it (a terminal, a lead, the rule). */
+  pointer-events: none;
 }
 
 .ol-mark {
@@ -289,17 +295,25 @@
   max-width: none;
 }
 
+.sh-root[data-layout="portrait"] {
+  --ol-foot: calc(100px * var(--ui));
+}
+
+.sh-root[data-layout="short"] {
+  --ol-foot: calc(84px * var(--ui));
+}
+
 .sh-root[data-layout="portrait"] .ol-note {
   top: auto;
   right: 12px;
-  bottom: calc(var(--sh-bar) + 12px);
+  bottom: var(--ol-foot);
   left: 12px;
   max-width: none;
 }
 
 .sh-root[data-layout="portrait"] .ol-loupe {
   right: 12px;
-  bottom: calc(var(--sh-bar) + 12px);
+  bottom: var(--ol-foot);
   left: 12px;
   max-width: none;
   margin: 0;
@@ -326,14 +340,14 @@
 
 .sh-root[data-layout="short"] .ol-note {
   top: auto;
-  bottom: calc(var(--sh-bar) + 12px);
+  bottom: var(--ol-foot);
   left: calc(12px * var(--ui));
   max-width: min(460px, calc(100% - 12px * var(--ui) - var(--sh-guide) - 12px));
 }
 
 .sh-root[data-layout="short"] .ol-loupe {
   right: calc(var(--sh-guide) + 12px);
-  bottom: calc(var(--sh-bar) + 12px);
+  bottom: var(--ol-foot);
   left: calc(12px * var(--ui));
 }
 
