@@ -35,6 +35,17 @@ interface FreeArea {
   bottom: number;
 }
 
+/** Where a tag's card may stand: the layer's px less what the page's cards cover. */
+export function tagArea(width: number, height: number, c: Covered): FreeArea {
+  return {
+    left: c.left + EDGE_PX,
+    // The player's pill hangs a little below the top bar's covered edge.
+    top: c.top + EDGE_PX + TOP_EXTRA_PX,
+    right: width - c.right - EDGE_PX,
+    bottom: height - c.bottom - EDGE_PX,
+  };
+}
+
 /**
  * Where a card may stand from its dot, in the order tried: right of it, left of it, then centred
  * above or below, each nearer first, then one card further out, up to three.
@@ -125,8 +136,6 @@ export function StageTags({
   const leaders = useRef<Array<HTMLSpanElement | null>>([]);
   const sizes = useRef<Size[]>(Array.from({ length: MAX_TAGS }, () => ({ w: 200, h: 60 })));
   const area = useRef({ left: 0, top: 0, right: 1000, bottom: 600 });
-  const coveredRef = useRef(covered);
-  coveredRef.current = covered;
 
   useEffect(() => setHost(layer.current), [layer]);
 
@@ -134,22 +143,19 @@ export function StageTags({
   useEffect(() => {
     if (!host) return;
     const measure = () => {
-      const w = host.clientWidth;
-      const h = host.clientHeight;
-      const c = coveredRef.current(window.innerWidth, window.innerHeight);
-      area.current = {
-        left: c.left + EDGE_PX,
-        // The player's pill hangs a little below the top bar's covered edge.
-        top: c.top + EDGE_PX + TOP_EXTRA_PX,
-        right: w - c.right - EDGE_PX,
-        bottom: h - c.bottom - EDGE_PX,
-      };
+      area.current = tagArea(
+        host.clientWidth,
+        host.clientHeight,
+        covered(window.innerWidth, window.innerHeight),
+      );
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(host);
     return () => ro.disconnect();
-  }, [host]);
+    // `covered` changes with the dock, the caption and the guide (LearnPage): measure again then,
+    // so the paper closing gives its column back to the tags.
+  }, [host, covered]);
 
   // New words: render them, then measure each card.
   useEffect(() => {

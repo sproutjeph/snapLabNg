@@ -251,7 +251,6 @@ describe("the guided script, played by the director", () => {
     // The key is open at the end, as it is between readings.
     expect(r.bench.visual.current.keyClosed).toBe(false);
     // About two minutes at 1x, with the voice taking as long as the estimate.
-    console.log("GUIDED_SECONDS", seconds);
     expect(seconds).toBeGreaterThan(100);
     expect(seconds).toBeLessThan(145);
   }, 60_000);
@@ -304,4 +303,42 @@ describe("the guided script, played by the director", () => {
     r.director.next();
     expect(r.director.state.beat).toBe(firstOf("law") + 2);
   });
+});
+
+describe("the slope working as written", () => {
+  // The working must check on paper (a WAEC examiner redoes the arithmetic as printed): the
+  // difference of the two corner readings printed, and the quotient of the two differences printed.
+  const num = (t: string | undefined, re: RegExp) => Number(re.exec(t ?? "")?.[1]);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+
+  for (const [name, script] of [
+    ["guided", G],
+    ["Watch", OHMS_LAW_SCRIPT],
+  ] as const) {
+    it(`prints ΔV, ΔI and s = ΔV/ΔI that agree with each other, ${name}`, () => {
+      for (const seed of [1, 2, 3, 7, 11, 19]) {
+        const r = rig(seed, script);
+        playThrough(r);
+        const g = r.director.demoRecord.graph;
+        const dv = g?.delta_y_as_written ?? "";
+        const di = g?.delta_x_as_written ?? "";
+        const s = g?.slope_as_written ?? "";
+        const [vHi, vLo, vD] = [/= ([\d.]+) −/, /− ([\d.]+) =/, /= ([\d.]+) V$/].map((re) =>
+          num(dv, re),
+        ) as [number, number, number];
+        const [iHi, iLo, iD] = [/= ([\d.]+) −/, /− ([\d.]+) =/, /= ([\d.]+) A$/].map((re) =>
+          num(di, re),
+        ) as [number, number, number];
+        const m = /^s = ΔV\/ΔI = ([\d.]+)\/([\d.]+) = ([\d.]+) Ω$/.exec(s);
+        expect(m, `${name} seed ${seed}: ${s}`).not.toBeNull();
+        const [a, b, q] = [Number(m?.[1]), Number(m?.[2]), Number(m?.[3])];
+        // The differences are of the readings as printed; the working repeats them; the quotient
+        // is of those, to 2 d.p.
+        expect(r2(vHi - vLo), `${name} ${seed} ${dv}`).toBe(vD);
+        expect(r2(iHi - iLo), `${name} ${seed} ${di}`).toBe(iD);
+        expect([a, b], `${name} ${seed} ${s}`).toEqual([vD, iD]);
+        expect(r2(a / b), `${name} ${seed} ${s}`).toBe(q);
+      }
+    }, 120_000);
+  }
 });

@@ -62,6 +62,10 @@ function slotOf(anchor: PartId | TerminalId): DropSlot | null {
   return isDrop(part) ? part : null;
 }
 
+/** How far up a part's footprint top its tag's dot stands; the box's plugs stand well above its body. */
+const TAG_RISE = 0.8;
+const BOX_TAG_RISE = 2;
+
 /** No tags: a beat without any. */
 const NO_TAGS: readonly CalloutSpec[] = [];
 
@@ -333,7 +337,7 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
         const [x, y, z] = PART_ANCHOR[slot];
         ok = m.parts[slot].k > 0;
         // Most of the way up: on the case of a meter, not at the back edge of its top.
-        _p.set(x, y * 0.8 + m.parts[slot].heightM, z);
+        _p.set(x, y * (slot === "box" ? BOX_TAG_RISE : TAG_RISE) + m.parts[slot].heightM, z);
       } else if (spec.anchor === "leads") {
         const lead = m.restLeads[0];
         ok = lead !== undefined && lead.k > 0;
