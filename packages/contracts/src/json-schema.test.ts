@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   blueprintJsonSchema,
   examinerJudgementJsonSchema,
+  questionJsonSchema,
   readingsJsonSchema,
 } from "./json-schema";
 
@@ -37,6 +38,7 @@ const isObject = (n: Node) => n.type === "object" || n.properties !== undefined;
 const schemas = [
   ["blueprint", blueprintJsonSchema],
   ["readings", readingsJsonSchema],
+  ["question", questionJsonSchema],
 ] as const;
 
 describe("emitted JSON Schema", () => {
@@ -65,6 +67,18 @@ describe("emitted JSON Schema", () => {
   it("puts experiment as the first property of the blueprint schema", () => {
     const props = (blueprintJsonSchema as Node).properties as object;
     expect(Object.keys(props)[0]).toBe("experiment");
+  });
+
+  it("puts experiment first in the snapped-question schema, with Ohm's law in its enum", () => {
+    const props = (questionJsonSchema as Node).properties as Record<string, Node>;
+    expect(Object.keys(props)[0]).toBe("experiment");
+    expect(props.experiment?.enum).toEqual([
+      "ohms_law_vi",
+      "meter_bridge",
+      "titration",
+      "glass_block",
+      "unknown",
+    ]);
   });
 
   it("has an object (not anyOf) at the root of both schemas", () => {

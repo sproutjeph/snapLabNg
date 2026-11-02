@@ -6,5 +6,6 @@ export * from "./golden";
 export * from "./json-schema";
 export * from "./marks";
 export * from "./ohmsLaw";
+export * from "./question";
 export * from "./readings";
 export * from "./voice";

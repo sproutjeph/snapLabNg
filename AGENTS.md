@@ -84,6 +84,8 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
 | `home/**` except `home/HomeBench3D.tsx` (Nov 2, `docs/plans/guided-demo.md`) | Muse Code (`muse/guided-home`) |
 | `learn/graph/GraphBoard.tsx`, `learn/readings/ReadingsBoard.tsx`, `learn/end/**` (Nov 2, `docs/plans/guided-demo.md`) | Gemini (`gemini/watch-boards`) |
+| `snapq/**` except `snapq/store.ts` and `snapq/FoundOverlay*`, and the Snap button in `home/**` (Nov 2, `docs/plans/snap-question.md`) | Muse Code (`muse/snap-question`) |
+| `snapq/FoundOverlay.tsx`, its CSS and test (Nov 2, `docs/plans/snap-question.md`) | Gemini (`gemini/found-overlay`) |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/` unless rooted at `apps/`.
