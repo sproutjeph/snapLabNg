@@ -146,7 +146,7 @@ export async function runQuestion(
   const sparkBody = {
     model: MODELS.spark,
     reasoning: { effort: "low" },
-    max_output_tokens: MAX_OUTPUT_TOKENS.spark,
+    max_output_tokens: MAX_OUTPUT_TOKENS.question,
     store: false,
     input: [{ role: "user", content: [{ type: "input_text", text: QUESTION_PROMPT }, ...images] }],
     text: {
