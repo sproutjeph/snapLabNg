@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { VoiceGuide } from "../voice/types";
 import {
   benchHeld,
+  createGuidedWatch,
   MIN_READING_MS,
   readingRefused,
   SPEECH_START_WAIT_MS,
@@ -127,5 +128,54 @@ describe("the bench while the guided reading waits to be heard", () => {
     expect(benchHeld(false, { ...facts, muted: true })).toBe(false);
     expect(benchHeld(false, { ...facts, speechAvailable: false })).toBe(false);
     expect(benchHeld(false, { ...facts, tapped: true })).toBe(false);
+  });
+});
+
+describe("watching the guided reading until it is heard", () => {
+  function setup() {
+    const state = { muted: false, speaking: false };
+    const holds: boolean[] = [];
+    const offers: boolean[] = [];
+    const watch = createGuidedWatch({
+      facts: () => ({ muted: state.muted, speechAvailable: true, tapped: false }),
+      speaking: () => state.speaking,
+      hold: (h) => holds.push(h),
+      offerTap: (s) => offers.push(s),
+    });
+    return { state, holds, offers, watch };
+  }
+
+  it("lets the bench fill when a cold voice is first heard long after 10 s", () => {
+    const { state, holds, offers, watch } = setup();
+    expect(holds).toEqual([true]);
+    for (let ms = 100; ms <= 15000; ms += 100) watch.tick(ms);
+    expect(offers).toEqual([true]);
+    expect(watch.finished).toBe(false);
+    state.speaking = true;
+    watch.tick(15100);
+    expect(holds).toEqual([true, false]);
+    expect(offers).toEqual([true, false]);
+    expect(watch.finished).toBe(true);
+  });
+
+  it("lets the bench fill when the reading ends unrefused, and keeps it empty when refused", () => {
+    const a = setup();
+    a.watch.readingEnded(false);
+    expect(a.holds).toEqual([true, false]);
+    expect(a.watch.finished).toBe(true);
+    const b = setup();
+    b.watch.readingEnded(true);
+    expect(b.holds).toEqual([true]);
+    expect(b.watch.finished).toBe(false);
+  });
+
+  it("lets the bench fill when she mutes while it is held, so the muted drops run", () => {
+    const { state, holds, offers, watch } = setup();
+    watch.tick(500);
+    state.muted = true;
+    watch.tick(600);
+    expect(holds).toEqual([true, false]);
+    expect(offers).toEqual([]);
+    expect(watch.finished).toBe(true);
   });
 });
