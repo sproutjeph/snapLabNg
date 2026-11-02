@@ -93,10 +93,18 @@
 }
 
 /* Flip tag inside when box is near the top edge */
+.fo-part[data-edge*="top"] .fo-tag,
 .fo-part[data-edge-top="1"] .fo-tag {
   bottom: auto;
   top: 3px;
   margin-bottom: 0;
+}
+
+/* Anchor tag to the right edge when box is near the right edge (x0 >= 0.6) */
+.fo-part[data-edge*="right"] .fo-tag,
+.fo-part[data-edge-right="1"] .fo-tag {
+  left: auto;
+  right: 0;
 }
 
 /* Highlighted state */
@@ -148,11 +156,11 @@
   }
 }
 
-/* Draw-in animation */
+/* Draw-in animation: rect pathLength="1" ensures normalized 1 user unit stroke dash */
 @media (prefers-reduced-motion: no-preference) {
   .fo-box-rect {
-    stroke-dasharray: 400;
-    stroke-dashoffset: 400;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
     animation: fo-draw-box 0.45s ease-out forwards;
   }
 
@@ -163,7 +171,7 @@
 
 @keyframes fo-draw-box {
   from {
-    stroke-dashoffset: 400;
+    stroke-dashoffset: 1;
   }
   to {
     stroke-dashoffset: 0;

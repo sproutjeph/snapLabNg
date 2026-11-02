@@ -61,6 +61,18 @@ describe("FoundOverlay", () => {
     expect(html).toContain("height:30%");
   });
 
+  it("renders SVG rects with pathLength=1 so dash animation always closes", () => {
+    const parts: QuestionRead["diagram"]["parts"] = [
+      {
+        kind: "ammeter",
+        label_as_printed: "A",
+        box: { x0: 0.1, y0: 0.2, x1: 0.3, y1: 0.4 },
+      },
+    ];
+    const html = render({ parts });
+    expect(html).toContain('pathLength="1"');
+  });
+
   it("tags show label and name", () => {
     // Check plain name mapping for all apparatus kinds
     expect(kindToName("cells")).toBe("cells");
@@ -198,28 +210,56 @@ describe("FoundOverlay", () => {
     expect(threeHtml).toContain('data-testid="found-box-2"');
   });
 
-  it("adjusts tag position when a box is near the top edge", () => {
+  it("anchors tags to the right when a box is near the right edge (x0 >= 0.6)", () => {
     const parts: QuestionRead["diagram"]["parts"] = [
-      {
-        kind: "cells",
-        label_as_printed: "E",
-        box: { x0: 0.1, y0: 0.02, x1: 0.3, y1: 0.15 }, // y0 = 2% < 6%
-      },
       {
         kind: "key",
         label_as_printed: "K",
-        box: { x0: 0.5, y0: 0.3, x1: 0.7, y1: 0.45 }, // y0 = 30% >= 6%
+        box: { x0: 0.2, y0: 0.3, x1: 0.4, y1: 0.45 }, // x0 = 0.2 < 0.6
+      },
+      {
+        kind: "voltmeter",
+        label_as_printed: "V",
+        box: { x0: 0.65, y0: 0.3, x1: 0.85, y1: 0.45 }, // x0 = 0.65 >= 0.6
       },
     ];
 
     const html = render({ parts });
-    // Box 0 is near top edge
-    expect(html).toContain(
-      'data-testid="found-box-0" data-part-index="0" data-part-kind="cells" data-box-source="spark" data-edge-top="1"',
-    );
-    // Box 1 is not near top edge
+    // Box 0 is left-anchored
     expect(html).not.toContain(
-      'data-testid="found-box-1" data-part-index="1" data-part-kind="key" data-box-source="spark" data-edge-top="1"',
+      'data-testid="found-box-0" data-part-index="0" data-part-kind="key" data-box-source="spark" data-edge="right"',
     );
+    expect(html).not.toContain(
+      'data-testid="found-box-0" data-part-index="0" data-part-kind="key" data-box-source="spark" data-edge-right="1"',
+    );
+
+    // Box 1 is right-anchored to avoid overflow: hidden clipping
+    expect(html).toContain('data-edge="right"');
+    expect(html).toContain('data-edge-right="1"');
+  });
+
+  it("adjusts tag position when a box is near the top edge and/or right edge", () => {
+    const parts: QuestionRead["diagram"]["parts"] = [
+      {
+        kind: "cells",
+        label_as_printed: "E",
+        box: { x0: 0.1, y0: 0.02, x1: 0.3, y1: 0.15 }, // y0 = 2% < 6%, x0 = 0.1 < 0.6
+      },
+      {
+        kind: "wire_xy",
+        label_as_printed: "XY",
+        box: { x0: 0.7, y0: 0.03, x1: 0.9, y1: 0.18 }, // y0 = 3% < 6%, x0 = 0.7 >= 0.6
+      },
+    ];
+
+    const html = render({ parts });
+    // Box 0 is near top only
+    expect(html).toContain('data-edge="top"');
+    expect(html).toContain('data-edge-top="1"');
+    expect(html).not.toContain('data-edge-right="1" data-testid="found-box-0"');
+
+    // Box 1 is near top and right
+    expect(html).toContain('data-edge="top right"');
+    expect(html).toContain('data-edge-top="1" data-edge-right="1"');
   });
 });

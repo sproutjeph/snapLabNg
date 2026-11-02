@@ -74,6 +74,13 @@ export function FoundOverlay({ photo, parts, outlines, highlight }: FoundOverlay
 
           const topPct = y0 * 100;
           const isNearTop = topPct < 6;
+          const isNearRight = x0 >= 0.6;
+
+          const edges: string[] = [];
+          if (isNearTop) edges.push("top");
+          if (isNearRight) edges.push("right");
+          const edge = edges.length > 0 ? edges.join(" ") : undefined;
+
           const isHighlighted = highlight !== null && highlight === index;
           const isDimmed = highlight !== null && highlight !== index;
 
@@ -103,7 +110,9 @@ export function FoundOverlay({ photo, parts, outlines, highlight }: FoundOverlay
               data-box-source={hasOutline ? "outline" : "spark"}
               data-highlighted={isHighlighted ? "1" : undefined}
               data-dimmed={isDimmed ? "1" : undefined}
+              data-edge={edge}
               data-edge-top={isNearTop ? "1" : undefined}
+              data-edge-right={isNearRight ? "1" : undefined}
             >
               <svg
                 className="fo-box-svg"
@@ -111,7 +120,15 @@ export function FoundOverlay({ photo, parts, outlines, highlight }: FoundOverlay
                 preserveAspectRatio="none"
                 aria-hidden="true"
               >
-                <rect className="fo-box-rect" x="0.5" y="0.5" width="99" height="99" rx="2" />
+                <rect
+                  className="fo-box-rect"
+                  x="0.5"
+                  y="0.5"
+                  width="99"
+                  height="99"
+                  rx="2"
+                  pathLength={1}
+                />
               </svg>
               <span className="fo-tag" data-testid={`found-tag-${index}`}>
                 {tag}
