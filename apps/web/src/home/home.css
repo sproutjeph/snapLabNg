@@ -153,6 +153,12 @@ a.hp-open:hover .hp-name {
   font-size: 15px;
 }
 
+/* Snap your question: her own paper, full width under Watch / Practise / Exam. */
+.hp-snap {
+  width: 100%;
+  margin-top: 10px;
+}
+
 /* A practical that is not ready. The drawing fades; the words stay readable, and a dashed pill
    (a shape, not only paleness) says why there is no button. */
 .hp-soon {
@@ -302,6 +308,12 @@ a.hp-open:hover .hp-name {
   .hp-hero .hp-actions {
     grid-column: 2;
     grid-row: 4;
+  }
+
+  .hp-hero .hp-snap {
+    grid-column: 2;
+    grid-row: 5;
+    align-self: start;
   }
 
   /* The Coming soon stills show whole (the titration set is tall and narrow), at a modest height. */
