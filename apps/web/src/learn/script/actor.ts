@@ -185,6 +185,8 @@ export function drawTriangle(r: OhmsLawRecord): OhmsLawRecord {
 }
 
 const fmt = (n: number) => n.toFixed(2);
+/** To 2 d.p. as a number: what `fmt` prints. */
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * What she writes for ΔV, ΔI or s once her triangle is drawn: read off the triangle's sides on
@@ -200,20 +202,25 @@ export function readTriangle(r: OhmsLawRecord, part: "deltaY" | "deltaX" | "slop
   if (upx === null || upy === null || !(upx > 0) || !(upy > 0)) return null;
   const [x1, x2] = [fromSheetCm(tri.p1.x_cm, g.x), fromSheetCm(tri.p3.x_cm, g.x)];
   const [y1, y2] = [fromSheetCm(tri.p1.y_cm, g.y), fromSheetCm(tri.p3.y_cm, g.y)];
-  const xLo = Math.min(x1, x2);
-  const xHi = Math.max(x1, x2);
-  const yLo = Math.min(y1, y2);
-  const yHi = Math.max(y1, y2);
+  // As she writes it: each corner reading to 2 d.p., the difference of those two numbers, and s as
+  // the quotient of the two differences as written, so the working checks on paper (a quotient of
+  // the unrounded sides can differ in the last digit from 1.82/0.61 as printed).
+  const xLo = round2(Math.min(x1, x2));
+  const xHi = round2(Math.max(x1, x2));
+  const yLo = round2(Math.min(y1, y2));
+  const yHi = round2(Math.max(y1, y2));
+  const dY = round2(yHi - yLo);
+  const dX = round2(xHi - xLo);
   const xUnit = labelUnit(g.x.label_as_written) ?? "A";
   const yUnit = labelUnit(g.y.label_as_written) ?? "V";
-  const dV = `ΔV = ${fmt(yHi)} − ${fmt(yLo)} = ${fmt(yHi - yLo)} ${yUnit}`;
-  const dI = `ΔI = ${fmt(xHi)} − ${fmt(xLo)} = ${fmt(xHi - xLo)} ${xUnit}`;
+  const dV = `ΔV = ${fmt(yHi)} − ${fmt(yLo)} = ${fmt(dY)} ${yUnit}`;
+  const dI = `ΔI = ${fmt(xHi)} − ${fmt(xLo)} = ${fmt(dX)} ${xUnit}`;
   if (part === "deltaY") return dV;
   if (part === "deltaX") return dI;
-  const dx = (xHi - xLo) * milliOf(g.x.label_as_written);
+  const dx = dX * milliOf(g.x.label_as_written);
   if (dx === 0) return null;
-  const s = ((yHi - yLo) * milliOf(g.y.label_as_written)) / dx;
-  return `s = ΔV/ΔI = ${fmt(yHi - yLo)}/${fmt(xHi - xLo)} = ${fmt(s)} Ω`;
+  const s = (dY * milliOf(g.y.label_as_written)) / dx;
+  return `s = ΔV/ΔI = ${fmt(dY)}/${fmt(dX)} = ${fmt(s)} Ω`;
 }
 
 /**

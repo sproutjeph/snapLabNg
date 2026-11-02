@@ -5,9 +5,6 @@
   --gb-max-h: 76vh;
   container-type: inline-size;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
   min-width: 0;
   max-width: 100%;
   padding: 14px 16px 20px;
@@ -17,6 +14,14 @@
   color: var(--ink);
   font-family: var(--f-body);
   box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.14);
+}
+
+/* A container cannot be queried by its own rules: the grid inside it is what the query lays out. */
+.gb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
 }
 
 .gb-root *,
@@ -32,12 +37,16 @@
   min-width: 0;
 }
 
-@container (min-width: 760px) {
-  .gb-root {
-    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+@container (min-width: 680px) {
+  .gb-grid {
+    grid-template-columns: minmax(220px, 270px) minmax(0, 1fr);
     align-items: start;
     column-gap: 18px;
-    --gb-max-h: 84vh;
+    --gb-max-h: 78vh;
+  }
+
+  .gb-grid .gb-viewport {
+    order: 0;
   }
 }
 
@@ -108,6 +117,8 @@
 }
 
 .gb-viewport {
+  /* One column: the sheet first, its working under it. */
+  order: -1;
   overflow: hidden;
   max-width: 100%;
   border: var(--rule);
@@ -221,9 +232,9 @@
     animation: gb-pop 0.28s ease-out both;
   }
 
+  /* The line has non-scaling strokes, whose dashes are screen px and ignore pathLength: draw it in
+     with a dash far longer than any line, so it ends solid. */
   .gb-line {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 0;
     animation: gb-draw 0.55s ease-out both;
   }
 }
@@ -239,9 +250,9 @@
 
 @keyframes gb-draw {
   from {
-    stroke-dashoffset: 1;
+    stroke-dasharray: 0 4000px;
   }
   to {
-    stroke-dashoffset: 0;
+    stroke-dasharray: 4000px 0;
   }
 }

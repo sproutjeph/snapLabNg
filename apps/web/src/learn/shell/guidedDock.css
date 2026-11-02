@@ -1,0 +1,82 @@
+/* The guided demonstration's docked board (GuidedDock.tsx). The widths and fractions are the ones
+   in dock.ts: the camera frames the bench in what the dock leaves. */
+
+.gd-dock {
+  position: absolute;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  pointer-events: auto;
+  /* Below the top bar, above the step strip's foot: a laptop's column. */
+  top: calc(92px * var(--ui, 1));
+  right: 16px;
+  bottom: calc(168px * var(--ui, 1));
+  width: min(360px, 45vw);
+}
+
+/* The graph is the big one: wide enough for its working beside the sheet. */
+.gd-dock[data-kind="graph"] {
+  width: min(800px, 56vw);
+}
+
+.gd-dock[data-kind="graph"] .gb-grid {
+  --gb-max-h: calc(100vh - 330px);
+}
+
+.gd-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gd-dock {
+    animation: gd-in 0.3s ease-out both;
+  }
+}
+
+@keyframes gd-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+/* A phone: a sheet along the foot, as tall as dock.ts says. */
+.sh-root[data-layout="portrait"] .gd-dock,
+.sh-root[data-layout="short"] .gd-dock {
+  top: auto;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: auto;
+  height: calc(48% - 8px);
+}
+
+.sh-root[data-layout="portrait"] .gd-dock[data-kind="graph"],
+.sh-root[data-layout="short"] .gd-dock[data-kind="graph"] {
+  width: auto;
+  height: calc(62% - 8px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sh-root[data-layout="portrait"] .gd-dock,
+  .sh-root[data-layout="short"] .gd-dock {
+    animation-name: gd-rise;
+  }
+}
+
+@keyframes gd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* On a phone the sheet leads and its working follows; the sheet takes about two fifths of the screen. */
+.sh-root[data-layout="portrait"] .gd-dock[data-kind="graph"] .gb-grid,
+.sh-root[data-layout="short"] .gd-dock[data-kind="graph"] .gb-grid {
+  --gb-max-h: 38vh;
+}

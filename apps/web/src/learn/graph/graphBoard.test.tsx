@@ -86,4 +86,22 @@ describe("GraphBoard", () => {
     expect(withMeaning).toContain('data-testid="graph-meaning"');
     expect(withMeaning).toContain("The slope is the resistance of wire XY.");
   });
+
+  it("shows no working, deltas or meaning until the triangle is drawn", () => {
+    const g = setDelta(
+      setLine(emptyGraph(), { x_cm: 0, y_cm: 0 }, { x_cm: 15, y_cm: 20.8 }),
+      "slope_as_written",
+      "s = 4 Ω",
+    );
+    const early = render(g, "The slope is the resistance of wire XY.");
+    expect(early).not.toContain('data-testid="graph-working"');
+    expect(early).not.toContain("graph-slope");
+    expect(early).not.toContain("graph-meaning");
+    const later = render(
+      setTriangle(g, { x_cm: 2, y_cm: 2 }, { x_cm: 12, y_cm: 2 }),
+      "The slope is the resistance of wire XY.",
+    );
+    expect(later).toContain('data-testid="graph-working"');
+    expect(later).toContain('data-testid="graph-meaning"');
+  });
 });

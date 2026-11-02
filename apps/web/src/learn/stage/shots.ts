@@ -71,8 +71,9 @@ export function shotForPose(
   pose: string | undefined,
   portrait: boolean,
   watch = false,
-): StageShotName {
+): StageShotName | IdentifyShotName {
   const screen = portrait ? "phone" : "laptop";
+  if (watch && isIdentifyShot(pose)) return pose;
   if (watch && pose === "readings") return WATCH_READINGS_SHOT[screen];
   return SHOT_FOR_POSE[screen][pose ?? "bench"] ?? "bench";
 }
@@ -342,16 +343,76 @@ export function benchCorners(): Array<[number, number, number]> {
 }
 
 /**
+ * The guided demonstration's identify beats each frame one part (docs/plans/guided-demo.md): the
+ * camera eases to it, and the part's tag stands beside it. A beat takes the shot named by its id.
+ */
+export const IDENTIFY_SHOT_NAMES = [
+  "id-cells",
+  "id-key",
+  "id-ammeter",
+  "id-voltmeter",
+  "id-box",
+  "id-wire",
+  "id-leads",
+] as const;
+export type IdentifyShotName = (typeof IDENTIFY_SHOT_NAMES)[number];
+
+export function isIdentifyShot(name: string | undefined): name is IdentifyShotName {
+  return (IDENTIFY_SHOT_NAMES as readonly string[]).includes(name ?? "");
+}
+
+/**
+ * Room round the framed part, in metres: its tag (a name and a line, about 4 cm of bench to a
+ * side at this zoom) needs a margin more than the paper of a close shot does.
+ */
+const IDENTIFY_MARGIN_X_M = 0.09;
+const IDENTIFY_MARGIN_Z_M = 0.05;
+const IDENTIFY_MIN_X_M = 0.5;
+const IDENTIFY_MIN_Z_M = 0.28;
+
+const IDENTIFY_SLOT: Readonly<Record<Exclude<IdentifyShotName, "id-leads">, BenchSlot>> = {
+  "id-cells": "cells",
+  "id-key": "key",
+  "id-ammeter": "ammeter",
+  "id-voltmeter": "voltmeter",
+  "id-box": "box",
+  "id-wire": "wire",
+};
+
+/** The corners one identify shot holds, in world metres. */
+export function identifyCorners(name: IdentifyShotName): Array<[number, number, number]> {
+  const b = name === "id-leads" ? restBounds() : slotBounds(IDENTIFY_SLOT[name], 0.025);
+  // A small part (the key is 9 cm across) is framed in a patch no smaller than this, so it does
+  // not fill the screen; the wire board already runs the width of the bench.
+  const halfX = Math.max(
+    (b.x1 - b.x0) / 2 + (name === "id-wire" ? 0.02 : IDENTIFY_MARGIN_X_M),
+    IDENTIFY_MIN_X_M / 2,
+  );
+  const halfZ = Math.max((b.z1 - b.z0) / 2 + IDENTIFY_MARGIN_Z_M, IDENTIFY_MIN_Z_M / 2);
+  const cx = (b.x0 + b.x1) / 2;
+  const cz = (b.z0 + b.z1) / 2;
+  const xs = [cx - halfX, cx + halfX];
+  const zs = [cz - halfZ, cz + halfZ];
+  const ys = [0, b.h];
+  return xs.flatMap((x) => ys.flatMap((y) => zs.map((z): [number, number, number] => [x, y, z])));
+}
+
+/**
  * The named shot for a canvas this size under these cards. `portrait` (LookCamera's isPortrait for
  * the free area: a phone held upright) crops the bench shot's sides (phoneBenchCorners).
  */
 export function stageShot(
-  name: StageShotName,
+  name: StageShotName | IdentifyShotName,
   covered: Covered,
   width: number,
   height: number,
   portrait = false,
 ): LookShot {
+  if (isIdentifyShot(name)) {
+    // On a phone the wire board is seen from her left, so its metre runs up the screen.
+    const az = name === "id-wire" && portrait ? BOARD_PHONE_AZIMUTH_DEG : STAGE_AZIMUTH_DEG;
+    return fittedShot(name, identifyCorners(name), az, covered, width, height);
+  }
   if (name !== "bench") return closeShot(name, covered, width, height);
   if (!portrait) {
     return fittedShot("bench", benchCorners(), STAGE_AZIMUTH_DEG, covered, width, height);

@@ -1,5 +1,6 @@
 import { DIAGRAM_LEADS } from "@snaplab/engine";
 import type { Beat, Script } from "../../script/types";
+import type { PartId } from "../../types";
 import { LEAD_CHIPS, OHMS_LAW_RESISTANCES, OHMS_LAW_SHOTS, TERMINAL_PART } from "./script";
 
 // The guided demonstration (?practical=ohms-law&mode=guided; docs/plans/guided-demo.md): the same
@@ -14,6 +15,8 @@ import { LEAD_CHIPS, OHMS_LAW_RESISTANCES, OHMS_LAW_SHOTS, TERMINAL_PART } from 
 const GAP_S = 0.35;
 const QUICK_GAP_S = 0.15;
 const CONCLUSION_GAP_S = 0.6;
+/** The hold after an identify beat: its tag is read in this time and the voice's. */
+const IDENTIFY_GAP_S = 0.4;
 
 /** R as a word, for the voice. */
 const OHM_WORDS: Readonly<Record<number, string>> = {
@@ -61,6 +64,7 @@ interface Spec {
   gapS?: number;
   focus?: Beat["focus"];
   callouts?: Beat["callouts"];
+  tags?: Beat["tags"];
 }
 
 /** A guided beat: Practise never plays it, so `instruct` repeats the caption. */
@@ -75,21 +79,117 @@ const beat = (s: Spec): Beat => ({
   ...(s.act ? { act: s.act } : {}),
   ...(s.focus ? { focus: s.focus } : {}),
   ...(s.callouts ? { callouts: s.callouts } : {}),
+  ...(s.tags ? { tags: s.tags } : {}),
 });
 
 /**
- * Identify: one beat for now. The beats of this stage are a plain list, so a slice that labels
- * each part on the bench can replace it with one beat per part.
+ * Identify, part by part (docs/plans/guided-demo.md): for each part the camera eases to it
+ * (learn/stage/shots.ts IDENTIFY_SHOT_NAMES, the shot named by the beat's id) and a tag beside it
+ * names it with one plain line. The voice says only the name, about two seconds a part; the tag
+ * carries the line to read. A last beat shows every tag at once on the whole bench.
  */
+interface IdentifySpec {
+  id: string;
+  part: PartId;
+  /** The caption. */
+  say: string;
+  /** What the voice says when it differs from the caption. */
+  spoken?: string;
+  /** The tag's name, and the one plain line under it. */
+  label: string;
+  line: string;
+}
+
+const IDENTIFY_PARTS: readonly IdentifySpec[] = [
+  {
+    id: "id-cells",
+    part: "cells",
+    say: "Cells, E.",
+    label: "CELLS, E",
+    line: "Cells E: drive the current.",
+  },
+  {
+    id: "id-key",
+    part: "key",
+    say: "Plug key, K.",
+    label: "PLUG KEY, K",
+    line: "Plug key K: opens and closes the circuit.",
+  },
+  {
+    id: "id-ammeter",
+    part: "ammeter",
+    say: "Ammeter, A.",
+    label: "AMMETER, A",
+    line: "Ammeter A: measures the current; it goes in series.",
+  },
+  {
+    id: "id-voltmeter",
+    part: "voltmeter",
+    say: "Voltmeter, V.",
+    label: "VOLTMETER, V",
+    line: "Voltmeter V: measures the p.d. across XY; it goes in parallel.",
+  },
+  {
+    id: "id-box",
+    part: "box",
+    say: "Resistance box, R.",
+    label: "RESISTANCE BOX, R",
+    line: "Resistance box R: sets the resistance in the circuit.",
+  },
+  {
+    id: "id-wire",
+    part: "wire",
+    say: "Wire XY.",
+    spoken: "Wire X Y.",
+    label: "WIRE XY",
+    line: "Wire XY: the resistance wire under test, on a metre rule.",
+  },
+  {
+    id: "id-leads",
+    part: "leads",
+    say: "Connecting leads.",
+    label: "LEADS",
+    line: "Leads: join the parts.",
+  },
+];
+
+/** Every part's name, for the beat that shows them together. */
+const ALL_TAGS: NonNullable<Beat["tags"]> = IDENTIFY_PARTS.map((p) => ({
+  anchor: p.part,
+  label: p.label,
+  kind: "name",
+}));
+
 function identifyBeats(): Beat[] {
-  return [
+  const parts = IDENTIFY_PARTS.map((p, i) =>
     beat({
-      id: "enter",
+      id: p.id,
       stage: "identify",
-      say: "Cells, key, ammeter, voltmeter, resistance box and wire XY.",
-      act: { kind: "enter", parts: ["cells", "key", "ammeter", "voltmeter", "box", "wire"] },
-      focus: ["cells", "key", "ammeter", "voltmeter", "box", "wire"],
-      callouts: [{ anchor: "cells", label: "APPARATUS", kind: "name" }],
+      say: p.say,
+      ...(p.spoken !== undefined ? { spoken: p.spoken } : {}),
+      gapS: IDENTIFY_GAP_S,
+      // The first beat sets the bench: every part drops in (a replay shows it; after the paper
+      // they are already down).
+      ...(i === 0
+        ? {
+            act: {
+              kind: "enter" as const,
+              parts: ["cells", "key", "ammeter", "voltmeter", "box", "wire"] as PartId[],
+            },
+          }
+        : {}),
+      tags: [{ anchor: p.part, label: p.label, sub: p.line, kind: "name" }],
+      focus: [p.part],
+    }),
+  );
+  return [
+    ...parts,
+    beat({
+      id: "id-all",
+      stage: "identify",
+      say: "The whole apparatus.",
+      gapS: IDENTIFY_GAP_S,
+      tags: ALL_TAGS,
     }),
   ];
 }
@@ -371,11 +471,12 @@ function conclusionBeats(): Beat[] {
     c(
       "conclude-line",
       "V rises in step with I: a straight line through the origin, so V is proportional to I.",
+      "A straight line through the origin: V is proportional to I.",
     ),
     c(
       "conclude-law",
       "Ohm's law: current in a metallic conductor is proportional to the p.d. across it, at constant temperature.",
-      "Ohm's law: the current in a metallic conductor is directly proportional to the potential difference across it, at constant temperature.",
+      "Ohm's law: current is proportional to the potential difference, at constant temperature.",
     ),
     c(
       "conclude-slope",

@@ -1,81 +1,25 @@
-/* The guided demonstration's end panel (GuidedEnd.tsx): a paper card docked right over the bench
-   on a laptop, a bottom card on a phone. The bench stays visible beside it. */
+/* The guided demonstration's end panel (GuidedEnd.tsx): the conclusion card docked right over the
+   bench on a laptop, a bottom card on a phone. The bench stays visible beside it. */
 
 .ge-layer {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: flex;
-  align-items: center;
+  /* Under the top bar and above the caption pill at the foot. */
+  align-items: flex-start;
   justify-content: flex-end;
-  padding: 16px;
+  padding: 92px 16px 16px;
   pointer-events: none;
-}
-
-.ge-card {
-  pointer-events: auto;
-  box-sizing: border-box;
-  width: min(460px, 100%);
-  max-height: 100%;
-  overflow-y: auto;
-  padding: 22px 24px 20px;
-  border: 1px solid var(--ink-2);
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow:
-    0 1px 0 var(--line),
-    5px 6px 0 -1px #e6dac2,
-    5px 6px 0 0 var(--line);
-  color: var(--ink);
-  font-family: var(--f-serif);
   animation: ge-in 0.35s ease-out both;
 }
 
-.ge-title {
-  margin: 0 0 10px;
-  font-size: 22px;
-  line-height: 1.2;
-}
-
-.ge-lines {
+.ge-layer .cc-card {
+  pointer-events: auto;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 92px - 160px);
   margin: 0;
-  padding-left: 1.3em;
-  font-size: 17px;
-  line-height: 1.45;
-}
-
-.ge-lines li {
-  padding: 5px 0;
-}
-
-.ge-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.ge-btn {
-  flex: 1 1 0;
-  min-height: 48px;
-  border: 1px solid var(--ink-2);
-  border-radius: 12px;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-family: var(--f-body);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.ge-btn-primary {
-  background: var(--ink);
-  color: var(--card);
-}
-
-.ge-btn:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  overflow-y: auto;
 }
 
 @media (max-width: 700px), (max-height: 540px) {
@@ -84,18 +28,24 @@
     padding: 8px;
   }
 
-  .ge-card {
+  .ge-layer .cc-card {
     width: 100%;
-    max-height: 62%;
+    max-height: 66%;
     padding: 16px 16px 14px;
   }
 
-  .ge-title {
-    font-size: 19px;
+  .ge-layer .cc-title {
+    margin-bottom: 8px;
+    font-size: 22px;
   }
 
-  .ge-lines {
+  .ge-layer .cc-line {
     font-size: 15px;
+    line-height: 1.35;
+  }
+
+  .ge-layer .cc-lines {
+    margin-bottom: 12px;
   }
 }
 
@@ -107,7 +57,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ge-card {
+  .ge-layer {
     animation: none;
   }
 }
