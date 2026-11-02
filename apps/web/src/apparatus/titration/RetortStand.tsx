@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../meter-bridge/types";
 import { BURETTE_DIMS, RETORT_STAND_DIMS } from "./dimensions";
+import { createRetortBaseGeometry } from "./retortBase";
 
 export interface RetortStandProps {
   quality: QualityTier;
@@ -12,31 +13,7 @@ export function RetortStand({ quality }: RetortStandProps) {
     const radialSegments = quality === "low" ? 10 : 20;
 
     // Cast-iron base: rounded plan with a bevelled edge, like a real enamelled stand.
-    const bev = 0.003;
-    const hw = RETORT_STAND_DIMS.baseWidth / 2 - bev;
-    const hd = RETORT_STAND_DIMS.baseDepth / 2 - bev;
-    const rc = 0.012;
-    const baseShape = new THREE.Shape();
-    baseShape.moveTo(-hw + rc, -hd);
-    baseShape.lineTo(hw - rc, -hd);
-    baseShape.absarc(hw - rc, -hd + rc, rc, -Math.PI / 2, 0, false);
-    baseShape.lineTo(hw, hd - rc);
-    baseShape.absarc(hw - rc, hd - rc, rc, 0, Math.PI / 2, false);
-    baseShape.lineTo(-hw + rc, hd);
-    baseShape.absarc(-hw + rc, hd - rc, rc, Math.PI / 2, Math.PI, false);
-    baseShape.lineTo(-hw, -hd + rc);
-    baseShape.absarc(-hw + rc, -hd + rc, rc, Math.PI, Math.PI * 1.5, false);
-    const baseExtrude = RETORT_STAND_DIMS.baseHeight - 2 * bev;
-    const baseGeo = new THREE.ExtrudeGeometry(baseShape, {
-      depth: baseExtrude,
-      bevelEnabled: true,
-      bevelThickness: bev,
-      bevelSize: bev,
-      bevelSegments: quality === "low" ? 1 : 3,
-      curveSegments: quality === "low" ? 4 : 8,
-    });
-    baseGeo.rotateX(-Math.PI / 2);
-    baseGeo.translate(0, baseExtrude / 2, 0);
+    const baseGeo = createRetortBaseGeometry(quality);
     const socketGeo = new THREE.CylinderGeometry(0.013, 0.016, 0.022, radialSegments);
     const rodGeo = new THREE.CylinderGeometry(
       RETORT_STAND_DIMS.rodRadius,
