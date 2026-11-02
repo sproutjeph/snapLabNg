@@ -1,0 +1,82 @@
+/* The Watch conclusion card: exam-paper double-rule frame, Tinos serif heading,
+   3–5 short takeaway sentences, and Replay / Home pill buttons. */
+
+.cc-card {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 26px 22px;
+  border: 1px solid var(--ink-2);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--f-body);
+  box-shadow:
+    0 1px 0 var(--line),
+    5px 6px 0 -1px #e6dac2,
+    5px 6px 0 0 var(--line);
+}
+
+.cc-card::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--ink-2);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.cc-eyebrow {
+  margin: 0;
+  font-family: var(--f-cond);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.cc-title {
+  margin: 6px 0 14px;
+  font-family: var(--f-serif, "Tinos", "Times New Roman", Times, serif);
+  font-size: clamp(26px, 5vw, 36px);
+  font-weight: 600;
+  line-height: 1.12;
+  color: var(--ink);
+}
+
+.cc-lines {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.cc-line {
+  padding-top: 8px;
+  border-top: 1px dotted var(--line);
+  font-family: var(--f-serif, "Tinos", "Times New Roman", Times, serif);
+  font-size: 18px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.cc-line:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.cc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: var(--rule);
+}
+
+.cc-actions .xp-btn {
+  flex: 1 1 160px;
+}
