@@ -30,6 +30,7 @@ const WiringPreview = lazy(() => import("./learn/wiring/WiringPreview"));
 const ShellPreview = lazy(() => import("./learn/shell/ShellPreview"));
 const GraphPreview = lazy(() => import("./learn/graph/GraphPreview"));
 const PracticalPage = lazy(() => import("./learn/PracticalPage"));
+const SnapQuestionPage = lazy(() => import("./snapq/SnapQuestionPage"));
 const LookPreview = lazy(() => import("./scene/look/LookPreview"));
 const DirectorPreview = lazy(() => import("./learn/script/DirectorPreview"));
 const PaperPreview = lazy(() => import("./learn/paper/PaperPreview"));
@@ -58,6 +59,7 @@ export function App() {
   const isOhmsLawKit = params.get("kit") === "ohms-law";
   const isReadingsPreview = params.get("readings") === "1";
   const isPractical = params.get("practical") === "ohms-law";
+  const isSnapQuestion = params.get("snap") === "question";
   const isLookPreview = params.get("look") === "ohms-law" || params.get("look") === "meter-bridge";
   const isDirectorPreview = params.get("director") === "1";
   const isPaperPreview = params.get("paper") === "1";
@@ -85,6 +87,8 @@ export function App() {
       <Suspense fallback={null}>
         {isPractical ? (
           <PracticalPage {...practicalProps(params)} />
+        ) : isSnapQuestion ? (
+          <SnapQuestionPage />
         ) : isLookPreview ? (
           <LookPreview />
         ) : isDirectorPreview ? (
