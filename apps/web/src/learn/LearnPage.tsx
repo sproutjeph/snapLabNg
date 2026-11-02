@@ -13,6 +13,7 @@ import { createLabAudio } from "../audio/labAudio";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
 import { e2eOn, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
 import { GraphSheet } from "./graph/GraphSheet";
+import { guidedConclusionLines, OHMS_LAW_GUIDED_SCRIPT } from "./lessons/ohms-law/guidedScript";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { OHMS_LAW_SCRIPT } from "./lessons/ohms-law/script";
 import { stepStatuses } from "./marking";
@@ -30,9 +31,10 @@ import { benchTruthForE2E, handIn } from "./results/handIn";
 import { Results } from "./results/Results";
 import { checkRows } from "./results/resultsModel";
 import type { ResultsProps } from "./results/types";
-import { plugMoves } from "./script/actor";
+import { plugMoves, slopeNumber } from "./script/actor";
 import { createDirector, type DirectorHandle } from "./script/createDirector";
 import type { Beat, DirectorOptions } from "./script/types";
+import GuidedEnd from "./shell/GuidedEnd";
 import LessonShell, { type GuideState, type PopupId, type ShellTab } from "./shell/LessonShell";
 import { creditFromSource } from "./shell/StatusCard";
 import { BenchTools } from "./stage/BenchTools";
@@ -73,6 +75,10 @@ import "./results/results.css";
 //   ?practical=ohms-law with no mode opens on the question paper, in its pop-up over the stage,
 //   while the apparatus drops onto the bench; its three choices set the mode (and the URL's
 //   `mode`). Hand-in (Practise, Exam) and the end of Watch show the results.
+//   &mode=guided   the demo flow (docs/plans/guided-demo.md): the paper opens docked, reads itself
+//                  aloud and goes on to Watch by itself (or on Skip); Watch plays a ~2 minute
+//                  script (lessons/ohms-law/guidedScript.ts) with the chrome it does not need
+//                  hidden, and ends on a conclusion panel with Replay and Home.
 //   &mode=watch|practice|exam   skips the paper. Watch plays the demonstration on its own bench
 //                               (demoSeedFor); Practise and Exam are her bench. ?learn= with no
 //                               mode is Practise.
@@ -122,9 +128,17 @@ export function practicalFrom(search: URLSearchParams): PracticalMode {
   return search.get("practical") === "ohms-law" ? "watch" : "practice";
 }
 
-/** The page opens on the question paper: ?practical=ohms-law with no mode in the URL. */
+/** The guided demo: ?practical=ohms-law&mode=guided. */
+export function guidedFrom(search: URLSearchParams): boolean {
+  return search.get("practical") === "ohms-law" && search.get("mode") === "guided";
+}
+
+/** The page opens on the question paper: ?practical=ohms-law with no mode in the URL (or guided). */
 export function paperFirst(search: URLSearchParams): boolean {
-  return search.get("practical") === "ohms-law" && !URL_MODES.has(search.get("mode") ?? "");
+  return (
+    search.get("practical") === "ohms-law" &&
+    (guidedFrom(search) || !URL_MODES.has(search.get("mode") ?? ""))
+  );
 }
 
 /** One way through the page: the question paper (`practical` null), or a mode on a bench. */
@@ -136,6 +150,8 @@ export interface Run {
   n: number;
   /** The run follows the paper, whose entrance has already put the parts on the bench. */
   afterPaper: boolean;
+  /** The guided demo (?mode=guided): the paper reads itself, then Watch plays the short script. */
+  guided: boolean;
 }
 
 export function initialRun(search: URLSearchParams, seed: number): Run {
@@ -144,6 +160,7 @@ export function initialRun(search: URLSearchParams, seed: number): Run {
     seed,
     n: 0,
     afterPaper: false,
+    guided: guidedFrom(search),
   };
 }
 
@@ -158,20 +175,28 @@ export type RunAction =
 export function nextRun(run: Run, a: RunAction): Run {
   const n = run.n + 1;
   if (a.kind === "choose") {
-    return { practical: a.mode, seed: run.seed, n, afterPaper: run.practical === null };
+    return {
+      practical: a.mode,
+      seed: run.seed,
+      n,
+      afterPaper: run.practical === null,
+      guided: run.guided && a.mode === "watch",
+    };
   }
-  if (a.kind === "watchAgain") return { practical: "watch", seed: run.seed, n, afterPaper: false };
+  if (a.kind === "watchAgain") {
+    return { practical: "watch", seed: run.seed, n, afterPaper: false, guided: run.guided };
+  }
   const practical = run.practical === "exam" ? "exam" : "practice";
-  return { practical, seed: a.seed, n, afterPaper: false };
+  return { practical, seed: a.seed, n, afterPaper: false, guided: false };
 }
 
 /**
  * `href` with the run's `mode` and `seed` set: the URL after every choice on the paper or the
  * results (history.replaceState), so a reload stays on the same mode and the same bench.
  */
-export function urlForRun(href: string, mode: PracticalMode, seed: number): string {
+export function urlForRun(href: string, mode: PracticalMode, seed: number, guided = false): string {
   const url = new URL(href);
-  url.searchParams.set("mode", mode);
+  url.searchParams.set("mode", guided ? "guided" : mode);
   url.searchParams.set("seed", String(seed));
   return `${url.pathname}${url.search}${url.hash}`;
 }
@@ -186,7 +211,7 @@ export function watchPose(beat: Beat | undefined, loupe: string | null): string 
   if (loupe === "ammeter" || loupe === "voltmeter") return "readings";
   if (loupe === "rule") return "wire";
   const act = beat?.act?.kind;
-  if (act === "plug" || act === "key") return "box";
+  if (act === "plug" || act === "key" || act === "row") return "box";
   if (beat?.id.endsWith("-r") || beat?.id.endsWith("-box")) return "box";
   return "bench";
 }
@@ -311,7 +336,8 @@ function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
   }
   const voice = createVoice();
   // E2E runs are silent: the voice keeps its estimated durations (learn/voice/createVoice.ts).
-  voice.muted = search.get("mute") === "1" || e2eOn(search);
+  // The guided demo also keeps the mute she chose on the home page.
+  voice.muted = search.get("mute") === "1" || e2eOn(search) || (run.guided && homeMuted());
   const benchState = (): BenchState => ({
     comparison: bench.comparison,
     keyClosed: bench.visual.current.keyClosed,
@@ -319,13 +345,16 @@ function makeRig(search: URLSearchParams, run: Run, live: Live): Rig {
     record: live.record,
     identified: live.identified,
   });
-  const base = { script: OHMS_LAW_SCRIPT, voice, benchState };
+  const base = { script: run.guided ? OHMS_LAW_GUIDED_SCRIPT : OHMS_LAW_SCRIPT, voice, benchState };
   const options: DirectorOptions =
     practical === "watch" ? { ...base, mode: "watch", bench } : { ...base, mode: practical, bench };
   const director = createDirector(options);
   const motion = createStageMotion();
   motion.entrance.on = run.practical === null;
-  motion.entrance.landed = run.afterPaper;
+  // The parts are already down after the paper. A page loaded straight into Watch waits for its
+  // Start tap (iOS speaks only after one), and with every part still in the sky that read as an
+  // empty bench that never began: it opens with the bench set, and Start plays on from there.
+  motion.entrance.landed = run.afterPaper || (first && run.practical === "watch");
   trackEpoch(director, motion);
   const speed = speedFrom(search);
   if (speed !== null) director.setSpeed(speed);
@@ -397,7 +426,11 @@ function LearnView() {
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(" "));
     }
     if (next.practical !== null) {
-      history.replaceState(history.state, "", urlForRun(location.href, next.practical, next.seed));
+      history.replaceState(
+        history.state,
+        "",
+        urlForRun(location.href, next.practical, next.seed, next.guided),
+      );
     }
   }, []);
 
@@ -419,6 +452,16 @@ function LearnView() {
       e2e={e2e}
     />
   );
+}
+
+/** The home page's mute (localStorage `snaplab.muted`, set by its speaker button), if she has muted. */
+export function homeMuted(): boolean {
+  try {
+    const v = localStorage.getItem("snaplab.muted");
+    return v !== null && v !== "" && v !== "0" && v !== "false";
+  } catch {
+    return false;
+  }
 }
 
 /** Whether a reading aloud will be heard: speech exists and the voice is not muted. */
@@ -507,6 +550,8 @@ function LearnScreen({
   const practical: PracticalMode = run.practical ?? "practice";
   const mode: LessonMode = practical === "exam" ? "exam" : "practice";
   const watch = practical === "watch";
+  // The guided demo, on the paper and in Watch: no results sheet, and the chrome it does not need is hidden.
+  const guided = run.guided;
   const version = useBenchVersion(bench);
   const { tier } = useQuality();
   const [dprPin] = useState(() => pinnedDpr(search));
@@ -629,7 +674,8 @@ function LearnScreen({
   // Watch's last beat opens the demonstration's own mark sheet: the actor's record, handed in on
   // the demonstration bench.
   useEffect(() => {
-    if (!watch) return;
+    // The guided demo shows no marks: it ends on its own conclusion panel.
+    if (!watch || guided) return;
     const check = () => {
       if (director.state.finished && resultsRef.current === null) {
         showResults({ ...handIn(director.demoRecord, bench, "practice"), demo: true });
@@ -637,7 +683,7 @@ function LearnScreen({
     };
     check();
     return director.subscribe(check);
-  }, [watch, director, bench, showResults]);
+  }, [watch, guided, director, bench, showResults]);
 
   const setRecord = useCallback((next: OhmsLawRecord) => {
     recordRef.current = next;
@@ -723,14 +769,27 @@ function LearnScreen({
     [motion],
   );
   const choose = useCallback((m: PracticalMode) => onRun({ kind: "choose", mode: m }), [onRun]);
-  // Closing the paper without a choice goes on with its primary choice, Practise.
+  // Closing the paper without a choice goes on with its primary choice, Practise (guided: Watch,
+  // the same as Skip).
   const setPopup = useCallback(
     (p: PopupId | null) => {
-      if (paper && p !== "question") choose("practice");
+      if (paper && p !== "question") choose(guided ? "watch" : "practice");
       else setPopupState(p);
     },
-    [paper, choose],
+    [paper, guided, choose],
   );
+  // Guided: the reading's end and Skip both go on to Watch, which plays at once.
+  const guidedGoOn = useCallback(() => choose("watch"), [choose]);
+  const guidedPaper = useMemo(
+    () => (guided ? { onDone: guidedGoOn, onSkip: guidedGoOn } : undefined),
+    [guided, guidedGoOn],
+  );
+  // The end panel's buttons: from the first beat again with the bench reset, or back to the home page.
+  const guidedReplay = useCallback(() => {
+    director.seek(0);
+    director.play();
+  }, [director]);
+  const guidedHome = useCallback(() => location.assign("/"), []);
 
   const state: BenchState = {
     comparison: bench.comparison,
@@ -814,6 +873,7 @@ function LearnScreen({
         lesson={lesson}
         mode={mode}
         practical={practical}
+        guided={guided}
         stepIndex={stepIndex}
         onStepChange={practical === "exam" ? setExamStep : nav.onStepChange}
         stepStatus={status}
@@ -859,6 +919,7 @@ function LearnScreen({
               voice={paperVoice}
               onItemRead={onItemRead}
               onChoose={choose}
+              guided={guidedPaper}
             />
           ) : undefined
         }
@@ -1002,6 +1063,14 @@ function LearnScreen({
           )}
         </div>
       </LessonShell>
+      {guided && watch && director.state.finished ? (
+        <GuidedEnd
+          title="What the demonstration shows"
+          lines={guidedConclusionLines(slopeNumber(director.demoRecord))}
+          onReplay={guidedReplay}
+          onHome={guidedHome}
+        />
+      ) : null}
       <ResultsLayer
         results={results}
         onWatch={() => onRun({ kind: "watchAgain" })}

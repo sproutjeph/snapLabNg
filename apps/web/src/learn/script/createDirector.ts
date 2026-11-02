@@ -9,6 +9,7 @@ import {
   plotRow,
   plugMoves,
   readTriangle,
+  slopeNumber,
   writeField,
 } from "./actor";
 import {
@@ -22,6 +23,11 @@ import {
   PRACTISE_GAP_S,
   QUIET_S,
   READING_WAIT_CAP_S,
+  ROW_KEY_OFF_S,
+  ROW_KEY_ON_S,
+  ROW_LEAD_IN_S,
+  ROW_PLUG_EACH_S,
+  ROW_READ_S,
   voiceCapS,
 } from "./timing";
 import type {
@@ -153,10 +159,21 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   const sup = opts.mode === "watch" ? opts.bench.supervisor : null;
   const baseRate = voice.rate || BASE_RATE;
 
+  /** Watch: `{slope}` becomes the number the actor wrote for s (the demonstration's own). */
+  const fill = (text: string): string =>
+    text.includes("{slope}") ? text.replace("{slope}", slopeNumber(record) ?? "…") : text;
+
   const captionFor = (i: number): string => {
     const b = beats[i];
     if (!b || mode === "exam") return "";
-    return mode === "watch" ? b.say : b.instruct;
+    return mode === "watch" ? fill(b.say) : b.instruct;
+  };
+
+  /** What the voice says for beat `i`: Watch may say something other than its caption. */
+  const spokenFor = (i: number): string => {
+    const b = beats[i];
+    if (!b || mode === "exam") return "";
+    return mode === "watch" ? fill(b.spoken ?? b.say) : b.instruct;
   };
 
   const state: DirectorState = {
@@ -190,6 +207,8 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
    * dial again, and the cache takes the new reading.
    */
   const written = new Map<number, string>();
+  /** The same, for a whole row's two readings (a `row` action), by row. */
+  const rowReads = new Map<number, { i: string; v: string }>();
   const listeners = new Set<() => void>();
   const eventListeners = new Set<(e: DirectorEvent) => void>();
 
@@ -231,6 +250,81 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   // ---- Doing an action's effect on the bench and the record ----
 
   const coils = (): readonly number[] => bench.params.boxCoilsOhm;
+
+  /** The plugs a `row` action moves. */
+  const rowMoves = (act: Extract<ActorAction, { kind: "row" }>): number[] =>
+    plugMoves(coils(), bench.visual.current.plugsIn, act.ohm);
+
+  /** Writes one cell of the demonstration table. */
+  function writeCell(row: number, col: "R" | "I" | "V", text: string, announce: boolean): void {
+    record = writeField(record, { kind: "cell", row, col }, text);
+    if (announce) emit({ kind: "write" });
+    notify();
+  }
+
+  /**
+   * A whole table row: the plugs, R written, the key closed, then (once the needle rests) both
+   * meters read and written, and the key opened. A seek runs the same steps at once and writes
+   * the readings it last wrote (see `written`).
+   */
+  function rowSteps(
+    act: Extract<ActorAction, { kind: "row" }>,
+    announce: boolean,
+  ): Array<{ at: number; run: () => void }> {
+    const moves = rowMoves(act);
+    const durS = actDurationS(act, moves.length);
+    const at = (s: number) => s / durS;
+    const steps: Array<{ at: number; run: () => void }> = moves.map((index, i) => ({
+      at: at(ROW_LEAD_IN_S + ROW_PLUG_EACH_S * (i + 0.5)),
+      run: () => {
+        bench.togglePlug(index);
+        if (announce) emit({ kind: "plug" });
+      },
+    }));
+    const plugsDoneS = ROW_LEAD_IN_S + ROW_PLUG_EACH_S * moves.length;
+    steps.push({
+      at: at(plugsDoneS),
+      run: () => writeCell(act.row, "R", String(act.ohm), announce),
+    });
+    steps.push({
+      at: at(plugsDoneS + ROW_KEY_ON_S),
+      run: () => {
+        if (!bench.visual.current.keyClosed) {
+          bench.toggleKey();
+          if (announce) emit({ kind: "key" });
+        }
+      },
+    });
+    steps.push({
+      at: at(plugsDoneS + ROW_KEY_ON_S + ROW_READ_S),
+      run: () => {
+        // Quick: the needle is let settle at once, then both dials are read.
+        let pair = announce ? null : (rowReads.get(act.row) ?? null);
+        for (let tries = 0; tries < 3 && pair === null; tries++) {
+          settleHeadless();
+          const i = readMeter("ammeter");
+          const v = readMeter("voltmeter");
+          if (i !== null && v !== null) pair = { i, v };
+        }
+        pair ??= rowReads.get(act.row) ?? null;
+        if (pair) {
+          rowReads.set(act.row, pair);
+          writeCell(act.row, "I", pair.i, announce);
+          writeCell(act.row, "V", pair.v, announce);
+        }
+      },
+    });
+    steps.push({
+      at: at(plugsDoneS + ROW_KEY_ON_S + ROW_READ_S + ROW_KEY_OFF_S),
+      run: () => {
+        if (bench.visual.current.keyClosed) {
+          bench.toggleKey();
+          if (announce) emit({ kind: "key" });
+        }
+      },
+    });
+    return steps;
+  }
 
   /** The steps (bench changes) of an action, each with the share of the action at which it happens. */
   function benchSteps(act: ActorAction, announce: boolean): Array<{ at: number; run: () => void }> {
@@ -274,6 +368,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
         },
       }));
     }
+    if (act.kind === "row") return rowSteps(act, announce);
     if (act.kind === "key") {
       return [
         {
@@ -401,7 +496,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       return;
     }
     ar.steps = benchSteps(act, true);
-    ar.durS = actDurationS(act, ar.steps.length);
+    ar.durS = actDurationS(act, act.kind === "row" ? rowMoves(act).length : ar.steps.length);
     notify();
   }
 
@@ -466,7 +561,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     state.hint = 0;
     state.waiting = false;
     if (mode === "watch") {
-      speakBeat(b.say);
+      speakBeat(spokenFor(i));
       if (b.act) beginAct(b.act, i);
     } else if (mode === "practice") {
       speakBeat(b.instruct);
@@ -526,7 +621,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     if (run.ar && !run.actDone) stepAct(run.ar, dtRealS, dtBeatS);
     if (run.voiceDone && run.actDone) {
       run.gapS += dtBeatS;
-      if (run.gapS >= BEAT_GAP_S) completeBeat();
+      if (run.gapS >= (beats[state.beat]?.gapS ?? BEAT_GAP_S)) completeBeat();
     }
   }
 
@@ -593,7 +688,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       }
       state.playing = true;
       if (!run.started) startBeat(state.beat);
-      else if (!run.voiceDone) speakBeat(captionFor(state.beat));
+      else if (!run.voiceDone) speakBeat(spokenFor(state.beat));
       notify();
     },
 

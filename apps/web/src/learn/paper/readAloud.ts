@@ -106,6 +106,8 @@ export interface ReadAloudOptions {
   onChange(view: ReadView): void;
   /** Called once per item, as the voice names it. */
   onItemRead?(part: PartId): void;
+  /** Called when the last instruction has been read to its end (never after stop()). */
+  onDone?(): void;
 }
 
 export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
@@ -191,6 +193,7 @@ export function createReadAloud(opts: ReadAloudOptions): ReadAloud {
             const named = reach(i, ins.text.length);
             if (i === n - 1) {
               set({ instr: null, word: null, naming: null, reading: false });
+              opts.onDone?.();
             } else {
               begin(i + 1, g);
               if (named) set({ ...view, naming: named });

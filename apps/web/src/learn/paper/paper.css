@@ -173,6 +173,46 @@
   min-width: 220px;
 }
 
+/* Guided Watch (?mode=guided): the paper reads itself, so the foot holds Skip alone, and a
+   browser that refuses speech until a tap gets one clear button over the paper. */
+.qp-skip {
+  min-width: 160px;
+}
+
+.qp-tap {
+  position: absolute;
+  inset: 5px;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  text-align: center;
+  font-family: var(--f-serif);
+  color: var(--ink-2);
+}
+
+/* Skip stays in reach under the tap prompt. */
+.qp-tap ~ .qp-foot {
+  position: relative;
+  z-index: 3;
+}
+
+.qp-tap p {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 15px;
+}
+
+.qp-tap-btn {
+  min-width: 220px;
+  min-height: 56px;
+  font-size: 18px;
+}
+
 .qp-sr {
   position: absolute;
   width: 1px;

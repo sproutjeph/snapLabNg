@@ -217,6 +217,15 @@ export function readTriangle(r: OhmsLawRecord, part: "deltaY" | "deltaX" | "slop
 }
 
 /**
+ * The number the demonstration wrote for the slope ("s = ΔV/ΔI = 0.90/0.30 = 3.00 Ω" gives
+ * "3.00"), or null before it has. Guided Watch's conclusion says it; it is the demonstration's own.
+ */
+export function slopeNumber(r: OhmsLawRecord): string | null {
+  const m = /=\s*(-?\d+(?:\.\d+)?)\s*Ω\s*$/.exec(r.graph?.slope_as_written ?? "");
+  return m?.[1] ?? null;
+}
+
+/**
  * Which plugs to move so the box shows `ohm`: the indices of the plugs whose state must change,
  * the fewest of them. A plug that is out leaves its coil in the circuit, so the box shows the
  * sum of the coils whose plugs are out. Empty when `ohm` cannot be made (or is already shown).

@@ -1,8 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   autoPlays,
+  guidedFrom,
+  homeMuted,
   initialRun,
   nextRun,
   paperFirst,
@@ -60,7 +62,7 @@ describe("the practical page's flow", () => {
   });
 
   it("new bench changes the seed, watch again keeps it", () => {
-    const practice: Run = { practical: "practice", seed: 7, n: 3, afterPaper: true };
+    const practice: Run = { practical: "practice", seed: 7, n: 3, afterPaper: true, guided: false };
     const exam: Run = { ...practice, practical: "exam" };
     const watch: Run = { ...practice, practical: "watch" };
 
@@ -145,5 +147,70 @@ describe("Watch's graph pop-up", () => {
     const on = watchGraphMove(true, "plot", "graph", false);
     expect(on).toEqual({ popup: "graph", auto: false });
     expect(watchGraphMove(true, "conclusion", on.popup, on.auto).popup).toBe("graph");
+  });
+});
+
+describe("the guided demo's flow (?mode=guided)", () => {
+  const guided = "practical=ohms-law&mode=guided&seed=7";
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("opens on the paper, in guided mode, and only for Ohm's law", () => {
+    expect(guidedFrom(q(guided))).toBe(true);
+    expect(guidedFrom(q("practical=ohms-law&mode=watch"))).toBe(false);
+    expect(guidedFrom(q("mode=guided"))).toBe(false);
+    expect(paperFirst(q(guided))).toBe(true);
+    const run = initialRun(q(guided), 7);
+    expect(run).toMatchObject({ practical: null, guided: true, n: 0 });
+  });
+
+  it("goes from the paper to Watch, which plays at once, and stays guided", () => {
+    const paper = initialRun(q(guided), 7);
+    const watch = nextRun(paper, { kind: "choose", mode: "watch" });
+    expect(watch).toMatchObject({ practical: "watch", guided: true, afterPaper: true });
+    expect(autoPlays(watch)).toBe(true);
+    expect(nextRun(watch, { kind: "watchAgain" }).guided).toBe(true);
+  });
+
+  it("leaves guided for any other mode or a new bench", () => {
+    const paper = initialRun(q(guided), 7);
+    expect(nextRun(paper, { kind: "choose", mode: "practice" }).guided).toBe(false);
+    const watch = nextRun(paper, { kind: "choose", mode: "watch" });
+    expect(nextRun(watch, { kind: "newBench", seed: 9 }).guided).toBe(false);
+  });
+
+  it("keeps mode=watch, practice and exam as they were", () => {
+    for (const mode of ["watch", "practice", "exam"]) {
+      const run = initialRun(q(`practical=ohms-law&mode=${mode}&seed=7`), 7);
+      expect(run.guided).toBe(false);
+      expect(run.practical).toBe(mode);
+    }
+  });
+
+  it("writes mode=guided back to the URL for a guided run, so a reload stays guided", () => {
+    expect(urlForRun("http://h/?practical=ohms-law&mode=guided&seed=7", "watch", 7, true)).toBe(
+      "/?practical=ohms-law&mode=guided&seed=7",
+    );
+    expect(urlForRun("http://h/?practical=ohms-law&mode=guided", "watch", 7)).toBe(
+      "/?practical=ohms-law&mode=watch&seed=7",
+    );
+  });
+
+  it("follows the home page's mute (localStorage snaplab.muted), and survives storage that throws", () => {
+    const store = (v: string | null) => vi.stubGlobal("localStorage", { getItem: () => v });
+    store(null);
+    expect(homeMuted()).toBe(false);
+    store("1");
+    expect(homeMuted()).toBe(true);
+    store("true");
+    expect(homeMuted()).toBe(true);
+    store("0");
+    expect(homeMuted()).toBe(false);
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+    });
+    expect(homeMuted()).toBe(false);
   });
 });
