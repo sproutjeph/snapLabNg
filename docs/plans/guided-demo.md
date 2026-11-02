@@ -119,4 +119,54 @@ one code review, at most one fix round, squash-merge. No deploy. No Claude or Ge
 - Nov 2: plan approved; this doc is the first PR.
 
 ## Practise / Exam bug list (slice E)
-_(filled by slice E)_
+Nov 2 walk on `claude/practise-exam-pass`: Practise and Exam at laptop 1440×900 and phone 390×844, real pointer and touch on
+the canvas and DOM (no `e2e=1`), from the paper's "Practise with a guide" and `?mode=exam`. Both reach Results with marks on
+both sizes (laptop Practise 19/21, phone Practise 17/21). No console errors. Shots: `.shots/e2e-pass/` (L* laptop Practise,
+X* laptop Exam, P* phone). E2E before: watch, exam, noleak pass at both sizes; practise passes on laptop, fails on phone
+(see 9). After the fix, run one script at a time: all four pass at both sizes.
+
+**Fixed in this slice** (`learn/learn.css`)
+1. blocker — phone: once a hint shows, leads can't be made. The note sat mid-bench over the cells, key, ammeter and box nuts
+   and swallowed every tap (P11: only V+, V−, X, Y connected). Cause: since B3 the canvas (and `.ol-stage`) ends at the strip,
+   but the portrait/short note and close-up bar still add `--sh-bar`, counting the strip twice. Fix: `pointer-events: none`
+   on `.ol-note`; phone note and close-up bar placed from the canvas foot (`--ol-foot`, just above the caption). P22–P24.
+2. bad — phone: the metre-rule close-up bar covered the tick marks under X and Y, so the length could not be read
+   (P05/P06). Same cause and fix as 1 (P20).
+
+**Waiting for slice A** (its files; proposed change)
+3. bad — Practise: the wrong-lead line stays after the lead is gone ("…Tap the wire to remove it." through the rest of the
+   run, P23/L24). `LearnPage.tsx:549` is cleared only by the next lead (`:613`). Clear it on Undo lead (`:843`), the Tools
+   undo/reset (`:868–869`) and LeadRemove (`:956`): e.g. `setWrongLine(null)` beside each `bench.undo()/reset()/removeLead()`.
+4. bad — Practise: a bench note stays for the whole run after its cause is fixed ("The cells are short-circuited…" through
+   wiring and readings, L10, P25; later "Key K has stayed closed…" with the key open, P28). `LearnPage.tsx:745–746` shows
+   `bench.notes`' last entry forever. Show it only for its circuit: e.g. keep a `dismissedNoteId` set on every lead/key/plug
+   change (bench.subscribe) and hide a note whose id is dismissed.
+5. bad — Exam: one tap on Hand in ends the exam with no confirm (phone: a stray tap at 0:13 gave 0/21, P41/P42; Exam allows
+   one hand-in). `player/Player.tsx:98–103` / `LearnPage.tsx:836`: in Exam, ask "Hand in now? You can hand in once." first.
+6. polish — Practise: the guide lags her by several beats (all 7 leads made while the caption still says "Tap the second
+   terminal of the plug key…", ~20 s to catch up, L10). `script/createDirector.ts`: skip a waiting beat's line when its
+   `done` already holds.
+7. polish — laptop: the base `.ol-loupe` (`learn.css:109`) and `.ol-float-open` rules still add `--sh-bar` (bar sits ~130 px
+   high, harmless). `shell/shell.test.tsx:402` pins `var(--sh-bar)` in `.ol-loupe`, so the CSS and that test change together.
+
+**For the lead** (outside A's paths, but apparatus/stage code)
+8. bad — tapping a meter's dial to read it starts or ends a lead. The nut targets are tall ellipsoids
+   (`learn/wiring/TerminalMarks.tsx:238`, `0.02 * HIT_TALL` up), which cover the lower dial from the bench camera and sit in
+   front of it. Laptop: an ammeter-dial tap then a voltmeter-dial tap made a wrong lead A+→V− (L24). Proposed: tag the
+   dial/glass meshes in `apparatus/ohms-law/Meter.tsx` (`userData.partHit`) and let `TerminalHits.down` yield to them, as it
+   already yields to `leadHit`.
+9. bad (test rig) — E2E `practise.mjs` is flaky when run beside other headless runs: phone failed at the "Undo lead" click
+   (Playwright's stability wait) or the 15 s hint wait in 3 runs, and laptop once, all while other agents' servers and E2E ran
+   (load average 12–19); one script at a time it passes at both sizes. The first failure came before this slice changed any file. Frames on swiftshader at
+   phone size take seconds under load. Run the E2E scripts one at a time, or give the hint/Undo waits 30 s.
+10. bad — phone R = 1 Ω and Repeat: the box-and-key shot (`learn/stage/shots.ts:52`, `box: "boxKey"`, four parts) leaves the
+    plugs ~12 px apart, cut at the left edge, and the "Resistance box, R = …" chip covers half of them (P28/P29). Plugs can be
+    pulled only with exact taps. Slice B (stage/camera): a box-only phone shot, or the chip anchored off the plugs.
+
+**Polish, any slice**
+11. Practise: the table headings show "R/Ω, I/A, V/V" as placeholders (`readings/OhmsLawNotebook.tsx:75`), so the table looks
+    headed while the guide waits for "Head the R column…" (L06, P09).
+12. Graph sheet: the zoom "−" and "+" glyphs sit at the left edge of their buttons (`graph/graph.css:178`, `.gs-icon`),
+    laptop and phone (L30, P31).
+13. phone: on Measure XY the camera holds the wire board; a lead made then (or a wrong one) is off screen while the hint says
+    "Tap the wire to remove it" (P04).
