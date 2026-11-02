@@ -3,6 +3,7 @@ import { ExaminerTurnRequest, type QuestionEvent, type SnapEvent } from "@snapla
 import { examinerQuestionById } from "@snaplab/rules";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { StreamCache } from "./cache";
 import type { Config } from "./env";
@@ -20,10 +21,10 @@ const SNAP_TIMEOUT_MS = 45_000;
 /** One examiner turn is a short text-only Spark call. */
 const EXAMINER_TIMEOUT_MS = 20_000;
 
-/** The caller's IP. Proxy headers are trusted only when TRUST_PROXY=1 (e.g. behind Fly). */
+/** The caller's IP. Proxy headers are trusted only when TRUST_PROXY=1 (behind a proxy such as Cloud Run). */
 function clientIp(c: Context, cfg: Config): string {
   if (cfg.trustProxy) {
-    const h = c.req.header("fly-client-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0];
+    const h = c.req.header("x-forwarded-for")?.split(",")[0];
     if (h?.trim()) return h.trim();
   }
   // Under Bun.serve, Hono passes the server as the context's env, and Bun reports the
@@ -43,6 +44,19 @@ export function createApp(
   const cache = new StreamCache();
   const questionCache = new StreamCache<QuestionEvent>();
   const app = new Hono();
+
+  // The site may live on another origin (Firebase Hosting). Unset = same origin only: no CORS headers.
+  if (cfg.allowedOrigins.length > 0) {
+    app.use(
+      "/api/*",
+      cors({
+        origin: (origin) => (cfg.allowedOrigins.includes(origin) ? origin : null),
+        allowMethods: ["GET", "POST", "OPTIONS"],
+        allowHeaders: ["Content-Type"],
+        maxAge: 600,
+      }),
+    );
+  }
 
   app.get("/healthz", (c) => c.json({ ok: true, mode: cfg.mode, spend: ledger.summary() }));
 

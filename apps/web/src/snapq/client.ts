@@ -1,4 +1,5 @@
 import { QuestionEvent } from "@snaplab/contracts";
+import { apiUrl } from "../apiOrigin";
 import { parseSse } from "../pipeline/sse";
 
 /**
@@ -16,7 +17,7 @@ export async function streamQuestion(
   photos.forEach((photo, i) => {
     form.append("photos", photo, `photo-${i}.jpg`);
   });
-  const res = await fetch("/api/question", {
+  const res = await fetch(apiUrl("/api/question"), {
     method: "POST",
     body: form,
     ...(signal ? { signal } : {}),
