@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import "../learn/paper/desk.css";
 import "./home.css";
 import { createVoice } from "../learn/voice/createVoice";
+import { isPlainLeftClick, navigate } from "../navigate";
 import { Bench3DSlot } from "./Bench3DSlot";
 import { MeterBridgeArt, TitrationArt } from "./illustrations";
 import { practicalIn, ROUTES } from "./links";
@@ -104,7 +105,17 @@ export default function HomePage() {
             </a>
             <p className="hp-meta">WASSCE-style · Physics Paper 3</p>
             <div className="hp-actions hp-actions-3">
-              <a className="xp-btn xp-btn-primary" href={ROUTES.guidedWatch}>
+              <a
+                className="xp-btn xp-btn-primary"
+                href={ROUTES.guidedWatch}
+                onClick={(e) => {
+                  // In the same page, so the click lets the question be read aloud at once
+                  // (a page load loses it and the paper asks for a tap). New tab: the href.
+                  if (!isPlainLeftClick(e)) return;
+                  e.preventDefault();
+                  navigate(ROUTES.guidedWatch);
+                }}
+              >
                 Watch
               </a>
               <a className="xp-btn" href={practicalIn("practice")}>

@@ -28,3 +28,73 @@ export function readingRefused(elapsedMs: number, f: ReadingFacts): boolean {
 export function voiceNeverStarted(waitedMs: number, heard: boolean, f: ReadingFacts): boolean {
   return !f.tapped && !f.muted && f.speechAvailable && !heard && waitedMs >= SPEECH_START_WAIT_MS;
 }
+
+/**
+ * Whether the bench stays empty while the guided reading waits to be heard: a reading the browser
+ * may yet refuse must not drop the parts (they drop on their names once she taps to start).
+ */
+export function benchHeld(heard: boolean, f: ReadingFacts): boolean {
+  return !f.tapped && !f.muted && f.speechAvailable && !heard;
+}
+
+export interface GuidedWatch {
+  /** One poll, `waitedMs` after the reading began. */
+  tick(waitedMs: number): void;
+  /** The reading ended; `refused` when it was refused (the tap prompt then shows). */
+  readingEnded(refused: boolean): void;
+  /** Nothing is left to watch for: polling can stop. */
+  readonly finished: boolean;
+}
+
+/**
+ * Watches a guided reading until the voice is heard: holds the bench empty while it may yet be
+ * refused, offers the tap once it has not started in time, and lets the bench fill when the voice
+ * is heard (however late), when she mutes it, when she taps, or when the reading ends unrefused.
+ */
+export function createGuidedWatch(o: {
+  facts(): ReadingFacts;
+  speaking(): boolean;
+  hold(held: boolean): void;
+  offerTap(show: boolean): void;
+}): GuidedWatch {
+  let held = benchHeld(false, o.facts());
+  let offered = false;
+  let finished = !held;
+  if (held) o.hold(true);
+  const release = () => {
+    finished = true;
+    if (!held) return;
+    held = false;
+    o.hold(false);
+  };
+  return {
+    tick(waitedMs) {
+      if (finished) return;
+      const f = o.facts();
+      // Muted, no speech, or her tap (which restarts the reading): the bench need not wait.
+      if (f.muted || !f.speechAvailable || f.tapped) {
+        release();
+        return;
+      }
+      if (o.speaking()) {
+        if (offered) {
+          offered = false;
+          o.offerTap(false);
+        }
+        release();
+        return;
+      }
+      if (!offered && voiceNeverStarted(waitedMs, false, f)) {
+        offered = true;
+        o.offerTap(true);
+      }
+    },
+    readingEnded(refused) {
+      // Refused: the bench stays empty under the tap prompt (a later mute or tap still frees it).
+      if (!refused) release();
+    },
+    get finished() {
+      return finished;
+    },
+  };
+}

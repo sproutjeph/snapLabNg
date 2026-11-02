@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { CircuitDiagram } from "../wiring/CircuitDiagram";
 import "./desk.css";
 import "./paper.css";
-import { readingRefused, voiceNeverStarted } from "./guidedReading";
+import { createGuidedWatch, type GuidedWatch, readingRefused } from "./guidedReading";
 import { createReadAloud, IDLE_VIEW, type ReadView } from "./readAloud";
 import type { QuestionPaperProps } from "./types";
 
@@ -115,6 +115,7 @@ export function QuestionPaper({
   const isGuided = guided !== undefined;
   const startedAt = useRef(0);
   const tapped = useRef(false);
+  const watchRef = useRef<GuidedWatch | null>(null);
   const reader = useMemo(
     () =>
       createReadAloud({
@@ -132,6 +133,7 @@ export function QuestionPaper({
             speechAvailable: canSpeak(),
             tapped: tapped.current,
           });
+          watchRef.current?.readingEnded(refused);
           if (refused) setNeedsTap(true);
           else g.onDone();
         },
@@ -151,25 +153,20 @@ export function QuestionPaper({
   useEffect(() => {
     if (!isGuided) return;
     startReading();
-    if (voice.muted || !canSpeak()) return;
+    // Until the voice is heard, the bench stays empty: a refused reading must not drop the parts.
+    // Polled until the voice is heard, she mutes or taps, or the reading ends unrefused.
+    const watch = createGuidedWatch({
+      facts: () => ({ muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current }),
+      speaking: () => canSpeak() && window.speechSynthesis.speaking,
+      hold: (held) => guidedRef.current?.onHold?.(held),
+      offerTap: setNeedsTap,
+    });
+    watchRef.current = watch;
+    if (watch.finished) return;
     const t0 = performance.now();
-    let heard = false;
-    let offered = false;
     const id = setInterval(() => {
-      const waited = performance.now() - t0;
-      if (window.speechSynthesis.speaking) {
-        heard = true;
-        if (offered) {
-          offered = false;
-          setNeedsTap(false);
-        }
-      }
-      const facts = { muted: voice.muted, speechAvailable: canSpeak(), tapped: tapped.current };
-      if (!offered && voiceNeverStarted(waited, heard, facts)) {
-        offered = true;
-        setNeedsTap(true);
-      }
-      if (waited >= 10000) clearInterval(id);
+      watch.tick(performance.now() - t0);
+      if (watch.finished) clearInterval(id);
     }, 100);
     return () => clearInterval(id);
   }, [isGuided, voice, startReading]);
@@ -177,8 +174,10 @@ export function QuestionPaper({
   const tapToStart = () => {
     tapped.current = true;
     setNeedsTap(false);
-    // Inside the tap, so the browser lets this speech through; the old reading is cut first.
+    // Inside the tap, so the browser lets this speech through; the old reading is cut first, and
+    // the parts go back up to drop on their names as the new reading says them.
     reader.stop();
+    guidedRef.current?.onRestart?.();
     startReading();
   };
 

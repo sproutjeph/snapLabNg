@@ -50,8 +50,10 @@ import { StageTags } from "./stage/StageTags";
 import { isIdentifyShot } from "./stage/shots";
 import {
   createStageMotion,
+  entranceHold,
   entranceNamed,
   entranceReading,
+  entranceReset,
   entranceStopped,
   type StageMotion,
   trackEpoch,
@@ -525,14 +527,10 @@ export function persistMute(voice: VoiceGuide): void {
   });
 }
 
-/** Whether a reading aloud will be heard: speech exists and the voice is not muted. */
-function audible(voice: VoiceGuide): boolean {
-  return !voice.muted && typeof window !== "undefined" && "speechSynthesis" in window;
-}
-
 /**
  * The voice the paper reads with: the director's own, watched, so the entrance knows when a
  * reading aloud starts and stops (the parts then wait to be named, or drop on the timed drop).
+ * A muted reading names them too, on its estimated clock, so they still drop in name order.
  */
 function readerVoice(voice: VoiceGuide, motion: StageMotion, changed: () => void): VoiceGuide {
   let pending = 0;
@@ -545,7 +543,7 @@ function readerVoice(voice: VoiceGuide, motion: StageMotion, changed: () => void
   return {
     say(text, o) {
       if (pending === 0) {
-        entranceReading(motion.entrance, audible(voice));
+        entranceReading(motion.entrance, true);
         changed();
       }
       pending++;
@@ -861,9 +859,24 @@ function LearnScreen({
   );
   // Guided: the reading's end and Skip both go on to Watch, which plays at once.
   const guidedGoOn = useCallback(() => choose("watch"), [choose]);
+  // While the reading waits to be heard the bench stays empty; her tap starts the parts over.
   const guidedPaper = useMemo(
-    () => (guided ? { onDone: guidedGoOn, onSkip: guidedGoOn } : undefined),
-    [guided, guidedGoOn],
+    () =>
+      guided
+        ? {
+            onDone: guidedGoOn,
+            onSkip: guidedGoOn,
+            onHold: (held: boolean) => {
+              entranceHold(motion.entrance, held);
+              entranceChanged();
+            },
+            onRestart: () => {
+              entranceReset(motion.entrance);
+              entranceChanged();
+            },
+          }
+        : undefined,
+    [guided, guidedGoOn, motion],
   );
   // The end panel's buttons: from the first beat again with the bench reset, or back to the home page.
   const guidedReplay = useCallback(() => {

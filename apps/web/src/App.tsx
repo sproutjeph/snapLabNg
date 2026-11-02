@@ -1,5 +1,6 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useSyncExternalStore } from "react";
 import type { PracticalMode } from "./learn/types";
+import { subscribeLocation } from "./navigate";
 
 const Scene = lazy(() => import("./scene/Scene"));
 const KitPreview = lazy(() => import("./apparatus/meter-bridge/KitPreview"));
@@ -43,8 +44,12 @@ function practicalProps(params: URLSearchParams) {
   return { mode, seed: Number.isInteger(n) ? n : null };
 }
 
+const readSearch = () => location.search;
+
 export function App() {
-  const params = new URLSearchParams(location.search);
+  // Routes again on back, forward and navigate() (navigate.ts), not only on a page load.
+  const search = useSyncExternalStore(subscribeLocation, readSearch, readSearch);
+  const params = new URLSearchParams(search);
   const isLitePreview = params.get("lite") === "1";
   const isHomePreview = params.get("home") === "1";
   const isHome3DPreview = params.get("home3d") === "1";

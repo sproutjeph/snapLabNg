@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LEAD_REST } from "../../apparatus/ohms-law/layout";
 import { OHMS_LAW_LESSON } from "../lessons/ohms-law/lesson";
+import type { DropPose } from "../stage/motion";
+import { entranceOrder } from "../stage/motion";
+import {
+  createEntrance,
+  DROP_SLOTS,
+  entranceFrame,
+  entranceHold,
+  entranceNamed,
+  entranceReading,
+  entranceReset,
+  entranceStopped,
+} from "../stage/stageMotion";
 import type { PartId } from "../types";
+import { createVoice } from "../voice/createVoice";
 import type { VoiceGuide } from "../voice/types";
 import { OHMS_LAW_QUESTION } from "./ohmsLawQuestion";
 import {
@@ -56,7 +70,9 @@ describe("the question paper", () => {
 
   it("names every apparatus item somewhere in the instructions", () => {
     const parts = itemTriggers(OHMS_LAW_QUESTION).map((t) => t.part);
-    expect(parts).toEqual(["ammeter", "voltmeter", "box", "leads", "cells", "key", "wire"]);
+    // The wire at "XY" (instruction 2) and the plug key at "key K" (instruction 4): the first
+    // place the paper names each, which is when the user wants each to land.
+    expect(parts).toEqual(["ammeter", "voltmeter", "box", "leads", "cells", "wire", "key"]);
   });
 
   it("states no reading, current, voltage or wire resistance (only the question's own numbers)", () => {
@@ -133,11 +149,14 @@ describe("Read it to me", () => {
     first?.onWord?.(0);
     first?.onEnd?.();
     first?.onEnd?.();
-    expect(items).toEqual(["ammeter", "voltmeter", "box", "leads", "cells", "key"]);
+    expect(items).toEqual(["ammeter", "voltmeter", "box", "leads", "cells"]);
     expect(reader.view.instr).toBe(1);
-    // Instruction 2 names the wire as it is read.
+    // Instruction 2 names the wire as it is read; instruction 4 names the key.
     said[1]?.onEnd?.();
     expect(items.at(-1)).toBe("wire");
+    said[2]?.onEnd?.();
+    said[3]?.onEnd?.();
+    expect(items.at(-1)).toBe("key");
     expect(new Set(items).size).toBe(items.length);
   });
 
@@ -200,5 +219,197 @@ describe("Read it to me", () => {
     stale?.onEnd?.();
     expect(items).toEqual([]);
     expect(reader.view).toEqual(IDLE_VIEW);
+  });
+});
+
+describe("Read it to me: each part drops as its own name is said", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const SENTENCE_1 = OHMS_LAW_QUESTION.instructions[0]?.text ?? "";
+  const NAMES_1: ReadonlyArray<readonly [string, PartId]> = [
+    ["an ammeter", "ammeter"],
+    ["a voltmeter", "voltmeter"],
+    ["a resistance box", "box"],
+    ["connecting wires", "leads"],
+    ["dry cells", "cells"],
+  ];
+
+  it("with word events, names each part at its own word, never in a batch", () => {
+    const { voice, said } = fakeVoice();
+    const items: PartId[] = [];
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => items.push(p),
+    });
+    reader.start();
+    said[0]?.onWord?.(0);
+    for (const [name, part] of NAMES_1) {
+      // A voice a little quicker than the estimate: the word event, not the estimate, names it.
+      vi.advanceTimersByTime(300);
+      const before = items.length;
+      said[0]?.onWord?.(SENTENCE_1.indexOf(name));
+      expect(items.slice(before)).toEqual([part]);
+    }
+    said[0]?.onEnd?.();
+    expect(items).toEqual(NAMES_1.map(([, p]) => p));
+    // Instruction 2: the wire at "XY"; instruction 4: the plug key at "key K".
+    const s2 = OHMS_LAW_QUESTION.instructions[1]?.text ?? "";
+    said[1]?.onWord?.(s2.indexOf("XY"));
+    expect(items.at(-1)).toBe("wire");
+    said[1]?.onEnd?.();
+    said[2]?.onEnd?.();
+    const s4 = OHMS_LAW_QUESTION.instructions[3]?.text ?? "";
+    said[3]?.onWord?.(0);
+    expect(items.at(-1)).toBe("wire");
+    // The voice's indices are into the spoken text ("R equals 0 ohms, close the key K.").
+    said[3]?.onWord?.(toSpoken(s4).spoken.indexOf("key K"));
+    expect(items.at(-1)).toBe("key");
+    expect(new Set(items).size).toBe(items.length);
+  });
+
+  it("a word event moves the estimates on: a late voice is not overtaken by its estimate", () => {
+    const { voice, said } = fakeVoice();
+    const items: PartId[] = [];
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => items.push(p),
+    });
+    reader.start();
+    // The voice is slow to start: 1.4 s in, it is only at "provided" (2 words in, not 4).
+    vi.advanceTimersByTime(1400);
+    said[0]?.onWord?.(SENTENCE_1.indexOf("provided"));
+    // "an ammeter" is 2 words on: about 0.77 s from here at 2.6 words a second.
+    vi.advanceTimersByTime(500);
+    expect(items).toEqual([]);
+    vi.advanceTimersByTime(400);
+    expect(items).toEqual(["ammeter"]);
+  });
+
+  it("with no word events from the browser, spreads the drops in name order across the sentence", () => {
+    // The real voice queue on a fake speechSynthesis that sends no boundary events (iOS, Chrome's
+    // network voices). It still calls onWord once at each chunk's start; that must not stop the
+    // estimates.
+    const spoken: { onend: (() => void) | null }[] = [];
+    class SilentUtterance {
+      text: string;
+      rate = 1;
+      lang = "";
+      voice: unknown = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onboundary: unknown = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    vi.stubGlobal("window", {
+      speechSynthesis: {
+        speak: (u: SilentUtterance) => spoken.push(u),
+        cancel() {},
+        getVoices: () => [],
+      },
+    });
+    vi.stubGlobal("SpeechSynthesisUtterance", SilentUtterance);
+    const voice = createVoice({ rate: 1 });
+    const at: Array<[PartId, number]> = [];
+    let t = 0;
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => at.push([p, t]),
+    });
+    reader.start();
+    // A voice that says sentence 1 (19 words) in 6.6 s, a little quicker than the estimate.
+    for (; t < 6600; t += 50) vi.advanceTimersByTime(50);
+    spoken[0]?.onend?.();
+    expect(at.map(([p]) => p)).toEqual(NAMES_1.map(([, p]) => p));
+    const times = at.map(([, ms]) => ms);
+    for (let k = 1; k < times.length; k++) {
+      // At least about two words apart: none of them lands in a batch with another.
+      expect((times[k] ?? 0) - (times[k - 1] ?? 0)).toBeGreaterThanOrEqual(700);
+    }
+    expect(times.at(-1)).toBeLessThan(6600);
+    reader.stop();
+  });
+
+  it("names the connecting wires once, so the stage drops the seven leads one after another", () => {
+    const { voice, said } = fakeVoice();
+    const items: PartId[] = [];
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => items.push(p),
+    });
+    reader.start();
+    said[0]?.onWord?.(SENTENCE_1.indexOf("connecting"));
+    said[0]?.onWord?.(SENTENCE_1.indexOf("wires"));
+    vi.advanceTimersByTime(20000);
+    expect(items.filter((p) => p === "leads")).toEqual(["leads"]);
+  });
+});
+
+describe("guided paper: a refused reading drops nothing until she taps", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("keeps the bench empty while speech is refused, then drops each part on its name after the tap", () => {
+    const { voice, said } = fakeVoice();
+    const e = createEntrance();
+    e.on = true;
+    const parts = Object.fromEntries(DROP_SLOTS.map((s) => [s, { heightM: 0, k: 0 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      DropPose
+    >;
+    const leads: DropPose[] = LEAD_REST.map(() => ({ heightM: 0, k: 0 }));
+    const order = entranceOrder(DROP_SLOTS);
+    const frames = (s: number) => {
+      for (let i = 0; i < Math.round(s * 60); i++) entranceFrame(e, order, 1 / 60, parts, leads);
+    };
+    const reader = createReadAloud({
+      question: OHMS_LAW_QUESTION,
+      voice,
+      onChange: () => {},
+      onItemRead: (p) => entranceNamed(e, p),
+    });
+    // The guided paper opens: the reading starts, not heard yet, so the bench is held.
+    entranceReading(e, true);
+    entranceHold(e, true);
+    reader.start();
+    // The browser refuses: every sentence ends at once, naming every part, and the reading stops.
+    for (const s of [...said]) s.onEnd?.();
+    entranceStopped(e);
+    frames(5);
+    expect(DROP_SLOTS.every((s) => parts[s].k === 0)).toBe(true);
+    expect(leads.every((l) => l.k === 0)).toBe(true);
+
+    // Her tap: the reading starts over and the parts drop as it names them.
+    said.length = 0;
+    reader.stop();
+    entranceReset(e);
+    entranceReading(e, true);
+    reader.start();
+    frames(1);
+    expect(DROP_SLOTS.every((s) => parts[s].k === 0)).toBe(true);
+    const s1 = OHMS_LAW_QUESTION.instructions[0]?.text ?? "";
+    said[0]?.onWord?.(s1.indexOf("an ammeter"));
+    frames(1);
+    expect(parts.ammeter.k).toBe(1);
+    expect(DROP_SLOTS.filter((s) => parts[s].k > 0)).toEqual(["ammeter"]);
+    expect(leads.every((l) => l.k === 0)).toBe(true);
+    said[0]?.onWord?.(s1.indexOf("connecting wires"));
+    frames(3);
+    expect(leads.every((l) => l.k === 1)).toBe(true);
+    expect(parts.key.k).toBe(0);
+    expect(parts.wire.k).toBe(0);
   });
 });
