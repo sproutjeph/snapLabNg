@@ -10,7 +10,7 @@ export const ABOUT_SECTIONS: AboutSection[] = [
     id: "what",
     heading: "What it does",
     paragraphs: [
-      "A student snaps the metre bridge practical in their exercise book. The apparatus they drew rises out of the ink as a working 3D lab they can use. Their own handwriting is then marked in red ink, item by item, and an examiner-style voice asks them about their own mistakes.",
+      "SnapLab NG turns a real WAEC practical into a bench you can work at. Its first practical is Ohm's law (V–I), from WASSCE 2018 Physics Paper 3, Question 3B. In Watch, the question is read aloud and the practical is done on a 3D bench step by step as each sentence is read: the parts, the wiring, the readings, the table, the graph and the slope. In Practise, you wire and measure it yourself with a guide. In Exam, you sit it with a clock and no hints, then hand in for marks. The metre bridge and titration practicals are marked Coming soon.",
     ],
   },
   {
@@ -20,12 +20,12 @@ export const ABOUT_SECTIONS: AboutSection[] = [
       "Everything that decides a number is ordinary, tested code. The AI reads and explains.",
     ],
     bullets: [
-      "Muse Spark reads the drawing: which experiment it is, and where each part is.",
-      "Muse Wonder reads the table and the graph exactly as written, including mistakes like 57 instead of 57.0.",
+      "A physics engine (packages/engine) runs the circuit and the meters.",
+      "A fixed rule engine (packages/rules) gives the marks from the WAEC marking scheme, so the same work always gets the same score.",
+      "The snap-your-notebook mode works today for the metre bridge (/?flow=1): Muse Spark reads the drawing: which experiment it is, and where each part is.",
+      "In that mode, Muse Wonder reads the table and the graph exactly as written, including mistakes like 57 instead of 57.0.",
       "SAM 3.1 outlines the parts she drew, so they can lift off the page.",
-      "A physics engine runs the circuit: the balance point, the galvanometer needle and the cell.",
-      "A fixed rule engine gives the marks, so the same page always gets the same score.",
-      "Muse Spark judges her spoken or typed answers to the examiner's questions. It never changes a mark.",
+      "An examiner-style voice then asks about her own mistakes. Muse Spark judges her spoken or typed answers to the examiner's questions. It never changes a mark.",
     ],
   },
   {
