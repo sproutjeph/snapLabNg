@@ -245,32 +245,65 @@ export function Player({ director, onHandIn }: PlayerProps) {
  */
 function HandInConfirm({ onKeep, onHandIn }: { onKeep(): void; onHandIn(): void }) {
   const keep = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  // The page re-renders every second in Exam, so the handler is held in a ref and the effect runs
+  // once: focus goes to Keep working on open only, and a Tab to Hand in is not taken back.
+  const keepRef = useRef(onKeep);
+  keepRef.current = onKeep;
   useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
     keep.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onKeep();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        keepRef.current();
+        return;
+      }
+      const el = root.current;
+      if (e.key !== "Tab" || !el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>("button"));
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+      if (!el.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onKeep]);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      // Back to the button that opened it (it is gone once the exam is handed in).
+      if (before && before !== document.body && before.isConnected) before.focus();
+    };
+  }, []);
   return createPortal(
-    <HandInDialog keepRef={keep} onKeep={onKeep} onHandIn={onHandIn} />,
+    <HandInDialog rootRef={root} keepRef={keep} onKeep={onKeep} onHandIn={onHandIn} />,
     document.body,
   );
 }
 
 /** The dialog's markup (exported for the markup test; the portal cannot render on the server). */
 export function HandInDialog({
+  rootRef,
   keepRef,
   onKeep,
   onHandIn,
 }: {
+  rootRef?: React.Ref<HTMLDivElement>;
   keepRef?: React.Ref<HTMLButtonElement>;
   onKeep(): void;
   onHandIn(): void;
 }) {
   return (
-    <div className="dp-confirm" data-testid="hand-in-confirm">
+    <div ref={rootRef} className="dp-confirm" data-testid="hand-in-confirm">
       <div
         className="dp-confirm-card"
         role="alertdialog"

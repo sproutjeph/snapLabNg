@@ -269,12 +269,24 @@ export function watchGraphOut(stepKey: string | undefined): boolean {
 /** What the results screen shows, without its buttons. */
 type ResultsView = Omit<ResultsProps, "onAgain" | "onWatch">;
 
-/** The circuit as she has set it: leads by their ends, the key and the plugs. */
-function benchCircuit(bench: OhmsLawBench): string {
+/**
+ * The circuit as she has set it: leads by their ends, the plugs and, unless `withKey` is false,
+ * the key. The fault notes (reversed meter, short circuit, needle at the stop) say "open the key,
+ * then …", so opening K must not hide the rest of the instruction while the fault is still wired.
+ */
+function benchCircuit(bench: OhmsLawBench, withKey: boolean): string {
   const v = bench.visual.current;
   const ends = v.leads.map((l) => (l.a < l.b ? `${l.a}|${l.b}` : `${l.b}|${l.a}`)).sort();
-  return `${ends.join(",")};K${v.keyClosed ? 1 : 0};${v.plugsIn.map((p) => (p ? 1 : 0)).join("")}`;
+  const key = withKey ? `K${v.keyClosed ? 1 : 0}` : "";
+  return `${ends.join(",")};${key};${v.plugsIn.map((p) => (p ? 1 : 0)).join("")}`;
 }
+
+/** The notes whose instruction starts with opening the key: they outlast K. */
+const KEY_FREE_NOTES: ReadonlySet<string> = new Set([
+  "reversed_meter",
+  "short_circuit",
+  "over_range",
+]);
 
 /** Only results the page shows: before hand-in this is null and nothing of them is drawn. */
 export function ResultsLayer({
@@ -908,9 +920,9 @@ function LearnScreen({
     : stepStatuses(lesson, state, results?.sheet ?? null, mode, bench.visual.current.leads.length);
   // A bench note is about the circuit she had when it was written: it stays only while the leads,
   // the key and the plugs are as they were ("The cells are short-circuited" goes once that is fixed).
-  const circuitNow = benchCircuit(bench);
   const noteFirstSeen = useRef<{ bench: unknown; id: string; circuit: string } | null>(null);
   const newest = practical === "practice" ? bench.notes[bench.notes.length - 1] : undefined;
+  const circuitNow = benchCircuit(bench, !(newest && KEY_FREE_NOTES.has(newest.kind)));
   if (
     newest &&
     (noteFirstSeen.current?.bench !== bench || noteFirstSeen.current.id !== newest.id)
