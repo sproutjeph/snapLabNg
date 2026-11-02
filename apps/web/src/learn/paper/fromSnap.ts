@@ -126,6 +126,44 @@ export function similarity(a: string, b: string): number {
   return nx + ny === 0 ? 0 : (2 * both) / (nx + ny);
 }
 
+/** ...and a label match above this similarity is trusted even when another text is closer. */
+export const LABEL_TRUSTED = 0.6;
+
+const SUPER: Readonly<Record<string, string>> = {
+  "⁰": "0",
+  "¹": "1",
+  "²": "2",
+  "³": "3",
+  "⁴": "4",
+  "⁵": "5",
+  "⁶": "6",
+  "⁷": "7",
+  "⁸": "8",
+  "⁹": "9",
+};
+
+/** The numbers in a step (R values, diameters, resistivity, π = 22/7), superscripts as digits. */
+export function numbersIn(text: string): string[] {
+  const t = text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => SUPER[c] ?? c);
+  return (t.match(/\d+(?:\.\d+)?/g) ?? []).sort();
+}
+
+/** The V and I symbols of a step, in the order written ("Plot V ... against I" is V, I). */
+export function symbolsIn(text: string): string {
+  return (text.match(/\b[VI]\b/g) ?? []).join("");
+}
+
+/**
+ * Her step carries Q3B's facts: the same numbers (so R = 2 Ω or "4, 6, 8, 10 and 12 Ω" is another
+ * question) and, where a step plots one thing "against" another, the same order of V and I.
+ */
+export function sameFacts(q3b: string, hers: string): boolean {
+  const a = numbersIn(q3b);
+  const b = numbersIn(hers);
+  if (a.length !== b.length || a.some((n, i) => n !== b[i])) return false;
+  return !/against/.test(q3b) || symbolsIn(q3b) === symbolsIn(hers);
+}
+
 const normLabel = (l: string) => l.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 export interface Alignment {
@@ -149,12 +187,13 @@ export function alignToQ3B(read: QuestionRead): Alignment {
   const match: (number | null)[] = steps.map(() => null);
   const used = new Set<number>();
   steps.forEach((step, k) => {
-    const j = hers.findIndex(
-      (h, idx) =>
-        !used.has(idx) &&
-        normLabel(h.label) === normLabel(step.label) &&
-        similarity(h.text, step.text) >= LABEL_SIMILARITY,
-    );
+    const best = Math.max(0, ...hers.map((h) => similarity(h.text, step.text)));
+    const j = hers.findIndex((h, idx) => {
+      if (used.has(idx) || normLabel(h.label) !== normLabel(step.label)) return false;
+      const s = similarity(h.text, step.text);
+      // A label is trusted only when her text under it is also this step's best match, or alike.
+      return s >= LABEL_SIMILARITY && (s >= LABEL_TRUSTED || s >= best);
+    });
     if (j >= 0) {
       match[k] = j;
       used.add(j);
@@ -179,7 +218,8 @@ export function alignToQ3B(read: QuestionRead): Alignment {
     const j = match[k];
     return (j === null || j === undefined ? undefined : hers[j]?.text) ?? step.text;
   });
-  let aligned = match.every((m) => m !== null);
+  let aligned =
+    match.every((m) => m !== null) && steps.every((s, k) => sameFacts(s.text, texts[k] ?? ""));
   if (aligned) {
     try {
       guidedScriptFor(texts);

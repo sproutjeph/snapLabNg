@@ -15,7 +15,8 @@ import type { PracticalQuestion } from "./types";
 
 export const LOST_NOTE =
   "Your snapped question was lost when the page reloaded, so this is the app's copy.";
-export const COPY_NOTE = "Watch follows the app's copy of this question.";
+export const COPY_NOTE =
+  "This question differs from the app's Q3B, so the bench, the table and Watch follow the app's copy.";
 
 export interface PaperContext {
   /** ?question=snapped. */

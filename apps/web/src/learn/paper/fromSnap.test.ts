@@ -122,6 +122,57 @@ describe("alignToQ3B", () => {
     expect(plan.script).toBeNull();
   });
 
+  const withText = (k: number, text: string) =>
+    readOf(
+      OHMS_LAW_QUESTION.instructions.map((i, n) => ({
+        label: i.label,
+        text: n === k ? text : i.text,
+      })),
+    );
+
+  it("does not align when a step's numbers differ from Q3B's", () => {
+    const r2 = alignToQ3B(
+      withText(
+        3,
+        "With R = 2 Ω, close the key K. Read and record the current I and the corresponding voltage drop V across the wire.",
+      ),
+    );
+    expect(r2.match.every((m) => m !== null)).toBe(true);
+    expect(r2.aligned).toBe(false);
+    expect(
+      alignToQ3B(withText(5, "Repeat for five other values of R = 4, 6, 8, 10 and 12 Ω. Tabulate."))
+        .aligned,
+    ).toBe(false);
+  });
+
+  it("does not align when the plot is I against V", () => {
+    const a = alignToQ3B(withText(6, "Plot I (vertical) against V (horizontal)."));
+    expect(a.match[6]).toBe(6);
+    expect(a.aligned).toBe(false);
+  });
+
+  it("trusts a label only when its text is also the step's best match", () => {
+    // Labels 4 and 5 swapped: each step still finds its own words, so Watch reads the right ones.
+    const swapped = readOf(
+      OHMS_LAW_QUESTION.instructions.map((i) => ({
+        label: i.label === "4" ? "5" : i.label === "5" ? "4" : i.label,
+        text: i.text,
+      })),
+    );
+    const a = alignToQ3B(swapped);
+    expect(a.match[3]).toBe(3);
+    expect(a.match[4]).toBe(4);
+    expect(a.aligned).toBe(true);
+    // Step 5's words filed under label 4, with step 4's words gone: not aligned (R = 0 is missing).
+    const lost = readOf(
+      OHMS_LAW_QUESTION.instructions
+        .filter((_, k) => k !== 3)
+        .map((i) => ({ label: i.label === "5" ? "4" : i.label, text: i.text })),
+    );
+    const b = alignToQ3B(lost);
+    expect(b.aligned).toBe(false);
+  });
+
   it("does not align when a step Watch drives is missing", () => {
     const missing = readOf(OHMS_LAW_QUESTION.instructions.slice(0, 8));
     expect(alignToQ3B(missing).aligned).toBe(false);

@@ -1239,7 +1239,7 @@ function LearnScreen({
               view={guidedWatch ? paperView : IDLE_VIEW}
               comparison={guidedWatch ? bench.comparison : PRINTED}
               herDiagram={ctx.photo}
-              note={guidedWatch ? ctx.watchNote : ctx.lost ? ctx.note : null}
+              note={guidedWatch ? ctx.watchNote : ctx.note}
             />
           )
         }

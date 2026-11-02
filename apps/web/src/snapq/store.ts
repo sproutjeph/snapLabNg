@@ -18,9 +18,18 @@ export interface SnappedPaper {
 
 let current: SnappedPaper | null = null;
 
-/** Keeps her paper for the practical (null forgets it). */
+/**
+ * Keeps her paper for the practical (null forgets it). A different paper replaces the last one and
+ * its object URLs are revoked (`blob:` only: the /samples/ paths are not ours to revoke).
+ */
 export function setSnappedPaper(p: SnappedPaper | null): void {
+  const old = current;
   current = p;
+  if (!old || old === p) return;
+  const keep = new Set(p?.photos ?? []);
+  for (const url of old.photos) {
+    if (url.startsWith("blob:") && !keep.has(url)) URL.revokeObjectURL(url);
+  }
 }
 
 /** The paper she snapped this session, or null. */
