@@ -1,0 +1,471 @@
+{
+  "name": "spark-question",
+  "status": 200,
+  "latencyMs": 40079,
+  "request": {
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "max_output_tokens": 10000,
+    "store": false,
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "The attached photo or photos show a printed WAEC/WASSCE practical question and/or its diagram (one page may hold both). Photos are in the order sent, numbered from 0. experiment: ohms_law_vi means V against I for a wire, with an ammeter, voltmeter, resistance box or rheostat, key and cells; also meter_bridge, titration, glass_block; anything else is unknown. source_as_printed and title_as_printed: copy the examination line and the heading exactly as printed, or null if none is printed. apparatus: every item the question lists, in the order it names them, with its exact words in text_as_printed. instructions: copy every numbered instruction word for word, with its printed label exactly as printed, including parts such as (b)(i). diagram: present is true only if a diagram is drawn; photo is the 0-based number of the photo the diagram is on; parts lists every drawn part with its printed letter label (E, K, A, V, R, X, Y ...) or null, and its box in 0 to 1 coordinates of that photo (x0, y0 top-left; x1, y1 bottom-right). Copy only what is printed. Never compute or invent values, answers or readings."
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 157 KB]"
+          },
+          {
+            "type": "input_image",
+            "image_url": "[image 65 KB]"
+          }
+        ]
+      }
+    ],
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "practical_question",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "experiment": {
+              "type": "string",
+              "enum": [
+                "ohms_law_vi",
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "source_as_printed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title_as_printed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "apparatus": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cells",
+                      "key",
+                      "ammeter",
+                      "voltmeter",
+                      "resistance_box",
+                      "rheostat",
+                      "wire_xy",
+                      "metre_rule",
+                      "connecting_wires",
+                      "galvanometer",
+                      "other"
+                    ]
+                  },
+                  "text_as_printed": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "text_as_printed"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "instructions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "diagram": {
+              "type": "object",
+              "properties": {
+                "present": {
+                  "type": "boolean"
+                },
+                "photo": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "parts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "cells",
+                          "key",
+                          "ammeter",
+                          "voltmeter",
+                          "resistance_box",
+                          "rheostat",
+                          "wire_xy",
+                          "metre_rule",
+                          "connecting_wires",
+                          "galvanometer",
+                          "other"
+                        ]
+                      },
+                      "label_as_printed": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "box": {
+                        "type": "object",
+                        "properties": {
+                          "x0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y0": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "x1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "y1": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "label_as_printed",
+                      "box"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "present",
+                "photo",
+                "parts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "experiment",
+            "confidence",
+            "source_as_printed",
+            "title_as_printed",
+            "apparatus",
+            "instructions",
+            "diagram"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "background": false,
+    "text": {
+      "format": {
+        "type": "json_schema",
+        "name": "practical_question",
+        "schema": {
+          "properties": {
+            "apparatus": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "cells",
+                      "key",
+                      "ammeter",
+                      "voltmeter",
+                      "resistance_box",
+                      "rheostat",
+                      "wire_xy",
+                      "metre_rule",
+                      "connecting_wires",
+                      "galvanometer",
+                      "other"
+                    ],
+                    "type": "string"
+                  },
+                  "text_as_printed": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "text_as_printed"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "confidence": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            },
+            "diagram": {
+              "additionalProperties": false,
+              "properties": {
+                "parts": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "box": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "x0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "x1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y0": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "y1": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x0",
+                          "y0",
+                          "x1",
+                          "y1"
+                        ],
+                        "type": "object"
+                      },
+                      "kind": {
+                        "enum": [
+                          "cells",
+                          "key",
+                          "ammeter",
+                          "voltmeter",
+                          "resistance_box",
+                          "rheostat",
+                          "wire_xy",
+                          "metre_rule",
+                          "connecting_wires",
+                          "galvanometer",
+                          "other"
+                        ],
+                        "type": "string"
+                      },
+                      "label_as_printed": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "label_as_printed",
+                      "box"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "photo": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "present": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "present",
+                "photo",
+                "parts"
+              ],
+              "type": "object"
+            },
+            "experiment": {
+              "enum": [
+                "ohms_law_vi",
+                "meter_bridge",
+                "titration",
+                "glass_block",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "instructions": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label",
+                  "text"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "source_as_printed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title_as_printed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "experiment",
+            "confidence",
+            "source_as_printed",
+            "title_as_printed",
+            "apparatus",
+            "instructions",
+            "diagram"
+          ]
+        },
+        "strict": true
+      }
+    },
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae89ecc2858e469a7394a8e",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793629900,
+    "completed_at": 1793629900,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae89ecc2858e469a7394a8e:rs_f6f4e52c-d997-47a3-af45-470394624233",
+        "encrypted_content": "Q-PaDgHqsDuW06HrgsMUIQ_ObrhLJVdhZbjcFedG6b5expoOoQlQrhgu0svitvG1YUnzqvg-IrieNxSjo756UP1zjjvU47_FUBIRUFmaul6Q9uZ_4eue7bHDlLUsrHo1uTt96rhzaPMZ9oxqHcDwB5znSSBtiixqAh3R8lt56N8StaYUkBQaI-PgNAkDG0YZzba-u4WqSYwLxgZztPVIvX3lylAXnL1TroqvkoqOYjSX8eLLYiIiAWyb562Z36zNQExdX_LuCFLy_m7t6Q3GeNjyzddh1kRRykLBXiADZ3YOvZbAhX1S8ri6hsg_QsfTkvBT3XIQz9aR8FuZjs-_xeR29Rv8MEqeav_hws7J4Xa2rwyhnltBVLbPFEDVoaLgWNh6HBCw-ds8w0wr3ooUcIBgkbN1opp32-7fmD0wai2DLmOdVeOq7bIzfKOaxzC2xqdErWyb4qMQ2eWCIlkCGhM5zYrTaH3XHaWr9TrboOA09D60pQkYYZ02R84YpljPWPf9-ff75mX_yE6mgEosH2onUqWXs-n_HyA6J6pNbXArQJ0OqYR7iYbOa5lLD68x_YqohAxwW8YmLhzNTe_wjG1RSs9B7zRyOkrI2jOHMpm4kcgFoPn12amTzTaxasQvG1QtMF0roP7Vdv21mwa9-880ZYLfLrPsOxSkO83Y6y4QK6RFiHZOmXwFY90cl3hocB8Pq28Um-lXcQYOMTb3H7HpIyK9iVasP9PLCW-_k4HOWco8AK-XeYgoKtSDnvTSFrVF4jEelvhiGgeg7ilCN2-ey9UuvlRETxJJtS6IzXf54K1UlOm_c48zz3gPUHCCyEAUFyWiQZTMIg0Ls5bjqDfVfdmDLwQtNEyRQ4lS7iwBHQ2664hpa1XDGyz-nttmLzJI2H-ge3TE3zzvhBBTuUOB5f6sbJXmy2MJc8oylqkfzmymAz6tbZ-VTuxXtU9rJahaDUUaRp2j7Y_-1kxQZLsZP93P3kKqRqDVyL4zqvc6Q7EM0_G4iOn4am_sJ9PCdq7-IekHkBt-YuZAN8jb3iQRwVnEwowdShzzxpinOgWo5M3AluphzcIG-wIGVe3pf1LDfgjl2Uy34rVZmYi2vxGsIBy5VKPNa9uWpj4y_fRj69t7z95X7A44WcueRjx8Is2VzVsR7eb2r0drPSG8O1j4FCovLNna0nzv0UPSKM42ksiX_-FPPK574t-LSiSjgA8S7QXcowatc5HuxO9gZu5Xya0jRsQyaJ8JjB5FSH8G51CfyVBqb-hzmJq7hqeXayEi5iYJobmpDhhzClPGEtHPzXsBG7gKL1WMuyHEEHZ-JNa7YiqS8Tzo4V5_6V44ArwuikO8hYHhqmsy7M-xgdlXT4Thr2T3Fv2OOteDvJQ_bsk2IkKoK-E1SeazWqb77FFMsvSsWNgKF1c0iWmCRKQ6kSvEKzugHF71VMd-wTiIx0ELLTnkVGffi2jy4SbxaT86m7TZ1ACYE2cRLbZCqux2kXAr1Q4iGnf6npKe4L65xS882WoENKuIm6io2FhLJ4rzSQWFBo9-wEG5sNt0ow0Mgj5QstBnvee5zwWskHmxQIvLQjWxrSBO8Nv7ApEcaBLi1_TlVnELldKWvK-pl9XQhDlJgzT70jpSBh63Nu_UJBlAvv0EwXGYuENw_OvMe7Soao_OHegmy4UAHdUDjOaOo1JUDaHLR1yDwvgJOxgAK5IR6nYZ59YzhyHdwbq80bJT9hp75aDJhzx1chUYSp6XffddIkcu6qCSusbkr4bn9S0QT3lvsJ2PNaJQFNulBU0KPn8Sdg3NjiamXv-ULP6iYnYbZBI6yxxDy-5cP1lsfXw1FhbdDSZHryHVWr_7Onx_AfHwdwIbY7zMPL6f2lqvuRy__OgQv25f1VVIBoKhtDJvgXmqmJcNGte1zWQQC0c_0M_iiy2barXbH3wGJcUVmTrjuRCaNdggkkFEt7Zj8nOeIZKcDEJm8Pk59zQdmgclk7ymXU1Pc5mCQRz6Z-36ZrnJOR0BjpbotrLUZ4BsMysCSJG6TZSxQZYHNmzHzuVb-2MxqIL6BNpOo6nndCXYuw_UrBLdNtI2WC_gjHJ_z5nLVxzjUyhUoGVurtVg6vjgkhriF0TQ4w1dJy1ZI2Sa78Q6KNIYrWo7AHqM5rAt_I4eJS0-VQVJiPX4nGjEciX7wsL6AXiepnKW2HwSaoYWmPb6kv8pLbbYCeMr2WWbDXpaJW8QvpAUpslDxC0JF1QZ53BAKmwtk55IuGVV-AhOUkUVmySNkTl25uvHpWaP7G4JPMk66pWEryQqb9v8I20YwrDLQvOplHirW6tVTR2-apWB5JTbJFd3pXXYR5bL4QcPW5Szev9Qc3FssYw-mqPeYRb_Vmk0SgVACQhploibkdoUJgoxB7JnXgdssSSnPEKnHX5pMSGulMt5-mIYSJX43bToqwjJME8J1OccpyKMTImZ2tle_qlhTfbgzC997Sig7lDPZUW3ACFe-WrTYVmr-Z0JM604arm9U00HKhbhDMY2f6mWtZoVYIDcxg98vKh8_Sb4kwbYSqwu3b4KQ-VOIVDd6lq5UobPm7Lc6sJlTuJP1AGz-aw1kfWEkailr3nynGOMvcrRa0fxaXZtGRGxBGL3rv_3aHf1NOP7QMlvdWC_8zXQ-0bP_dLg9TuEnsWLFHaYN3vNXQ4lGpxQcTb3IT40Tdk93XEZbHdyf9xifQJTyCFHpY_jeRwgL1DLn61AExe5egw1McCkN7SbhM1bM7fhlyFf0hk1y8WjFHg-zpLPmISiKnChjbIxIFFQsE-5iMPDR4tnvFfQQwF9VPKDYa4-R4teDGXp6bAdWJpYTZTdAGKJmCJcwAR8F3eE3W9MMbFNjlEugFaBc2Ybw4noAOMFOkgN8DaPQzNf5Fae6I2RYp97s54-7E4QC3eRhovxCfs34yC4vQfU83X6yeCS9PVZAQ-ZlzqH5ps5YpjhoZ4r1-t2DQQ3mJHLjNiBl-bO0IwVCEjQ0EIe3w196qHsDQ-gsYMWuJeStzg6OXqfkDuNf6KewP9fdDJrduTpM4hVquIePoiFHpT0neWREU8DznPY7SClVBfDTMjY7LaUMZ9Jf_wsp2eV7uLFPLhCBuB6pYzA0IScaP8FVz23B4ofsVKwaTypa0UGBqdWsuL1jaKQdCSLJ3FbJNcAAyLX6VD6fU_O9uJNYPsBlUmrSXoH-dTadY0YC9kzswZ8zkwV8ENj8TJ4hbk0lqaxBZb660xjdGGM5O2EJuWSFohNL352KdRsP0r5DB3OvKln7n1idocbSUeME0CxGc1khVytqIZfaEnjaxRc31z9XzSAxCn8ztFvVB-9r-Shg0KatWX3rFS1jxVK06lH5ep8x2B8oAExljWDwX9MR_10TckI3US0UZ7fHRANMDfqVj2Z3YNbkt7eZ7Vs3asEcCTlI2_lDl3fbwOvGuJ-2EWo0nNU-EMx_ZzXCbNbJT5_KqcrmVXgm5-OFiEtyDbBSbeE4FzCQchTJ-_uLF2TyRsKj68X0JrU-rQlI1W0FqUl6Ax1VSSlm73dKg0xbSZxAXCxwvkYS9Mzm1GiIpmHOIYyJ5VZM3Dcd3JZ_WquDKvFGtm-W2VKQPae45aVKG-joq7_9Y0G_SUIHRTBhlo-Iuqs0NbyA8u_E4fdWBwn2S1sy5aRF1hgYkgfOy-e18nsFlM5NgWFRo2JvAtPAk2K5RmthMAy8wjH1R_U_UAtLgCMNvD6QwRnq8CD5iEMhFDGmig50WJfEEVGL_l4M5vJSksbb3Pq2nKpNCi3T11Jru2O1vPAEcUpBgsJrTaareObmqhN5N64pJPix78MR_u1Er0fYIgJiG6A90e2TAjus-vWomjO6JdvGN-86PXD87Cs_QibLs_UlXHri2_kkFJ4haPIis-ypUGKMjyJeMHsoBv0r7duQHjUlsIYM-6A7kw3hiM8MVlaBwrmqUmFRtx1Z28UkmFgrqZ3dO_5aBiZ9RU-KBpOkRTl9sIUJTDLTXmvYtlnpy4rNxbnFeQNIKyqkknBxIRPSFdC7e6zzzvoE-iCyOJQAsqPwsVRYZMPRsp2e-U_MDEeUU10JX7g3tN-Rn7XPGIQFtcOjZfkvEMDr4Czz9rwhJhStrHlTLj6_sTQDh5ANbt1MNsIsQRAe_a4SE4t0oV2SmewPaw3aJc4iOgW8W5qa7dbAAZDVy1Tv26yCKhR3easkgzmV3A1dgOQzJvwtXB3UsN4McJBQka4DlWF4dLFH9eL6SQQ0x2jpQ9duyW25AYKMoL-twru4t-nRZ8TH_QjQafTBPLfq0rHcwD2LttEiAiYNxN9a1RZmHeT6Tr21Ax77Dl8VnCx29UCUEqJoxYxnbe-Ld4uyvRUc0n5GjinkTK7wLniKqtD61UP6GQtLtNAIFFB4_-1Bo83aMYtJJYyprDAxWHHZmWGjhipxfyDHiMvV3Pj8IWCFHAjJz7GErgDPmz_AjgYqMiD46C3XGyWZEQgMZoxxi7msdza0Cmhs6YA4zohcOYbbasCa5IADM55-r2UP_HUP7B_BUkrtBUraA9kk3gpwCJ5V8pqJPJwAltvwP-AOWDEMvKgFJLI90cHsH6ezD1nsjT8J2V1glB4CWEipOJBTMfsvR-VkJAAApuSuMhylR7Pl5aRQ2KIFJCXtePBxSNMipPpe6UwQEeihOaXd2YrwAacakHQiUUYhMd1sZsLwKZuA92E1N-qH0Wl6QvE-9g6Z9F1HTjppAVY8CO8S_I89hlm9Ek9GGjwVFvwZHFYytbPhv8W4OE1xyap7vTrbDkyiNuHhLkdWo6cVRrG_Nnp4cJgaxTMwmw8zj1H9xk6rSUxPolcUCQW4BiK72dzhxvxdYFXpnuOV30x-NPVf2xYtktpwMTi4ZvR7JUZr7YaB6PiTYa9j7EEVMNgT7eJcH9sbxOHeB7eOjt-F3ZG_aL0SK6VqYwY46yr2Ya4nABKMAbl_W966-i-ZDAifu8jm-7gYIh0sbD-FD9IvHoOnj5M_569ou3t_eHi2urECSht-7_DYT0RPdkBTFRuZhex5yh_WTrULT6MENz-9-GQ0MWvzoQmAEVH3GLx-3NxtY5PhoFZ3G3IlqAvm3EmSm-r_3LdaSZxl-fCZQ45QZTsscCOLIH4DbR3q62XshiZZ4PdDZe2tF0LNTrKxunomyE2qkEoTM4FqZXOVLRvIRMUprIRj_BBflaS6te0cqnQZIuNNpOzob2G_yzWbMHwAZIlDvVH7lZs5w4645l3FJ-ILkmVV0Pa3NrERSad6c8cKGYgKC8dZHdFtVm40W0D4K_w_zj1gNh2C7nj4iSwiKF6aIM5yVA2_3oPntPI53pXHTZk457Pe0JpiCpixx0tzKPCuWeLLNVkRGoVbps6VC33tva6pUmNtbOTWr0I-G0p_ge07kOcFrhUCAXdyM6zWMFWcNd-qb2t9bEHz0uUrseV3gVPKBlIPQJkc08aj7PBF09EkIZJ7KFNZGYZtbl0qHwFCvBxauQPlK9_69J2EqFz6iG-5qAFjovRN4mMdFR3DQfXjUznq3ZSZ7fF2_PyiKmDQmdUvmh-7HIDV1tJbj4Gwf4WRLJqm0CGBdidpii3ZEmM1hW9swunr9eottDznv3fx5qhwolTXFmwzYUtzVP2H61GUdwyFzOf-Nn9PFjPmWvAxDTpev7ds9NQQ98HeVn8E-hoRw_RR9bTLrTuJtpQqbf8Cyi0Z_Vs4ng_P6LJT3gqS0DAvCRh-4XfzPDtkbn9U5C_JhHshWnXFZ0s1IgyzyR6jgolnqWYghtQnEtqZpmtoWYxbl1KYzHUHCq2yIVSTkqPRCbgQ585cO5jwJantxffYB8vU0JJYUtX8_RujS0lbcl6Dq9yMfFCZbBgCT94XtC4WUbQ5jwzi0Ry_luOyOJwtVuYO1r0e4SqDFIq8GmSWvIEUXh9WN-u8UkAuyhdtrnV6yYy5GpkWlS9M8x6BV5n8ehnEQYfQal8jVWmU6Zrj01Ki5NRqAln_0gIE8nEXGkQ-rR8tg07SS8ZbFai_7DskjTl7EBP3GHONJu-_pXPSZXGZS5SRC-ayTWCBEIiEazFVXJ8-7Z1FaO7nWcbqSOUJ8MFsFnqCpqEbbOoZbprByh54iMHauQCWgyy-LSI4HhPMLlWzadEDJxmpq5BZJra1b6_Fqh1TSGrosA4ZiKNowDAG_XDMoEDiihkDR44_2ZZfSMdJQZKaK8Bs3mLW9gk1iNSlqe4S0J0jrE0R02CpSPIcyFU3FUqfdZVX_oKnYUZOjSU9uDCGxnpycxN1YtL5vqEMKQ5etf7aJ5OzQmZlUZx9D1F50mlgLqQATBo19PfeLuQ50kYrUpaLW6oM7AvYWZLGYYjhGgeeQFKG-oHfSlao-uboFscK96-O9C9IIclCcmacIT4KRE6YqU51b4g4e32FBOu4VJM4LesSg2JMbT8c3uMJclG0GnWsaJ9-ym2RYLh4Za00K13gKnnvL_i9MgyUzBvJlY5MIxcIYPuJR62Gdq35pzKYjmrHTL4QDfSpz89LREYxr5LFmvBPZgOmSga88jceQzoigPvcblNKVnmMW898KMl0skdD-bca9aphviAo8zXkXV6GCmOdeWFt5Dyyp49sCDLxMI-mmKj0B92xHbuZVrOdXXVHa3UEdP_DxgBXxbD7OKZfTDQF5bWbINB5sCvMHI3fX5IQV4tZ-LdAOS4cpldNlPCIYC-NQMnzmwPbOUkzN7_YsoRZgfP3zEW_WDj-chLTSrsOVZ2agMisSemoXa65dbH3E-dHu_QMd1yQNcVJ8VZv_Rp27CKggEsh3AiNXqigHKseWrxLCFIz9GD2Xmi7pSfRiuQ5R_jRE21bTvOrY_ummZaWyUIq9htts4LaBFM0uzPTq_YoZd_o8vTlO5Y5nE_PUnCWQEsZI8sNM3SopGFLPna8mv5hVKENvC48AGAO_btbSMGXHEQPyE-zzE9P6a4ndTWzhVehLJJoLgrxd639U6UfpPJ9v9IQetYGTj4GdqvS0ZoScDGVeP-bqoW21v_Ssm_wqNmaS4Y1NkB5uMqV_oaWj8gq4oftgQwK0hgVhnf9noSoH0wvDW_tGxEGhPRTQhceEMUZnUvkVjM8LTErguJXM6E8NfFqOmMCYTayAzBRstTo8lAVTzMvcds8pT8ElOqZYvs6hNtLoutM5WgGtGRx3np7Eao1KmQRGAqZqceE0t5T-Laaju4xjGBRalseOG10Dbae7D-Y0279yZyLqotBM2I926Jezg0qSDFDgHGR8QLy3Fua5YfAVHCgioEpIVOqq1A6W6pvU09YT2Br6r7s3VC5TBuib4429p0Et_bl0-gKYshtQIBPOOcY9MAu0fh6ENMEwo5K9M6w894DiJ94-YjtNAA7BiMbexrd_Fpy39gnK4Hhp1_qe6spWw21aJ1lAMaAh003hVubWPUcINHE9-xkNbWrKt7E-PqmN0xiSfjAfegtjvHuVehR0c1JoyU27A202mluMPzY01ApY1mhNriEpbLGqZQFqiswBya7m9cB3rSKuKhNwlf8pSuzQ6BmV-ilUuDRGnUUqh2JfZxUqNFuFlqiaf8LCkfSqm_lI9JzafV2B5abQkmATeb7vZnG5uLrSCrbcPxWyKZQPn3I6Pq73l6Z4OtFghlABnuOW3SArpeGngqtGwmH6pivh3GLy0KFsABJOkj2hx5_cgn-uZRYvCamHlUkS6SGyJUY5yOH_gJ1n_sxJ_emoM8gSi7bOkrd2OhUHhUpIeReKX9e6dVAxpVlfW6vB5t7HpxMhl7gzY-jRkPkNMHN0NDYLt7dhF68bssJAD1e9GPGXBYgWlcSD7DwjJYCMG2Nw-yeA6zGIJxLlzlFK2Gou71JdYAwmN0rQYkHSyWyryYrkubgWyiVkm6q12Q65X6abCcGmt1z9t-e4ZJVAmd45pB-1qJGNLAlJdBNUq93c1QUXmBYKnSkj7tJjP7T-KMSfYjA-bKfq2hVFNRYuG_RKsswtotLuGytKfutH81jxudEuMkwylmeWQ0h4qYnyXdv7nXCKUnYZyWErjMiSYHCCfKFBsFOAyI_apOUTBXWzGJzBS-OdmiDbBoWJdq_nziMyQFUgW4H2_9pXNgtA0h6RqeexaE4n1nTH3wzod2ATn8Cp421f1NyzkV6QF-uHCzX58mqRkkQRChv-tlDu6juZ3_WAwnPn_knM6LjRES_ZTgLMZ5sOysPdR4zNDr-oEbF7Utr56iyIQU3U_yxna4DCVUYclDUt9jG4-tTQpryDdUV9zm2-pf0PtrRlTrofm70rn1pHKw9Kzygk3PP9in-OjuhWDu_anvYn91DNuTxco_ommUnJqXHnjg-xebtMErT99OaDDaA8IXf73Jh6lIMR8fVZ4WIxBb7aobzjp7wM8D7mP87MmrkYmkQPFV6VVJN6JLqcnh0dbY96YCsNzko9DKGklEjp5vI8mQ8Wdq2_HbOeJESZWT9CWJ6J0WWETWVwyb2osXEkF52KikTkExZQqGjZeI5q_bkxENKgQ2V2YXjn77In6x3kCmaPZRwZiTfGHeIFsUn_fLwFVlLjeo2VU4Hxzm0OcXFcPQqaDx1PHftXhHvcDOTgWS2czCPlRM0hjyX8dIwlW13XEF7_fyBGNwdTAoEhOd37KCrQ1zkdxFE5J_QkLyNI9mnaXmnbOwoIDyNDlrT8sOg30X1ST-f-Bd97pJVMBgC0aSoZa2LoY0VOuh7BOd4uoyhXRcQdUTUQ-NnAZ_DCMNCFBLd1GrGMqSi3WX3vneNnKUDfbjaeL7Vmb4A-wu6PBINw2QUNOqCJGngtUngAIxtUlHxyXoYtA2DuFO5qartB70mMqS0fgDaiDruRn9BgKG21CPjCKXYuoC5xlra1GJjAruyHcrc9T21owQgf6MIDSpjLz0cSM9AmuQlklgp_d3_Mcze8a-J5y2wnk9_jxMmWBnoVno-mG_nkfSp16L02AGV5tmYk1kvUTCiZ14Ttdfwux7GZ5jz9wWqV0EKQhEwURFgKezfMbZCeEsnps9DmRbYjnbLoWZRI_uX9wnbV9FZjQS1_tKcxZ5Et_EtdqwdjuQQZ_49DSLWqU2gUQNp0uxDo7tN1qADbdNQGVbbMhzMRSVl12DQ4IiO4vIJpITJwE0bRapkuJlVZ4NeTmzIB51VxZgDCWFCuo59Id27uCnmRCWH6TxWEU3h8onDIlvQ0cRXgcD6yub5pc_5QA-UV5BqhA0fMuiD44OWWrTJljeMubwW82sm_QnjUKHpNYxjhkyZbn_3CPs9ybCyDByEadaRcsttU7WBOmAf3i0E9cqcaPDD4SOWrC5zoLj3UiDoMHMURNy1aOn0Vl0E9OXi16Y3jhgElp6SJdHFLVJ8F4apMoLwOWynGuv8Nf0WEmb-NOh9zmVMA-xGbvSyXCTJd-GeOULdINqDPt1SQiphENnWZCBo0QYaO5_eXlPQoqDntUWPwJtbA-_QzP6QnEKorrGlNqWj-vhXMPOxK4Nmr-xziYGkvPwj8cbw3SKUfFrmQiP2whZJRkpmc76q7NeNwmaZIGQ792Aq6VVkwXKvYlyn_l3XYG-mFOVuyF_Aei530psNA3YEszM2e_E4Q3yJa-l-Go2cSB7ndJwYf85aNgdxZvz0kIdiyM2pUO87SVAgmlMdA70O7H2VFZ1txUTYdouG_VbHTO25lY5qaA8ImRj2F5NpxNgwLAf3LUgx6PcIip4h_9ilThMKPKtv9FjerEcd48EnorCrZh9zdFjtzULeMQi6k4ngdmWKzBbH6MldVksCFBMX1JsLIXhZa5o7c1QIKAo1EXCkzHoXvwAYzkfNA2iVze50s3cBtANY5tOxX8kAHRsLZEFkquJcB84EyXMqStuSq2rmZoF3P_derpLtskXmoLS1s5Ak3RE648Mm4-Ii15WIgemaPbRxa0KUwfs2mLIAYo2EDfYtsVHUYI3HrjB93oJes2iS1jodCGfE2GGI5JLn-d1bcNmNL9hY5TxKiwcx9k-T44w11TQ4hKKCGaDHTE6cz83cIhwVQXFFdWXl30IbdKFN3K4jFmDkAxJOdVWNay2NSeqtIYnUiHddiOusoj024CSj3-s9Oo_ntb7XbBufOTO2-5rMMY2v6iwLkdoQLcwsR6HONKEKZL-Tq6_Rml0KkXexwN6yy63yodwayywQ0dfFB2t9qsl9kqrrSuQuWkdcrNMWQ2WOR1fQPVGA3psLfHAjL4IuuiywRgb9uWf0IIKJVQXCK2s1Z-AG60CrgJhufWrqkxH_n2cSSVwiGwdh6w4-2l4IoaVAWJ9HX8D90FQVXjpIl7XY1LFNvNgqdyH9sqOZRdHti4jzKfG9BgjcGbT_N2wmUb9fa73WwP3wJ29Aq7GFxj1zEHNnDCSKMUM0B4LkeGVfZYS3GFCZhLS6VA9NQk1u5MD1R2ZguTzcHFBcEu_BNAe_cXhJ0TOT4OoF17oe0Gt0NEd23iJoC4hwZiqSSLWKZD6Ffe7QQ5QDk-Wczx0862ZbeAb86iiqDUDwReg79q-Z4qrMTFzdFWKHeu-tykRp8ylg06qJMp4QMyaIou5PD-dg7oTnfIJ_tfoVl0RnM9YAWFmCh0Gq9BD4MMKLb8SxvWGXmth9_E0Pjge0jM92efhGwOFcTgXmOMSgBTA2bSht0hz7rf1-h-nrPZ4Xwa7p5y03fGVTzMQaeTjcj_Y_ryWoIwkOhC0X5dp_BmEqjgVN-IHOwzfgPxWG1z_mQayelsudDEsUS5JGYxdaDqTZxH364rcD2BIYfQhJgNEGsox_wE__GVBkfARJGlpiSDDNK4HtCs4FG2PfEcdMBd9h723nF4dkxYpGGrUlFV_xqUTYNYlhCCqP7N4tbI70Feq1FRz6zDf0yHG6oRZBS0_6P9F-DMrSp1P1yO32GrWS2A7DhgKREUTNsYc_frYMjbjPTVvixJFsgl-XU17OxqXwxItDRv9e125Dx80a5VB2mHHP65-X49UjXgjbp_WjaCgt--z8OczB_QtTcJN0tulgNE0kIXZIQE872rD5m6xWb-Ic8WN3zu3K8TXDi2FJrpRJ0MWi5CCDEj5NxeOL5wqsrmZlz_Qecoj_htzBIH2KJdU1b9vXmlRkcrNhO1sfBIjJXSxikfoLwnQ2UpzAuf2U6F5oQGeCgyKHARofVOQJhe852rNrkdjLX3xz8VxAkCwQ-aJT7YeBoB-fyZJTrwGOiCbG5Xci68Nbh7YzkNh9bTCPKa6yWhLYucLulLbWSdJbok6N6tqPDeQYqRZAcx-LM7_vU7zj4bsbJXcQ4CeZ-iUkpMcjd_yDEHaqMAyGIz2YV-Lrie3fvSVl5Wwo9MlsvBo2BKZTdwTnZX4--NGOWAob_zVAHPjMncIRJ6gG4z3flpgQ3rt8cZ6t91WvspuuStMbZgalpKffy_1AEwCOiAcQPKrCNsqYZ3MJfr72NLNnAJckYYUq7GM7Yedeu87zJ8GFmdW4y0j5oE64cwU8RLHa2gRo2T1cwwbfWa4ZC6CyQel_2PoZS6gih4QefxRdPpJU3jaiFVndd48Ef4YS-78iizKYUEfvO7z4OiMiJfJVUlaBodJCAFJq6RvLYyXLNpov-rHCwYXqcz6n38bONiGa9s_htgVBWbM51o4VAhbipc9pbARcKO1mDc_NoM7iIn07ilw1Qqo_umh8zX7mVzL-xBo9GrGfAoQCYZLIw2FDZ-Z_elijXQY3WHadCp7GTq75-0u6pDX_L2Piqmt5OuUqpM9_16W_DzIIbdkrRDcoxR32GvkzgQwSPZR5vxnwlnPrQBTuIr5lbkXpaRXsHDiPVIXBMcdlzoGaaTnVyAZCXHUP2Ai1vf-15yFyKiiYEgBL2uqdlGJaBca4pgC7_g2ipxx96nH_UhQ7XHDkhaHhg7jrDryanoX9L6-uzXDAbYlCTZJUOERAJ0YEN1CJ9Vj_idy13KaQFtt1GJKM2ty203VudpvVCUU7NuoV14N_reDmTVmHYR7E0a_n09ZieGmfU4AkZu4Dn8t52ioOEnjabrZ-ImTIgeOBk23JUg4jaPAZKKG9taHKmYgcOyOmNgpsBHdCFd_pii98m0iX_RmLyhj_tRDiNa4AkcVBYXHVcDqFi5VyiALmUz0yTqSFjtiQtB7TeX1YV7nBpQtrq_TRi-iAOy0kmj9osODsdivyXsGY_k623rpTCDMuqijL7SxXrWBooay8u6awqN0DgyJ-KwgXk38NRhVIk5dUOXsGJSsCfi0zsIaJ9cZqxOZPheDElndpn_DLHaztuT0qWezPlbjcRb2NJ4SDNu1zDVN0tgs-huOAmxcefmzebt4NHQOCxm1z9lDm__sLrO9BJytrUcqC0_JcHmedpLE9qAM-WjlnwIe74k7q81y9nLRgOx8IC17qxrqnEoT9BF9t1OM-U0ac7xkEqIBQZeTG5s6_HQgZnoAIC7VAlwcpqb9cvLCZyf8xXSylpGFv3dLlZF9ilihmy3KYy8i7OIo41cf0GI276uUHjPAJ6kNTBDHZxclDSAVersG8cz03quH74MBk4uY4UVqlg3TFxrkyK8R7MaeymgnBZCEcYDeZy3WSPGkmco7Gbl54SIjnbzsPxC5SxePewtU2rGTPbY9f__JbSttJMnv2gie0DO-nzsM8ixV_KfwGg_VyldoX3PBvqooh_HPM-yfnwopgJ-QXBAHFbmbhDUYYmiYHSyCcNWeeujmfeYgzTu4D8I3YaISE_awZZ4IYrCz7I0HznYB5fzjTVVt4rH5yj9dumsZ6E12s0DOufUzzp8Zg7radWajZnAVlukXr8PqXvDekvi41ZR5rhmEPJ7Gdh9AHpSKYchvdGZ8PhzTOUPr9P8xmCPBGHN5SVQWnze4rBT8c05z7UryKze3wNTz7sl-WCbjkrLMqgLPlzf-4ES2KsZGsYtESOkFPYj_dgPVyymaQfZ0815kl_qc1IdOXZtl5__BqTuAQNTPcc5wImMLgaJsPfphoB1oXYxez7cm5mmkbM52SW-xlSDCRrSVXg5nzENZYq0RAJ_spX9Y4tCGZnVwkQfSVpYfFhOmxbppfQdletOLATDU0VpYM0c0gKLTB6eAu30wAg9VeWwxtskzrTjQlQIZJYDXeIr-deXl8VbaKo3YNADp5IkuHfnF8W5hxARngDiswvDF7SWp_FSqAlYMaAFqwdBLXb60AhTKLUSB2PW5_60Ku9MIvY-4GySQwGzSVpReTlLAHRC84VHoeTM6s23zABUgvVS23u2mHHSZRwxCb-OxhLtqNO2nqIaEIunRDMg174p9fOR8x8AlN0zZDOONwKwww278KZO2ooOEftRlnSf_OGeYdSlW2Pil_4eLdApGsKCEaD5sfblR2fwYgD-wEhYUVAR0TvzuTjvyNDHIkbDTQc60Q-DMMO_sIQdbDf43l92sKoEOZU0kDvGVbymdz67mc1-FgvC0v44dXqZbD_23WPxAJPMZZJtD5AKohiy71YEqjA1lxKtOAB28rzEp5NfWIDe5hz-iCzOEx74pNLEoGsO-sTdf2RMjzb9HulU3XlUZPdqwrKE0m0S6r0Dqhj5g1K5HO_YOcHnEZVF1mtaaHKW16oPTtyXPnF32npoN3JgdYQ20P6nt_vDyBuZy8rtBQiNX1-usS0bxgV54SIOySVRiA_-twl-fJBgdEFHqpq_be9ykzZ-FfmQFJYxmRXy44p3MYX16VC0rQa-iRw1ZSFpXawgJ5dCHQhTmJny9Gk-4yPPe-YFskRyqqyy846glEIT6tzoGcozGHdPkuWjWP13is4r3ViwRZrMpRaDrooBIXiw2lH4JDb7IBboBoBSlNFgf7CTsMXtkJ0SFlmt7KFg9B76WeAuGCPInNINpclJqXnfVKd2Gx50qPwkezQ0s7fEjXvGURjQuL2mszga8toc-8ygpUbH60xyRUlBHEMOPkMEFzs6hXNP7lWYJ5e_C9CCfUHGfX2ER1cgp0NcizdDcnrgQvjqr44jLpjAwmfq1bCWNz3bSErlkD6psGBoWUdodHwZVcX3gAIDz-QUSNHCr3uoFKkhhM1kCXx6EJIaae80Xmk_k1NX7FR_beGNgBgAHSX9iNnhsU-OZBk3toD0k_emLGOIaQv73bu0zSQAmeOrO88I_qrbcCXW4KJXyRrKpjQrsBIhXdhpKY94B-Dgpz_7x1wN7ySluqCjMPF2UaqpjQLqwKNNB7B_Lz9nHNa3fI8wv9c-1bqxJezQdZS5FIZ4EqtOFJ5LZIL8ovSuLsKwjh6gd5zAiWm6hlnrCGhFJLkYF7W1CQKkxs1YvCMlZVRvD6OHxwrnpcDowAiy0vTdkhG0ez9Rz8UWbCgxNpjzdnhNIMhpXJ5OGCiUaRbHctJ0n4cq5Fms6Vf0TXKHrbkLpyFr782LutzfdvVN5kgGXBqSaBRXePOKuW7FH0q-vXBmXjDBTV8y6hX9prZr2j6ONSsfWrhJp4vDw2xjoxAQz6amf87hiAyVUowWZz_05ZnaoiylttuGSbyCDsm-L8JYLxWL7W3gQB3jrV6oPX3vtfNrsCvUWxSYqUgm-R3UPjKCL9tg4JNVQiEI_b87M46TjHrPSIewINPCVM0KklCoFfVMHje6gTWEnOmINyhk7Ui_oLDw8-zqukUEUFsQA7eiyhk9zqaez6ej6mo7C0urqfBv9ot9WeD1lkveb2vIyrhGPjP9WpZmZtSE1f-tmhv-hOBdXmqLW1eVWLsARrnwA-NLLQ65BzdwOLivrWOz5U80z6n_N9s5iAs6FsMVBSncgz0LvukMKXAgp0Bdxb1SUDTVBJTikH2SfeTmtnu74tTrkEMlVjFniFiLf3d-OVkvpIRmjdaytxDEihinhMfD6OUcifnjD_8MHDqbEOxelWb1uXF5SoJFt12vHw3nCG3YZtf3gnGaiRqVmfuHuOYNpNwWUwUihuiMD4ZyafEQbN0-m4sqyvEcIqn-PzkmZ3c4z_NUIHCdIcrSDWtsLctlCwgUlEA1-KDez-JHoKbKM_7jcWumE_mJJ8CovblJnntgxg8ZfT_6B7fQozcAeiR0ytNvudEZw4d1B_v3066EcfQQG2f-wipQ2Ll8vK6i4cy2WDRO2vCctZuubEq-pyRxk4eKBRVO_oNJS9eWPQLleS1GGgeAzVRcVeAGXCTKEhIw04n-tQqqCfRhZfs6-LukuDUxzEIvNTRNtuD0wrCix1mckkgMp-1iW6xxoWbE4QRMhiURxzczI4PTbpb6zBNigUIcRaXVUiCOyjxQGDzHvcHWaPxAKpvyM9AYvlL2IBc_4TT1DyfZZwt3eFIbpxFaF9aQYmRK711lNx60bsqD0NasVArDPPN6jhZ2wNKlzrTsxAoNvDp11-c4esTHwe6woWt1odVQBmthtPl87vXnxRclM3WpnckC1R9dtQElpOTEMqltnHeQNyeW61rTmnhnTRJBd6WSCd-3Ft4iPVDZsHmep5kbhQhIcaN1E-g_xJjEpVSv5f-1J8s6YidO1JSaLEyUjfGR1CKYQoPbjdTKUR7UkVuEP8CZ5rAf7x6dZxWu0QdevTjqx7DPUpLyP8-hwbr4-bBHKsDBrSJ_0DEVQF_mN3N_V2kPc4kRficmGak9zfxYqV_NbliaZhVls_lATkJFSBzoRv_A7ucsLvKlMqAobS1PmPHCpcnm2zAU57lp8uiQPTLYaz6jK6Bg306091zWW4cslFKcWAA9GGi7_pDoIHfdMoZjYKqqURJcnaG00yotbi-4slNf5YO-TJApPJukL16xKmbaGOn9JLcz4pfTlpO42sNZ7MZHLGvcB81nLBniPx1homZVF0R5oaqQb8n8hR7AOm2jJv5qJ3ei6GhY08k-Dh6OOexUnAvNPUrlAAU-yysoK5ILjfE0a8v0K7PYZG92B5n-tjdVaD7YTWuYcDcaMSlwcOo91_YcCh76EgEipBhNQvF2majUtYGeZoPn5I8vMmxT90fk0N36jWF_kKeDgyda6uQLW11RyxDLTRlm2DQyHRdrvu627RR9dmZHlmQDvcZp-lkmOdwZEkC4nvif5Z2LwFQA_YyBzwtPwIeejrGApFPBtKcl5zlzefs4qARyP2dduHYlBD-TFjc2LyVe_gQpi4wjRljykqaLlvR_CRwBApD_kEY_OtQfJSB9FMBPSXIYWnKskDjna4pthkutQ0wRtE1Yrwkh20uTW3vc-OOL5zq4MseNjHj6GTWUAX_BHOHn05Jf_Vm65HNZCLFqIdcvYwftSIXPvHayLB2t8C2ACHtg5jOzgb-OkhB2Fp7s2aM3MugH0223Uufrl2tEvqERbwaSNNfUE-Yml9EIk6lWwPzgQ1VuXEVIzifdMKcVH7rRMUbgHFCrjzJ4lznN5LG2NoUQdD8i-iucr3zaBJd_804YdgDBB_hX574iRmkqaeOgIIrahMrliaLbm-myy-E_R5c63u-LKsneS2HL2hKMmM6RCOfVvy-STwh3t9OtRT6G50aYYYVUluvmrCo5gLixn7_JQnE-fw8lOfAiyKbYeSS-QCRFdd65Wfss0GRV4TKs0EJcBqcA4f5X2Tqxjasr9WNP14jU1bCNpCHHoP9t3VONK5XYU7BqBrD64j4QCbPlhdppF_W5UaZBIjY_KFhvXRG63lFmDsd9UXOvHjhHGcNSi_UejpuM9T0_tmIH8uaIQbGE6VHbbqU4qV83P2WxrO-RXGCrB9xeL_A-cBVIuk9BFMrphxeyLS5TWYslwJXLeZRTPc9kC7fN8IO_G4BSnPqYCG_ymw8RvOT4FdpCUcGfZLlxWQISxZEfRFzDAjyT3lQmoc6v8TS3IGF0fmzeErMsKcd87Oz0_7hJfh1LSitQcy81GXPPjB_nc30uo1Azl6auz1WGQdGpYKtsccqZ1ru-YfsjsNgNsznYgqFtrmPc_upsicWWyDFM_nvqPdQ3yJ8QtHFsuD0ez0xI0K245i8yWibYWxf4aS6_L84bg199P_FlSMnSgGzS7oisg1z8L3Saye6kvP11p1NEo6u2xuPm_h7RjAclfjuFCbWS7Z7Mu2a_dTW6tJZRlQv77Uzys-_Sqz6o1HDt_L8QEHYQXqpHyJFxs2r4ZgnHyu_fjE1XsmqF6vC1ufTm7vpQvYB1HeMNYW6vuj90AonmmhTk5ktlzu3iErVsQXs-PNypUvOvd8BNuMSKzhKVkL2p1jZcoeEMn5Kjtxg3W55uVWvV_pEATNDv8gy1u5x2zO8_0VYNuwrAS_Npfpb_w0x-CRG_IPq1t4C6-zLJhPekQJP8plEdxC-YpJX6FoBNWbyaGUlrtcg9PfDfeMhsQD11wE4l7Tifoab6CBEM64Y4G8VU2ONseQpd7auyLA9rr-RCjOQG4Re5uyq5Pm4WVVkfC2-Px4M5jC2hRDngnoTufWEuoAegfMw78e4N_tQAPA-ToL8vkP4tNcZYMory1gX17r35qH-Jh9gNAE4yaYXgC60jp55eU6bEF-R3ADJUyUgN7oTOH5bNM0szLPSoZRjGSnVhvHfiK-c3eGy73KH9FnbBGb6oZBXJPdihKkurwXOaB79sntPMr3K7_ehLnhVOhZPmseIAx4aes_gtuYU7Y6QOmU3flX42e8kUGKHE0MmPScC6NINfCH3m5JnSJsGcBmoXc8pfb3CEsllECkRnMEpH6jvS8li_fFN37f03ixC4UbO1asp3_8G89BGtuAkmMaHjeDxCxQhCXaJV3vAVTZ1BFKI4m21_ljafcpXJfd3-0LkiCDUvKBb8HfmFfa0LpwSm8cvQK7ZoWFka3AjLLolzutdioyI3GAfALQih5TPt88aGRv1djHIZOrwc-1RtWvocRym24EAm1UjAe22AUXikynqOBSd4lKp-NEmbLh34eGDJ4YPpoQz7vsy6IOOEo5db1n6PBq9kL45zpinhH2uMZVTjgchSoFFQCrE0ewbOoDEDriD1QU3XuxxGJvfmTDUVB3mpTI4l9bsZBio1YmGzS0JYDKPKizl36KcJ_CVwI_sB7qq-4gh1DUGuArZSZq60Z7pZOMy4eZXHS9PvLE8oxgwWNrTMfqKQzZXcMjU-QQNomzUSoYe-9M98HuR6Tcb2vBHqCvqK3ITW8BfcgeiIFbOLPZLjSBkWHBx8BcIVcmDh1iJW_PHTyrYzt0zM-StFartLaCnut80iNmEp_QegEGyyWIO2vl7u002ofFcuUDADK7UUp0FuGlnckZiscEr3HMYiD3x5bRwOe7S4Kjvf1gS_hnvUgS1LHy-T8JNMpkn92-L1c1RWI1pgmYgqALlN6HXsJmfKgYZ5Ae_k4_b2RpYa9H1NKBZUjjTMN-V4ZWPzA9a4e5lMtOG5hIla9YRuXPqRSeirU8f_kylw1I_2EmI83SfmiV120MMQeISmyqPIm4YYxAu9pltd0j_fEvWaPwcNm9zmjoSpfnbR8vB3DSMItUQM5usjDp7Ib8Q9O2bLm4ntgAbbosO95mnzWkho66mJs4C8ve225sElJNmKBG3Jvx552kdpGLA-RLvJUqwewywPsBWKZn8sOBPvqqxJ3vlSgnwWEmSynNu_2yZtixLifADDIXsxfPI1p5AsMDhkDBiuixXSjwLMEcytTPKCUgQcyE8o7RyUh6M9GCeGCNtsxEke-nqUCO71Ss9EIFp9N6UOWeQffZkNvdVu5VtDdIDKTGLCkESeVM2MxhBs6diogUMH8IOjLmHEkl6vmKD8nycclbzhhnndWzFHNHEkqGu3COhIDYFPqtIVdpmgyFjRCeOlP7ovBq3cGqAKo0NSCSW_NsgqDEuJaFXsRb49UiwoZmp62sphlPB4btcYLSJxTAP29QvJFHG7AFWDnFaGc1oLNF_XO7-CHB4zjkBH0PRR1a6upjwZOl2eeJrtwYbNSQUenYvP6KRoBnc8JOTfKmxb9qyeiZEJjzY3VjJAE8FdAUlJSMufCcREpGxroApgFgZJgFJXpOp41uwkvidrQKTiRGsSH7-x3wHs5MGDPAUOxyBcZgD5oMRM_6sc1f5Y6liEpJEhZkAl493A5n8TvJPMu7_NtpIBxq4bwImADVnjnx-AqDvYGqaSFZn20oIAQj93gVVCmY5kOZJUxDqcyx_MVVwFcHFDxmUmsHHTG_gm8-pGpQs4KQEXr5zM1WhDIf2njnyAx-QCf0dSaptVC1H5TU-fdEl6mJ8ATF5NQno6Xwm3Wrrl6sdUOP4-VXOEu_Nch_Y9_xtSMlH8vEjcp9q3ULkjlUnfHQDZAHFBj45eujp6BfOzqQ3OLHuSsRxyjQ9ZO3fWSOU0uXbFL7gKejCG3_LX4MMx3gXmrO6yMFflJSsp_Bws8UHrcC5tXX8QrVrEmKRyYSZUlyUtOWJJb4uv7f4BbEMcc0SdMh75JThtmP_v0LEl0sXqX8335RXhJhN7iszLgCSxWldJcISeP5_gGpJrVFGE2Fq2CC5pcAANhZfsJxyttPcCUfh-YF-3vIv1EnhLPYBWYeVHJltipL0XxoCvxfqOui6tAUFENKldS7dRX2_BZtqMPQS9XlvpOdLvH3YuScHzYis4U45w-SFeFyWx4pYBKi3R0VZJVom8MKX_jjup1IpzQtciI3DKpcWkMIpK_jYAfuGNRq9K6Czv-CFLOqPSrQzsORXaBZAUb0VAhy0aum_EdDrzPOnD-IVbTYV-8YsiSL1gx7wew5nmxe6Aw-Q3iMYSq9V5gU5zP7--llaoSZoVQ8Rn6mQyI2HjlNSJ73U_cNiVjACNHpD3tsX4dnD4kClUxa_n7-CT8hhzm40WZ9TgEwythswNuKKSkJyMaultOxHRUpw9L4q3Z0d9khXrXNCvIsc-uOZ4ZEHyyCJoiXTXQXPzAgGSfFvOYSaZccMrgGr3ScJVMCykLaJDYMdrrnd1haVGRMSrfJn2q6kTAOAHVPlniYsUJYTKzrGDxzgGIeYCqRSJZ1hPGCXLq8Zo7kX6PGdOrVzGqUSBY7yPGd1eS1WCvvuBwRTsfKuqMv6WuAfSHPiYjxX17Hge-pJV6aFYWfvin61UmuUwC43YECxm3Pw9ZN39zvLMW3bDUtciUuFrF6FXhcyf51hNNoM1rge91HAiU3sFHqfi4jY74pNV6FdK-BihUhY5c_s1eQOOHwaWY-F46KaeS-AetAi10tEA8LkFPAxCMBIs6tO6GLRv8yPzXn6Zhr77t2Sw8fxri1owIIM56bBcHR02ndZ-jDj_t9auG2vAHI4Cj_DvaKVJiJ8FYsXUstME4reHebzO1p9hNtTdIxAcUurb8CdMkQbAKHWhuKwXMombfrk3ZDpfjymAJEp5O15rcJjm87ayvWSbLqY7FSKvHRAOb8j75JBCyhbQA4tKD7t4xYosXE63EdzatK97ayf0ioUBQowMnvtsoS62zLPj6-mfb3oUOppaj0BTbUZ_W4LiEkR1y3hOpgz-N62jnnBAyvfXLM3awHuqXBDv28gNlWtUnCbZUleYrGZUQed_oAcLQYXVRiS8PE7uAlfsmPTazZDeRhDvgf03a4F_-juHxDFG3IRmawdBHvdgyU5NWG1sAxxSov41k9m5YZ9v1v55_q-sf5cPsT6yeavX9o5AWSrmczYBU6EU9wnO-loQF4XAj0bnIYHqEIVuRzDTrg1IYouP0oT3-YA1M2sDer6USTR45Jvy8WkELv9_OByiTP7PaacDVZYC2HF9bm6fYW9VEoZ6_YOiLGlkmJgMPw6O_9YhWtrU10zI6iPTAntqewOWeO5gH7PXLEuYJ4jvsfJuQj1ehLO7Oie-UZlbtzdkyQvhsy4wJ2p_Qn8H7j3GppETVvHXLz1CUFddTN5Da8rA2cYzRRvoX9c0UH--QP3rzey3WtogJJUZSGEvp_aFkQPQc_2oybT0S9Pd8PUtMRNK2iE_SoxCKT-tjy05zUKu2ljKXwnjlNl6ENEDD3chACr7bO9MiqwQRvxpppAxs-ErX6kVYHX_cL6JoXiOaTdLNlgK3TAXWaNpztxMjrnxWBFl06_phb3Qqkx7o8u-HPR5GXsoLrISDDpPqxAr_zmNgMnODrKcpU8ItndqEwERPyaVO7hKABFhcICcwhe8Tv7T6mfDSdTHCqej0sFY6Wdi0FVOwwI_AMm4371gq66g0iRxUIMocEBxvvTvJ-Xl9dPQOoyhZ0IJ478cel5vQTxbUsyXnIGVzUJE4nqGAra0G2aYJKoyt7d2CsCRQhIH7r-7K4uwl8oKFlVXON5qkEN7Y4sY1hVgX-L_CKd9vDImWc6GNIcivXvChRfFZBI_5dYyZCIGeM6i3kJgbBXTlj8Ma7XyugW3S2tJQQeAEqwfiHpzQv154LHasxUHbnbctnOkeXemUguRQEkoZWnaALSm1ICIScHWKD04GgBleF7tHaxoHtME4PPHpuaAjnKIh9DaJyp_NvipymjkkATvdTSvmdxRdo9SKyg2sAv1fpqumfWNamIeovVoCdhYXE42SW3AnwcHEkmAigGzA4dEgEfFHXd2c02Ub515cz4HanmtceYe9MuzOIkGv2s-HirvMmYk_3ERlY_ecS21mw1df2z34qMfKkH7Swu1FV75GrBH-YM_cwKQNZgHF_r7DySwfntVMxT9ZwVVFpDco6UYCdOIc992yqaZkMs3xo0LYOkQXI0DgFwkkgFS16h8vuCwwW3aRxT8INEkvT47GtZxj947ug5fMLrs-gFu9IBLI5GdSRgWUAU9rIP66yplekHYjsYYrVHxMyXdielj2EGV2mVTbLnuN8QsZNRa3z806nWDOTuVoMf01eqUX_LkYUnlm2qNSdmXVlIxENXejSdyf8R1IgYrUn5t2eJwebmSLc90Vw_dPMHa9IPAmouydBJtf3IAKim3wMFM5WgpSmRBksqGfasvh7IpComRaRrsCG5e83RBmDWm6cFnGj41oyUbvqTZA68o0_zaOOjk4OcM3ntyDg2DN6p7OJxXOMaZBIWXrE7QlLrUf7CxIq7QIStZrUlaXe9R24uHm-g",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_cf9aadb0-f4a0-4c98-907d-f7049c7d1e4e",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"apparatus\": [{\"kind\": \"ammeter\", \"text_as_printed\": \"an ammeter\"}, {\"kind\": \"voltmeter\", \"text_as_printed\": \"a voltmeter\"}, {\"kind\": \"resistance_box\", \"text_as_printed\": \"a resistance box\"}, {\"kind\": \"connecting_wires\", \"text_as_printed\": \"connecting wires\"}, {\"kind\": \"cells\", \"text_as_printed\": \"dry cells\"}, {\"kind\": \"other\", \"text_as_printed\": \"other necessary materials\"}], \"confidence\": \"high\", \"diagram\": {\"parts\": [{\"box\": {\"x0\": 0.175, \"x1\": 0.315, \"y0\": 0.195, \"y1\": 0.355}, \"kind\": \"resistance_box\", \"label_as_printed\": \"R\"}, {\"box\": {\"x0\": 0.35, \"x1\": 0.465, \"y0\": 0.235, \"y1\": 0.33}, \"kind\": \"ammeter\", \"label_as_printed\": \"A\"}, {\"box\": {\"x0\": 0.52, \"x1\": 0.595, \"y0\": 0.195, \"y1\": 0.32}, \"kind\": \"key\", \"label_as_printed\": \"K\"}, {\"box\": {\"x0\": 0.665, \"x1\": 0.77, \"y0\": 0.185, \"y1\": 0.325}, \"kind\": \"cells\", \"label_as_printed\": \"E\"}, {\"box\": {\"x0\": 0.23, \"x1\": 0.275, \"y0\": 0.54, \"y1\": 0.64}, \"kind\": \"wire_xy\", \"label_as_printed\": \"X\"}, {\"box\": {\"x0\": 0.73, \"x1\": 0.775, \"y0\": 0.54, \"y1\": 0.64}, \"kind\": \"wire_xy\", \"label_as_printed\": \"Y\"}, {\"box\": {\"x0\": 0.465, \"x1\": 0.56, \"y0\": 0.685, \"y1\": 0.79}, \"kind\": \"voltmeter\", \"label_as_printed\": \"V\"}], \"photo\": 1, \"present\": true}, \"experiment\": \"ohms_law_vi\", \"instructions\": [{\"label\": \"1\", \"text\": \"You are provided with an ammeter, a voltmeter, a resistance box, connecting wires, dry cells and other necessary materials.\"}, {\"label\": \"2\", \"text\": \"Measure and record the length XY of the resistance wire provided.\"}, {\"label\": \"3\", \"text\": \"Connect the circuit as shown in the diagram.\"}, {\"label\": \"4\", \"text\": \"With R = 0 \\u03a9, close the key K. Read and record the current I and the corresponding voltage drop V across the wire.\"}, {\"label\": \"5\", \"text\": \"Set R = 1 \\u03a9, close the key, read and record I and V.\"}, {\"label\": \"6\", \"text\": \"Repeat for five other values of R = 5, 10, 20, 40 and 60 \\u03a9. Tabulate.\"}, {\"label\": \"7\", \"text\": \"Plot V (vertical) against I (horizontal).\"}, {\"label\": \"8\", \"text\": \"Determine the slope s.\"}, {\"label\": \"9\", \"text\": \"State two precautions.\"}, {\"label\": \"(b)(i)\", \"text\": \"Mention and state the law on which the experiment is based.\"}, {\"label\": \"(b)(ii)\", \"text\": \"A wire of diameter 0.2 mm and resistance 7 \\u03a9 has resistivity 8.8 \\u00d7 10\\u207b\\u2077 \\u03a9 m. Calculate its length (\\u03c0 = 22/7).\"}], \"source_as_printed\": \"WASSCE (SC) 2018, Physics Paper 3, Question 3B\", \"title_as_printed\": \"3B. Ohm's law (V\\u2013I)\"}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 5469,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 3440,
+      "output_tokens_details": {
+        "reasoning_tokens": 2507
+      },
+      "total_tokens": 8909
+    },
+    "parallel_tool_calls": true,
+    "store": false,
+    "max_output_tokens": 10000
+  }
+}
