@@ -85,13 +85,13 @@ export default function HomePage() {
           </button>
           <h1 className="hp-title">Choose a practical</h1>
           <p className="hp-lede">
-            Snap your WAEC practical, or work one through at the bench. Marks come from a fixed rule
-            engine, so the same work always scores the same.
+            Watch a WAEC practical come to life, then do it yourself at the bench. Marks come from a
+            fixed rule engine, so the same work always scores the same.
           </p>
         </header>
 
         <ul className="hp-cards">
-          <li className="hp-card">
+          <li className="hp-card hp-hero">
             <a
               className="hp-open xp-focus"
               href={ROUTES.practical}
@@ -143,32 +143,28 @@ export default function HomePage() {
 
         <section className="hp-notes" aria-label="About SnapLab NG">
           <div>
-            <h2 className="xp-caps">How it works</h2>
-            <ol>
-              <li>Snap your notebook page, or open the question.</li>
-              <li>The apparatus comes alive as a 3D lab.</li>
-              <li>Get your marks in red ink, then answer examiner-style questions.</li>
-            </ol>
+            <h2 className="xp-caps">Watch</h2>
+            <p>
+              The question is read aloud, then the practical is done for you step by step: the
+              apparatus, the circuit, the readings, the graph and the slope.
+            </p>
           </div>
           <div>
-            <h2 className="xp-caps">Your privacy</h2>
+            <h2 className="xp-caps">Practise</h2>
             <p>
-              Your name and school at the top of the page are blurred on your phone before upload.
-              Your photo is not saved.
+              Wire the circuit yourself, take the readings, plot the graph. A guide helps when you
+              are stuck.
             </p>
+          </div>
+          <div>
+            <h2 className="xp-caps">Exam</h2>
+            <p>Sit it under exam conditions, with a clock and no hints. Hand in for your marks.</p>
           </div>
           <div>
             <h2 className="xp-caps">How marking works</h2>
             <p>
-              Meta's Muse Spark, Muse Wonder and SAM 3.1 read your page. The marks come from a fixed
-              rule engine. The AI never decides your marks.
-            </p>
-          </div>
-          <div>
-            <h2 className="xp-caps">Teachers</h2>
-            <p>
-              After a snap, tap For teachers in the corner to enter your measured value and mark
-              accuracy.
+              Your table, graph and answers are marked by a fixed rule engine built from the WAEC
+              marking scheme. The AI never decides your marks.
             </p>
           </div>
         </section>

@@ -163,7 +163,7 @@ a.hp-open:hover .hp-name {
 }
 
 .hp-soon .hp-art {
-  opacity: 0.45;
+  opacity: 0.9;
 }
 
 .hp-pill {
@@ -263,9 +263,53 @@ a.hp-open:hover .hp-name {
     padding: 28px 32px 56px;
   }
 
+  /* The live Ohm's law card leads, full width (guided-demo: the one practical that works end to
+     end); the two Coming soon cards sit side by side beneath it. */
   .hp-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
+  }
+
+  .hp-hero {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+    grid-template-rows: 1fr auto auto auto 1fr;
+    column-gap: 32px;
+  }
+
+  .hp-hero .hp-open {
+    display: contents;
+  }
+
+  .hp-hero .hp-art {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: center;
+  }
+
+  .hp-hero .hp-name {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: clamp(26px, 3vw, 36px);
+  }
+
+  .hp-hero .hp-meta {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .hp-hero .hp-actions {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  /* The Coming soon stills show whole (the titration set is tall and narrow), at a modest height. */
+  .hp-soon .hp-still {
+    height: 200px;
+    object-fit: contain;
+    /* The still's paper ground melts into the card's. */
+    mix-blend-mode: multiply;
   }
 
   .hp-notes {
