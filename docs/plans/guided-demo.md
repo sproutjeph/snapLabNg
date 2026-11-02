@@ -187,3 +187,46 @@ X* laptop Exam, P* phone). E2E before: watch, exam, noleak pass at both sizes; p
     laptop and phone (L30, P31).
 13. phone: on Measure XY the camera holds the wire board; a lead made then (or a wrong one) is off screen while the hint says
     "Tap the wire to remove it" (P04).
+
+## Watch v2: the question drives the bench (Nov 2)
+`?practical=ohms-law&mode=guided` is now one run on one Watch bench, not a paper screen followed by a Watch. The question is
+read one sentence at a time and the bench does what each sentence says, **alongside the voice**. `mode=watch`, Practise and Exam
+are unchanged.
+
+**Sequence** (`learn/lessons/ohms-law/guidedScript.ts`, 69 beats, the lesson's 11 stages = the question's 11 steps, in order):
+- Each step opens with its sentence as one beat, or a few clauses (`Beat.read = {instr, from, to}`; `spoken` is that stretch of the
+  printed text through `toSpoken`). The voice reads it at `rateX` 0.85 of its pace, with the step's first work in the same beat's `act`,
+  so it starts as the sentence does: the beat lasts as long as the longer of voice and work. A sentence's last clause is followed by a
+  0.6 s gap, its other clauses by 0.15 s; there is no pre-step pause.
+- The step's own short captions (≤ 18 words) come after, so two voices never overlap: the metre rule opens on "Measure and record the
+  length XY" and XY is written after; the first lead is drawn on "Connect the circuit" and six more follow, the diagram in the paper
+  turning each line from pencil to ink as its lead is made; R = 0 Ω's plugs are pulled on "With R = 0 Ω,", the key closes on "close
+  the key K.", the ammeter opens on "Read and record", then the table is headed and the first row written; step 5 the same; step 6 takes
+  R = 5 and 10 Ω as the sentence is read and 20, 40, 60 Ω quickly; step 7 heads V and I as they are read, then scales, 7 points, line;
+  step 8 draws the triangle on "Determine the slope s." then ΔV, ΔI, s and its meaning; step 9 states the two precautions, (b)(i) the
+  law, (b)(ii) the working only (a card of lines each; never the answer, never `0.25`). Then the conclusion card with Replay and Home.
+- Sentence 1 is read while each part drops as it is named (the stage's entrance, now armed inside the Watch: `Entrance.endsAtBeat = 0`;
+  a jump back to it re-arms it), then the identify beats label each part in turn.
+- Pace: at 1× the run is **3:24** (204 s; the test voice takes the estimated time at its own rate), inside the 3:00–3:45 target; 1×/1.5×/2×
+  scale everything.
+
+**Director** (`script/createDirector.ts`): `onSpeech` (start, word, end, stop events per beat), a per-beat voice rate (`rateX`),
+`skipVoice()` (silences the rest of the sentence's clauses; the work goes on), and Back from a step's first sentence goes to the start of
+the step before, so Back and Next across a step re-read its sentence. Pause cuts the voice; Play reads the clause again.
+
+**Paper** (`paper/sentenceTracker.ts`, `paper/GuidedPaper.tsx`): the tracker follows the director's voice (sentence, word, and the part
+named, by word event or by the estimate as `readAloud.ts` does). The paper marks the step being done and keeps it in view.
+
+**Layout** (`shell/GuidedDock.tsx`, `shell/dock.ts`, `shell/guidedDock.css`): the paper is docked on the right for the whole run
+(bottom sheet on a phone, ending above the step strip). Where a board is needed the paper collapses to a compact current-step card at
+the top of the same column (number, sentence, marked, with **Skip to the work**) and the board fills the rest: readings table (steps
+4–6), graph (7–8), a card of lines (9, (b)(i), (b)(ii)). Between those it opens again. The camera frames the bench in what is left.
+
+**Header card bug** (the "WASSCE (SC) 2018 · Physics Paper 3 · Q3B" credit in the status card): it was plain text, and worse, the top bar
+and status card are `pointer-events: none` so taps fell through to the canvas; nothing in any mode handled a click. It is now a button
+(`StatusCard` `onCredit`, `LessonShell` `paperSlot`, popup `paper`) that opens the full question paper, scrollable, in every mode; in
+guided it pauses the run, and closing it (Escape, the close button, a tap outside) resumes it.
+
+**Tests**: `guidedScript.test.ts` (sentences read word for word and in order, work as each sentence begins, no overlap of voices,
+Back/Next re-reading, Skip, pause, the 3:00–3:45 run), `sentenceTracker.test.ts`, `dock.test.ts`, `shell.test.tsx` (credit button),
+`LearnPage.test.ts` (guided opens on the bench). E2E: `watch.mjs`, `practise.mjs`, `exam.mjs` unchanged.

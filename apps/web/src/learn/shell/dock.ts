@@ -7,12 +7,14 @@ import { layoutFor } from "./layout";
 // part stands behind a panel. The sizes here are the CSS's (shell/guidedDock.css, shell.css's
 // `.sh-sheet`); the two must agree.
 
-export type GuidedDock = "paper" | "readings" | "graph" | "end";
+export type GuidedDock = "paper" | "readings" | "graph" | "notes" | "end";
 
-/** A laptop's column: the paper's sheet is 520 px, the table's 360, the graph's up to 800 or 56%. */
+/** A laptop's column: the paper's sheet is 520 px, the table's 400, the graph's up to 800 or 56%. */
 export const DOCK_PAPER_W = 520;
-export const DOCK_READINGS_W = 360;
+export const DOCK_READINGS_W = 400;
 export const DOCK_GRAPH_W = 800;
+/** The precautions, the law and the working: a card of lines under the step. */
+export const DOCK_NOTES_W = 440;
 /** The conclusion card at the end. */
 export const DOCK_END_W = 520;
 /** The room left round a column, in px (the sheet's own gap to the window). */
@@ -21,8 +23,9 @@ const DOCK_GAP = 16;
 /** A phone's bottom sheet, as a fraction of the window's height. */
 export const DOCK_SHEET_FRAC: Readonly<Record<GuidedDock, number>> = {
   paper: 0.58,
-  readings: 0.48,
-  graph: 0.62,
+  readings: 0.62,
+  graph: 0.66,
+  notes: 0.46,
   end: 0.66,
 };
 
@@ -35,12 +38,14 @@ export function dockWidth(dock: GuidedDock, windowWidth: number): number {
       return Math.min(DOCK_READINGS_W, windowWidth * 0.45);
     case "graph":
       return Math.min(DOCK_GRAPH_W, windowWidth * 0.56);
+    case "notes":
+      return Math.min(DOCK_NOTES_W, windowWidth - 32);
     case "end":
       return Math.min(DOCK_END_W, windowWidth - 32);
   }
 }
 
-/** Which stages dock which board; any other stage docks nothing. */
+/** Which stages dock which board; any other stage docks nothing (the whole paper is there). */
 export function dockForStage(stage: string | undefined): GuidedDock | null {
   switch (stage) {
     case "r0":
@@ -49,8 +54,11 @@ export function dockForStage(stage: string | undefined): GuidedDock | null {
       return "readings";
     case "plot":
     case "slope":
-    case "law":
       return "graph";
+    case "precautions":
+    case "law":
+    case "length":
+      return "notes";
     default:
       return null;
   }

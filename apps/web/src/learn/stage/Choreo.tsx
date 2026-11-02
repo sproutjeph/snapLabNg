@@ -28,6 +28,7 @@ import {
   clearBench,
   DROP_SLOTS,
   entranceFrame,
+  entranceRearm,
   fillBench,
   MAX_TAGS,
   type StageMotion,
@@ -177,7 +178,16 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     // ---- The beat's own clock ----
     if (s.beat !== k.beat || m.epoch !== k.epoch) {
       // A seek, previous, next or replay plays Watch's own entrance again, even after the paper's.
-      if (k.epoch !== -1 && m.epoch !== k.epoch) m.entrance.landed = false;
+      if (k.epoch !== -1 && m.epoch !== k.epoch) {
+        m.entrance.landed = false;
+        // Guided: a jump to the first sentence's reading arms the entrance again, so the parts drop
+        // as it names them; a jump past it hands the bench to the director.
+        const ends = m.entrance.endsAtBeat;
+        if (ends !== null) {
+          if (s.beat <= ends) entranceRearm(m.entrance);
+          else m.entrance.on = false;
+        }
+      }
       k.beat = s.beat;
       k.epoch = m.epoch;
       k.t = 0;
@@ -209,6 +219,10 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
     const entrance = m.entrance;
     if (entrance.on) {
       dropping = entranceFrame(entrance, order, dt, m.parts, m.restLeads);
+      // Guided: once everything has landed and the director has moved on, it takes the bench over.
+      if (entrance.endsAtBeat !== null && entrance.landed && s.beat > entrance.endsAtBeat) {
+        entrance.on = false;
+      }
     } else if (watch && !s.finished) {
       clearBench(m);
       for (const slot of DROP_SLOTS) {

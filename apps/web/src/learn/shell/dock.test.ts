@@ -7,9 +7,10 @@ import { dockedCovered, dockForStage, dockWidth } from "./dock";
 const base = { left: 0, right: 0, top: 68, bottom: 0 };
 
 describe("dockForStage", () => {
-  it("docks the table on the readings stages and the graph from Plot to the conclusion", () => {
+  it("docks the table on the readings stages, the graph on Plot and Slope, and a card of lines after", () => {
     for (const s of ["r0", "r1", "repeat"]) expect(dockForStage(s)).toBe("readings");
-    for (const s of ["plot", "slope", "law"]) expect(dockForStage(s)).toBe("graph");
+    for (const s of ["plot", "slope"]) expect(dockForStage(s)).toBe("graph");
+    for (const s of ["precautions", "law", "length"]) expect(dockForStage(s)).toBe("notes");
     for (const s of ["identify", "measure-xy", "connect", undefined]) {
       expect(dockForStage(s)).toBeNull();
     }

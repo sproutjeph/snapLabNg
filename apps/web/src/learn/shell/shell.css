@@ -522,6 +522,30 @@
   margin: 0 0 0 14px;
 }
 
+/* The credit as a button: it opens the whole question paper. */
+.sh-credit-btn {
+  /* The top bar and the status card let taps through to the canvas; this button takes its own. */
+  pointer-events: auto;
+  appearance: none;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sh-credit-btn:hover {
+  background: var(--paper-2, rgba(0, 0, 0, 0.05));
+}
+
+.sh-credit-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .sh-credit-mark {
   flex: none;
   width: 36px;
@@ -2370,6 +2394,13 @@
 }
 
 .sh-root[data-flow="guided"] .sh-sheet {
+  pointer-events: auto;
+}
+
+/* The full paper opened from the header card is a real pop-up: it dims the page and a tap
+   outside closes it (the run is paused while it is open). */
+.sh-root[data-flow="guided"] .sh-scrim:has(.sh-sheet-paper) {
+  background: rgba(31, 26, 18, 0.35);
   pointer-events: auto;
 }
 

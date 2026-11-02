@@ -9,10 +9,35 @@
   box-sizing: border-box;
   pointer-events: auto;
   /* Below the top bar, above the step strip's foot: a laptop's column. */
-  top: calc(92px * var(--ui, 1));
+  top: calc(112px * var(--ui, 1));
   right: 16px;
   bottom: calc(168px * var(--ui, 1));
-  width: min(360px, 45vw);
+  width: min(400px, 45vw);
+}
+
+.gd-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The whole paper: its own 520 px sheet. */
+.gd-dock[data-kind="paper"] {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.gd-dock[data-kind="paper"] .gd-body {
+  overflow: hidden;
+}
+
+.gd-dock[data-kind="notes"] {
+  width: min(440px, calc(100vw - 32px));
+}
+
+/* The compact current-step card over a board. */
+.gd-step {
+  flex: none;
 }
 
 /* The graph is the big one: wide enough for its working beside the sheet. */
@@ -24,11 +49,36 @@
   --gb-max-h: calc(100vh - 330px);
 }
 
-.gd-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+/* A card of lines (precautions, the law, the working): ink on paper, one line each. */
+.gd-notes {
+  box-sizing: border-box;
+  padding: 14px 18px 16px;
+  border: 1px solid var(--ink-2);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 3px 4px 0 -1px #e6dac2;
+  font-family: var(--f-serif);
+}
+
+.gd-notes-title {
+  margin: 0 0 8px;
+  font-family: var(--f-cond);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.gd-notes-list {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.gd-notes-list li + li {
+  margin-top: 8px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -50,15 +100,27 @@
   top: auto;
   left: 8px;
   right: 8px;
-  bottom: 8px;
+  bottom: calc(var(--sh-bar) + 8px);
   width: auto;
-  height: calc(48% - 8px);
+  height: calc(62% - var(--sh-bar) - 8px);
 }
 
 .sh-root[data-layout="portrait"] .gd-dock[data-kind="graph"],
 .sh-root[data-layout="short"] .gd-dock[data-kind="graph"] {
   width: auto;
-  height: calc(62% - 8px);
+  height: calc(66% - var(--sh-bar) - 8px);
+}
+
+.sh-root[data-layout="portrait"] .gd-dock[data-kind="paper"],
+.sh-root[data-layout="short"] .gd-dock[data-kind="paper"] {
+  width: auto;
+  height: calc(58% - var(--sh-bar) - 8px);
+}
+
+.sh-root[data-layout="portrait"] .gd-dock[data-kind="notes"],
+.sh-root[data-layout="short"] .gd-dock[data-kind="notes"] {
+  width: auto;
+  height: calc(46% - var(--sh-bar) - 8px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -78,5 +140,58 @@
 /* On a phone the sheet leads and its working follows; the sheet takes about two fifths of the screen. */
 .sh-root[data-layout="portrait"] .gd-dock[data-kind="graph"] .gb-grid,
 .sh-root[data-layout="short"] .gd-dock[data-kind="graph"] .gb-grid {
-  --gb-max-h: 38vh;
+  --gb-max-h: 28vh;
+}
+
+/* A browser that refuses speech until a tap gets one clear button over the stage. */
+.gd-tap {
+  position: absolute;
+  z-index: 30;
+  top: 45%;
+  /* The free part of a laptop stage is the left of the docked column. */
+  left: 34%;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px 28px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--ink-2);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 4px 5px 0 -1px #e6dac2;
+  text-align: center;
+  font-family: var(--f-serif, serif);
+  color: var(--ink-2);
+  pointer-events: auto;
+}
+
+.gd-tap p {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 15px;
+}
+
+.gd-tap-btn {
+  min-width: 220px;
+  min-height: 56px;
+  font-size: 18px;
+}
+
+.sh-root[data-layout="portrait"] .gd-tap,
+.sh-root[data-layout="short"] .gd-tap {
+  top: 30%;
+  left: 50%;
+}
+
+/* A phone's step card is a line or two smaller, so the board under it keeps its room. */
+.sh-root[data-layout="portrait"] .gp-step,
+.sh-root[data-layout="short"] .gp-step {
+  margin-bottom: 6px;
+  padding: 7px 12px;
+}
+
+.sh-root[data-layout="portrait"] .gp-step-text,
+.sh-root[data-layout="short"] .gp-step-text {
+  font-size: 14.5px;
+  line-height: 1.3;
 }

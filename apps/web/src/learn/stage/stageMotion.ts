@@ -134,6 +134,13 @@ export interface Entrance {
   partsDownS: number | null;
   /** Every part and lead is down: the first Watch after the paper starts with the bench full. */
   landed: boolean;
+  /**
+   * Guided Watch (the question drives the bench): the entrance runs inside the Watch, under the
+   * first sentence's reading, and hands over to the director once every part is down and the
+   * director is past this beat. A jump back to it (or before it) arms the entrance again.
+   * Null: the entrance is the paper's, and the page turns it off with the paper.
+   */
+  endsAtBeat: number | null;
 }
 
 const DROP_SLOTS: readonly DropSlot[] = ["cells", "key", "ammeter", "voltmeter", "box", "wire"];
@@ -153,6 +160,7 @@ export function createEntrance(): Entrance {
     timedFromS: 0,
     partsDownS: null,
     landed: false,
+    endsAtBeat: null,
   };
 }
 
@@ -175,6 +183,18 @@ export function entranceHold(e: Entrance, held: boolean): void {
  */
 export function entranceReset(e: Entrance): void {
   if (!e.on) return;
+  e.held = false;
+  e.namedAtS = {};
+  e.leadsNamedAtS = null;
+  e.partsDownS = null;
+  e.timedFromS = e.t;
+  e.landed = false;
+}
+
+/** Arms the entrance again (guided: a jump back to the first sentence): the bench empties. */
+export function entranceRearm(e: Entrance): void {
+  e.on = true;
+  e.byVoice = false;
   e.held = false;
   e.namedAtS = {};
   e.leadsNamedAtS = null;

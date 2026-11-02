@@ -93,13 +93,13 @@ export interface ReadView {
 export const IDLE_VIEW: ReadView = { instr: null, word: null, naming: null, reading: false };
 
 /** The number of words in `spoken` from index `from` up to (not including) index `to`. */
-function wordsBetween(spoken: string, from: number, to: number): number {
+export function wordsBetween(spoken: string, from: number, to: number): number {
   if (to <= from) return 0;
   return spoken.slice(from, to).split(/\s+/).filter(Boolean).length;
 }
 
 /** Milliseconds the voice takes to say `words` words at `rate` (voice/chunk.ts's pace). */
-function wordsMs(words: number, rate: number): number {
+export function wordsMs(words: number, rate: number): number {
   return (words / (WORDS_PER_S * Math.max(rate, 0.1))) * 1000;
 }
 

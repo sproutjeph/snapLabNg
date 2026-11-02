@@ -16,6 +16,8 @@ export interface StatusCardProps {
   hideCount?: boolean | undefined;
   /** The paper's source. Without it the card is just the practical's name and count. */
   credit?: StatusCredit | undefined;
+  /** The credit opens the whole question paper: it is then a button. */
+  onCredit?: (() => void) | undefined;
 }
 
 /**
@@ -35,7 +37,25 @@ export function creditFromSource(source: string): StatusCredit {
  * folds to its mark; on a phone the card drops its frame and shows only the name, bar and
  * count; in a landscape phone it is clipped away.
  */
-export default function StatusCard({ title, done, total, hideCount, credit }: StatusCardProps) {
+export default function StatusCard({
+  title,
+  done,
+  total,
+  hideCount,
+  credit,
+  onCredit,
+}: StatusCardProps) {
+  const creditInner = credit ? (
+    <>
+      <span className="sh-credit-mark" aria-hidden="true">
+        <IconPage />
+      </span>
+      <span className="sh-credit-text sh-txt">
+        <span className="sh-credit-lead">{credit.lead}</span>
+        {credit.line ? <span className="sh-credit-line">{credit.line}</span> : null}
+      </span>
+    </>
+  ) : null;
   const pct = total > 0 ? Math.round((100 * Math.min(done, total)) / total) : 0;
   return (
     <section className="sh-status" data-region="status">
@@ -63,15 +83,19 @@ export default function StatusCard({ title, done, total, hideCount, credit }: St
         </div>
       </div>
       {credit ? (
-        <div className="sh-credit">
-          <span className="sh-credit-mark" aria-hidden="true">
-            <IconPage />
-          </span>
-          <span className="sh-credit-text sh-txt">
-            <span className="sh-credit-lead">{credit.lead}</span>
-            {credit.line ? <span className="sh-credit-line">{credit.line}</span> : null}
-          </span>
-        </div>
+        onCredit ? (
+          <button
+            type="button"
+            className="sh-credit sh-credit-btn"
+            data-testid="credit-paper"
+            aria-label="Open the question paper"
+            onClick={onCredit}
+          >
+            {creditInner}
+          </button>
+        ) : (
+          <div className="sh-credit">{creditInner}</div>
+        )
       ) : null}
     </section>
   );

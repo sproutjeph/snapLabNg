@@ -1,6 +1,8 @@
 import { demoSeedFor } from "@snaplab/engine";
 import { describe, expect, it } from "vitest";
 import { watchPose } from "../../LearnPage";
+import { OHMS_LAW_QUESTION } from "../../paper/ohmsLawQuestion";
+import { toSpoken } from "../../paper/readAloud";
 import { emptyOhmsLawRecord } from "../../readings/record";
 import { slopeNumber } from "../../script/actor";
 import { createDirector } from "../../script/createDirector";
@@ -9,7 +11,14 @@ import { IDENTIFY_SHOT_NAMES, isIdentifyShot } from "../../stage/shots";
 import { estimateSpeechS } from "../../voice/chunk";
 import type { VoiceGuide } from "../../voice/types";
 import { createOhmsLawBench } from "../../wiring/bench";
-import { guidedConclusionLines, OHMS_LAW_GUIDED_SCRIPT } from "./guidedScript";
+import {
+  CLAUSE_GAP_S,
+  cardAt,
+  GUIDED_STAGES,
+  guidedConclusionLines,
+  OHMS_LAW_GUIDED_SCRIPT,
+  SENTENCE_GAP_S,
+} from "./guidedScript";
 import { OHMS_LAW_LESSON } from "./lesson";
 import { OHMS_LAW_SCRIPT } from "./script";
 
@@ -19,19 +28,31 @@ import { OHMS_LAW_SCRIPT } from "./script";
 
 const G = OHMS_LAW_GUIDED_SCRIPT;
 const words = (t: string) => t.trim().split(/\s+/).length;
+/** The first beat of a stage. */
+const firstOf = (stage: string) => G.beats.findIndex((b) => b.stage === stage);
+/** The printed text of the question's step `i`. */
+const Q_TEXT = (i: number) => OHMS_LAW_QUESTION.instructions[i]?.text ?? "";
 
-/** A voice that ends each say() after the estimated speech time, on a clock the test advances. */
+/**
+ * A voice that ends each say() after the estimated speech time at its own rate (the question is
+ * read at 0.85 of it), on a clock the test advances. It records what it was asked to say and counts
+ * a say() that came while an earlier one was still being said.
+ */
 function timedVoice() {
   let now = 0;
   let endAt: number | null = null;
   let onEnd: (() => void) | undefined;
+  let overlaps = 0;
+  const said: string[] = [];
   const voice: VoiceGuide = {
     say(text, o) {
-      const est = estimateSpeechS(text, BASE_RATE);
+      const est = estimateSpeechS(text, voice.rate);
       if (est === 0) {
         o?.onEnd?.();
         return;
       }
+      if (endAt !== null) overlaps++;
+      said.push(text);
       endAt = now + est;
       onEnd = o?.onEnd;
     },
@@ -45,6 +66,9 @@ function timedVoice() {
   };
   return {
     voice,
+    said,
+    overlaps: () => overlaps,
+    voiceActive: () => endAt !== null,
     tick(dt: number) {
       now += dt;
       if (endAt !== null && now >= endAt) {
@@ -74,7 +98,14 @@ function rig(seed = 7, script = G) {
       identified: new Set(),
     }),
   });
-  return { bench, director, tick: v.tick };
+  return {
+    bench,
+    director,
+    tick: v.tick,
+    said: v.said,
+    overlaps: v.overlaps,
+    voiceActive: v.voiceActive,
+  };
 }
 
 function playThrough(r: ReturnType<typeof rig>): number {
@@ -91,8 +122,7 @@ function playThrough(r: ReturnType<typeof rig>): number {
 }
 
 describe("the guided script's shape", () => {
-  it("is far shorter than Watch's, with every beat in a lesson stage, a known shot and a unique id", () => {
-    expect(G.beats.length).toBeLessThan(OHMS_LAW_SCRIPT.beats.length * 0.7);
+  it("has every beat in a lesson stage, a known shot and a unique id", () => {
     const stages = new Set(OHMS_LAW_LESSON.steps.map((s) => s.key));
     const shots = new Set(G.shots.map((s) => s.id));
     const ids = new Set<string>();
@@ -104,10 +134,77 @@ describe("the guided script's shape", () => {
     }
   });
 
+  it("goes through the question's eleven steps in order, each opening on its own sentence", () => {
+    const order: string[] = [];
+    for (const b of G.beats) if (order[order.length - 1] !== b.stage) order.push(b.stage);
+    expect(order).toEqual(OHMS_LAW_LESSON.steps.map((s) => s.key));
+    expect(order).toEqual([...GUIDED_STAGES]);
+    order.forEach((stage, i) => {
+      const first = G.beats.find((b) => b.stage === stage);
+      expect(first?.read?.instr, stage).toBe(i);
+    });
+  });
+
+  it("reads every sentence of the question, word for word and in order, in calm clauses", () => {
+    const Q = OHMS_LAW_QUESTION.instructions;
+    Q.forEach((ins, i) => {
+      const clauses = G.beats.filter((b) => b.read?.instr === i);
+      expect(clauses.length, ins.label).toBeGreaterThan(0);
+      // The clauses run on from each other with no gap and no overlap, from the first character to the last.
+      let at = 0;
+      for (const b of clauses) {
+        expect(b.read?.from, b.id).toBe(at);
+        at = b.read?.to ?? -1;
+        expect(b.spoken, b.id).toBe(toSpoken(ins.text.slice(b.read?.from, b.read?.to)).spoken);
+      }
+      expect(at, ins.label).toBe(ins.text.length);
+    });
+    // A calm pace; about 0.6 s after a sentence, a breath between its clauses, and no pause
+    // before a step's work (the work starts with the sentence).
+    for (const b of G.beats.filter((x) => x.read)) {
+      expect(b.rateX, b.id).toBe(0.85);
+      const last = b.read?.to === Q[b.read?.instr ?? 0]?.text.length;
+      // (The first sentence also waits for the two parts it never names to land.)
+      const gap = b.id === "q1" ? 1 : last ? SENTENCE_GAP_S : CLAUSE_GAP_S;
+      expect(b.gapS, b.id).toBe(gap);
+      expect(b.say, b.id).toBe("");
+    }
+    expect(SENTENCE_GAP_S).toBeCloseTo(0.6, 5);
+    expect(G.beats.some((b) => b.act?.kind === "wait")).toBe(false);
+  });
+
+  it("starts each step's work as its sentence begins, at its key phrase", () => {
+    const by = (id: string) => G.beats.find((b) => b.id === id);
+    // 2: the metre rule opens on "Measure and record the length XY".
+    expect(by("q2")?.act).toEqual({ kind: "loupe", target: "rule" });
+    // 3: the first lead is drawn on "Connect the circuit".
+    expect(by("q3")?.act?.kind).toBe("lead");
+    // 4: the plugs on "With R = 0 Ω,", the key on "close the key K.", the ammeter on "Read and record".
+    expect(by("q4-plug")?.act).toEqual({ kind: "plug", ohm: 0 });
+    expect(by("q4-key")?.act).toEqual({ kind: "key", closed: true });
+    expect(by("q4-read")?.act).toEqual({ kind: "loupe", target: "ammeter" });
+    expect(OHMS_LAW_QUESTION.instructions[3]?.text.slice(by("q4-key")?.read?.from)).toMatch(
+      /^close the key K\./,
+    );
+    // 5: the same for R = 1 Ω.
+    expect(by("q5-plug")?.act).toEqual({ kind: "plug", ohm: 1 });
+    expect(by("q5-key")?.act).toEqual({ kind: "key", closed: true });
+    expect(by("q5-read")?.act).toEqual({ kind: "loupe", target: "ammeter" });
+    // 6: two of the five values are taken as the sentence is read.
+    expect(by("q6-values")?.act).toEqual({ kind: "row", row: 2, ohm: 5 });
+    expect(by("q6-tabulate")?.act).toEqual({ kind: "row", row: 3, ohm: 10 });
+    // 7: V is headed as "Plot V (vertical)" is read, I as "against I (horizontal)" is.
+    expect(by("q7-v")?.act?.kind).toBe("write");
+    expect(by("q7-i")?.act?.kind).toBe("write");
+    // 8: the triangle on "Determine the slope s."
+    expect(by("q8")?.act).toEqual({ kind: "triangle" });
+  });
+
   it("identifies the parts one by one, each framed and tagged, then all together", () => {
-    const identify = G.beats.filter((b) => b.stage === "identify");
-    expect(G.beats.slice(0, identify.length)).toEqual(identify);
-    // E, K, A, V, R, wire XY and the leads, then every tag at once.
+    const identify = G.beats.filter((b) => b.stage === "identify" && !b.read);
+    // The sentence is read first; then E, K, A, V, R, wire XY and the leads, then every tag at once.
+    expect(G.beats[0]?.id).toBe("q1");
+    expect(G.beats.slice(1, identify.length + 1)).toEqual(identify);
     expect(identify.map((b) => b.id)).toEqual([...IDENTIFY_SHOT_NAMES, "id-all"]);
     const single = identify.slice(0, -1);
     expect(single.map((b) => b.tags?.[0]?.anchor)).toEqual([
@@ -131,9 +228,8 @@ describe("the guided script's shape", () => {
     const all = identify[identify.length - 1];
     expect(all?.tags?.map((t) => t.anchor)).toEqual(single.map((b) => b.tags?.[0]?.anchor));
     expect(all?.tags?.every((t) => t.sub === undefined)).toBe(true);
-    // The parts drop in on the first beat only, so a seek to any later beat finds them down.
-    expect(identify.filter((b) => b.act?.kind === "enter").map((b) => b.id)).toEqual(["id-cells"]);
-    expect(G.beats[0]?.act?.kind).toBe("enter");
+    // The parts drop in on the first sentence, as it names them, so a seek to any later beat finds them down.
+    expect(G.beats.filter((b) => b.act?.kind === "enter").map((b) => b.id)).toEqual(["q1"]);
   });
 
   it("words the ammeter and voltmeter tags as series and parallel", () => {
@@ -145,33 +241,45 @@ describe("the guided script's shape", () => {
     expect(line("id-cells")).toBe("Cells E: drive the current.");
   });
 
-  it("frames each identify beat with its own shot and the rest on the bench", () => {
+  it("frames each identify beat with its own shot, the box for plugs and the key, the rest on the bench", () => {
     for (const b of G.beats) {
       const pose = watchPose(b, null);
-      if (b.stage === "identify" && b.id !== "id-all") expect(pose, b.id).toBe(b.id);
+      if (b.stage === "identify" && !b.read && b.id !== "id-all") expect(pose, b.id).toBe(b.id);
       else expect(isIdentifyShot(pose), b.id).toBe(false);
+    }
+    // A question beat that works the box or the key looks at them even with a dial still open.
+    for (const id of ["q4-plug", "q4-key", "q5-plug", "q5-key", "q6-values"]) {
+      const b = G.beats.find((x) => x.id === id);
+      expect(watchPose(b, "voltmeter"), id).toBe("box");
     }
   });
 
-  it("makes all 7 leads, in WAEC order", () => {
-    expect(G.beats.filter((b) => b.act?.kind === "lead")).toHaveLength(7);
+  it("makes all 7 leads, in WAEC order, the first as the sentence is read", () => {
+    const leads = G.beats.filter((b) => b.act?.kind === "lead");
+    expect(leads).toHaveLength(7);
+    expect(leads[0]?.read?.instr).toBe(2);
+    for (const b of leads.slice(1)) expect(b.read).toBeUndefined();
   });
 
   it("keeps every caption to 18 words or fewer", () => {
     for (const b of G.beats) expect(words(b.say), b.id).toBeLessThanOrEqual(18);
   });
 
-  it("does readings rows 1 and 2 in full and rows 3 to 7 as one quick beat each", () => {
-    const quick = G.beats.filter((b) => b.act?.kind === "row");
-    expect(quick.map((b) => (b.act?.kind === "row" ? b.act.ohm : -1))).toEqual([5, 10, 20, 40, 60]);
-    for (const b of quick) {
+  it("does readings rows 1 and 2 in full, rows 3 and 4 with the sentence and 5 to 7 as quick beats", () => {
+    const rows = G.beats.filter((b) => b.act?.kind === "row");
+    expect(rows.map((b) => (b.act?.kind === "row" ? b.act.ohm : -1))).toEqual([5, 10, 20, 40, 60]);
+    for (const b of rows.filter((x) => !x.read)) {
       expect(words(b.say), b.id).toBeLessThanOrEqual(8);
       expect(b.gapS, b.id).toBeLessThanOrEqual(0.2);
     }
-    // Rows 1 and 2: a beat for the plugs, R, the key, each meter and the key again.
+    // Rows 1 and 2: the plugs, the key and the ammeter as the sentence is read; then R, I, the
+    // voltmeter, V and the key again.
     for (const r of ["row-1", "row-2"]) {
-      expect(G.beats.filter((b) => b.id.startsWith(`${r}-`))).toHaveLength(8);
+      expect(G.beats.filter((b) => b.id.startsWith(`${r}-`))).toHaveLength(5);
     }
+    const ids = G.beats.map((b) => b.id);
+    expect(ids.indexOf("q4-read")).toBeLessThan(ids.indexOf("row-1-i"));
+    expect(ids.indexOf("row-1-key-off")).toBeLessThan(ids.indexOf("q5-plug"));
   });
 
   it("narrates plot points 1 and 2 and plots 3 to 7 quickly and silently", () => {
@@ -192,28 +300,31 @@ describe("the guided script's shape", () => {
     for (const a of ["line", "triangle", "deltaY", "deltaX", "slope"]) expect(acts).toContain(a);
   });
 
-  it("ends on the conclusion: proportionality, Ohm's law, the slope, precautions and (b)(ii)", () => {
-    const tail = G.beats.slice(-5);
-    expect(tail.map((b) => b.id)).toEqual([
-      "conclude-line",
-      "conclude-law",
-      "conclude-slope",
-      "conclude-precautions",
-      "conclude-length",
-    ]);
-    expect(tail[0]?.say).toMatch(/proportional to I/);
-    expect(tail[1]?.say).toMatch(/Ohm's law/);
-    expect(tail[2]?.say).toContain("{slope}");
-    expect(tail[3]?.say).toMatch(/parallax/);
-    expect(tail[4]?.say).toMatch(/L = RA\/ρ = \(7 × 3\.143 × 10⁻⁸\) ÷ \(8\.8 × 10⁻⁷\)/);
-    // The separate precautions, law and length stages of Watch are gone.
-    expect(G.beats.some((b) => b.stage === "precautions" || b.stage === "length")).toBe(false);
+  it("states two precautions, the law and the working as cards beside the paper", () => {
+    const at = (id: string) => G.beats.findIndex((b) => b.id === id);
+    const card = (id: string) => cardAt(G.beats, at(id));
+    expect(card("q9")).toBeNull();
+    expect(card("prec-1")?.lines).toEqual(["The key was opened between readings."]);
+    expect(card("prec-2")?.lines).toHaveLength(2);
+    expect(card("prec-2")?.lines.join(" ")).toMatch(/parallax/);
+    expect(G.beats[at("prec-1")]?.say).toMatch(/key was opened/);
+    expect(card("law-line")?.lines.join(" ")).toMatch(/straight line through the origin/);
+    expect(G.beats[at("law-line")]?.say).toMatch(/proportional to I/);
+    expect(card("law-state")?.lines.join(" ")).toMatch(/directly proportional to the potential/);
+    expect(G.beats[at("law-state")]?.say).toMatch(/Ohm's law/);
+    // (b)(ii): the working only, to the line L = RA/ρ = (7 × 3.143 × 10⁻⁸) ÷ (8.8 × 10⁻⁷).
+    expect(card("length-work")?.lines.at(-1)).toBe("L = RA/ρ = (7 × 3.143 × 10⁻⁸) ÷ (8.8 × 10⁻⁷)");
+    expect(G.beats[at("length-work")]?.say).toMatch(/Work out L yourself/);
+    // The slope's meaning is said at the end of step 8, with the demonstration's own number.
+    expect(G.beats[at("slope-meaning")]?.say).toContain("{slope}");
+    expect(G.beats.at(-1)?.stage).toBe("length");
   });
 
   it("never shows or says the (b)(ii) answer: the expected result is not shown before hand-in", () => {
     // Mirrors script.test.ts: Watch's record carries the method and never "0.25".
     for (const b of G.beats) {
-      for (const text of [b.say, b.spoken ?? ""]) {
+      const texts = [b.say, b.spoken ?? "", ...(b.card?.lines ?? []), b.card?.title ?? ""];
+      for (const text of texts) {
         expect(text, b.id).not.toContain("0.25");
         expect(text, b.id).not.toMatch(/nought point two five|zero point two five/i);
       }
@@ -232,7 +343,7 @@ describe("the guided script's shape", () => {
 });
 
 describe("the guided script, played by the director", () => {
-  it("fills in all seven rows, the graph and the slope, and runs in about two minutes at 1x", () => {
+  it("fills in all seven rows, the graph and the slope, in three to four minutes at 1x", () => {
     const r = rig();
     const seconds = playThrough(r);
     expect(r.director.state.finished).toBe(true);
@@ -250,10 +361,107 @@ describe("the guided script, played by the director", () => {
     expect(rec.length_xy?.text_as_written).toBeTruthy();
     // The key is open at the end, as it is between readings.
     expect(r.bench.visual.current.keyClosed).toBe(false);
-    // About two minutes at 1x, with the voice taking as long as the estimate.
-    expect(seconds).toBeGreaterThan(100);
-    expect(seconds).toBeLessThan(145);
+    // Three to four minutes at 1x, with the voice taking as long as the estimate at its own rate
+    // (the question at 0.85 of it).
+    expect(seconds).toBeGreaterThan(180);
+    expect(seconds).toBeLessThan(225);
+    console.info(`guided run at 1x: ${seconds.toFixed(1)} s`);
   }, 60_000);
+
+  it("works while the sentence is read, and the two voices never overlap", () => {
+    const r = rig();
+    const DT = 1 / 60;
+    const firstLeadAt = { leads: -1, voice: false };
+    r.director.play();
+    // Run to "Connect the circuit as shown in the diagram." and watch its first lead appear.
+    let t = 0;
+    while (r.director.state.beat < 12 && t < 300) {
+      r.bench.advance(DT);
+      r.tick(DT);
+      r.director.advance(DT);
+      t += DT;
+    }
+    expect(r.director.state.beat).toBe(12);
+    while (r.director.state.beat === 12 && t < 300) {
+      r.bench.advance(DT);
+      r.tick(DT);
+      r.director.advance(DT);
+      t += DT;
+      if (firstLeadAt.leads < 0 && r.bench.visual.current.leads.length > 0) {
+        firstLeadAt.leads = r.bench.visual.current.leads.length;
+        firstLeadAt.voice = r.voiceActive();
+      }
+    }
+    // The lead was made while the sentence was still being said.
+    expect(firstLeadAt.leads).toBe(1);
+    expect(firstLeadAt.voice).toBe(true);
+    // And one voice at a time, over the whole run.
+    playThrough(r);
+    expect(r.overlaps()).toBe(0);
+  }, 60_000);
+
+  it("reads the same sentence aloud again when Back or Next lands on its step", () => {
+    const r = rig();
+    r.director.play();
+    const said = r.said;
+    r.director.seek(firstOf("connect"));
+    expect(said.at(-1)).toBe(toSpoken(Q_TEXT(2)).spoken);
+    // Back from a step's sentence goes to the start of the step before, which reads its sentence.
+    r.director.seek(firstOf("repeat"));
+    r.director.prev();
+    expect(r.director.state.beat).toBe(firstOf("r1"));
+    expect(said.at(-1)).toBe(G.beats[firstOf("r1")]?.spoken);
+    // Next steps on one beat at a time (no beat is skipped, so no sentence is missed).
+    r.director.next();
+    expect(r.director.state.beat).toBe(firstOf("r1") + 1);
+  });
+
+  it("Skip to the work stops the voice for the sentence but not the work", () => {
+    const r = rig();
+    r.director.play();
+    r.director.seek(firstOf("r0"));
+    const say = r.said.length;
+    r.director.skipVoice();
+    // Silent from here on in this sentence: its later clauses are not said...
+    const before = r.said.length;
+    expect(before).toBe(say);
+    const DT = 1 / 60;
+    let t = 0;
+    while (G.beats[r.director.state.beat]?.read?.instr === 3 && t < 60) {
+      r.bench.advance(DT);
+      r.tick(DT);
+      r.director.advance(DT);
+      t += DT;
+    }
+    expect(r.said.slice(before).some((x) => /close the key/.test(x))).toBe(false);
+    // ...and the work went on: the plugs were pulled and the key closed.
+    expect(r.bench.visual.current.keyClosed).toBe(true);
+    // Going back to the step reads it again.
+    r.director.seek(firstOf("r0"));
+    expect(r.said.at(-1)).toBe(G.beats[firstOf("r0")]?.spoken);
+  }, 60_000);
+
+  it("pausing cuts the voice and playing reads the clause again", () => {
+    const r = rig();
+    r.director.play();
+    r.director.seek(firstOf("r1"));
+    const n = r.said.length;
+    r.director.pause();
+    r.director.play();
+    expect(r.said.length).toBe(n + 1);
+    expect(r.said.at(-1)).toBe(G.beats[firstOf("r1")]?.spoken);
+  });
+
+  it("tells the paper where the voice is: a clause begins, a word is said, it ends or is cut off", () => {
+    const r = rig();
+    const events: string[] = [];
+    r.director.onSpeech((e) => events.push(`${e.kind}:${G.beats[e.beat]?.id}`));
+    r.director.play();
+    r.director.seek(firstOf("measure-xy"));
+    expect(events).toContain("start:q2");
+    r.director.pause();
+    expect(events.at(-1)).toBe("stop:q2");
+  });
 
   it("says the demonstration's own slope in the conclusion, and nothing unfilled", () => {
     const r = rig();
@@ -287,21 +495,28 @@ describe("the guided script, played by the director", () => {
     expect(r.bench.visual.current.keyClosed).toBe(false);
   }, 60_000);
 
-  it("Back and Next move between stages without sticking", () => {
+  it("Back and Next move between steps without sticking, each landing on a sentence", () => {
     const r = rig();
     r.director.play();
-    const firstOf = (stage: string) => G.beats.findIndex((b) => b.stage === stage);
     for (const stage of ["connect", "r0", "repeat", "plot", "slope", "law"]) {
-      r.director.seek(firstOf(stage));
-      expect(r.director.state.beat).toBe(firstOf(stage));
+      const at = firstOf(stage);
+      const before = firstOf(
+        GUIDED_STAGES[GUIDED_STAGES.indexOf(stage as never) - 1] ?? "identify",
+      );
+      r.director.seek(at);
+      expect(r.director.state.beat).toBe(at);
+      expect(G.beats[at]?.read, stage).toBeDefined();
       r.director.prev();
-      expect(r.director.state.beat).toBe(firstOf(stage) - 1);
+      expect(r.director.state.beat).toBe(before);
+      expect(G.beats[before]?.read, stage).toBeDefined();
+      r.director.seek(at);
       r.director.next();
-      expect(r.director.state.beat).toBe(firstOf(stage));
+      expect(r.director.state.beat).toBe(at + 1);
     }
-    r.director.next();
-    r.director.next();
-    expect(r.director.state.beat).toBe(firstOf("law") + 2);
+    // Back from the first sentence stays on it; from the step strip, a seek to a step starts at its sentence.
+    r.director.seek(0);
+    r.director.prev();
+    expect(r.director.state.beat).toBe(0);
   });
 });
 

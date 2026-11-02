@@ -157,28 +157,29 @@ describe("the guided demo's flow (?mode=guided)", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("opens on the paper, in guided mode, and only for Ohm's law", () => {
+  it("opens straight on the Watch bench, in guided mode, and only for Ohm's law", () => {
     expect(guidedFrom(q(guided))).toBe(true);
     expect(guidedFrom(q("practical=ohms-law&mode=watch"))).toBe(false);
     expect(guidedFrom(q("mode=guided"))).toBe(false);
-    expect(paperFirst(q(guided))).toBe(true);
+    // The question is read on the bench itself (the paper is docked beside it), not on a screen of its own.
+    expect(paperFirst(q(guided))).toBe(false);
     const run = initialRun(q(guided), 7);
-    expect(run).toMatchObject({ practical: null, guided: true, n: 0 });
+    expect(run).toMatchObject({ practical: "watch", guided: true, n: 0, afterPaper: false });
   });
 
-  it("goes from the paper to Watch, which plays at once, and stays guided", () => {
-    const paper = initialRun(q(guided), 7);
-    const watch = nextRun(paper, { kind: "choose", mode: "watch" });
-    expect(watch).toMatchObject({ practical: "watch", guided: true, afterPaper: true });
-    expect(autoPlays(watch)).toBe(true);
-    expect(nextRun(watch, { kind: "watchAgain" }).guided).toBe(true);
+  it("stays guided on Watch again, and plays by itself only once it has been started", () => {
+    const run = initialRun(q(guided), 7);
+    // The page starts the director itself (once its speech listeners are in place).
+    expect(autoPlays(run)).toBe(false);
+    const again = nextRun(run, { kind: "watchAgain" });
+    expect(again.guided).toBe(true);
+    expect(autoPlays(again)).toBe(true);
   });
 
   it("leaves guided for any other mode or a new bench", () => {
-    const paper = initialRun(q(guided), 7);
-    expect(nextRun(paper, { kind: "choose", mode: "practice" }).guided).toBe(false);
-    const watch = nextRun(paper, { kind: "choose", mode: "watch" });
-    expect(nextRun(watch, { kind: "newBench", seed: 9 }).guided).toBe(false);
+    const run = initialRun(q(guided), 7);
+    expect(nextRun(run, { kind: "choose", mode: "practice" }).guided).toBe(false);
+    expect(nextRun(run, { kind: "newBench", seed: 9 }).guided).toBe(false);
   });
 
   it("keeps mode=watch, practice and exam as they were", () => {

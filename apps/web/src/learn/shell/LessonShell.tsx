@@ -24,7 +24,14 @@ import "./shell.css";
 
 export type { CalloutChipProps, GuideState, ShellTab, StatusCredit, StepStatus };
 
-export type PopupId = "question" | "instructions" | "steps" | "graph" | "answers" | "tools";
+export type PopupId =
+  | "question"
+  | "paper"
+  | "instructions"
+  | "steps"
+  | "graph"
+  | "answers"
+  | "tools";
 
 export { CalloutChip };
 
@@ -110,6 +117,11 @@ export interface LessonShellProps {
   tools?: ReactNode;
   /** Optional custom slot for the Question Paper pop-up. */
   questionSlot?: ReactNode;
+  /**
+   * The whole question paper, scrollable, in a pop-up opened by the status card's paper credit
+   * ("WASSCE (SC) 2018 · Physics Paper 3 · Q3B"). Without it the credit is plain text.
+   */
+  paperSlot?: ReactNode;
   /** Optional custom slot for the Graph Sheet pop-up. */
   graphSlot?: ReactNode;
   /** Optional custom slot for the Answer Sheet pop-up. */
@@ -163,6 +175,7 @@ export default function LessonShell({
   calloutLayerRef,
   tools,
   questionSlot,
+  paperSlot,
   graphSlot,
   answersSlot,
   activePopup,
@@ -376,6 +389,9 @@ export default function LessonShell({
             total={lesson.steps.length}
             hideCount={status?.hideCount}
             credit={status?.credit}
+            {...(paperSlot !== undefined
+              ? { onCredit: () => setPopup(popup === "paper" ? null : "paper") }
+              : {})}
           />
 
           {guided ? null : (
@@ -511,6 +527,18 @@ export default function LessonShell({
             className="sh-sheet-question"
           >
             {questionSlot ?? questionPaperNode}
+          </Sheet>
+        )}
+
+        {popup === "paper" && paperSlot !== undefined && (
+          <Sheet
+            label="Question paper"
+            closeLabel="Close question paper"
+            onClose={() => setPopup(null)}
+            fallbackFocus={menuBtn}
+            className="sh-sheet-question sh-sheet-paper"
+          >
+            {paperSlot}
           </Sheet>
         )}
 
