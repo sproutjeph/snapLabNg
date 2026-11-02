@@ -3,6 +3,7 @@ import "../learn/paper/desk.css";
 import "./home.css";
 import { createVoice } from "../learn/voice/createVoice";
 import { isPlainLeftClick, navigate } from "../navigate";
+import { SNAP_QUESTION_URL } from "../snapq/store";
 import { Bench3DSlot } from "./Bench3DSlot";
 import { MeterBridgeArt, TitrationArt } from "./illustrations";
 import { practicalIn, ROUTES } from "./links";
@@ -125,6 +126,14 @@ export default function HomePage() {
                 Exam
               </a>
             </div>
+            <button
+              type="button"
+              className="xp-btn xp-btn-primary hp-snap"
+              data-testid="home-snap-question"
+              onClick={() => navigate(SNAP_QUESTION_URL)}
+            >
+              Snap your question
+            </button>
           </li>
 
           <li className="hp-card hp-soon">

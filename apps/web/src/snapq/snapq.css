@@ -1,0 +1,173 @@
+/* Snap your question (docs/plans/snap-question.md). Ink on the graph-paper desk, phone first. */
+
+.sq-page {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px 16px 40px;
+}
+
+.sq-main {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.sq-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-weight: 600;
+}
+
+.sq-title {
+  margin: 10px 0 8px;
+  font-family: var(--f-serif, "Tinos", "Times New Roman", serif);
+  font-size: clamp(32px, 8vw, 48px);
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.sq-lede {
+  margin: 0 0 20px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.sq-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.16);
+}
+
+.sq-hint,
+.sq-source {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sq-error {
+  color: var(--red-ink);
+  line-height: 1.5;
+}
+
+.sq-thumbs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.sq-thumb img,
+.sq-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sq-remove {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.sq-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sq-read {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.sq-read:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sq-camera {
+  position: relative;
+  min-height: 480px;
+}
+
+.sq-close-camera {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.sq-reading {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.sq-result-name {
+  margin: 14px 0 4px;
+  font-family: var(--f-serif, "Tinos", "Times New Roman", serif);
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.sq-sub {
+  margin: 18px 0 8px;
+  font-family: var(--f-cond);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.sq-parts {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.sq-instructions {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.sq-label {
+  font-weight: 600;
+}
+
+.sq-ai-toggle {
+  margin-top: 18px;
+}
+
+.sq-timings {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.sq-result {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.sq-message {
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-card {
+    box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.16);
+  }
+}
