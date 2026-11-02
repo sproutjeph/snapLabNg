@@ -116,7 +116,8 @@ Lead orchestrates; subagents write in worktrees. Each PR: four checks, the lead'
 one code review, at most one fix round, squash-merge. No deploy. No Claude or Gemini attribution; Muse credits itself.
 
 ## Progress
-- Nov 2: plan approved; this doc is the first PR.
+- Nov 2: plan approved; this doc is the first PR (#115).
+- Nov 2: merged #116 stills, #117 boards (Gemini), #118 home voice (Muse), #119 guided flow, #120 live 3D card, #121 phone Practise fix, #122 hero home, #123 guided polish, #124 drop-on-name and in-page Watch, #125 Practise/Exam fixes. Open: Muse `muse/guided-e2e` (guided.mjs).
 
 ## Practise / Exam bug list (slice E)
 Nov 2 walk on `claude/practise-exam-pass`: Practise and Exam at laptop 1440×900 and phone 390×844, real pointer and touch on
