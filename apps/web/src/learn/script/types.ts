@@ -72,6 +72,19 @@ export interface Beat {
   tags?: readonly CalloutSpec[];
   focus?: readonly PartId[];
   act?: ActorAction;
+  /**
+   * Guided Watch (docs/plans/guided-demo.md, "Watch v2"): the beat reads characters [from, to) of
+   * the question's instruction `instr` aloud, as its `spoken` text, with its `act` (if any)
+   * performed alongside. The paper marks the sentence and the word being said.
+   */
+  read?: { instr: number; from: number; to: number };
+  /** Watch: the voice's rate for this beat, as a share of the director's (a calm reading is 0.85). */
+  rateX?: number;
+  /**
+   * Guided Watch: a card of lines shown with the paper while this beat plays (the precautions,
+   * the law, the working), and carried over the rest of its stage.
+   */
+  card?: { title: string; lines: readonly string[] };
   /** Practise waits for this. */
   done?: (s: BenchState) => boolean;
   /** Setup actions only: Practise may perform this beat for her once. */
@@ -109,6 +122,14 @@ export interface DirectorState {
   /** Watch: the loupe the actor has open. */
   loupe: "ammeter" | "voltmeter" | "rule" | null;
 }
+
+/** What the voice is doing for the beat on screen (Watch): the paper follows it word by word. */
+export type SpeechEvent =
+  | { kind: "start"; beat: number }
+  | { kind: "word"; beat: number; index: number }
+  | { kind: "end"; beat: number }
+  /** Cut short: a pause, a jump, or Skip. */
+  | { kind: "stop"; beat: number };
 
 export interface Director {
   readonly state: DirectorState;

@@ -1,0 +1,76 @@
+/* The paper as guided Watch docks it (GuidedPaper.tsx): the whole sheet, or the step alone. */
+
+.gp {
+  height: 100%;
+}
+
+.gp-head {
+  padding-top: 12px;
+  padding-inline: 20px;
+}
+
+.gp .qp-title {
+  font-size: clamp(24px, 7cqw, 34px);
+}
+
+.gp-foot {
+  padding-block: 8px 10px;
+}
+
+.gp-skip {
+  min-width: 160px;
+  min-height: 40px;
+}
+
+/* The step alone, over a board: the number, the sentence marked, and Skip. */
+.gp-step {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--ink-2);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 3px 4px 0 -1px #e6dac2;
+}
+
+.gp-step-label {
+  min-width: 2.4em;
+  font-size: 15px;
+}
+
+.gp-step-text {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.gp-step .gp-skip {
+  grid-column: 2;
+  justify-self: end;
+  min-width: 0;
+  min-height: 34px;
+  padding-inline: 14px;
+  font-size: 14px;
+}
+
+/* A phone's sheet is short: the heading gives its room to the step and the diagram. */
+.sh-root[data-layout="portrait"] .gp-head,
+.sh-root[data-layout="short"] .gp-head {
+  display: none;
+}
+
+.sh-root[data-layout="portrait"] .gp .qp-frame,
+.sh-root[data-layout="short"] .gp .qp-frame {
+  padding-top: 2px;
+}
+
+.sh-root[data-layout="portrait"] .gp .qp-diagram,
+.sh-root[data-layout="short"] .gp .qp-diagram {
+  max-width: 250px;
+  margin-inline: auto;
+}

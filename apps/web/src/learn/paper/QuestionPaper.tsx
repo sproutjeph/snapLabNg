@@ -13,7 +13,7 @@ import type { QuestionPaperProps } from "./types";
 // Each apparatus item is announced through onItemRead as the voice names it; the stage lands it.
 
 /** The diagram as printed: every line solid ink. It is the question's, not her wiring. */
-const PRINTED: DiagramComparison = { matches: true, missing: [], extra: [], issues: [] };
+export const PRINTED: DiagramComparison = { matches: true, missing: [], extra: [], issues: [] };
 
 const MODES = [
   { mode: "watch", label: "Watch it done", sub: "The lab does it, with a voice" },
@@ -66,7 +66,15 @@ function IconStop() {
 }
 
 /** One instruction's text, with the sentence being read marked and, inside it, the word. */
-function Said({ text, view, index }: { text: string; view: ReadView; index: number }): ReactNode {
+export function Said({
+  text,
+  view,
+  index,
+}: {
+  text: string;
+  view: ReadView;
+  index: number;
+}): ReactNode {
   if (view.instr !== index) return text;
   const w = view.word;
   return (
@@ -85,7 +93,7 @@ function Said({ text, view, index }: { text: string; view: ReadView; index: numb
 }
 
 /** "WASSCE (SC) 2018, Physics Paper 3, Question 3B" -> the paper and the question number. */
-function headings(source: string, title: string) {
+export function headings(source: string, title: string) {
   const [, paper, number] = source.split(", ");
   return paper && number
     ? { eyebrow: paper, heading: number, sub: `WASSCE-style · ${title}` }

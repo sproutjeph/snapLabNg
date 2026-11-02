@@ -117,6 +117,18 @@ describe("brand and status card", () => {
     expect(html()).not.toContain("sh-credit");
   });
 
+  it("makes the credit a button that opens the whole question paper when the page gives one", () => {
+    const credit = creditFromSource("WASSCE (SC) 2018, Physics Paper 3, Question 3B");
+    // Without a paper to open, the credit is plain text, as it was.
+    expect(html({ status: { credit } })).not.toContain("credit-paper");
+    const out = html({ status: { credit }, paperSlot: createElement("p", null, "the paper") });
+    expect(out).toContain('data-testid="credit-paper"');
+    expect(out).toContain('aria-label="Open the question paper"');
+    // The top bar lets taps through to the canvas: the button must take its own, or it does nothing.
+    const rule = shellRules().find(([sel]) => sel === ".sh-credit-btn");
+    expect(rule?.[1]).toContain("pointer-events: auto");
+  });
+
   it("drops the bar and the count when asked (Exam)", () => {
     const out = html({ status: { hideCount: true } }, "exam");
     expect(out).not.toContain("sh-count");

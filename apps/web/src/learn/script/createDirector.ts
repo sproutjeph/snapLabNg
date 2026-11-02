@@ -37,6 +37,7 @@ import type {
   DirectorSpeed,
   DirectorState,
   RecordField,
+  SpeechEvent,
   ValueSource,
 } from "./types";
 
@@ -80,6 +81,13 @@ export interface DirectorHandle extends Director {
   beatProgress(): number;
   /** The actor's events (a lead made, a plug moved, the key, a page written), for sound. */
   onEvent(fn: (e: DirectorEvent) => void): () => void;
+  /** Watch: the voice of each beat as it starts, says a word, ends or is cut short. */
+  onSpeech(fn: (e: SpeechEvent) => void): () => void;
+  /**
+   * Guided Watch: stops the voice for the question sentence being read, and for the rest of that
+   * sentence's clauses; the beat's work goes on. A jump back to the step reads it again.
+   */
+  skipVoice(): void;
 }
 
 /** Practise: seconds with no bench activity before the voice repeats the instruction. */
@@ -211,12 +219,29 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
   const rowReads = new Map<number, { i: string; v: string }>();
   const listeners = new Set<() => void>();
   const eventListeners = new Set<(e: DirectorEvent) => void>();
+  const speechListeners = new Set<(e: SpeechEvent) => void>();
+  /** Guided: the question sentence whose voice she skipped (its remaining clauses stay silent). */
+  let skipInstr: number | null = null;
 
   const notify = () => {
     for (const fn of [...listeners]) fn();
   };
   const emit = (e: DirectorEvent) => {
     for (const fn of [...eventListeners]) fn(e);
+  };
+  const emitSpeech = (e: SpeechEvent) => {
+    for (const fn of [...speechListeners]) fn(e);
+  };
+  /** Cuts the voice off, and tells the paper. */
+  const stopVoice = () => {
+    voice.stop();
+    emitSpeech({ kind: "stop", beat: state.beat });
+  };
+  /** The beat's voice is done (it ended, or ran past its estimate). */
+  const voiceFinished = () => {
+    if (run.voiceDone) return;
+    run.voiceDone = true;
+    emitSpeech({ kind: "end", beat: state.beat });
   };
 
   const unsubscribeBench = bench.subscribe(() => {
@@ -445,16 +470,25 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
 
   function speakBeat(text: string): void {
     const myToken = run.token;
+    const b = beats[state.beat];
     run.voiceDone = false;
     run.voiceElapsedS = 0;
     run.voiceCapS = voiceCapS(text);
-    if (text.trim() === "") {
+    // Watch sets the voice's pace for every beat: its speed, and a calm reading's share of it.
+    if (mode === "watch")
+      voice.rate = Math.min(MAX_VOICE_RATE, baseRate * state.speed * (b?.rateX ?? 1));
+    if (text.trim() === "" || (b?.read && b.read.instr === skipInstr)) {
       run.voiceDone = true;
       return;
     }
+    const beat = state.beat;
+    emitSpeech({ kind: "start", beat });
     voice.say(text, {
+      onWord: (index) => {
+        if (run.token === myToken) emitSpeech({ kind: "word", beat, index });
+      },
       onEnd: () => {
-        if (run.token === myToken) run.voiceDone = true;
+        if (run.token === myToken) voiceFinished();
       },
     });
   }
@@ -540,12 +574,12 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     state.finished = true;
     state.playing = false;
     state.waiting = false;
-    voice.stop();
+    stopVoice();
     notify();
   }
 
   function startBeat(i: number): void {
-    if (voice.speaking) voice.stop();
+    if (voice.speaking) stopVoice();
     run = freshRun(++tokenCounter);
     const b = beats[i];
     if (!b) {
@@ -598,7 +632,8 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     const last = beats.length - 1;
     if (last < 0) return;
     const i = Math.min(last, Math.max(0, Math.trunc(n)));
-    voice.stop();
+    stopVoice();
+    skipInstr = null;
     if (mode === "watch") {
       resetDemo();
       for (let k = 0; k < i; k++) applyInstant(beats[k]?.act, k);
@@ -622,7 +657,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     if (!run.voiceDone) {
       run.voiceElapsedS += dtBeatS;
       // Never wait on onend alone: past the estimate, the voice is done whatever the browser says.
-      if (run.voiceElapsedS >= run.voiceCapS) run.voiceDone = true;
+      if (run.voiceElapsedS >= run.voiceCapS) voiceFinished();
     }
     if (run.ar && !run.actDone) stepAct(run.ar, dtRealS, dtBeatS);
     if (run.voiceDone && run.actDone) {
@@ -701,7 +736,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
     pause() {
       if (disposed || mode === "exam" || !state.playing) return;
       state.playing = false;
-      voice.stop();
+      stopVoice();
       notify();
     },
 
@@ -725,7 +760,18 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
 
     prev() {
       if (disposed || mode === "exam") return;
-      goTo(run.started && run.elapsedS > PREV_RESTART_S ? state.beat : state.beat - 1);
+      let target = run.started && run.elapsedS > PREV_RESTART_S ? state.beat : state.beat - 1;
+      // Guided: Back from a step's first sentence goes to the start of the step before, which
+      // reads that step's sentence again, rather than landing on its last bit of work.
+      const here = beats[state.beat];
+      const before = beats[target];
+      if (target === state.beat - 1 && here?.read && before && before.stage !== here.stage) {
+        target = Math.max(
+          0,
+          beats.findIndex((b) => b.stage === before.stage),
+        );
+      }
+      goTo(target);
     },
 
     seek(beat) {
@@ -737,6 +783,16 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       if (disposed || mode !== "watch" || !SPEEDS.includes(s)) return;
       state.speed = s;
       voice.rate = Math.min(MAX_VOICE_RATE, baseRate * s);
+      notify();
+    },
+
+    skipVoice() {
+      if (disposed || mode !== "watch") return;
+      const r = beats[state.beat]?.read;
+      if (!r) return;
+      skipInstr = r.instr;
+      stopVoice();
+      run.voiceDone = true;
       notify();
     },
 
@@ -775,6 +831,13 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       };
     },
 
+    onSpeech(fn) {
+      speechListeners.add(fn);
+      return () => {
+        speechListeners.delete(fn);
+      };
+    },
+
     subscribe(fn) {
       listeners.add(fn);
       return () => {
@@ -791,6 +854,7 @@ export function createDirector(opts: DirectorOptions): DirectorHandle {
       unsubscribeBench();
       listeners.clear();
       eventListeners.clear();
+      speechListeners.clear();
     },
   };
   return handle;

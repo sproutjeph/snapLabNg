@@ -15,12 +15,20 @@ import { e2eOn, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
 import { GraphBoard } from "./graph/GraphBoard";
 import { GraphSheet } from "./graph/GraphSheet";
 import { emptyGraph } from "./graph/model";
-import { guidedConclusionLines, OHMS_LAW_GUIDED_SCRIPT } from "./lessons/ohms-law/guidedScript";
+import {
+  cardAt,
+  guidedConclusionLines,
+  OHMS_LAW_GUIDED_SCRIPT,
+} from "./lessons/ohms-law/guidedScript";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { OHMS_LAW_SCRIPT } from "./lessons/ohms-law/script";
 import { stepStatuses } from "./marking";
+import { PaperSheet, StepCard } from "./paper/GuidedPaper";
+import { createGuidedWatch } from "./paper/guidedReading";
 import { OHMS_LAW_QUESTION } from "./paper/ohmsLawQuestion";
-import { QuestionPaper } from "./paper/QuestionPaper";
+import { PRINTED, QuestionPaper } from "./paper/QuestionPaper";
+import { IDLE_VIEW, type ReadView } from "./paper/readAloud";
+import { createSentenceTracker } from "./paper/sentenceTracker";
 import { Player } from "./player/Player";
 import { StageChecklist } from "./player/StageChecklist";
 import { MODE_NOTE, playerCovered } from "./player/stages";
@@ -38,7 +46,7 @@ import { plugMoves, slopeNumber } from "./script/actor";
 import { createDirector, type DirectorHandle } from "./script/createDirector";
 import type { Beat, DirectorOptions } from "./script/types";
 import { dockedCovered, dockForStage, type GuidedDock } from "./shell/dock";
-import { GuidedDockPanel } from "./shell/GuidedDock";
+import { GuidedDockPanel, NotesBoard } from "./shell/GuidedDock";
 import GuidedEnd from "./shell/GuidedEnd";
 import LessonShell, { type GuideState, type PopupId, type ShellTab } from "./shell/LessonShell";
 import { creditFromSource } from "./shell/StatusCard";
@@ -50,6 +58,7 @@ import { StageTags } from "./stage/StageTags";
 import { isIdentifyShot } from "./stage/shots";
 import {
   createStageMotion,
+  entranceBeginReading,
   entranceHold,
   entranceNamed,
   entranceReading,
@@ -154,11 +163,12 @@ export function guidedFrom(search: URLSearchParams): boolean {
   return search.get("practical") === "ohms-law" && search.get("mode") === "guided";
 }
 
-/** The page opens on the question paper: ?practical=ohms-law with no mode in the URL (or guided). */
+/** The page opens on the question paper: ?practical=ohms-law with no mode in the URL. (Guided reads the paper on the bench itself.) */
 export function paperFirst(search: URLSearchParams): boolean {
   return (
     search.get("practical") === "ohms-law" &&
-    (guidedFrom(search) || !URL_MODES.has(search.get("mode") ?? ""))
+    !guidedFrom(search) &&
+    !URL_MODES.has(search.get("mode") ?? "")
   );
 }
 
@@ -231,6 +241,9 @@ export function urlForRun(href: string, mode: PracticalMode, seed: number, guide
 export function watchPose(beat: Beat | undefined, loupe: string | null): string {
   // The guided identify beats each frame one part: the beat's id names the shot (stage/shots.ts).
   if (beat && isIdentifyShot(beat.id)) return beat.id;
+  // A guided question beat that works the box or the key looks at them, whatever dial is open.
+  const kind = beat?.act?.kind;
+  if (beat?.read && (kind === "plug" || kind === "key" || kind === "row")) return "box";
   if (loupe === "ammeter" || loupe === "voltmeter") return "readings";
   if (loupe === "rule") return "wire";
   const act = beat?.act?.kind;
@@ -401,17 +414,27 @@ function makeRig(
     practical === "watch" ? { ...base, mode: "watch", bench } : { ...base, mode: practical, bench };
   const director = createDirector(options);
   const motion = createStageMotion();
-  motion.entrance.on = run.practical === null;
+  motion.entrance.on = run.practical === null || run.guided;
+  // Guided: the entrance runs under the first sentence's reading (beat 0) and hands over after it.
+  if (run.guided) motion.entrance.endsAtBeat = 0;
   // The parts are already down after the paper. A page loaded straight into Watch waits for its
   // Start tap (iOS speaks only after one), and with every part still in the sky that read as an
   // empty bench that never began: it opens with the bench set, and Start plays on from there.
-  motion.entrance.landed = run.afterPaper || (first && run.practical === "watch");
+  // (Guided Watch starts at once, with the bench empty: its first sentence drops the parts.)
+  motion.entrance.landed = !run.guided && (run.afterPaper || (first && run.practical === "watch"));
   trackEpoch(director, motion);
   const speed = speedFrom(search);
   if (speed !== null) director.setSpeed(speed);
   if (first && run.practical !== null) {
     const beat = search.get("beat");
-    if (beat !== null && beat !== "" && Number.isFinite(Number(beat))) director.seek(Number(beat));
+    if (beat !== null && beat !== "" && Number.isFinite(Number(beat))) {
+      director.seek(Number(beat));
+      // Guided, a dev jump past the first sentence: the bench is set, not dropping.
+      if (run.guided && director.state.beat > 0) {
+        motion.entrance.on = false;
+        motion.entrance.landed = true;
+      }
+    }
     const freeze = Number(search.get("freeze"));
     if (import.meta.env.DEV && search.has("freeze") && freeze >= 0) motion.freezeAtS = freeze;
     // Dev only (screenshots): start without her tap. In a build, Watch starts from the Start button.
@@ -789,17 +812,10 @@ function LearnScreen({
   useEffect(() => setBoxClose(false), [stepKey]);
   // The guided demo docks the paper while it reads, then the readings table and the graph; the
   // camera frames the bench in what they leave (shell/dock.ts).
-  const dock: GuidedDock | null = !guided
-    ? null
-    : paper
-      ? popup === "question"
-        ? "paper"
-        : null
-      : watch
-        ? director.state.finished
-          ? "end"
-          : dockForStage(stepKey)
-        : null;
+  // The question paper stays docked for the whole run; a board (the table, the graph, a card of
+  // lines) shrinks it to the current step, and it opens out again when the board is done.
+  const dock: GuidedDock | null =
+    guided && watch ? (director.state.finished ? "end" : (dockForStage(stepKey) ?? "paper")) : null;
   // Where the shell's always-on chrome and the docked panel cover the canvas, for the stage's camera.
   const covered = useCallback(
     (w: number, h: number) =>
@@ -884,36 +900,128 @@ function LearnScreen({
     [motion],
   );
   const choose = useCallback((m: PracticalMode) => onRun({ kind: "choose", mode: m }), [onRun]);
-  // Closing the paper without a choice goes on with its primary choice, Practise (guided: Watch,
-  // the same as Skip).
+  // Closing the paper without a choice goes on with its primary choice, Practise. Guided: the
+  // header card's full paper pauses the run while it is open and resumes it when it closes.
+  const resumeAfterPaper = useRef(false);
+  const needsTapRef = useRef(false);
   const setPopup = useCallback(
     (p: PopupId | null) => {
-      if (paper && p !== "question") choose(guided ? "watch" : "practice");
-      else setPopupState(p);
+      if (paper && p !== "question") {
+        choose("practice");
+        return;
+      }
+      if (guided && watch) {
+        const open = popupRef.current === "paper";
+        if (p === "paper" && !open) {
+          resumeAfterPaper.current = director.state.playing;
+          director.pause();
+        } else if (p !== "paper" && open) {
+          // (Not while the Tap to start prompt is up: only her tap starts the run.)
+          if (resumeAfterPaper.current && !needsTapRef.current) director.play();
+          resumeAfterPaper.current = false;
+        }
+      }
+      setPopupState(p);
     },
-    [paper, guided, choose],
+    [paper, guided, watch, director, choose],
   );
-  // Guided: the reading's end and Skip both go on to Watch, which plays at once.
-  const guidedGoOn = useCallback(() => choose("watch"), [choose]);
-  // While the reading waits to be heard the bench stays empty; her tap starts the parts over.
-  const guidedPaper = useMemo(
-    () =>
-      guided
-        ? {
-            onDone: guidedGoOn,
-            onSkip: guidedGoOn,
-            onHold: (held: boolean) => {
-              entranceHold(motion.entrance, held);
-              entranceChanged();
-            },
-            onRestart: () => {
-              entranceReset(motion.entrance);
-              entranceChanged();
-            },
-          }
-        : undefined,
-    [guided, guidedGoOn, motion],
-  );
+
+  // ---- Guided: the question drives the bench ----
+  // The director reads each sentence of the question and does its work alongside; the tracker
+  // follows the voice so the paper marks the sentence and the word, and the parts drop as the
+  // first sentence names them.
+  const [readView, setReadView] = useState<ReadView>(IDLE_VIEW);
+  const [needsTap, setNeedsTap] = useState(false);
+  needsTapRef.current = needsTap;
+  const tapped = useRef(false);
+  const guidedWatch = guided && watch;
+  useEffect(() => {
+    if (!guidedWatch) return;
+    const beats = director.script.beats;
+    const tracker = createSentenceTracker({
+      question: OHMS_LAW_QUESTION,
+      rate: () => director.voice.rate,
+      onChange: setReadView,
+      onItemRead,
+    });
+    const off = director.onSpeech((e) => {
+      const r = beats[e.beat]?.read;
+      if (e.kind === "start") {
+        if (!r) return;
+        if (r.instr === 0 && r.from === 0) {
+          // The first sentence begins (first play, Tap to start, Replay, Back into step 1): the
+          // parts go up and drop as it names them.
+          tracker.reset();
+          entranceBeginReading(motion.entrance);
+        }
+        tracker.begin(r.instr, r.from, r.to);
+      } else if (e.kind === "word") {
+        tracker.word(e.index);
+      } else {
+        if (e.kind === "end") tracker.end();
+        else tracker.stop();
+        if (r?.instr === 0) entranceStopped(motion.entrance);
+      }
+      entranceChanged();
+    });
+    // The effect can run twice on one director (StrictMode): a reading already under way is picked up.
+    const now = beats[director.state.beat]?.read;
+    if (director.state.playing && now) tracker.begin(now.instr, now.from, now.to);
+    // Until the voice is heard the bench stays empty (a browser may refuse speech before a tap);
+    // if it does not start in time, the run pauses and asks for a tap.
+    const watcher = createGuidedWatch({
+      facts: () => ({
+        muted: director.voice.muted,
+        speechAvailable: "speechSynthesis" in window,
+        tapped: tapped.current,
+      }),
+      speaking: () => "speechSynthesis" in window && window.speechSynthesis.speaking,
+      hold: (held) => {
+        entranceHold(motion.entrance, held);
+        entranceChanged();
+      },
+      offerTap: (show) => {
+        setNeedsTap(show);
+        if (show) director.pause();
+      },
+    });
+    const t0 = performance.now();
+    const poll = watcher.finished
+      ? null
+      : setInterval(() => {
+          watcher.tick(performance.now() - t0);
+          if (watcher.finished && poll) clearInterval(poll);
+        }, 100);
+    director.play();
+    return () => {
+      off();
+      tracker.stop();
+      if (poll) clearInterval(poll);
+    };
+  }, [guidedWatch, director, motion, onItemRead]);
+  // Her tap lets the browser speak: the run starts over, the parts drop on their names again.
+  const guidedTap = useCallback(() => {
+    tapped.current = true;
+    setNeedsTap(false);
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(" "));
+    }
+    entranceReset(motion.entrance);
+    entranceChanged();
+    director.seek(0);
+    director.play();
+  }, [director, motion]);
+  const paperView: ReadView = {
+    instr: stepIndex,
+    word: readView.instr === stepIndex ? readView.word : null,
+    naming: readView.naming,
+    reading: readView.reading,
+  };
+  // Skip shows while the voice is reading the step's sentence; the bench goes on with its work.
+  const readingNow =
+    guidedWatch && readView.reading && director.script.beats[director.state.beat]?.read;
+  const skipReading = readingNow ? () => director.skipVoice() : undefined;
+  const guidedCard = guidedWatch ? cardAt(director.script.beats, director.state.beat) : null;
   // The end panel's buttons: from the first beat again with the bench reset, or back to the home page.
   const guidedReplay = useCallback(() => {
     director.seek(0);
@@ -1038,20 +1146,53 @@ function LearnScreen({
                 stageTitles={STAGE_TITLES}
                 onHandIn={watch || results ? undefined : doHandIn}
               />
-              {guided && watch && (dock === "readings" || dock === "graph") ? (
-                <GuidedDockPanel kind={dock}>
-                  {dock === "readings" ? (
+              {guided && watch && dock !== null && dock !== "end" ? (
+                <GuidedDockPanel
+                  kind={dock}
+                  step={
+                    dock === "paper" ? undefined : (
+                      <StepCard
+                        question={OHMS_LAW_QUESTION}
+                        view={paperView}
+                        onSkip={skipReading}
+                      />
+                    )
+                  }
+                >
+                  {dock === "paper" ? (
+                    <PaperSheet
+                      question={OHMS_LAW_QUESTION}
+                      view={paperView}
+                      comparison={bench.comparison}
+                      onSkip={skipReading}
+                    />
+                  ) : dock === "readings" ? (
                     <ReadingsBoard
                       record={director.demoRecord}
                       highlight={newestRow(director.demoRecord)}
                     />
-                  ) : (
+                  ) : dock === "graph" ? (
                     <GraphBoard
                       graph={director.demoRecord.graph ?? emptyGraph()}
                       meaning={director.demoRecord.graph?.slope_as_written ? SLOPE_MEANING : null}
                     />
-                  )}
+                  ) : guidedCard ? (
+                    <NotesBoard title={guidedCard.title} lines={guidedCard.lines} />
+                  ) : null}
                 </GuidedDockPanel>
+              ) : null}
+              {needsTap ? (
+                <div className="gd-tap" role="dialog" aria-label="Tap to start">
+                  <button
+                    type="button"
+                    className="xp-btn xp-btn-primary gd-tap-btn"
+                    data-testid="paper-tap"
+                    onClick={guidedTap}
+                  >
+                    Tap to start
+                  </button>
+                  <p>Your browser needs a tap before it will read aloud.</p>
+                </div>
               ) : null}
               {practical === "practice" ? (
                 <button
@@ -1077,9 +1218,17 @@ function LearnScreen({
               voice={paperVoice}
               onItemRead={onItemRead}
               onChoose={choose}
-              guided={guidedPaper}
             />
           ) : undefined
+        }
+        paperSlot={
+          paper ? undefined : (
+            <PaperSheet
+              question={OHMS_LAW_QUESTION}
+              view={guidedWatch ? paperView : IDLE_VIEW}
+              comparison={guidedWatch ? bench.comparison : PRINTED}
+            />
+          )
         }
         tools={
           <BenchTools
