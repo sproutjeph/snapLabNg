@@ -26,7 +26,12 @@ export function costUsd(model: string, usage: Usage | null | undefined): number 
 
 /** Output caps sent with every call, so the reserve below really is the worst case. */
 // question: Q3B copied word for word plus boxes ran past 3,000 (2,216 of them reasoning) on Nov 2.
-export const MAX_OUTPUT_TOKENS = { spark: 3000, wonder: 6000, examiner: 2000, question: 10000 } as const;
+export const MAX_OUTPUT_TOKENS = {
+  spark: 3000,
+  wonder: 6000,
+  examiner: 2000,
+  question: 10000,
+} as const;
 /** Input tokens for one page image plus prompt and schema (≈4,060 measured on Oct 26), with margin. */
 const MAX_INPUT_TOKENS = 6000;
 /** Two text prompts (table, graph) and one box-prompt request for the drawn parts. */
