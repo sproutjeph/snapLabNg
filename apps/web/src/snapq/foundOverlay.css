@@ -1,0 +1,194 @@
+/* FoundOverlay: ink-style outline boxes on the student's diagram photo.
+   Ink and paper look matching learn/graph/GraphSheet.tsx (docs/plans/snap-question.md). */
+
+.fo-root {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  container-type: inline-size;
+  background: var(--paper);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 2px 3px 0 rgba(91, 64, 39, 0.12);
+  overflow: hidden;
+  display: block;
+}
+
+.fo-root *,
+.fo-root *::before,
+.fo-root *::after {
+  box-sizing: border-box;
+}
+
+.fo-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.fo-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fo-part {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.22s ease-out;
+}
+
+.fo-box-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.fo-box-rect {
+  fill: rgba(29, 36, 48, 0.04);
+  stroke: var(--ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Tag label above the box */
+.fo-tag {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font-family: var(--f-cond);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  box-shadow: 1px 1.5px 0 rgba(91, 64, 39, 0.16);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Flip tag inside when box is near the top edge */
+.fo-part[data-edge-top="1"] .fo-tag {
+  bottom: auto;
+  top: 3px;
+  margin-bottom: 0;
+}
+
+/* Highlighted state */
+.fo-part.fo-highlight,
+.fo-part.is-highlighted,
+.fo-part.highlight {
+  z-index: 10;
+  opacity: 1;
+}
+
+.fo-part.fo-highlight .fo-box-rect,
+.fo-part.is-highlighted .fo-box-rect,
+.fo-part.highlight .fo-box-rect {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  fill: rgba(224, 117, 46, 0.12);
+}
+
+.fo-part.fo-highlight .fo-tag,
+.fo-part.is-highlighted .fo-tag,
+.fo-part.highlight .fo-tag {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 0 2px 6px rgba(29, 36, 48, 0.35);
+  font-weight: 700;
+}
+
+/* Dimmed state when another part is highlighted */
+.fo-part.fo-dim,
+.fo-part.is-dimmed,
+.fo-part.dimmed {
+  opacity: 0.3;
+  z-index: 1;
+}
+
+.fo-part.fo-dim .fo-box-rect,
+.fo-part.is-dimmed .fo-box-rect,
+.fo-part.dimmed .fo-box-rect {
+  stroke: var(--pencil);
+}
+
+/* Responsive adjustments at phone width (375 px) */
+@container (max-width: 420px) {
+  .fo-tag {
+    font-size: 11px;
+    padding: 1px 4px;
+    max-width: 170px;
+  }
+}
+
+/* Draw-in animation */
+@media (prefers-reduced-motion: no-preference) {
+  .fo-box-rect {
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: fo-draw-box 0.45s ease-out forwards;
+  }
+
+  .fo-tag {
+    animation: fo-tag-in 0.3s ease-out 0.12s both;
+  }
+}
+
+@keyframes fo-draw-box {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fo-tag-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fo-box-rect {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .fo-tag {
+    animation: none;
+  }
+}
