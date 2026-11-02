@@ -64,6 +64,32 @@ const app = (cfg: Config, perHour = 10) =>
 const jpeg = (n: number) =>
   new File([new Uint8Array([255, 216, 255, n])], "p.jpg", { type: "image/jpeg" });
 
+/** A JPEG header with a real SOF marker (800 x 500), so the server can read its size. */
+const sizedJpeg = (n: number) =>
+  new File(
+    [
+      new Uint8Array([
+        0xff,
+        0xd8,
+        0xff,
+        0xc0,
+        0x00,
+        0x0b,
+        0x08,
+        0x01,
+        0xf4,
+        0x03,
+        0x20,
+        0x01,
+        0x01,
+        0x11,
+        n,
+      ]),
+    ],
+    "p.jpg",
+    { type: "image/jpeg" },
+  );
+
 async function post(a: ReturnType<typeof app>, files: File[]) {
   const form = new FormData();
   for (const f of files) form.append("photos", f);
@@ -128,8 +154,8 @@ describe("POST /api/question (fixtures mode)", () => {
       fixtureDir({ spark: null }),
     ]) {
       const events = parseSse(await (await post(app(cfgFor(dir)), [jpeg(1)])).text());
-      expect(events.map((e) => e.type)).toEqual(["accepted", "error", "timing", "done"]);
-      expect(events[1]).toMatchObject({ stage: "read", fallback: "app_question" });
+      expect(events.map((e) => e.type)).toEqual(["accepted", "timing", "error", "done"]);
+      expect(events[2]).toMatchObject({ stage: "read", fallback: "app_question" });
     }
   });
 
@@ -175,6 +201,41 @@ describe("POST /api/question (live mode)", () => {
     const second = parseSse(await (await post(a, [jpeg(1), jpeg(2)])).text());
     expect(fetchMock.mock.calls.length).toBe(calls);
     expect(second.map((e) => e.type).slice(0, 3)).toEqual(["accepted", "cache_hit", "question"]);
+  });
+});
+
+describe("POST /api/question (live mode, SAM failure)", () => {
+  it("skips SAM with a fallback timing when the photo size is unreadable, and caches", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify(asResponse(JSON.stringify(QUESTION)).response)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const cfg = {
+      ...loadConfig({ MODE: "live", MODEL_API_KEY: ["LLM", "test", "key"].join("_") }),
+    };
+    const events = parseSse(await (await post(app(cfg), [jpeg(1), jpeg(2)])).text());
+    expect(events.map((e) => e.type)).toEqual(["accepted", "question", "timing", "timing", "done"]);
+    expect(events[3]).toMatchObject({ lane: "sam", status: "fallback" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache a stream that had an error, so the next request calls Meta again", async () => {
+    const fetchMock = vi.fn(async (_url: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}") as { model?: string };
+      return body.model === "muse-spark-1.3"
+        ? new Response(JSON.stringify(asResponse(JSON.stringify(QUESTION)).response))
+        : new Response("no", { status: 500 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const cfg = {
+      ...loadConfig({ MODE: "live", MODEL_API_KEY: ["LLM", "test", "key"].join("_") }),
+    };
+    const a = app(cfg);
+    const first = parseSse(await (await post(a, [sizedJpeg(1), sizedJpeg(2)])).text());
+    expect(first.map((e) => e.type)).toContain("error");
+    const calls = fetchMock.mock.calls.length;
+    await (await post(a, [sizedJpeg(1), sizedJpeg(2)])).text();
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
   });
 });
 

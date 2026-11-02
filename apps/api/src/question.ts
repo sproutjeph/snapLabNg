@@ -168,7 +168,6 @@ export async function runQuestion(
     question =
       photos.length === 1 ? { ...parsed, diagram: { ...parsed.diagram, photo: 0 } } : parsed;
   } catch (e) {
-    send({ type: "error", stage: "read", message: errorText(e), fallback: "app_question" });
     timing(
       "spark-question",
       "spark",
@@ -180,6 +179,7 @@ export async function runQuestion(
       null,
       errorText(e),
     );
+    send({ type: "error", stage: "read", message: errorText(e), fallback: "app_question" });
     send({ type: "done", total_ms: sinceStart() });
     return { events, costUsd: spent };
   }
@@ -200,11 +200,27 @@ export async function runQuestion(
   const photoBytes = photos[question.diagram.photo] ?? photos[0];
   const image = images[question.diagram.photo] ?? images[0];
   // Fixtures mode replays for any bytes, so an unreadable size only has to be self-consistent.
-  const size = (photoBytes && jpegSize(photoBytes)) ?? { width: 1000, height: 1000 };
-  const prompt = question.diagram.present
-    ? partBoxPrompt(question.diagram.parts, size.width, size.height)
-    : null;
-  if (prompt && image) {
+  // Live, boxes cannot become pixels without the real size, so SAM is skipped.
+  const read = photoBytes ? jpegSize(photoBytes) : null;
+  const size = read ?? (cfg.mode === "live" ? null : { width: 1000, height: 1000 });
+  const prompt =
+    question.diagram.present && size
+      ? partBoxPrompt(question.diagram.parts, size.width, size.height)
+      : null;
+  if (question.diagram.present && !size) {
+    timing(
+      "sam-question",
+      "sam",
+      MODELS.sam,
+      "Outline: skipped",
+      sinceStart(),
+      "fallback",
+      null,
+      null,
+      "could not read the photo's size; outlines stay on Spark's boxes",
+    );
+  }
+  if (prompt && image && size) {
     const samBody = {
       model: MODELS.sam,
       stream: true,

@@ -13,6 +13,8 @@ import { runSnap } from "./snap";
 import { EXAMINER_RESERVE_USD, SNAP_RESERVE_USD, SpendLedger } from "./spend";
 
 const MAX_PHOTO_BYTES = 600 * 1024;
+/** A snapped question page is a full-size photo (<= 2048 px), so /api/question allows more per photo. */
+const MAX_QUESTION_PHOTO_BYTES = 1.5 * 1024 * 1024;
 /** A whole snap gets this long before every Meta call is aborted (Wonder took 13 s on Oct 26). */
 const SNAP_TIMEOUT_MS = 45_000;
 /** One examiner turn is a short text-only Spark call. */
@@ -156,7 +158,7 @@ export function createApp(
   app.post(
     "/api/question",
     bodyLimit({
-      maxSize: 2 * MAX_PHOTO_BYTES + 64 * 1024,
+      maxSize: 2 * MAX_QUESTION_PHOTO_BYTES + 64 * 1024,
       onError: (c) => c.json({ error: "photos too large" }, 413),
     }),
     async (c) => {
@@ -169,14 +171,14 @@ export function createApp(
       const sent = form.photos === undefined ? [] : [form.photos].flat();
       const photos: Uint8Array[] = [];
       for (const p of sent) {
-        if (!(p instanceof File) || p.size === 0 || p.size > MAX_PHOTO_BYTES) break;
+        if (!(p instanceof File) || p.size === 0 || p.size > MAX_QUESTION_PHOTO_BYTES) break;
         const b = new Uint8Array(await p.arrayBuffer());
         // Check the JPEG signature itself: the part's declared type is not reliable across runtimes.
         if (!(b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff)) break;
         photos.push(b);
       }
       if (photos.length < 1 || photos.length > 2 || photos.length !== sent.length) {
-        return c.json({ error: "send photos: one or two JPEGs, at most 600 KB each" }, 400);
+        return c.json({ error: "send photos: one or two JPEGs, at most 1.5 MB each" }, 400);
       }
       const ip = clientIp(c, cfg);
 
@@ -239,8 +241,7 @@ export function createApp(
               );
               settled = true;
             }
-            if (key && !signal.aborted && result.events.some((e) => e.type === "question"))
-              questionCache.set(key, result.events);
+            if (key && !failed) questionCache.set(key, result.events);
             await Promise.all(pending);
           } finally {
             if (!settled) ledger.settle(SNAP_RESERVE_USD, SNAP_RESERVE_USD);
