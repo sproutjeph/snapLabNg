@@ -1,9 +1,17 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createVoice } from "../learn/voice/createVoice";
 import type { VoiceGuide } from "../learn/voice/types";
 import HomePage from "./HomePage";
-import { createWelcomeSpeaker, loadMuted, MUTED_KEY, saveMuted, WELCOME_TEXT } from "./welcome";
+import {
+  createWelcomeSpeaker,
+  isMuteTarget,
+  loadMuted,
+  MUTED_KEY,
+  saveMuted,
+  WELCOME_TEXT,
+} from "./welcome";
 
 class FakeStorage {
   map = new Map<string, string>();
@@ -71,7 +79,9 @@ describe("welcome speaker", () => {
     const welcome = createWelcomeSpeaker(voice);
     welcome.start();
     expect(calls.map((c) => c.text)).toEqual([WELCOME_TEXT]);
+    // First onWord is the synchronous chunk announcement; a later one is hearing it.
     calls[0]?.onWord?.(0);
+    calls[0]?.onWord?.(7);
     welcome.onGesture();
     welcome.start();
     expect(calls).toHaveLength(1);
@@ -89,6 +99,7 @@ describe("welcome speaker", () => {
     expect(calls).toHaveLength(2);
     expect(calls[1]?.text).toBe(WELCOME_TEXT);
     calls[1]?.onWord?.(0);
+    calls[1]?.onWord?.(7);
     welcome.onGesture();
     expect(calls).toHaveLength(2);
   });
@@ -109,6 +120,81 @@ describe("welcome speaker", () => {
     welcome.start();
     welcome.onGesture();
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("welcome with the real createVoice (autoplay blocked)", () => {
+  class FakeUtterance {
+    text: string;
+    rate = 1;
+    lang = "";
+    voice: unknown = null;
+    onend: (() => void) | null = null;
+    onerror: ((e: { error: string }) => void) | null = null;
+    onboundary: ((e: { name?: string; charIndex: number }) => void) | null = null;
+    constructor(text: string) {
+      this.text = text;
+    }
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("waits for the first gesture, then speaks even though utterances error not-allowed", () => {
+    const spoken: FakeUtterance[] = [];
+    const synth = {
+      speak(u: FakeUtterance) {
+        spoken.push(u);
+        // Chrome's not-allowed path: the utterance reports an error at once.
+        u.onerror?.({ error: "not-allowed" });
+      },
+      cancel: vi.fn(),
+      getVoices: () => [],
+    };
+    vi.stubGlobal("window", { speechSynthesis: synth });
+    vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+
+    let active = false;
+    const voice = createVoice();
+    const welcome = createWelcomeSpeaker(voice, { hasBeenActive: () => active });
+
+    welcome.start();
+    // No user activation yet: nothing is spoken on load.
+    expect(spoken).toHaveLength(0);
+
+    // The first pointerdown: the gesture itself is the activation.
+    active = true;
+    welcome.onGesture();
+    expect(spoken.map((u) => u.text)).toContain("Welcome to SnapLab.");
+  });
+
+  it("does not count the synchronous onWord from createVoice as heard", () => {
+    const spoken: FakeUtterance[] = [];
+    const synth = {
+      speak(u: FakeUtterance) {
+        spoken.push(u);
+      },
+      cancel: vi.fn(),
+      getVoices: () => [],
+    };
+    vi.stubGlobal("window", { speechSynthesis: synth });
+    vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+
+    const voice = createVoice();
+    const welcome = createWelcomeSpeaker(voice, { hasBeenActive: () => true });
+    welcome.start();
+    // createVoice fired onWord(chunk.offset) synchronously; that alone is not hearing it.
+    expect(spoken).toHaveLength(1);
+    expect(welcome.spoken).toBe(false);
+  });
+
+  it("ignores a gesture that lands on the mute button", () => {
+    const inside = { closest: (s: string) => (s === '[data-testid="home-mute"]' ? {} : null) };
+    const outside = { closest: () => null };
+    expect(isMuteTarget(inside as unknown as EventTarget)).toBe(true);
+    expect(isMuteTarget(outside as unknown as EventTarget)).toBe(false);
+    expect(isMuteTarget(null)).toBe(false);
   });
 });
 

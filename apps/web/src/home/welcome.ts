@@ -29,6 +29,14 @@ export function saveMuted(muted: boolean, storage: StorageLike | null = defaultS
   }
 }
 
+/** True when a gesture landed on (or inside) the home mute button. */
+export function isMuteTarget(target: EventTarget | null): boolean {
+  const el = target as { closest?: (selector: string) => unknown } | null;
+  return typeof el?.closest === "function"
+    ? Boolean(el.closest('[data-testid="home-mute"]'))
+    : false;
+}
+
 export interface WelcomeSpeaker {
   /** Try to speak on load. */
   start(): void;
@@ -38,25 +46,61 @@ export interface WelcomeSpeaker {
   readonly spoken: boolean;
 }
 
+export interface WelcomeSpeakerOptions {
+  /** Defaults to `navigator.userActivation?.hasBeenActive`. */
+  hasBeenActive?: () => boolean | undefined;
+  /** Called once the welcome has been heard or has ended. */
+  onSpoken?: () => void;
+}
+
+function defaultHasBeenActive(): boolean | undefined {
+  try {
+    return typeof navigator === "undefined" ? undefined : navigator.userActivation?.hasBeenActive;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Speaks the welcome once per visit. If the load attempt never produces a
- * word (autoplay blocked or speech failed), the first gesture stops that
- * attempt and speaks inside the gesture, where browsers allow sound.
+ * Speaks the welcome once per visit. With no user activation yet the load
+ * attempt is not even made — browsers would drop it — and the first gesture
+ * speaks instead. `createVoice` reports the first chunk synchronously via
+ * `onWord(chunk.offset)` before any sound, so only a later word or the end
+ * of the say() counts as heard.
  */
-export function createWelcomeSpeaker(voice: VoiceGuide): WelcomeSpeaker {
+export function createWelcomeSpeaker(
+  voice: VoiceGuide,
+  opts: WelcomeSpeakerOptions = {},
+): WelcomeSpeaker {
   let attempted = false;
   let heard = false;
   let ended = false;
   let disposed = false;
+  let wordCalls = 0;
+  let notified = false;
+
+  const notify = () => {
+    if (notified || (!heard && !ended)) return;
+    notified = true;
+    opts.onSpoken?.();
+  };
 
   const speak = () => {
     attempted = true;
+    wordCalls = 0;
+    notified = false;
     voice.say(WELCOME_TEXT, {
       onWord: () => {
-        heard = true;
+        wordCalls++;
+        // The first call is createVoice's synchronous chunk announcement.
+        if (wordCalls > 1) {
+          heard = true;
+          notify();
+        }
       },
       onEnd: () => {
         ended = true;
+        notify();
       },
     });
   };
@@ -64,6 +108,7 @@ export function createWelcomeSpeaker(voice: VoiceGuide): WelcomeSpeaker {
   return {
     start() {
       if (disposed || attempted || voice.muted) return;
+      if ((opts.hasBeenActive ?? defaultHasBeenActive)() === false) return;
       speak();
     },
     onGesture() {

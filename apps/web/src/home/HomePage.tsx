@@ -5,7 +5,7 @@ import { createVoice } from "../learn/voice/createVoice";
 import { Bench3DSlot } from "./Bench3DSlot";
 import { MeterBridgeArt, TitrationArt } from "./illustrations";
 import { practicalIn, ROUTES } from "./links";
-import { createWelcomeSpeaker, loadMuted, saveMuted } from "./welcome";
+import { createWelcomeSpeaker, isMuteTarget, loadMuted, saveMuted } from "./welcome";
 
 // The picker (docs/plans/exam-redesign.md, "The experience", step 1): "Choose a practical" as three
 // ink-drawn cards. Ohm's law (V–I) opens its question paper from the picture and title, or goes
@@ -36,14 +36,23 @@ export default function HomePage() {
 
   useEffect(() => {
     voice.muted = mutedRef.current;
-    const welcome = createWelcomeSpeaker(voice);
-    welcome.start();
-    const onGesture = () => welcome.onGesture();
-    window.addEventListener("pointerdown", onGesture);
-    window.addEventListener("keydown", onGesture);
-    return () => {
+    const removeGestureListeners = () => {
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
+    };
+    const welcome = createWelcomeSpeaker(voice, { onSpoken: removeGestureListeners });
+    const onGesture = (event: Event) => {
+      // A first tap on Mute must not start the welcome and then mute it.
+      if (isMuteTarget(event.target)) return;
+      welcome.onGesture();
+      if (welcome.spoken) removeGestureListeners();
+    };
+    window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("keydown", onGesture);
+    welcome.start();
+    if (welcome.spoken) removeGestureListeners();
+    return () => {
+      removeGestureListeners();
       welcome.dispose();
       voice.stop();
     };
