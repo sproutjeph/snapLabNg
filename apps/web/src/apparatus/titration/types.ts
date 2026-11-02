@@ -17,4 +17,6 @@ export interface TitrationKitProps {
   onStopcockChange?: (open: number) => void; // press-and-hold or drag on the stopcock, 0…1
   onSwirl?: () => void; // tap on the flask
   onFunnelToggle?: () => void; // tap on the funnel or the burette top
+  /** Home-card still only: a tighter bench layout (beaker, pipette and a second beaker grouped near the flask). */
+  hero?: boolean;
 }

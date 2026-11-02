@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../meter-bridge/types";
 import { BURETTE_DIMS, FLASK_DIMS, volumeToY } from "./dimensions";
+import { glassFresnel } from "./glassFresnel";
 import type { TitrationVisualState } from "./types";
 
 export interface BuretteProps {
@@ -201,7 +202,7 @@ export function Burette({ state, quality, onStopcockChange, onFunnelToggle }: Bu
 
     const gradTex = createBuretteGraduationsTexture();
 
-    const glassMat =
+    const glassMatBase =
       quality === "low"
         ? new THREE.MeshStandardMaterial({
             color: "#e0f2fe",
@@ -221,6 +222,8 @@ export function Burette({ state, quality, onStopcockChange, onFunnelToggle }: Bu
             side: THREE.DoubleSide,
             depthWrite: false,
           });
+
+    const glassMat = glassFresnel(glassMatBase, quality);
 
     const gradMat = new THREE.MeshBasicMaterial({
       map: gradTex,

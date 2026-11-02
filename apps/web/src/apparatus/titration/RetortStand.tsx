@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { QualityTier } from "../meter-bridge/types";
 import { BURETTE_DIMS, RETORT_STAND_DIMS } from "./dimensions";
+import { createRetortBaseGeometry } from "./retortBase";
 
 export interface RetortStandProps {
   quality: QualityTier;
@@ -11,11 +12,8 @@ export function RetortStand({ quality }: RetortStandProps) {
   const res = useMemo(() => {
     const radialSegments = quality === "low" ? 10 : 20;
 
-    const baseGeo = new THREE.BoxGeometry(
-      RETORT_STAND_DIMS.baseWidth,
-      RETORT_STAND_DIMS.baseHeight,
-      RETORT_STAND_DIMS.baseDepth,
-    );
+    // Cast-iron base: rounded plan with a bevelled edge, like a real enamelled stand.
+    const baseGeo = createRetortBaseGeometry(quality);
     const socketGeo = new THREE.CylinderGeometry(0.013, 0.016, 0.022, radialSegments);
     const rodGeo = new THREE.CylinderGeometry(
       RETORT_STAND_DIMS.rodRadius,
@@ -23,7 +21,7 @@ export function RetortStand({ quality }: RetortStandProps) {
       RETORT_STAND_DIMS.rodHeight,
       radialSegments,
     );
-    const bossheadGeo = new THREE.BoxGeometry(0.028, 0.032, 0.028);
+    const bossheadGeo = new THREE.CylinderGeometry(0.0165, 0.0165, 0.032, radialSegments);
     const screwShaftGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.022, radialSegments);
     screwShaftGeo.rotateZ(Math.PI / 2);
     const screwKnobGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.006, radialSegments);
@@ -48,9 +46,9 @@ export function RetortStand({ quality }: RetortStandProps) {
     jawGeo.rotateX(-Math.PI / 2);
 
     const castIronMat = new THREE.MeshStandardMaterial({
-      color: "#1e293b",
-      roughness: 0.65,
-      metalness: 0.45,
+      color: "#20242c",
+      roughness: 0.62,
+      metalness: 0.3,
     });
     const steelMat = new THREE.MeshStandardMaterial({
       color: "#cbd5e1",
