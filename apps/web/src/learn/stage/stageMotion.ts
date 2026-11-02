@@ -203,6 +203,32 @@ export function entranceRearm(e: Entrance): void {
   e.landed = false;
 }
 
+/**
+ * Guided: the voice begins the first sentence (a first play, Tap to start, Replay, Back into step
+ * 1). Arms the entrance afresh, keeping a hold that is still waiting for the voice to be heard,
+ * and starts naming: each part drops as the sentence says it.
+ */
+export function entranceBeginReading(e: Entrance): void {
+  const held = e.held;
+  entranceRearm(e);
+  e.held = held;
+  e.byVoice = true;
+}
+
+/**
+ * Guided: the director jumped (seek, previous, next, replay) to `beat`. Past the first sentence
+ * the bench is the director's; at or before it, an entrance that is not already armed (not
+ * waiting on the voice for the names) is armed again, for the timed drop. One that the first
+ * sentence's start has armed is left as it is, so the parts still drop on their names.
+ */
+export function entranceOnJump(e: Entrance, beat: number): void {
+  const ends = e.endsAtBeat;
+  if (ends === null) return;
+  e.landed = false;
+  if (beat > ends) e.on = false;
+  else if (!e.on) entranceRearm(e);
+}
+
 /** The reading stopped: the parts not named yet drop on the timed drop, from now. */
 export function entranceStopped(e: Entrance): void {
   if (!e.on || !e.byVoice) return;

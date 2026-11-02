@@ -28,7 +28,7 @@ import {
   clearBench,
   DROP_SLOTS,
   entranceFrame,
-  entranceRearm,
+  entranceOnJump,
   fillBench,
   MAX_TAGS,
   type StageMotion,
@@ -180,13 +180,9 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       // A seek, previous, next or replay plays Watch's own entrance again, even after the paper's.
       if (k.epoch !== -1 && m.epoch !== k.epoch) {
         m.entrance.landed = false;
-        // Guided: a jump to the first sentence's reading arms the entrance again, so the parts drop
-        // as it names them; a jump past it hands the bench to the director.
-        const ends = m.entrance.endsAtBeat;
-        if (ends !== null) {
-          if (s.beat <= ends) entranceRearm(m.entrance);
-          else m.entrance.on = false;
-        }
+        // Guided: a jump past the first sentence hands the bench to the director; a jump back to
+        // it is armed by its reading's start (LearnPage), or here if it is not playing.
+        entranceOnJump(m.entrance, s.beat);
       }
       k.beat = s.beat;
       k.epoch = m.epoch;

@@ -58,6 +58,7 @@ import { StageTags } from "./stage/StageTags";
 import { isIdentifyShot } from "./stage/shots";
 import {
   createStageMotion,
+  entranceBeginReading,
   entranceHold,
   entranceNamed,
   entranceReading,
@@ -902,6 +903,7 @@ function LearnScreen({
   // Closing the paper without a choice goes on with its primary choice, Practise. Guided: the
   // header card's full paper pauses the run while it is open and resumes it when it closes.
   const resumeAfterPaper = useRef(false);
+  const needsTapRef = useRef(false);
   const setPopup = useCallback(
     (p: PopupId | null) => {
       if (paper && p !== "question") {
@@ -914,7 +916,8 @@ function LearnScreen({
           resumeAfterPaper.current = director.state.playing;
           director.pause();
         } else if (p !== "paper" && open) {
-          if (resumeAfterPaper.current) director.play();
+          // (Not while the Tap to start prompt is up: only her tap starts the run.)
+          if (resumeAfterPaper.current && !needsTapRef.current) director.play();
           resumeAfterPaper.current = false;
         }
       }
@@ -929,6 +932,7 @@ function LearnScreen({
   // first sentence names them.
   const [readView, setReadView] = useState<ReadView>(IDLE_VIEW);
   const [needsTap, setNeedsTap] = useState(false);
+  needsTapRef.current = needsTap;
   const tapped = useRef(false);
   const guidedWatch = guided && watch;
   useEffect(() => {
@@ -944,8 +948,12 @@ function LearnScreen({
       const r = beats[e.beat]?.read;
       if (e.kind === "start") {
         if (!r) return;
-        if (r.instr === 0 && r.from === 0) tracker.reset();
-        if (r.instr === 0) entranceReading(motion.entrance, true);
+        if (r.instr === 0 && r.from === 0) {
+          // The first sentence begins (first play, Tap to start, Replay, Back into step 1): the
+          // parts go up and drop as it names them.
+          tracker.reset();
+          entranceBeginReading(motion.entrance);
+        }
         tracker.begin(r.instr, r.from, r.to);
       } else if (e.kind === "word") {
         tracker.word(e.index);
@@ -956,6 +964,9 @@ function LearnScreen({
       }
       entranceChanged();
     });
+    // The effect can run twice on one director (StrictMode): a reading already under way is picked up.
+    const now = beats[director.state.beat]?.read;
+    if (director.state.playing && now) tracker.begin(now.instr, now.from, now.to);
     // Until the voice is heard the bench stays empty (a browser may refuse speech before a tap);
     // if it does not start in time, the run pauses and asks for a tap.
     const watcher = createGuidedWatch({

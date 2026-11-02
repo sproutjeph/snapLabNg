@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { entranceOrder } from "../stage/motion";
 import {
   createEntrance,
+  DROP_SLOTS,
+  entranceBeginReading,
+  entranceFrame,
   entranceNamed,
+  entranceOnJump,
   entranceReading,
   entranceRearm,
 } from "../stage/stageMotion";
@@ -128,5 +133,48 @@ describe("the entrance inside guided Watch", () => {
     expect(entranceNamed(e, "ammeter")).toBe(false);
     entranceReading(e, true);
     expect(entranceNamed(e, "ammeter")).toBe(true);
+  });
+
+  it("Replay (or Tap to start, or Back into step 1) still drops each part on its name", () => {
+    const e = createEntrance();
+    e.on = true;
+    e.endsAtBeat = 0;
+    const order = entranceOrder(DROP_SLOTS);
+    const parts = Object.fromEntries(DROP_SLOTS.map((p) => [p, { heightM: 0, k: 1 }])) as Record<
+      (typeof DROP_SLOTS)[number],
+      { heightM: number; k: number }
+    >;
+    // The first run: named, landed, handed over to the director.
+    entranceBeginReading(e);
+    for (const p of DROP_SLOTS) entranceNamed(e, p);
+    entranceFrame(e, order, 5, parts);
+    entranceOnJump(e, 1);
+    expect(e.on).toBe(false);
+    // Replay: seek(0) bumps the epoch and play() starts the first sentence, which arms the
+    // entrance; the stage's next frame sees the jump. That must not undo the arming.
+    entranceBeginReading(e);
+    entranceOnJump(e, 0);
+    expect(e).toMatchObject({ on: true, byVoice: true, landed: false });
+    expect(e.namedAtS).toEqual({});
+    entranceFrame(e, order, 0.5, parts);
+    expect(DROP_SLOTS.every((p) => parts[p].k === 0)).toBe(true);
+    // Only the part the voice names comes down; the others wait above the bench.
+    expect(entranceNamed(e, "ammeter")).toBe(true);
+    entranceFrame(e, order, 0.5, parts);
+    expect(parts.ammeter.k).toBeGreaterThan(0);
+    expect(parts.voltmeter.k).toBe(0);
+    // Paused on beat 0 (no reading started): a jump arms the entrance for the timed drop.
+    entranceOnJump(e, 1);
+    expect(e.on).toBe(false);
+    entranceOnJump(e, 0);
+    expect(e).toMatchObject({ on: true, byVoice: false });
+  });
+
+  it("keeps a hold that waits for the voice to be heard when the first sentence begins", () => {
+    const e = createEntrance();
+    e.on = true;
+    e.held = true;
+    entranceBeginReading(e);
+    expect(e.held).toBe(true);
   });
 });
