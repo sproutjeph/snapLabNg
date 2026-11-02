@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { ExaminerTurnRequest, type SnapEvent } from "@snaplab/contracts";
+import { ExaminerTurnRequest, type QuestionEvent, type SnapEvent } from "@snaplab/contracts";
 import { examinerQuestionById } from "@snaplab/rules";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -7,6 +7,7 @@ import { streamSSE } from "hono/streaming";
 import { StreamCache } from "./cache";
 import type { Config } from "./env";
 import { judgeAnswer, UnknownQuestionError } from "./examiner";
+import { runQuestion } from "./question";
 import { RateLimiter } from "./rateLimit";
 import { runSnap } from "./snap";
 import { EXAMINER_RESERVE_USD, SNAP_RESERVE_USD, SpendLedger } from "./spend";
@@ -38,6 +39,7 @@ export function createApp(
   const limiter = deps?.limiter ?? new RateLimiter(cfg.snapsPerHourPerIp);
   const examinerLimiter = deps?.examinerLimiter ?? new RateLimiter(cfg.examinerTurnsPerHourPerIp);
   const cache = new StreamCache();
+  const questionCache = new StreamCache<QuestionEvent>();
   const app = new Hono();
 
   app.get("/healthz", (c) => c.json({ ok: true, mode: cfg.mode, spend: ledger.summary() }));
@@ -143,6 +145,109 @@ export function createApp(
               fallback: "golden",
             });
             await emit({ type: "done", total_ms: 0 });
+          }
+        }
+      });
+    },
+  );
+
+  // Snap your question (docs/plans/snap-question.md): one or two JPEG photos of a printed practical
+  // question and/or its diagram. Spark reads it, SAM outlines the drawn parts.
+  app.post(
+    "/api/question",
+    bodyLimit({
+      maxSize: 2 * MAX_PHOTO_BYTES + 64 * 1024,
+      onError: (c) => c.json({ error: "photos too large" }, 413),
+    }),
+    async (c) => {
+      let form: Record<string, unknown>;
+      try {
+        form = await c.req.parseBody({ all: true });
+      } catch {
+        return c.json({ error: "send a multipart form" }, 400);
+      }
+      const sent = form.photos === undefined ? [] : [form.photos].flat();
+      const photos: Uint8Array[] = [];
+      for (const p of sent) {
+        if (!(p instanceof File) || p.size === 0 || p.size > MAX_PHOTO_BYTES) break;
+        const b = new Uint8Array(await p.arrayBuffer());
+        // Check the JPEG signature itself: the part's declared type is not reliable across runtimes.
+        if (!(b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff)) break;
+        photos.push(b);
+      }
+      if (photos.length < 1 || photos.length > 2 || photos.length !== sent.length) {
+        return c.json({ error: "send photos: one or two JPEGs, at most 600 KB each" }, 400);
+      }
+      const ip = clientIp(c, cfg);
+
+      return streamSSE(c, async (stream) => {
+        const emit = (e: QuestionEvent) =>
+          stream.writeSSE({ event: e.type, data: JSON.stringify(e) });
+        const finish = async (
+          stage: "input" | "rate_limit" | "budget",
+          message: string,
+          fallback: "app_question" | "retry_later",
+        ): Promise<void> => {
+          await emit({ type: "error", stage, message, fallback });
+          await emit({ type: "done", total_ms: 0 });
+        };
+        const abort = new AbortController();
+        stream.onAbort(() => abort.abort());
+        const signal = AbortSignal.any([
+          abort.signal,
+          c.req.raw.signal,
+          AbortSignal.timeout(SNAP_TIMEOUT_MS),
+        ]);
+
+        try {
+          if (!limiter.allow(ip)) {
+            return await finish(
+              "rate_limit",
+              "Too many snaps from here this hour. Use the app's question.",
+              "app_question",
+            );
+          }
+          const live = cfg.mode === "live";
+          // Fixtures mode replays the same recorded answers for any photo, so only live is cached.
+          const hashes = photos.map((p) => createHash("sha256").update(p).digest("hex"));
+          const key = live ? hashes.join(":") : null;
+          const cached = key ? questionCache.get(key) : undefined;
+          if (cached) {
+            await emit({ type: "accepted", request_id: randomUUID(), image_sha256: hashes });
+            await emit({ type: "cache_hit", source: "memory" });
+            for (const e of cached) if (e.type !== "accepted") await emit(e);
+            return;
+          }
+          if (live && !ledger.reserve(SNAP_RESERVE_USD)) {
+            return await finish(
+              "budget",
+              "The live AI budget is used up. Use the app's question.",
+              "app_question",
+            );
+          }
+
+          const pending: Promise<void>[] = [];
+          let settled = !live;
+          try {
+            const result = await runQuestion(cfg, photos, (e) => pending.push(emit(e)), signal);
+            const failed = signal.aborted || result.events.some((e) => e.type === "error");
+            if (live) {
+              // A stage that failed or was cut off may still have been billed: assume the worst.
+              ledger.settle(
+                SNAP_RESERVE_USD,
+                failed ? Math.max(result.costUsd, SNAP_RESERVE_USD) : result.costUsd,
+              );
+              settled = true;
+            }
+            if (key && !signal.aborted && result.events.some((e) => e.type === "question"))
+              questionCache.set(key, result.events);
+            await Promise.all(pending);
+          } finally {
+            if (!settled) ledger.settle(SNAP_RESERVE_USD, SNAP_RESERVE_USD);
+          }
+        } catch {
+          if (!stream.aborted) {
+            await finish("input", "Something went wrong reading this page.", "app_question");
           }
         }
       });
