@@ -102,3 +102,9 @@ Order: contracts PR → wave (lead API + fixture, Muse page, Gemini overlay) →
 - A metre bridge or blank photo gets the honest message with a way on. No dead ends.
 - Use the app's question works exactly as today; the five existing E2E scripts still pass; four checks green.
 - No key in the client; marks unchanged and only from `packages/rules`.
+
+## Progress
+- Nov 2: merged #131 (contracts), #132 (`/api/question`), #133 (snap page, Muse), #134 (live Q3B recording),
+  #135 (practical on her question), #136 (overlay, Gemini), #137 (Watch → guided). Walked in Chrome: Home → Snap your
+  question → Try a sample → Meta reads it → Build the bench → Watch (her words drive the bench).
+- Open: `scripts/e2e/snap.mjs`; a live Spark read takes ~40 s (fixtures mode replays the recording for any photo).
