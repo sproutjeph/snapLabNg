@@ -5,6 +5,7 @@ import "./desk.css";
 import "./paper.css";
 import { createGuidedWatch, type GuidedWatch, readingRefused } from "./guidedReading";
 import { createReadAloud, IDLE_VIEW, type ReadView } from "./readAloud";
+import { HerDiagram, PaperNote, WiredCaption } from "./SnapBits";
 import type { QuestionPaperProps } from "./types";
 
 // The question paper (docs/plans/exam-redesign.md, "The experience", step 2): the question typeset
@@ -111,6 +112,8 @@ export function QuestionPaper({
   onItemRead,
   onChoose,
   guided,
+  herDiagram,
+  note,
 }: QuestionPaperProps) {
   const [view, setView] = useState<ReadView>(IDLE_VIEW);
   const [muted, setMuted] = useState(voice.muted);
@@ -250,17 +253,20 @@ export function QuestionPaper({
                     <Said text={ins.text} view={view} index={i} />
                     {i === diagramAt && (
                       <span className="qp-diagram" inert>
+                        <HerDiagram photo={herDiagram} />
                         <CircuitDiagram
                           comparison={PRINTED}
                           highlight={view.naming}
                           caption={false}
                         />
+                        <WiredCaption photo={herDiagram} />
                       </span>
                     )}
                   </span>
                 </li>
               ))}
             </ol>
+            <PaperNote note={note} />
           </div>
 
           {needsTap ? (

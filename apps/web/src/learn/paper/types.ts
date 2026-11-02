@@ -20,6 +20,9 @@ export interface QuestionPaperProps {
   voice: VoiceGuide;
   /** Called as the voice names each item, so the stage can land it on the bench. */
   onItemRead?(part: PartId): void;
+  /** A snapped question: her diagram photo (shown beside ours) and a one-line note. */
+  herDiagram?: string | null | undefined;
+  note?: string | null | undefined;
   /** She chose how to go on. */
   onChoose(mode: PracticalMode): void;
   /**

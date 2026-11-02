@@ -299,3 +299,36 @@
     animation: none;
   }
 }
+
+/* Snap your question: the note, and her diagram photo beside ours. */
+.qp-note {
+  margin: 8px 0 0;
+  font-size: 0.85em;
+}
+
+.qp-note a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.qp-her {
+  margin: 0 0 8px;
+}
+
+.qp-her img {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  object-fit: contain;
+}
+
+.qp-her figcaption,
+.qp-wired {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8em;
+  text-align: center;
+  opacity: 0.8;
+}

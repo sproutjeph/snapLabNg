@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { CircuitDiagram } from "../wiring/CircuitDiagram";
 import { headings, Said } from "./QuestionPaper";
 import type { ReadView } from "./readAloud";
+import { HerDiagram, PaperNote, WiredCaption } from "./SnapBits";
 import type { PracticalQuestion } from "./types";
 import "./desk.css";
 import "./paper.css";
@@ -21,6 +22,9 @@ export interface GuidedPaperProps {
   comparison: DiagramComparison | null;
   /** The voice is reading this step's sentence: Skip shows. Omitted: no Skip. */
   onSkip?: (() => void) | undefined;
+  /** A snapped question: her diagram photo (beside ours) and a one-line note. */
+  herDiagram?: string | null | undefined;
+  note?: string | null | undefined;
 }
 
 function SkipButton({ onSkip }: { onSkip: () => void }) {
@@ -32,7 +36,14 @@ function SkipButton({ onSkip }: { onSkip: () => void }) {
 }
 
 /** The whole paper: heading, every step, the diagram under the step that points to it. */
-export function PaperSheet({ question, view, comparison, onSkip }: GuidedPaperProps) {
+export function PaperSheet({
+  question,
+  view,
+  comparison,
+  onSkip,
+  herDiagram,
+  note,
+}: GuidedPaperProps) {
   const items = useRef<(HTMLLIElement | null)[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   // Keep the step being done in view: the scroll box shows it a quarter of the way down.
@@ -80,17 +91,20 @@ export function PaperSheet({ question, view, comparison, onSkip }: GuidedPaperPr
                     <Said text={ins.text} view={view} index={i} />
                     {i === diagramAt && (
                       <span className="qp-diagram" inert>
+                        <HerDiagram photo={herDiagram} />
                         <CircuitDiagram
                           comparison={comparison}
                           highlight={view.naming}
                           caption={false}
                         />
+                        <WiredCaption photo={herDiagram} />
                       </span>
                     )}
                   </span>
                 </li>
               ))}
             </ol>
+            <PaperNote note={note} />
           </div>
           {onSkip ? (
             <footer className="qp-foot gp-foot">
