@@ -15,8 +15,25 @@
 }
 
 .hp-head {
+  position: relative;
   text-align: center;
   margin-bottom: 22px;
+}
+
+.hp-mute {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-height: var(--tap);
+}
+
+.hp-still {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .hp-brand {
@@ -232,6 +249,12 @@ a.hp-open:hover .hp-name {
   from {
     opacity: 0;
     transform: translateY(-10px) scale(0.94);
+  }
+}
+
+@media (max-width: 759px) {
+  .hp-head {
+    padding-top: 44px;
   }
 }
 
