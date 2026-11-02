@@ -1,6 +1,7 @@
 # Build log
 
 ## Nov 2 (Day 8)
+- Deploy moves to Google Cloud (`docs/plans/deploy-gcp.md`, replaces Fly): API on Cloud Run, site on Firebase Hosting. The web app reads `VITE_API_ORIGIN` (`apiUrl`/`wsUrl`), the API allows the site with CORS and a WebSocket Origin check from `ALLOWED_ORIGINS`, the Docker entrypoint tolerates a Cloud Storage mount, `firebase.json` added, `fly.toml` removed.
 - Guided demo (`docs/plans/guided-demo.md`): one Ohm's law flow anyone follows in under 2 minutes, Practise and Exam kept working end to end (the user's call).
   - Home: the welcome voice with first-tap fallback and a remembered Mute (#118, **built with Muse Code**, one fix round); a full-width Ohm's law hero card with the live 3D bench, the same parts as the practical, lazy and paused off-screen, with a baked poster (#120, #122); realistic stills from our own kits for the metre bridge and titration "Coming soon" cards, titration realism pass (#116).
   - `?practical=ohms-law&mode=guided`: the paper reads itself with Skip and Tap to start, then Watch plays a 2:19 script (#119); each apparatus drops as the reading names it, and Watch opens without a page load so speech starts on the click (#124, after the user's review); part-by-part identify with tags, Gemini's ReadingsBoard, GraphBoard and ConclusionCard (#117, Gemini), the bench framed beside the docked paper, slope arithmetic consistent as written (#123). (b)(ii) stops at the working (the user's decision: no expected answer before hand-in).

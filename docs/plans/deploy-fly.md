@@ -1,5 +1,7 @@
 # Deploy: one Fly.io app serves the site and the API
 
+> **Superseded (Nov 2)** by [deploy-gcp.md](deploy-gcp.md): the API runs on Cloud Run and the site on Firebase Hosting. Kept for history.
+
 ## Goal
 A deployable build: one always-on Fly.io machine serves the built web app and the Bun + Hono API from the same origin. Because the origin is shared, `/api/*` and the coming `/ws/examiner` WebSocket need no CORS. The spend ledger survives restarts and redeploys on a Fly volume, so the $20 / $5-a-day cap holds (docs/05 §2 Hosting: API, docs/09 MUST "Deployed URL with rate limits, spend cap and DEMO_MODE", docs/01 §0).
 

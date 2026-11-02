@@ -26,7 +26,9 @@ export interface Config {
   spendLedgerPath: string;
   snapsPerHourPerIp: number;
   examinerTurnsPerHourPerIp: number;
-  /** Trust fly-client-ip / x-forwarded-for for rate limiting (only behind a real proxy). */
+  /** Browser origins allowed to call /api/* and /ws/examiner cross-origin (ALLOWED_ORIGINS, comma list). Empty = same origin only. */
+  allowedOrigins: string[];
+  /** Trust x-forwarded-for for rate limiting (only behind a real proxy such as Cloud Run). */
   trustProxy: boolean;
   port: number;
   /** The built web app, served from the same origin by mountWebDist. */
@@ -64,6 +66,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     spendLedgerPath: fromRoot(env.SPEND_LEDGER_PATH ?? ".spend/ledger.json"),
     snapsPerHourPerIp: num(env.SNAPS_PER_HOUR_PER_IP, 10),
     examinerTurnsPerHourPerIp: num(env.EXAMINER_TURNS_PER_HOUR_PER_IP, 30),
+    allowedOrigins: (env.ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((o) => o.trim().replace(/\/+$/, ""))
+      .filter(Boolean),
     trustProxy: env.TRUST_PROXY === "1",
     port: num(env.PORT, 8787),
     webDistDir: fromRoot(env.WEB_DIST_DIR ?? "apps/web/dist"),

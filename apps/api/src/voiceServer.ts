@@ -34,10 +34,27 @@ function openUpstream(url: string): Upstream {
 
 function clientIp(req: Request, server: Server<SocketData>, cfg: Config): string {
   if (cfg.trustProxy) {
-    const h = req.headers.get("fly-client-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0];
+    // The last entry is the one Google's front end appended (the first can be forged).
+    const h = req.headers.get("x-forwarded-for")?.split(",").at(-1);
     if (h?.trim()) return h.trim();
   }
   return server.requestIP(req)?.address ?? "unknown";
+}
+
+/**
+ * Whether a WebSocket upgrade may proceed. With no ALLOWED_ORIGINS, anything (today's behaviour).
+ * Otherwise the Origin must be listed or share the request's own host.
+ */
+export function wsOriginAllowed(req: Request, allowed: string[]): boolean {
+  if (allowed.length === 0) return true;
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  if (allowed.includes(origin.replace(/\/+$/, ""))) return true;
+  try {
+    return new URL(origin).host === (req.headers.get("host") ?? new URL(req.url).host);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -51,6 +68,9 @@ export function voiceUpgrade(
   limiter: RateLimiter,
 ): Response | undefined | null {
   if (new URL(req.url).pathname !== VOICE_PATH) return null;
+  if (!wsOriginAllowed(req, cfg.allowedOrigins)) {
+    return new Response("Origin not allowed.", { status: 403 });
+  }
   if (!limiter.allow(clientIp(req, server, cfg))) {
     return new Response("Too many answers from here this hour.", { status: 429 });
   }

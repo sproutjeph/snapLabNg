@@ -1,4 +1,5 @@
 import { SnapEvent } from "@snaplab/contracts";
+import { apiUrl } from "../apiOrigin";
 import { parseSse } from "./sse";
 
 /**
@@ -16,7 +17,7 @@ export async function* streamSnap(
   form.set("photo", page, "page.jpg");
   form.set("width", String(width));
   form.set("height", String(height));
-  const res = await fetch("/api/snap", { method: "POST", body: form, signal });
+  const res = await fetch(apiUrl("/api/snap"), { method: "POST", body: form, signal });
   if (!res.ok || !res.body) {
     yield {
       type: "error",

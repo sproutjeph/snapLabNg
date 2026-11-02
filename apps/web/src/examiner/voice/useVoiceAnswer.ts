@@ -1,5 +1,6 @@
 import { VoiceServerMessage } from "@snaplab/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { wsUrl } from "../../apiOrigin";
 import { usePushToTalk } from "./usePushToTalk";
 
 /** The chunk's own bytes (little-endian PCM16), as a plain ArrayBuffer view for send(). */
@@ -56,8 +57,7 @@ export function useVoiceAnswer(onText: (text: string, final: boolean) => void) {
     setError(null);
     endPending.current = false;
     queue.current = [];
-    const scheme = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${scheme}://${location.host}/ws/examiner`);
+    const ws = new WebSocket(wsUrl("/ws/examiner"));
     ws.binaryType = "arraybuffer";
     wsRef.current = ws;
     ws.onopen = () => {

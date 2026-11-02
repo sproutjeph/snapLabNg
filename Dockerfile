@@ -24,9 +24,10 @@ COPY --from=build /app/packages/rules/node_modules ./packages/rules/node_modules
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/fixtures ./fixtures
 COPY --from=build /app/package.json ./package.json
-# No USER: the entrypoint starts as root so it can chown the root-owned Fly
-# volume at /data, then drops to bun (uid 1000) via setpriv before exec.
-RUN printf '%s\n' '#!/bin/sh' 'set -e' 'if [ "$(id -u)" = "0" ]; then' '  mkdir -p /data' '  chown bun:bun /data' '  exec setpriv --reuid=bun --regid=bun --clear-groups "$@"' 'fi' 'exec "$@"' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+# No USER: the entrypoint starts as root so it can chown a root-owned volume at /data,
+# then drops to bun (uid 1000) via setpriv before exec. A Cloud Storage FUSE mount
+# (mounted with uid/gid 1000) refuses chown, so that step must not fail the container.
+RUN printf '%s\n' '#!/bin/sh' 'set -e' 'if [ "$(id -u)" = "0" ]; then' '  mkdir -p /data' '  chown bun:bun /data 2>/dev/null || true' '  exec setpriv --reuid=bun --regid=bun --clear-groups "$@"' 'fi' 'exec "$@"' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 EXPOSE 8080
 CMD ["bun", "apps/api/src/index.ts"]

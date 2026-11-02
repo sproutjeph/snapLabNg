@@ -1,5 +1,6 @@
 import { ExaminerTurnResponse } from "@snaplab/contracts";
 import type { PickedQuestion } from "@snaplab/rules";
+import { apiUrl } from "../apiOrigin";
 import type { ExaminerConsoleProps } from "./types";
 
 /**
@@ -13,7 +14,7 @@ export function makeAsk(
   return async ({ question, answer, language }, signal) => {
     const i = list.findIndex((p) => p.question.id === question.id);
     if (i === -1) throw new Error(`question ${question.id} is not in this list`);
-    const res = await fetchImpl("/api/examiner", {
+    const res = await fetchImpl(apiUrl("/api/examiner"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

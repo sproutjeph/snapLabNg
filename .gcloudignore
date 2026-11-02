@@ -1,0 +1,14 @@
+# What `gcloud run deploy --source .` uploads to Cloud Build (docs/plans/deploy-gcp.md).
+# Secrets and local state never leave this machine.
+.env*
+.spend/
+dataset/
+.shots/
+.claude/
+.gemini/
+.git/
+**/node_modules/
+**/dist/
+coverage/
+.cache/
+/*.png

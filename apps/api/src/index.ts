@@ -11,7 +11,7 @@ const cfg = loadConfig();
 const ledger = new SpendLedger(cfg.spendLedgerPath, cfg.spendCapUsd, cfg.spendDailyCapUsd);
 const examinerLimiter = new RateLimiter(cfg.examinerTurnsPerHourPerIp);
 const app = createApp(cfg, { ledger, examinerLimiter });
-// After every API route: the site and the API share one origin (docs/plans/deploy-fly.md).
+// After every API route: the image also serves the site from the same origin (the Firebase site calls the API cross-origin, docs/plans/deploy-gcp.md).
 mountWebDist(app, cfg.webDistDir);
 console.log(`snaplab api on :${cfg.port} (mode ${cfg.mode})`);
 
