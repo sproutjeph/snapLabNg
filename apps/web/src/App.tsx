@@ -17,6 +17,9 @@ const QualityPreview = lazy(() => import("./quality/QualityPreview"));
 const MicPreview = lazy(() => import("./examiner/voice/MicPreview"));
 const PwaPreview = lazy(() => import("./pwa/PwaPreview"));
 const HomePreview = lazy(() => import("./home/HomePreview"));
+const Home3DPreview = lazy(() =>
+  import("./home/HomeBench3D").then((m) => ({ default: m.HomeBench3DPreview })),
+);
 const AboutPreview = lazy(() => import("./about/AboutPreview"));
 const LitePreview = lazy(() => import("./lite/LitePreview"));
 const OhmsLawKitPreview = lazy(() => import("./apparatus/ohms-law/KitPreview"));
@@ -44,6 +47,7 @@ export function App() {
   const params = new URLSearchParams(location.search);
   const isLitePreview = params.get("lite") === "1";
   const isHomePreview = params.get("home") === "1";
+  const isHome3DPreview = params.get("home3d") === "1";
   const isMeterBridgeKit = params.get("kit") === "meter-bridge";
   const isTitrationKit = params.get("kit") === "titration";
   const isOhmsLawKit = params.get("kit") === "ohms-law";
@@ -102,6 +106,8 @@ export function App() {
           <AboutPreview />
         ) : isMicPreview ? (
           <MicPreview />
+        ) : isHome3DPreview ? (
+          <Home3DPreview />
         ) : isHomePreview ? (
           <HomePreview />
         ) : isQualityPreview ? (
