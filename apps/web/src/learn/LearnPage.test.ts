@@ -6,6 +6,7 @@ import {
   guidedFrom,
   homeMuted,
   initialRun,
+  newestRow,
   nextRun,
   paperFirst,
   persistMute,
@@ -256,5 +257,18 @@ describe("the guided demo's flow (?mode=guided)", () => {
     persistMute(voice);
     voice.muted = true;
     expect(voice.muted).toBe(true);
+  });
+});
+
+describe("the guided demonstration's newest table row", () => {
+  it("is null on a blank record and follows the last row the actor has written to", () => {
+    let rec = emptyOhmsLawRecord("practice");
+    expect(newestRow(rec)).toBeNull();
+    rec = setCell(rec, 0, "R", "0");
+    expect(newestRow(rec)).toBe(0);
+    rec = setCell(rec, 1, "I", "0.51");
+    expect(newestRow(rec)).toBe(1);
+    rec = setCell(rec, 4, "V", "1.2");
+    expect(newestRow(rec)).toBe(4);
   });
 });

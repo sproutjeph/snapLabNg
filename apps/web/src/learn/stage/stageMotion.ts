@@ -37,6 +37,37 @@ export type ChipSink = (
   settled: boolean,
 ) => void;
 
+/** The most tags one beat shows at once (a part each, and the leads). */
+export const MAX_TAGS = 8;
+
+/** Where one tag's dot stands on the canvas, in px; Choreo writes it every frame. */
+export interface TagPoint {
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
+/**
+ * The guided demonstration's part tags (Beat.tags): the beat's specs, set when the beat changes,
+ * and their screen points, written every frame. StageTags registers the two callbacks: `onSpecs`
+ * (new words, a React render) and `onFrame` (move the DOM, no render).
+ */
+export interface StageTagsState {
+  specs: readonly CalloutSpec[];
+  points: TagPoint[];
+  onSpecs: (() => void) | null;
+  onFrame: (() => void) | null;
+}
+
+export function createStageTags(): StageTagsState {
+  return {
+    specs: [],
+    points: Array.from({ length: MAX_TAGS }, () => ({ x: 0, y: 0, visible: false })),
+    onSpecs: null,
+    onFrame: null,
+  };
+}
+
 export interface StageMotion {
   /** Each part's drop: height above its place, and k (0 = not on the bench yet, 1 = landed). */
   parts: Record<DropSlot, DropPose>;
@@ -61,6 +92,8 @@ export interface StageMotion {
   /** Bumped by every seek, previous, next and replay: the stage restarts the beat's clock. */
   epoch: number;
   chip: ChipSink | null;
+  /** The guided identify beats' part tags. */
+  tags: StageTagsState;
   /**
    * Dev only (shots): pause the director once this many beat seconds of the current beat have
    * played (`&freeze=`), so a screenshot shows one moment of a beat, whatever the frame rate.
@@ -191,6 +224,7 @@ export function createStageMotion(): StageMotion {
     moving: false,
     epoch: 0,
     chip: null,
+    tags: createStageTags(),
     freezeAtS: null,
     leads: createLeadPicks(),
     remove: null,

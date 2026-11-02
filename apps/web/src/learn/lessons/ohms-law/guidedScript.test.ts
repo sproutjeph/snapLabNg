@@ -1,9 +1,11 @@
 import { demoSeedFor } from "@snaplab/engine";
 import { describe, expect, it } from "vitest";
+import { watchPose } from "../../LearnPage";
 import { emptyOhmsLawRecord } from "../../readings/record";
 import { slopeNumber } from "../../script/actor";
 import { createDirector } from "../../script/createDirector";
 import { BASE_RATE } from "../../script/timing";
+import { IDENTIFY_SHOT_NAMES, isIdentifyShot } from "../../stage/shots";
 import { estimateSpeechS } from "../../voice/chunk";
 import type { VoiceGuide } from "../../voice/types";
 import { createOhmsLawBench } from "../../wiring/bench";
@@ -102,10 +104,53 @@ describe("the guided script's shape", () => {
     }
   });
 
-  it("keeps the identify stage first, as one beat that enters every part", () => {
+  it("identifies the parts one by one, each framed and tagged, then all together", () => {
     const identify = G.beats.filter((b) => b.stage === "identify");
-    expect(identify).toHaveLength(1);
+    expect(G.beats.slice(0, identify.length)).toEqual(identify);
+    // E, K, A, V, R, wire XY and the leads, then every tag at once.
+    expect(identify.map((b) => b.id)).toEqual([...IDENTIFY_SHOT_NAMES, "id-all"]);
+    const single = identify.slice(0, -1);
+    expect(single.map((b) => b.tags?.[0]?.anchor)).toEqual([
+      "cells",
+      "key",
+      "ammeter",
+      "voltmeter",
+      "box",
+      "wire",
+      "leads",
+    ]);
+    for (const b of single) {
+      expect(b.tags, b.id).toHaveLength(1);
+      expect(isIdentifyShot(b.id), b.id).toBe(true);
+      // The one plain line is on the tag; the voice and the caption say only the name.
+      expect(b.tags?.[0]?.sub, b.id).toBeTruthy();
+      expect(words(b.tags?.[0]?.sub ?? ""), b.id).toBeLessThanOrEqual(14);
+      expect(words(b.say), b.id).toBeLessThanOrEqual(3);
+      expect(b.callouts, b.id).toBeUndefined();
+    }
+    const all = identify[identify.length - 1];
+    expect(all?.tags?.map((t) => t.anchor)).toEqual(single.map((b) => b.tags?.[0]?.anchor));
+    expect(all?.tags?.every((t) => t.sub === undefined)).toBe(true);
+    // The parts drop in on the first beat only, so a seek to any later beat finds them down.
+    expect(identify.filter((b) => b.act?.kind === "enter").map((b) => b.id)).toEqual(["id-cells"]);
     expect(G.beats[0]?.act?.kind).toBe("enter");
+  });
+
+  it("words the ammeter and voltmeter tags as series and parallel", () => {
+    const line = (id: string) => G.beats.find((b) => b.id === id)?.tags?.[0]?.sub;
+    expect(line("id-ammeter")).toBe("Ammeter A: measures the current; it goes in series.");
+    expect(line("id-voltmeter")).toBe(
+      "Voltmeter V: measures the p.d. across XY; it goes in parallel.",
+    );
+    expect(line("id-cells")).toBe("Cells E: drive the current.");
+  });
+
+  it("frames each identify beat with its own shot and the rest on the bench", () => {
+    for (const b of G.beats) {
+      const pose = watchPose(b, null);
+      if (b.stage === "identify" && b.id !== "id-all") expect(pose, b.id).toBe(b.id);
+      else expect(isIdentifyShot(pose), b.id).toBe(false);
+    }
   });
 
   it("makes all 7 leads, in WAEC order", () => {
@@ -206,6 +251,7 @@ describe("the guided script, played by the director", () => {
     // The key is open at the end, as it is between readings.
     expect(r.bench.visual.current.keyClosed).toBe(false);
     // About two minutes at 1x, with the voice taking as long as the estimate.
+    console.log("GUIDED_SECONDS", seconds);
     expect(seconds).toBeGreaterThan(100);
     expect(seconds).toBeLessThan(145);
   }, 60_000);

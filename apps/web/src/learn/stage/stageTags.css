@@ -1,0 +1,116 @@
+/* The guided identify beats' part tags (StageTags.tsx): a ringed dot on the part, a paper card
+   beside it. StageTags moves both with transforms every frame. */
+
+.gt-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gt-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+.gt-tag[data-on="0"] {
+  visibility: hidden;
+}
+
+.gt-leader {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--paper);
+}
+
+.gt-dot {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2.6px solid var(--paper);
+  background: var(--ink);
+  box-shadow: 0 0 0 1.2px var(--ink-2);
+}
+
+.gt-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(300px, 62vw);
+  padding: 9px 14px 10px;
+  border: 1px solid var(--ink-2);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow:
+    0 2px 6px rgba(40, 30, 20, 0.14),
+    3px 4px 0 rgba(91, 64, 39, 0.16);
+}
+
+.gt-name {
+  font: 600 17px / 1.1 var(--f-cond);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gt-line {
+  font: 400 17px / 1.3 var(--f-body);
+}
+
+/* With every tag at once the cards are names only: smaller, so they stay clear of each other. */
+.gt-tag:not([data-lone]) .gt-card {
+  padding: 6px 11px;
+}
+
+.gt-tag:not([data-lone]) .gt-name {
+  font-size: 15px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gt-tag[data-on="1"] .gt-card,
+  .gt-tag[data-on="1"] .gt-dot {
+    animation: gt-pop 0.28s ease-out both;
+  }
+}
+
+@keyframes gt-pop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .gt-name {
+    font-size: 15px;
+  }
+
+  .gt-line {
+    font-size: 15px;
+  }
+
+  .gt-card {
+    max-width: min(240px, 66vw);
+    padding: 7px 11px 8px;
+  }
+}

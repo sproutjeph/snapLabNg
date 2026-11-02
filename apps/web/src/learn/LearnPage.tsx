@@ -12,7 +12,9 @@ import {
 import { createLabAudio } from "../audio/labAudio";
 import { QualityProvider, useQuality } from "../quality/QualityProvider";
 import { e2eOn, installE2E, type SnaplabE2E, speedFrom } from "./e2e";
+import { GraphBoard } from "./graph/GraphBoard";
 import { GraphSheet } from "./graph/GraphSheet";
+import { emptyGraph } from "./graph/model";
 import { guidedConclusionLines, OHMS_LAW_GUIDED_SCRIPT } from "./lessons/ohms-law/guidedScript";
 import { OHMS_LAW_LESSON } from "./lessons/ohms-law/lesson";
 import { OHMS_LAW_SCRIPT } from "./lessons/ohms-law/script";
@@ -26,6 +28,7 @@ import { useStageNav } from "./player/useStageNav";
 import { OhmsLawNotebook } from "./readings/OhmsLawNotebook";
 import { useParallaxNote } from "./readings/parallax";
 import { clampEye, type LoupeTarget, MAX_EYE_DEG, type RuleEnd } from "./readings/poses";
+import { ReadingsBoard } from "./readings/ReadingsBoard";
 import { addRow, emptyOhmsLawRecord, setCell } from "./readings/record";
 import { benchTruthForE2E, handIn } from "./results/handIn";
 import { Results } from "./results/Results";
@@ -34,6 +37,8 @@ import type { ResultsProps } from "./results/types";
 import { plugMoves, slopeNumber } from "./script/actor";
 import { createDirector, type DirectorHandle } from "./script/createDirector";
 import type { Beat, DirectorOptions } from "./script/types";
+import { dockedCovered, dockForStage, type GuidedDock } from "./shell/dock";
+import { GuidedDockPanel } from "./shell/GuidedDock";
 import GuidedEnd from "./shell/GuidedEnd";
 import LessonShell, { type GuideState, type PopupId, type ShellTab } from "./shell/LessonShell";
 import { creditFromSource } from "./shell/StatusCard";
@@ -41,6 +46,8 @@ import { BenchTools } from "./stage/BenchTools";
 import { LeadRemove } from "./stage/LeadRemove";
 import { Stage } from "./stage/Stage";
 import { StageChip } from "./stage/StageChip";
+import { StageTags } from "./stage/StageTags";
+import { isIdentifyShot } from "./stage/shots";
 import {
   createStageMotion,
   entranceNamed,
@@ -128,6 +135,18 @@ export function practicalFrom(search: URLSearchParams): PracticalMode {
   return search.get("practical") === "ohms-law" ? "watch" : "practice";
 }
 
+/** The line under the guided graph's slope working. */
+const SLOPE_MEANING = "The slope is the resistance of wire XY.";
+
+/** The newest table row the demonstration has written to, or null before the first. */
+export function newestRow(record: Pick<OhmsLawRecord, "rows">): number | null {
+  for (let i = record.rows.length - 1; i >= 0; i--) {
+    const r = record.rows[i];
+    if (r && (r.R.text_as_written || r.I.text_as_written || r.V.text_as_written)) return i;
+  }
+  return null;
+}
+
 /** The guided demo: ?practical=ohms-law&mode=guided. */
 export function guidedFrom(search: URLSearchParams): boolean {
   return search.get("practical") === "ohms-law" && search.get("mode") === "guided";
@@ -208,6 +227,8 @@ export function urlForRun(href: string, mode: PracticalMode, seed: number, guide
  * of the same kind.
  */
 export function watchPose(beat: Beat | undefined, loupe: string | null): string {
+  // The guided identify beats each frame one part: the beat's id names the shot (stage/shots.ts).
+  if (beat && isIdentifyShot(beat.id)) return beat.id;
   if (loupe === "ammeter" || loupe === "voltmeter") return "readings";
   if (loupe === "rule") return "wire";
   const act = beat?.act?.kind;
@@ -613,11 +634,6 @@ function LearnScreen({
   const [guide, setGuide] = useState<GuideState>("peek");
   const framedGuide: GuideState = tab === "instructions" ? guide : "open";
   const caption = practical !== "exam" && !paper && director.state.caption !== "";
-  // Where the shell's always-on chrome covers the canvas, for the stage's camera.
-  const covered = useCallback(
-    (w: number, h: number) => playerCovered(w, h, { guide: framedGuide, caption }),
-    [framedGuide, caption],
-  );
   const [record, setRecordState] = useState<OhmsLawRecord>(() => live.record);
   // Her record as of her last keystroke (the E2E hook may type twice before React renders).
   const recordRef = useRef(record);
@@ -737,6 +753,31 @@ function LearnScreen({
   const handedIn = mode === "exam" && results !== null;
 
   const stepKey = lesson.steps[stepIndex]?.key;
+  // The guided demo docks the paper while it reads, then the readings table and the graph; the
+  // camera frames the bench in what they leave (shell/dock.ts).
+  const dock: GuidedDock | null = !guided
+    ? null
+    : paper
+      ? popup === "question"
+        ? "paper"
+        : null
+      : watch
+        ? director.state.finished
+          ? "end"
+          : dockForStage(stepKey)
+        : null;
+  // Where the shell's always-on chrome and the docked panel cover the canvas, for the stage's camera.
+  const covered = useCallback(
+    (w: number, h: number) =>
+      dockedCovered(
+        playerCovered(w, h, { guide: framedGuide, caption }),
+        dock,
+        w,
+        h,
+        calloutLayer.current?.clientHeight || h,
+      ),
+    [framedGuide, caption, dock],
+  );
   // Identify mode: on the Identify step (Practise), a tap on any item opens its card.
   const [card, setCard] = useState<IdentifyCard | null>(null);
   const identifying = practical === "practice" && !paper && stepKey === "identify";
@@ -779,11 +820,11 @@ function LearnScreen({
   // Watch: the graph paper comes out on the Plot and Slope steps and goes away on the next one.
   // (In Practise and Exam she opens it herself.)
   useEffect(() => {
-    if (!watch || paper) return;
+    if (!watch || paper || guided) return;
     const move = watchGraphMove(watch, stepKey, popupRef.current, graphAuto.current);
     graphAuto.current = move.auto;
     setPopupState(move.popup);
-  }, [watch, paper, stepKey]);
+  }, [watch, paper, guided, stepKey]);
   // The stage draws its own rings (both ends of the beat's lead); the pencil-grey ghost leads
   // still guide the Connect step in Practise.
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs it after every bench change.
@@ -935,6 +976,21 @@ function LearnScreen({
                 stageTitles={STAGE_TITLES}
                 onHandIn={watch || results ? undefined : doHandIn}
               />
+              {guided && watch && (dock === "readings" || dock === "graph") ? (
+                <GuidedDockPanel kind={dock}>
+                  {dock === "readings" ? (
+                    <ReadingsBoard
+                      record={director.demoRecord}
+                      highlight={newestRow(director.demoRecord)}
+                    />
+                  ) : (
+                    <GraphBoard
+                      graph={director.demoRecord.graph ?? emptyGraph()}
+                      meaning={director.demoRecord.graph?.slope_as_written ? SLOPE_MEANING : null}
+                    />
+                  )}
+                </GuidedDockPanel>
+              ) : null}
               {practical === "practice" ? (
                 <button
                   type="button"
@@ -1050,6 +1106,7 @@ function LearnScreen({
             practical={paper ? "watch" : practical}
           />
           <StageChip motion={motion} layer={calloutLayer} />
+          {guided ? <StageTags motion={motion} layer={calloutLayer} covered={covered} /> : null}
           {watch || paper ? null : (
             <LeadRemove
               motion={motion}

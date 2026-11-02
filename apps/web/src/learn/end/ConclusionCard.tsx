@@ -21,8 +21,9 @@ export function ConclusionCard({ title, lines, onReplay, onHome }: ConclusionCar
         {title}
       </h2>
       <ul className="cc-lines">
-        {lines.map((line) => (
-          <li key={line} className="cc-line">
+        {lines.map((line, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the lines are a fixed ordered list; two may read alike
+          <li key={i} className="cc-line">
             {line}
           </li>
         ))}

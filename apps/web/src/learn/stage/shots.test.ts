@@ -18,6 +18,9 @@ import {
   BENCH_SHOT,
   frameCorners,
   freeArea,
+  IDENTIFY_SHOT_NAMES,
+  identifyCorners,
+  isIdentifyShot,
   phoneBenchCorners,
   restBounds,
   SHOT_FOR_POSE,
@@ -289,5 +292,55 @@ describe("the sloping-front meter", () => {
       const d = dialPx(cam, kind, width, height);
       expect(d.h / d.w, kind).toBeGreaterThanOrEqual(0.9);
     }
+  });
+});
+
+describe("the guided identify shots", () => {
+  it("are taken by a guided beat's pose, and by nothing else", () => {
+    for (const name of IDENTIFY_SHOT_NAMES) {
+      expect(isIdentifyShot(name)).toBe(true);
+      expect(shotForPose(name, false, true)).toBe(name);
+      expect(shotForPose(name, true, true)).toBe(name);
+      // Practise and Exam have no such pose: they fall back to the bench.
+      expect(shotForPose(name, false, false)).toBe("bench");
+    }
+    expect(isIdentifyShot("bench")).toBe(false);
+    expect(isIdentifyShot(undefined)).toBe(false);
+  });
+
+  it("hold their part, well inside the free area, on a laptop and on a phone", () => {
+    const slotOf = {
+      "id-cells": "cells",
+      "id-key": "key",
+      "id-ammeter": "ammeter",
+      "id-voltmeter": "voltmeter",
+      "id-box": "box",
+      "id-wire": "wire",
+    } as const;
+    for (const screen of SCREENS) {
+      const { width, height } = canvasFor(screen.w, screen.h);
+      const portrait = layoutFor(screen.w, screen.h).mode === "portrait";
+      const covered = playerCovered(screen.w, screen.h, { guide: "peek" });
+      const free = freeArea(covered, width, height);
+      for (const name of IDENTIFY_SHOT_NAMES) {
+        const shot = stageShot(name, covered, width, height, portrait);
+        expect(shot.id).toBe(name);
+        expect(Number.isFinite(shot.spanM) && shot.spanM > 0, `${screen.name} ${name}`).toBe(true);
+        if (name === "id-leads") continue;
+        const cam = lookCamera(shot, covered, width, height);
+        for (const p of slotCorners(slotOf[name])) {
+          const { x, y } = toPx(cam, p, width, height);
+          expect(x, `${screen.name} ${name} x`).toBeGreaterThan(free.left);
+          expect(x, `${screen.name} ${name} x`).toBeLessThan(free.left + free.width);
+          expect(y, `${screen.name} ${name} y`).toBeGreaterThan(free.top);
+          expect(y, `${screen.name} ${name} y`).toBeLessThan(free.top + free.height);
+        }
+      }
+    }
+  });
+
+  it("frame a small part in no tighter a patch than a half metre wide", () => {
+    const xs = identifyCorners("id-key").map((c) => c[0]);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThanOrEqual(0.5 - 1e-9);
   });
 });

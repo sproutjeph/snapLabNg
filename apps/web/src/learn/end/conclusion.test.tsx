@@ -64,4 +64,20 @@ describe("ConclusionCard", () => {
     (homeBtn.props.onClick as () => void)();
     expect(onHome).toHaveBeenCalledTimes(1);
   });
+
+  it("renders two identical lines without a duplicate-key clash", () => {
+    const errors: unknown[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...a) => void errors.push(a));
+    const html = renderToStaticMarkup(
+      createElement(ConclusionCard, {
+        title: "T",
+        lines: ["Same.", "Same."],
+        onReplay: () => {},
+        onHome: () => {},
+      }),
+    );
+    spy.mockRestore();
+    expect(html.match(/class="cc-line"/g)).toHaveLength(2);
+    expect(errors).toEqual([]);
+  });
 });

@@ -22,12 +22,14 @@ import {
   SHAKE_S,
   springStep,
 } from "./motion";
+import { restBounds } from "./shots";
 import {
   chipSpecAt,
   clearBench,
   DROP_SLOTS,
   entranceFrame,
   fillBench,
+  MAX_TAGS,
   type StageMotion,
   stageBusy,
 } from "./stageMotion";
@@ -59,6 +61,15 @@ function slotOf(anchor: PartId | TerminalId): DropSlot | null {
   const part: string = isTerminal(anchor) ? TERMINAL_PART[anchor] : anchor;
   return isDrop(part) ? part : null;
 }
+
+/** No tags: a beat without any. */
+const NO_TAGS: readonly CalloutSpec[] = [];
+
+/** The leads' tag stands over the middle of the leads lying in front, at plug height. */
+const LEADS_ANCHOR: readonly [number, number, number] = (() => {
+  const r = restBounds();
+  return [(r.x0 + r.x1) / 2, r.h, (r.z0 + r.z1) / 2];
+})();
 
 /** The chip's settled tolerance: px of distance and px/s of speed. */
 const CHIP_REST_PX = 0.5;
@@ -168,6 +179,9 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
       // One chip: the beat's own callout, or the last one before it in the same stage. Worked
       // out from the script, so a seek shows the same chip as playing there.
       k.spec = chipSpecAt(script.beats, s.beat);
+      // The beat's part tags (guided identify): only its own, never carried on.
+      m.tags.specs = beat?.tags ?? NO_TAGS;
+      m.tags.onSpecs?.();
     }
     if (s.playing && !s.finished) k.t += dt * s.speed;
     if (m.freezeAtS !== null && s.playing && k.t >= m.freezeAtS - 1e-6) {
@@ -300,6 +314,40 @@ export function Choreo({ director, bench, motion }: ChoreoProps) {
         m.chip(k.cx.x, k.cy.x, spec?.label ?? "", false, true);
       }
     }
+
+    // ---- Part tags: each beat's, projected to canvas px every frame (the camera is easing) ----
+    const tags = m.tags;
+    // None under the question paper (its entrance is on) or in Exam.
+    const tagCount = s.mode === "exam" || entrance.on ? 0 : Math.min(tags.specs.length, MAX_TAGS);
+    for (let i = 0; i < MAX_TAGS; i++) {
+      const spec = tags.specs[i];
+      const pt = tags.points[i];
+      if (!pt) continue;
+      if (!spec || i >= tagCount) {
+        pt.visible = false;
+        continue;
+      }
+      const slot = slotOf(spec.anchor);
+      let ok = true;
+      if (slot) {
+        const [x, y, z] = PART_ANCHOR[slot];
+        ok = m.parts[slot].k > 0;
+        // Most of the way up: on the case of a meter, not at the back edge of its top.
+        _p.set(x, y * 0.8 + m.parts[slot].heightM, z);
+      } else if (spec.anchor === "leads") {
+        const lead = m.restLeads[0];
+        ok = lead !== undefined && lead.k > 0;
+        _p.set(LEADS_ANCHOR[0], LEADS_ANCHOR[1] + (lead?.heightM ?? 0), LEADS_ANCHOR[2]);
+      } else ok = false;
+      if (ok) {
+        _p.project(state.camera);
+        ok = _p.z < 1;
+        pt.x = ((_p.x + 1) / 2) * state.size.width;
+        pt.y = ((1 - _p.y) / 2) * state.size.height;
+      }
+      pt.visible = ok;
+    }
+    tags.onFrame?.();
 
     // Paused, nothing on the bench moves: the loop may rest even mid-drop or mid-draw.
     const playing = s.playing && !s.finished && s.mode !== "exam";

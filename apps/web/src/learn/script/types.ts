@@ -64,6 +64,12 @@ export interface Beat {
   /** A LookShot.id from the script's shots. */
   shot: string;
   callouts?: readonly CalloutSpec[];
+  /**
+   * Part tags (guided Watch's identify beats): each names a part on the bench, with `sub` as its
+   * one plain line when set, and all of them stay on screen for the beat. Not carried to the next
+   * beat, and separate from the one `callouts` chip.
+   */
+  tags?: readonly CalloutSpec[];
   focus?: readonly PartId[];
   act?: ActorAction;
   /** Practise waits for this. */
