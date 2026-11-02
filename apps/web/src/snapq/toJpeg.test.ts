@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jpegDimensions, MAX_LONG_SIDE, toJpeg } from "./toJpeg";
+import { jpegDimensions, MAX_JPEG_BYTES, MAX_LONG_SIDE, toJpeg } from "./toJpeg";
 
 describe("jpegDimensions", () => {
   it("caps the long side at 2048 px and keeps the aspect", () => {
@@ -50,5 +50,79 @@ describe("toJpeg", () => {
     expect(canvasW).toBe(2048);
     expect(canvasH).toBe(1024);
     expect(drawn).toEqual([{ w: 2048, h: 1024 }]);
+  });
+
+  it("steps quality down, then to 1600 px, while the JPEG is over 1.4 MB", async () => {
+    const qualities: (number | undefined)[] = [];
+    let canvasW = 0;
+    const sizeFor = (quality: number | undefined) => {
+      if (canvasW <= 1600) return 500_000;
+      if (quality === 0.85) return 2_000_000;
+      if (quality === 0.75) return 1_600_000;
+      return MAX_JPEG_BYTES + 1;
+    };
+    const fakeCanvas = {
+      get width() {
+        return canvasW;
+      },
+      set width(v: number) {
+        canvasW = v;
+      },
+      height: 0,
+      getContext: () => ({ drawImage: () => {} }),
+      toBlob: (cb: (b: Blob | null) => void, type: string, quality?: number) => {
+        qualities.push(quality);
+        cb(new Blob([new Uint8Array(sizeFor(quality))], { type }));
+      },
+    };
+    vi.stubGlobal("createImageBitmap", async () => ({
+      width: 4096,
+      height: 2048,
+      close: () => {},
+    }));
+    vi.stubGlobal("document", { createElement: () => fakeCanvas });
+    vi.stubGlobal("ImageBitmap", class {});
+
+    const out = await toJpeg(new Blob(["png"], { type: "image/png" }));
+    expect(qualities).toEqual([0.85, 0.75, 0.65, 0.65]);
+    expect(canvasW).toBe(1600);
+    expect(out.size).toBeLessThanOrEqual(MAX_JPEG_BYTES);
+  });
+
+  it("falls back to the <img> decode when createImageBitmap throws", async () => {
+    let canvasW = 0;
+    const fakeCanvas = {
+      get width() {
+        return canvasW;
+      },
+      set width(v: number) {
+        canvasW = v;
+      },
+      height: 0,
+      getContext: () => ({ drawImage: () => {} }),
+      toBlob: (cb: (b: Blob | null) => void, type: string) => cb(new Blob(["jpeg"], { type })),
+    };
+    class FakeImage {
+      naturalWidth = 2000;
+      naturalHeight = 1000;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_v: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    vi.stubGlobal("createImageBitmap", async () => {
+      throw new Error("unsupported");
+    });
+    vi.stubGlobal("document", { createElement: () => fakeCanvas });
+    vi.stubGlobal("Image", FakeImage);
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:mock",
+      revokeObjectURL: () => {},
+    });
+
+    const out = await toJpeg(new Blob(["png"], { type: "image/png" }));
+    expect(out.type).toBe("image/jpeg");
+    expect(canvasW).toBe(2000);
   });
 });

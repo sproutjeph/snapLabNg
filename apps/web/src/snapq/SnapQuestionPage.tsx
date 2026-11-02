@@ -103,7 +103,6 @@ export function ResultPanel({
   onSnapAgain,
 }: ResultPanelProps) {
   if (question?.experiment === "ohms_law_vi") {
-    const parts = question.diagram.parts;
     return (
       <section className="sq-result" data-testid="snapq-result-ohms">
         <p className="xp-caps">Your question</p>
@@ -113,19 +112,6 @@ export function ResultPanel({
         ) : null}
         {question.title_as_printed ? (
           <p className="sq-source">{question.title_as_printed}</p>
-        ) : null}
-        {parts.length > 0 ? (
-          <>
-            <h3 className="sq-sub">Parts found in your diagram</h3>
-            <ul className="sq-parts">
-              {parts.map((part) => (
-                <li key={`${part.kind}-${part.label_as_printed ?? "part"}-${part.box.x0}`}>
-                  {part.label_as_printed ? `${part.label_as_printed} · ` : ""}
-                  {KIND_NAME[part.kind] ?? part.kind}
-                </li>
-              ))}
-            </ul>
-          </>
         ) : null}
         <div className="sq-actions">
           <button
@@ -212,18 +198,15 @@ export default function SnapQuestionPage({ stream = streamQuestion }: SnapQuesti
   }, []);
 
   const addBlob = (blob: Blob) => {
-    setPhotos((prev) => {
-      if (prev.length >= 2) return prev;
-      return [...prev, { blob, url: URL.createObjectURL(blob) }];
-    });
+    if (photosRef.current.length >= 2) return;
+    const entry = { blob, url: URL.createObjectURL(blob) };
+    setPhotos((prev) => (prev.length >= 2 ? prev : [...prev, entry]));
   };
 
   const removePhoto = (index: number) => {
-    setPhotos((prev) => {
-      const gone = prev[index];
-      if (gone) URL.revokeObjectURL(gone.url);
-      return prev.filter((_, i) => i !== index);
-    });
+    const gone = photosRef.current[index];
+    if (gone) URL.revokeObjectURL(gone.url);
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const onCameraCapture = (canvas: HTMLCanvasElement) => {
@@ -263,10 +246,9 @@ export default function SnapQuestionPage({ stream = streamQuestion }: SnapQuesti
         if (!res.ok) throw new Error(`sample ${res.status}`);
         blobs.push(await toJpeg(await res.blob()));
       }
-      setPhotos((prev) => {
-        for (const p of prev) URL.revokeObjectURL(p.url);
-        return blobs.map((blob) => ({ blob, url: URL.createObjectURL(blob) }));
-      });
+      const entries = blobs.map((blob) => ({ blob, url: URL.createObjectURL(blob) }));
+      for (const p of photosRef.current) URL.revokeObjectURL(p.url);
+      setPhotos(entries);
     } catch {
       setPickError("Could not load the sample. Snap your own question instead.");
     } finally {
@@ -303,10 +285,8 @@ export default function SnapQuestionPage({ stream = streamQuestion }: SnapQuesti
   const snapAgain = () => {
     abortRef.current?.abort();
     handedOffRef.current = false;
-    setPhotos((prev) => {
-      for (const p of prev) URL.revokeObjectURL(p.url);
-      return [];
-    });
+    for (const p of photosRef.current) URL.revokeObjectURL(p.url);
+    setPhotos([]);
     setSnap(EMPTY_SNAP);
     setPickError(null);
     setHighlight(null);
@@ -444,16 +424,18 @@ export default function SnapQuestionPage({ stream = streamQuestion }: SnapQuesti
               <h2 className="sq-reading">Meta is reading your question…</h2>
             ) : null}
             {diagramPhoto ? (
-              question ? (
-                <FoundOverlay
-                  photo={diagramPhoto.url}
-                  parts={question.diagram.parts}
-                  outlines={snap.outlines}
-                  highlight={highlight}
-                />
-              ) : (
-                <img className="sq-photo" src={diagramPhoto.url} alt="Your question" />
-              )
+              <div className="sq-diagram">
+                {question ? (
+                  <FoundOverlay
+                    photo={diagramPhoto.url}
+                    parts={question.diagram.parts}
+                    outlines={snap.outlines}
+                    highlight={highlight}
+                  />
+                ) : (
+                  <img className="sq-photo" src={diagramPhoto.url} alt="Your question" />
+                )}
+              </div>
             ) : null}
             {question ? (
               <div className="sq-found">
@@ -477,13 +459,13 @@ export default function SnapQuestionPage({ stream = streamQuestion }: SnapQuesti
                 {question.instructions.length > 0 ? (
                   <>
                     <h3 className="sq-sub">The question</h3>
-                    <ol className="sq-instructions">
+                    <ul className="sq-instructions">
                       {question.instructions.map((ins) => (
                         <li key={ins.label}>
                           <span className="sq-label">{ins.label}</span> {ins.text}
                         </li>
                       ))}
-                    </ol>
+                    </ul>
                   </>
                 ) : null}
                 {question.diagram.parts.length > 0 ? (

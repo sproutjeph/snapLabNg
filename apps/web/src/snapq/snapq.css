@@ -63,6 +63,11 @@
   padding: 0;
 }
 
+.sq-thumb {
+  display: flex;
+  flex-direction: column;
+}
+
 .sq-thumb img,
 .sq-photo {
   display: block;
@@ -73,8 +78,29 @@
 }
 
 .sq-remove {
-  margin-top: 8px;
+  margin-top: auto;
   width: 100%;
+}
+
+.sq-thumb img {
+  margin-bottom: 8px;
+}
+
+/* The diagram, with or without Gemini's overlay: never wider than the card. */
+.sq-diagram {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.sq-diagram > *,
+.sq-diagram img {
+  max-width: 100%;
+}
+
+.sq-diagram img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .sq-actions {
@@ -135,7 +161,8 @@
 
 .sq-instructions {
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
+  list-style: none;
   line-height: 1.6;
 }
 

@@ -35,12 +35,13 @@ function render(question: QuestionRead | null, error: string | null): string {
 }
 
 describe("the snap result", () => {
-  it("an Ohm's law read offers Build the bench with its source and parts", () => {
+  it("an Ohm's law read offers Build the bench with its source", () => {
     const html = render(ohms, null);
     expect(html).toContain('data-testid="snapq-result-ohms"');
     expect(html).toContain("Ohm&#x27;s law (V–I)");
     expect(html).toContain("WASSCE (SC) 2018");
-    expect(html).toContain("A · ammeter");
+    // The parts live once, as highlight chips by the diagram; not repeated here.
+    expect(html).not.toContain("Parts found in your diagram");
     expect(html).toContain('data-testid="snapq-build"');
     expect(html).toContain("Build the bench");
   });
