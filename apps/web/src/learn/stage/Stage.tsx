@@ -10,6 +10,7 @@ import { InkComposer } from "../../scene/ink/InkComposer";
 import { useInkFocus } from "../../scene/ink/inkFocus";
 import { BLOB_OPACITY, BlobShadow } from "../../scene/look/BlobShadow";
 import { createDprLadder } from "../../scene/look/dprLadder";
+import { createFrameCap } from "../../scene/look/frameCap";
 import { isPortrait, LOOK_DISTANCE_M, LookCamera } from "../../scene/look/LookCamera";
 import { LookGround } from "../../scene/look/LookGround";
 import { LookLights } from "../../scene/look/LookLights";
@@ -329,6 +330,9 @@ function Heartbeat({
   const shadowLeft = useRef(0);
   const heldRef = useRef(held);
   heldRef.current = held;
+  // At most MAX_FPS frames a second (scene/look/frameCap.ts): a 120 Hz screen no longer doubles the work.
+  const cap = useMemo(() => createFrameCap(() => invalidate()), [invalidate]);
+  useEffect(() => () => cap.dispose(), [cap]);
 
   useEffect(() => {
     loop.invalidate = () => invalidate();
@@ -381,6 +385,7 @@ function Heartbeat({
   }, [gl, loop]);
 
   useFrame((_, dt) => {
+    const frameStart = performance.now();
     const v = bench.visual.current;
     if (poseChanged(memo, v)) {
       shadowLeft.current = SETTLE_S;
@@ -398,7 +403,7 @@ function Heartbeat({
     // A beat that plays keeps the loop awake, and so does a pulsing ring or a springing chip.
     const next = awake || heldRef.current || benchBusy(v) || motion?.busy === true;
     loop.frameEnd(next);
-    if (next) invalidate();
+    if (next) cap.next(frameStart);
   });
   return null;
 }
