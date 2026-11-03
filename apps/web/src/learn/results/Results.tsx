@@ -1,4 +1,9 @@
-import type { OhmsLawGraph } from "@snaplab/contracts";
+import type { MarkSheet, OhmsLawGraph } from "@snaplab/contracts";
+import { examinerQuestions, type PickedQuestion } from "@snaplab/rules";
+import { useMemo } from "react";
+import ExaminerConsole from "../../examiner/ExaminerConsole";
+import { makeAsk } from "../../examiner/examinerClient";
+import type { ExaminerConsoleProps, ExaminerQuestion } from "../../examiner/types";
 import "../paper/desk.css";
 import { halves } from "../marking";
 import "./results.css";
@@ -11,6 +16,30 @@ import {
   unreadSettings,
 } from "./resultsModel";
 import type { ResultsProps } from "./types";
+
+/**
+ * Which WAEC-style questions she gets comes from her own lost marks (`packages/rules`);
+ * the server (`POST /api/examiner`) only judges her answers and never changes a mark.
+ */
+export function examinerForSheet(
+  sheet: MarkSheet,
+  fetchImpl?: typeof fetch,
+): {
+  list: PickedQuestion[];
+  questions: ExaminerQuestion[];
+  first: ExaminerQuestion;
+  ask: ExaminerConsoleProps["ask"];
+} | null {
+  const list = examinerQuestions(sheet, 3);
+  const first = list[0]?.question;
+  if (!first) return null;
+  return {
+    list,
+    questions: list.map((p) => p.question),
+    first,
+    ask: makeAsk(list, fetchImpl),
+  };
+}
 
 // The results after hand-in (docs/plans/exam-redesign.md, "The experience", step 6; D1(b)-(d)),
 // drawn like a marked exam script: the score circled in red ink, the marks by rule, then "Check
@@ -125,11 +154,15 @@ export function Results({
   benchOhm,
   onAgain,
   onWatch,
+  ask,
+  examinerSession,
+  voiceError,
 }: ResultsProps) {
   const lines = ruleLines(sheet);
   const rows = checkRows(record, checks);
   const unread = unreadSettings(rows);
   const slope = slopeLine(record, benchOhm);
+  const examiner = useMemo(() => examinerForSheet(sheet), [sheet]);
 
   return (
     <div className="xp xp-desk rs-page" data-testid="results">
@@ -233,6 +266,20 @@ export function Results({
                 The wire is <b>{slope.wire} Ω</b>.
               </p>
             </section>
+
+            {examiner && (
+              <div id="examiner" className="rs-card rs-examiner" data-testid="results-examiner">
+                <ExaminerConsole
+                  key={`${sheet.experiment}:${examiner.first.id}`}
+                  first={examiner.first}
+                  questions={examiner.questions}
+                  ask={ask ?? examiner.ask}
+                  maxTurns={examiner.questions.length}
+                  {...(examinerSession ? { initialState: examinerSession } : {})}
+                  {...(voiceError !== undefined ? { voiceError } : {})}
+                />
+              </div>
+            )}
 
             <div className="rs-foot">
               {record.graph && <GraphThumb graph={record.graph} />}

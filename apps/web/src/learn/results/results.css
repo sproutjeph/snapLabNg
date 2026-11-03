@@ -121,6 +121,19 @@
   box-shadow: 3px 4px 0 rgba(91, 64, 39, 0.16);
 }
 
+.rs-examiner {
+  margin-top: 18px;
+  scroll-margin-top: 16px;
+}
+
+.rs-examiner > section {
+  max-width: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
 .rs-h2 {
   margin: 0 0 10px;
   font-family: var(--f-cond);
@@ -370,6 +383,10 @@ tr[data-ok="0"] .rs-verdict {
 
   .rs-card {
     padding: 20px 24px 24px;
+  }
+
+  .rs-examiner {
+    margin-top: 24px;
   }
 
   .rs-table th,

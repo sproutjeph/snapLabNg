@@ -2,35 +2,104 @@ import { useEffect, useRef, useState } from "react";
 import { cancelSpeech, speak } from "./speak";
 import type {
   AnswerLanguage,
+  CompletedTurn,
   ExaminerConsoleProps,
   ExaminerQuestion,
-  ExaminerReply,
+  ExaminerSessionState,
   Verdict,
 } from "./types";
 import { useVoiceAnswer } from "./voice/useVoiceAnswer";
 
-interface CompletedTurn {
-  id: string;
-  question: ExaminerQuestion;
-  answer: string;
-  language: AnswerLanguage;
-  reply: ExaminerReply;
+export const EXAMINER_BUSY_MESSAGE =
+  "The examiner is busy right now. Type your answer and try again in a moment.";
+
+export function initialExaminerState(
+  first: ExaminerQuestion | null,
+  answer = "",
+  language: AnswerLanguage = "english",
+): ExaminerSessionState {
+  return {
+    turns: [],
+    currentQuestion: first,
+    answer,
+    language,
+    isSubmitting: false,
+    error: null,
+  };
+}
+
+export async function submitExaminerTurn(
+  state: ExaminerSessionState,
+  ask: ExaminerConsoleProps["ask"],
+  options?: { maxTurns?: number; signal?: AbortSignal; overrideAnswer?: string },
+): Promise<ExaminerSessionState> {
+  const maxTurns = options?.maxTurns ?? 3;
+  const textToSend = (
+    options?.overrideAnswer !== undefined ? options.overrideAnswer : state.answer
+  ).trim();
+  if (!state.currentQuestion || !textToSend || state.isSubmitting) return state;
+
+  const questionToSend = state.currentQuestion;
+  const langToSend = state.language;
+  const signal = options?.signal ?? new AbortController().signal;
+
+  try {
+    const result = await ask(
+      {
+        question: questionToSend,
+        answer: textToSend,
+        language: langToSend,
+      },
+      signal,
+    );
+    const turnId = `turn-${state.turns.length}`;
+    const newTurn: CompletedTurn = {
+      id: turnId,
+      question: questionToSend,
+      answer: textToSend,
+      language: langToSend,
+      reply: result,
+    };
+    const nextTurns = [...state.turns, newTurn];
+    const willBeCompleted = nextTurns.length >= maxTurns || result.next === null;
+    return {
+      ...state,
+      turns: nextTurns,
+      answer: "",
+      currentQuestion: willBeCompleted ? null : result.next,
+      isSubmitting: false,
+      error: null,
+    };
+  } catch {
+    if (signal.aborted) return { ...state, isSubmitting: false };
+    return {
+      ...state,
+      isSubmitting: false,
+      error: EXAMINER_BUSY_MESSAGE,
+    };
+  }
 }
 
 export default function ExaminerConsole({
   first,
+  questions,
   ask,
   maxTurns = 3,
   voice = true,
+  initialState,
+  voiceError,
 }: ExaminerConsoleProps) {
-  const [turns, setTurns] = useState<CompletedTurn[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<ExaminerQuestion | null>(first);
-  const [answer, setAnswer] = useState("");
+  const init = initialState ?? initialExaminerState(first);
+  const [turns, setTurns] = useState<CompletedTurn[]>(init.turns);
+  const [currentQuestion, setCurrentQuestion] = useState<ExaminerQuestion | null>(
+    init.currentQuestion,
+  );
+  const [answer, setAnswer] = useState(init.answer);
   // Her spoken words fill the answer box as she speaks; she checks them, then sends.
   const voiceAnswer = useVoiceAnswer((text) => setAnswer(text.slice(0, 600)));
-  const [language, setLanguage] = useState<AnswerLanguage>("english");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<AnswerLanguage>(init.language);
+  const [isSubmitting, setIsSubmitting] = useState(init.isSubmitting);
+  const [error, setError] = useState<string | null>(init.error);
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -68,9 +137,6 @@ export default function ExaminerConsole({
     const textToSend = (overrideAnswer !== undefined ? overrideAnswer : answer).trim();
     if (!currentQuestion || !textToSend || isSubmitting) return;
 
-    const questionToSend = currentQuestion;
-    const langToSend = language;
-
     setError(null);
     setIsSubmitting(true);
 
@@ -78,44 +144,39 @@ export default function ExaminerConsole({
     const ac = new AbortController();
     abortControllerRef.current = ac;
 
-    try {
-      const result = await ask(
-        {
-          question: questionToSend,
-          answer: textToSend,
-          language: langToSend,
-        },
-        ac.signal,
-      );
+    const prevTurnsLen = turns.length;
+    const next = await submitExaminerTurn(
+      {
+        turns,
+        currentQuestion,
+        answer,
+        language,
+        isSubmitting: false,
+        error: null,
+      },
+      ask,
+      {
+        maxTurns,
+        signal: ac.signal,
+        ...(overrideAnswer !== undefined ? { overrideAnswer } : {}),
+      },
+    );
+    if (ac.signal.aborted) return;
 
-      const turnId = `turn-${turns.length}-${Date.now()}`;
-      const newTurn: CompletedTurn = {
-        id: turnId,
-        question: questionToSend,
-        answer: textToSend,
-        language: langToSend,
-        reply: result,
-      };
+    setTurns(next.turns);
+    setAnswer(next.answer);
+    setCurrentQuestion(next.currentQuestion);
+    setError(next.error);
+    setIsSubmitting(false);
 
-      const nextTurnsCount = turns.length + 1;
-      const willBeCompleted = nextTurnsCount >= maxTurns || result.next === null;
-
-      setTurns((prev) => [...prev, newTurn]);
-      setAnswer("");
-      setCurrentQuestion(willBeCompleted ? null : result.next);
-
-      // Speak reply aloud ONLY after user action (Send), never on mount
-      if (voice) {
-        const spokenText = willBeCompleted
-          ? `${result.reply} That's all. Well done for practising.`
-          : `${result.reply} Next question: ${result.next?.text ?? ""}`;
-        speak(spokenText);
-      }
-    } catch (_err: unknown) {
-      if (ac.signal.aborted) return;
-      setError("The examiner could not be reached. Check your connection and try again.");
-    } finally {
-      setIsSubmitting(false);
+    // Speak reply aloud ONLY after user action (Send), never on mount
+    const latest = next.turns[next.turns.length - 1];
+    if (next.turns.length > prevTurnsLen && latest && voice) {
+      const willBeCompleted = next.currentQuestion === null || next.turns.length >= maxTurns;
+      const spokenText = willBeCompleted
+        ? `${latest.reply.reply} That's all. Well done for practising.`
+        : `${latest.reply.reply} Next question: ${next.currentQuestion?.text ?? ""}`;
+      speak(spokenText);
     }
   };
 
@@ -147,7 +208,7 @@ export default function ExaminerConsole({
 
   return (
     <section
-      aria-label="Examiner Console"
+      aria-label="Examiner's questions"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -186,7 +247,7 @@ export default function ExaminerConsole({
               letterSpacing: "-0.01em",
             }}
           >
-            Examiner-style questions
+            Examiner's questions
           </h2>
           <p
             style={{
@@ -230,6 +291,7 @@ export default function ExaminerConsole({
           return (
             <div
               key={turn.id}
+              data-testid={`examiner-question-${turn.question.id}`}
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -327,6 +389,8 @@ export default function ExaminerConsole({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span
+                    data-testid="examiner-verdict"
+                    data-verdict={turn.reply.verdict}
                     style={{
                       fontSize: "0.72rem",
                       fontWeight: 700,
@@ -344,6 +408,7 @@ export default function ExaminerConsole({
                   </span>
                 </div>
                 <p
+                  data-testid="examiner-reply"
                   style={{
                     margin: 0,
                     fontSize: "0.92rem",
@@ -420,6 +485,7 @@ export default function ExaminerConsole({
         {!isCompleted && currentQuestion && (
           <div
             aria-live="polite"
+            data-testid={`examiner-question-${currentQuestion.id}`}
             style={{
               background: "var(--card)",
               borderRadius: "var(--radius)",
@@ -440,6 +506,7 @@ export default function ExaminerConsole({
                 }}
               >
                 Question {turns.length + 1}
+                {currentQuestion.rule ? ` • ${currentQuestion.rule}` : ""}
               </span>
               <span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
                 Examiner (computer voice)
@@ -458,6 +525,49 @@ export default function ExaminerConsole({
             </p>
           </div>
         )}
+
+        {/* Upcoming Questions from the Picked Bank */}
+        {!isCompleted &&
+          questions?.slice(turns.length + 1, maxTurns).map((q, idx) => (
+            <div
+              key={q.id}
+              data-testid={`examiner-question-${q.id}`}
+              style={{
+                background: "var(--paper-2)",
+                borderRadius: "var(--radius)",
+                padding: "12px 14px",
+                border: "var(--rule)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  fontFamily: "var(--f-cond)",
+                  letterSpacing: "0.06em",
+                  color: "var(--muted)",
+                }}
+              >
+                Question {turns.length + 2 + idx}
+                {q.rule ? ` • ${q.rule}` : ""}
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.94rem",
+                  fontWeight: 500,
+                  color: "var(--ink-2)",
+                  lineHeight: 1.4,
+                }}
+              >
+                {q.text}
+              </p>
+            </div>
+          ))}
 
         {/* Completion Message */}
         {isCompleted && (
@@ -502,6 +612,7 @@ export default function ExaminerConsole({
         {error && (
           <div
             role="alert"
+            data-testid="examiner-error"
             style={{
               background: "var(--card)",
               border: "1px solid var(--accent)",
@@ -615,18 +726,21 @@ export default function ExaminerConsole({
           </fieldset>
         </div>
 
-        {voiceAnswer.error && (
+        {(voiceError ?? voiceAnswer.error) && (
           <p
             role="status"
+            data-testid="examiner-voice-error"
             style={{ margin: "0 0 6px", color: "var(--ink-2)", fontSize: "0.78rem" }}
           >
-            {voiceAnswer.error}
+            {voiceError ?? voiceAnswer.error}
           </p>
         )}
 
         {/* Text Input & Send */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "flex-end" }}>
           <textarea
+            data-testid="examiner-input"
+            aria-label="Your answer to the examiner"
             value={answer}
             maxLength={600}
             onChange={(e) => setAnswer(e.target.value)}
@@ -663,6 +777,7 @@ export default function ExaminerConsole({
           {/* Hold to speak: her voice goes to the server's relay; her words fill the box */}
           <button
             type="button"
+            data-testid="examiner-ptt"
             disabled={isCompleted || isSubmitting}
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -708,6 +823,7 @@ export default function ExaminerConsole({
           </button>
           <button
             type="button"
+            data-testid="examiner-send"
             onClick={() => handleSend()}
             disabled={isCompleted || isSubmitting || !answer.trim()}
             style={{
