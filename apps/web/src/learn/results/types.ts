@@ -1,5 +1,6 @@
 import type { MarkSheet, OhmsLawRecord } from "@snaplab/contracts";
 import type { ReadingCheck } from "@snaplab/rules";
+import type { ExaminerConsoleProps, ExaminerSessionState } from "../../examiner/types";
 
 // The results after hand-in (docs/plans/exam-redesign.md, D1(b)–(d)). Only shown after she
 // hands in; nothing here reaches the screen before. FROZEN for Waves 1–2; ask the lead.
@@ -18,4 +19,10 @@ export interface ResultsProps {
   benchOhm: number;
   onAgain(): void;
   onWatch(): void;
+  /** Optional override for the examiner's ask handler (defaults to POST /api/examiner). */
+  ask?: ExaminerConsoleProps["ask"];
+  /** Optional examiner session state for deterministic rendering in tests. */
+  examinerSession?: ExaminerSessionState;
+  /** Optional voice error override for deterministic rendering in tests. */
+  voiceError?: string | null;
 }

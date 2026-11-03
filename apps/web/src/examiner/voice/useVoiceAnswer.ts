@@ -89,7 +89,9 @@ export function useVoiceAnswer(onText: (text: string, final: boolean) => void) {
       if (!holding.current) setState((s) => (s === "error" ? s : "idle"));
     };
     ws.onerror = () => {
-      if (wsRef.current === ws) fail("The examiner could not hear that. Try again, or type.");
+      if (wsRef.current === ws) {
+        fail("The examiner could not hear that. Try again, or type your answer.");
+      }
     };
     setState("listening");
     await ptt.start();
@@ -107,7 +109,9 @@ export function useVoiceAnswer(onText: (text: string, final: boolean) => void) {
   }, [ptt]);
 
   useEffect(() => {
-    if (ptt.state === "denied") fail("Allow the microphone in your browser settings, or type.");
+    if (ptt.state === "denied") {
+      fail("Allow the microphone in your browser settings, or type your answer.");
+    }
     if (ptt.state === "unsupported") fail("This browser can't record here. Type your answer.");
   }, [ptt.state, fail]);
 

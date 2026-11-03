@@ -9,12 +9,13 @@ import type { ExaminerConsoleProps } from "./types";
  */
 export function makeAsk(
   list: PickedQuestion[],
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl?: typeof fetch,
 ): ExaminerConsoleProps["ask"] {
+  const doFetch: typeof fetch = fetchImpl ?? ((...args) => globalThis.fetch(...args));
   return async ({ question, answer, language }, signal) => {
     const i = list.findIndex((p) => p.question.id === question.id);
     if (i === -1) throw new Error(`question ${question.id} is not in this list`);
-    const res = await fetchImpl(apiUrl("/api/examiner"), {
+    const res = await doFetch(apiUrl("/api/examiner"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

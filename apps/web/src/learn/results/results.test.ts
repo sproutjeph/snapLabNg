@@ -1,8 +1,17 @@
-import { checkReadingsAgainstBench, markOhmsLaw } from "@snaplab/rules";
+import { checkReadingsAgainstBench, examinerQuestions, markOhmsLaw } from "@snaplab/rules";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import {
+  EXAMINER_BUSY_MESSAGE,
+  initialExaminerState,
+  submitExaminerTurn,
+} from "../../examiner/ExaminerConsole";
 import { sampleGraph, sampleTable } from "../graph/sample";
 import { emptyOhmsLawRecord } from "../readings/record";
+import { examinerForSheet, Results } from "./Results";
 import { checkRows, parallaxHint, ruleLines, slopeLine, unreadSettings } from "./resultsModel";
+import type { ResultsProps } from "./types";
 
 // The results page only groups and formats. Marks are packages/rules' (its tests carry the
 // textbook values); these check the shaping, with the rules doing the marking.
@@ -90,5 +99,150 @@ describe("her slope beside the wire", () => {
 
   it("says nothing of a slope she did not write", () => {
     expect(slopeLine(emptyOhmsLawRecord("exam"), 3.1)).toEqual({ yours: null, wire: "3.1" });
+  });
+});
+
+describe("the examiner's questions on the results sheet", () => {
+  const imperfectRecord = {
+    ...record,
+    precautions: ["Open the key between readings", ""],
+    ohms_law_as_written: "",
+  };
+  const sheet = markOhmsLaw(imperfectRecord, { teacherXyOhm: 3.1 });
+  const checks = checkReadingsAgainstBench(imperfectRecord, log, divisions);
+  const noop = () => {};
+
+  const renderResults = (over: Partial<ResultsProps> = {}) =>
+    renderToStaticMarkup(
+      createElement(Results, {
+        mode: "practice",
+        sheet,
+        checks,
+        record: imperfectRecord,
+        benchOhm: 3.1,
+        onAgain: noop,
+        onWatch: noop,
+        ...over,
+      }),
+    );
+
+  /** Extracts the Marks card and Score HTML so we can assert the marks never change. */
+  const marksSnapshot = (html: string) => {
+    const score = html.match(/<div class="rs-score">[\s\S]*?<\/div>/)?.[0] ?? "";
+    const rules =
+      html.match(/<section class="rs-card" aria-labelledby="rs-marks">[\s\S]*?<\/section>/)?.[0] ??
+      "";
+    return { score, rules };
+  };
+
+  it("renders up to 3 WAEC-style questions picked from her mark sheet", () => {
+    const picked = examinerQuestions(sheet);
+    expect(picked).toHaveLength(3);
+    // Her imperative precaution, missing Ohm's law, and unfinished calculation come first.
+    expect(picked.map((p) => p.question.id)).toEqual([
+      "vi-precaution-tense",
+      "vi-ohms-law",
+      "vi-wire-length",
+    ]);
+
+    const html = renderResults();
+    expect(html).toContain('data-testid="results-examiner"');
+    expect(html).toContain("Examiner&#x27;s questions");
+    expect(html).toContain('data-testid="examiner-input"');
+    expect(html).toContain('data-testid="examiner-ptt"');
+    expect(html).toContain("Hold to speak");
+
+    for (const { question } of picked) {
+      expect(html).toContain(`data-testid="examiner-question-${question.id}"`);
+      expect(html).toContain(question.text.replaceAll("'", "&#x27;"));
+    }
+  });
+
+  it("posts the right question_id for a typed answer, shows Spark's verdict and reply, and leaves marks unchanged", async () => {
+    const beforeHtml = renderResults();
+    const beforeMarks = marksSnapshot(beforeHtml);
+    const beforeEarned = sheet.earned;
+    const beforeAvailable = sheet.available;
+
+    const sentBodies: unknown[] = [];
+    const fakeFetch = (async (_url: string, init?: RequestInit) => {
+      sentBodies.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify({
+          verdict: "correct",
+          reply: "Good — write it in the past tense as an action you took.",
+          model_answer: "A precaution reports something you actually did.",
+        }),
+      );
+    }) as typeof fetch;
+
+    const ex = examinerForSheet(sheet, fakeFetch);
+    if (!ex) throw new Error("expected examiner questions for Ohm's law sheet");
+
+    const state0 = initialExaminerState(
+      ex.first,
+      "The key was opened between readings, written as a completed action.",
+    );
+    const state1 = await submitExaminerTurn(state0, ex.ask);
+
+    expect(sentBodies).toEqual([
+      {
+        question_id: "vi-precaution-tense",
+        answer: "The key was opened between readings, written as a completed action.",
+        language: "english",
+        her_mistake: "Open the key between readings",
+      },
+    ]);
+
+    const afterHtml = renderResults({ examinerSession: state1 });
+    expect(afterHtml).toContain(
+      "The key was opened between readings, written as a completed action.",
+    );
+    expect(afterHtml).toContain('data-testid="examiner-verdict"');
+    expect(afterHtml).toContain('data-verdict="correct"');
+    expect(afterHtml).toContain("Correct");
+    expect(afterHtml).toContain("Good — write it in the past tense as an action you took.");
+    // Advances to question 2
+    expect(state1.currentQuestion?.id).toBe("vi-ohms-law");
+
+    // Marks and sheet are completely untouched
+    expect(sheet.earned).toBe(beforeEarned);
+    expect(sheet.available).toBe(beforeAvailable);
+    expect(marksSnapshot(afterHtml)).toEqual(beforeMarks);
+  });
+
+  it("shows the polite fallback on network, rate-limit or missing-fixture errors and leaves marks unchanged", async () => {
+    const beforeHtml = renderResults();
+    const beforeMarks = marksSnapshot(beforeHtml);
+
+    for (const failure of [
+      () => Promise.reject(new Error("network down")),
+      async () => new Response(JSON.stringify({ error: "Too many answers" }), { status: 429 }),
+      async () => new Response(JSON.stringify({ error: "No fixture" }), { status: 502 }),
+    ]) {
+      const ex = examinerForSheet(sheet, failure as unknown as typeof fetch);
+      if (!ex) throw new Error("expected examiner questions");
+
+      const state0 = initialExaminerState(ex.first, "My typed answer");
+      const failedState = await submitExaminerTurn(state0, ex.ask);
+
+      expect(failedState.error).toBe(EXAMINER_BUSY_MESSAGE);
+      expect(failedState.answer).toBe("My typed answer");
+      expect(failedState.turns).toHaveLength(0);
+
+      const errorHtml = renderResults({ examinerSession: failedState });
+      expect(errorHtml).toContain('data-testid="examiner-error"');
+      expect(errorHtml).toMatch(/the examiner is busy/i);
+      expect(errorHtml).toMatch(/type your answer/i);
+      expect(marksSnapshot(errorHtml)).toEqual(beforeMarks);
+    }
+
+    // Voice error fallback tells her to type her answer while keeping marks untouched.
+    const voiceFallbackHtml = renderResults({
+      voiceError: "Spoken answers need the live examiner. Type your answer instead.",
+    });
+    expect(voiceFallbackHtml).toContain('data-testid="examiner-voice-error"');
+    expect(voiceFallbackHtml).toMatch(/type your answer/i);
+    expect(marksSnapshot(voiceFallbackHtml)).toEqual(beforeMarks);
   });
 });
