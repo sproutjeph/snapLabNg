@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { forgetLead } from "../wiring/leadPick";
 import type { StageMotion } from "./stageMotion";
 
-// The lead's "Remove" chip (the user, PR #100: "can it be clear?"): a small ink pill with a ✕ at
+// The lead's "Remove" chip (PR #100: easier to find): a small ink pill with a ✕ at
 // the middle of the lead she hovers or has selected, and the one-time "Tap a wire to remove it"
 // on her first lead. Choreo projects the lead's middle each frame and calls the sink, which moves
 // the pill with a CSS transform; React renders it again only when its words or its lead change.

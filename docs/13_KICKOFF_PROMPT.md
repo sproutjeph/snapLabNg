@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 13 · Kickoff Prompt and Agent Rules (replaces §9 of the old spec)
 
 *Use these at kickoff (Oct 26, after 17:00 WAT) in Claude Code (and Muse Code if you use it). They point coding agents at the new docs, not the old spec, which would make an agent faithfully build the wrong things (Rust core, WebGPU, a glowing wire, broken SAM parsing).*

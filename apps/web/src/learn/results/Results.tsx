@@ -178,7 +178,10 @@ export function Results({
             <h1 id="rs-title" className="rs-title">
               Ohm's law (V–I)
             </h1>
-            <p className="rs-draft">DRAFT marking scheme: needs a physics teacher's check.</p>
+            <p className="rs-draft">
+              Practice marking scheme, modelled on WAEC Physics Paper 3 (not WAEC's official
+              scheme).
+            </p>
           </div>
           <Score earned={halves(sheet.earned)} available={halves(sheet.available)} />
         </header>

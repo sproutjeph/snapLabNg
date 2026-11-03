@@ -38,7 +38,7 @@
 3. **The proof.** Snap the page and the apparatus rises out of the ink. Run the titration with real chemistry. Watch the Chief Examiner circle "24.5" in red: *"−1: burette readings to 2 d.p. (24.50)."* Then defend your result in a viva, in the English or Pidgin you actually speak.
 
 ### Hero user persona (composite: say so in the README)
-**Amina Yusuf, 17, SS3 science class, public secondary school in Kubwa, Abuja (FCT).**
+**Amina Yusuf, 17, SS3 science class, public secondary school in Abuja (FCT).**
 - She wants Medicine at ABU Zaria or UNILAG and needs a credit in Chemistry, Physics and Biology.
 - Her school "lab" is a locked room. The few burettes come out on practical day, shared between many students. *(Use what your real filmed student actually tells you. Never script a statistic into a minor's mouth.)*
 - She owns a shared family Android phone (Tecno/Infinix class) and buys data in small bundles.
@@ -47,7 +47,7 @@
 
 **Emotional hook (the first 10 seconds):** *"Amina has drawn this burette a hundred times. She has never touched one."* Then the burette rises out of her page. Dignity, not pity: she is already doing the work, and the tool meets her where she is.
 
-**The developer as co-protagonist (≤10 seconds on camera):** "I'm [name], a developer in Kubwa." The theme is *Build for Your World*. Judges reward the "problem you know firsthand" angle, so a real face, place and accent are worth more than any shader. *(If you yourself sat WAEC practicals without a lab, say that in one sentence. Only if it is true.)*
+**The developer as co-protagonist (≤10 seconds on camera):** "I'm [name], a developer in Abuja." The theme is *Build for Your World*. Judges reward the "problem you know firsthand" angle, so a real face, place and accent are worth more than any shader. *(If you yourself sat WAEC practicals without a lab, say that in one sentence. Only if it is true.)*
 
 ---
 
@@ -62,7 +62,7 @@
 | **0:00–0:04** | **Real footage.** Macro, top-down: a blue biro finishes the last line of a burette drawn over a conical flask on ruled exercise-book paper. Natural window light, slight handheld breath. | Room tone: generator hum, a distant okada horn, a pen scratch. On-screen text, white lower third: **"Amina has drawn this burette a hundred times."** |
 | 0:04–0:07 | Hold on the drawing. Her hand rests beside it (hands only unless you hold consent). | Text replaces: **"She has never touched one."** Silence for one beat. |
 | 0:07–0:10 | A phone enters frame and snaps → **hard cut to screen capture:** the ink outlines pulse green (SAM masks), and a glass burette and flask **rise out of the paper** in 3D. The camera tilts. | One glass "ting". Title card flashes for 0.7 s: **SnapLab NG**. |
-| **0:10–0:28** | **Problem, real footage montage (≤2 s per shot):** Kubwa street and bus stop establishing shot; a school gate *(with permission)*; a closed lab door or bare shelves *(only if real)*; a stack of exercise books. Then a **quote card** in WAEC-report typography with its citation. | **VO:** "I'm [name], a developer in Kubwa, Abuja. This year about 1.95 million Nigerian students sat WAEC. Many write the chemistry practical having only ever *drawn* the apparatus. WAEC's own Chief Examiner reports students *'manipulating titre values to agree with those of the teachers.'* They fake the readings, because they never got to take them." |
+| **0:10–0:28** | **Problem, real footage montage (≤2 s per shot):** Abuja street and bus stop establishing shot; a school gate *(with permission)*; a closed lab door or bare shelves *(only if real)*; a stack of exercise books. Then a **quote card** in WAEC-report typography with its citation. | **VO:** "I'm [name], a developer in Abuja. This year about 1.95 million Nigerian students sat WAEC. Many write the chemistry practical having only ever *drawn* the apparatus. WAEC's own Chief Examiner reports students *'manipulating titre values to agree with those of the teachers.'* They fake the readings, because they never got to take them." |
 | **0:28–0:48** | **Wow 1: Snap → Lab.** iPhone screen capture: tap "Snap my page", then the photo. The **"Show the AI" drawer** slides up: lane 1 **SAM 3.1** shows masks labelled `burette 0.91` and `conical flask 0.88`, lane 2 **Muse Wonder** streams the blueprint JSON *and reads her handwritten table*, and timings tick (e.g. 1.4 s, 2.9 s). The apparatus extrudes and settles. | **VO:** "So I built SnapLab. You snap your exercise book. Meta's SAM 3.1 finds each piece of apparatus in your ink. Muse Wonder reads your diagram *and your handwriting*, and compiles a lab. From here, real chemistry takes over." |
 | **0:48–1:20** | **Wow 2: Do the practical.** Thumb holds the stopcock and drops fall (drip sound). The flask swirls; methyl orange shifts from yellow toward orange near the endpoint. A live pH readout. Release on the endpoint: "24.50 cm³ ✓". **Then cut to real footage:** her hand tilting the phone, intercut with the screen. The meniscus reading drifts and **"Parallax: read at eye level (+0.18 cm³)"** appears. She levels the phone and the reading snaps true. Optional 3 s overshoot: one drop too many, the flask goes red, "Overshot by 0.40 cm³". | **VO:** "The AI doesn't fake the chemistry. A deterministic engine computes the pH after every drop. Tilt your phone and you see the parallax error examiners punish. Mistakes have consequences here, before they cost you marks in May." |
 | **1:20–1:50** | **Wow 3 (HERO): The Chief Examiner marks *her* page.** The photo of her **actual handwritten results table** fills the screen. Red-ink annotations draw on in order: a circle around "24.5" → **"−1 CHEM-BUR-2DP: record to 2 d.p. (24.50)"**; a bracket around the averaged rough titre → **"−2 CHEM-CONCORD: average only concordant titres (±0.20)"**; a missing unit → **"−1 units"**. The score counter ticks down: **20 → 16**. Each deduction expands to show the rule and the fix. | **VO:** "Then Muse Wonder becomes a WAEC Chief Examiner. It reads her real handwriting and marks it against the same rules examiners use. That '24.5'? One mark. Gone. Now she knows *why*, months before the exam." |
@@ -75,7 +75,7 @@
 - **30 s vertical 9:16** for Instagram Reels and TikTok: hook, extrusion, red-ink marking, then a Pidgin viva line.
 - **8 s GIF** of the extrusion for the README header.
 
-### Real-world footage plan: Kubwa, Oct 21–25 (shoot this before you write code)
+### Real-world footage plan: Abuja, Oct 21–25 (shoot this before you write code)
 
 **Permissions first (Oct 21–22):**
 - **Minors:** you need written parental/guardian consent and the student's own assent for any face or voice. Simplest path: film **hands, the exercise book and the voice only**, or cast an 18+ recent leaver or older sibling who sat WAEC recently.
@@ -93,9 +93,9 @@
 | 3 | Phone snapping the page: handheld, then flat top-down | Transition | Also capture **flat, evenly lit stills of each page (3 lighting conditions)**. These become the golden demo images. |
 | 4 | Hand tilting the phone over the notebook, slowly, 3 takes | Parallax beat | Later intercut with the screen capture of the parallax warning. |
 | 5 | Student answering the viva question aloud into the phone, 5+ natural takes in English, Pidgin and mixed | Viva | Also **save 10–20 raw audio clips** to test Muse Voice Transcribe on Day 1. |
-| 6 | Kubwa establishing shots: road, bus stop, kiosk with exercise books, school gate (with permission) | Problem montage | 2–3 s each, no identifiable minors. |
+| 6 | Abuja establishing shots: road, bus stop, kiosk with exercise books, school gate (with permission) | Problem montage | 2–3 s each, no identifiable minors. |
 | 7 | Stack of exercise books and a worn practical notebook | Problem/close | |
-| 8 | You (developer) at your desk, two sentences to camera | Authenticity | "I'm [name], a developer in Kubwa…" |
+| 8 | You (developer) at your desk, two sentences to camera | Authenticity | "I'm [name], a developer in Abuja…" |
 | 9 | Low-end Android on the desk (Tecno/Infinix/itel) | "Works on cheap phones" shot | Re-shoot with the app running on Nov 2–3. |
 | 10 | Room tone: 60 s each of generator, street and classroom ambience | Sound design | |
 | 11 | Amina turning the page and drawing a meter bridge | Closing shot | |
@@ -241,7 +241,7 @@ This defuses the "AI gimmick" critique and the "LLM hallucinated a pH" critique 
 | State-level studies of inadequate lab equipment | Ondo, Oyo, Edo studies | Real academic literature exists; cite one specific paper if you use it, otherwise omit |
 | Smartphone ownership in Nigeria | **75% (2025)**, up from 64% in 2023; more than a third of subscribers still on 2G | **Verified** (KPMG and Orange Group Nigeria study, 13,251 respondents in **12 major cities**, so it skews urban; say so) |
 | Cost per full SnapLab session | **≈ $0.10–0.20**: STT $3/1,000 min (a 5-min viva ≈ $0.015) + 2 Muse Wonder calls at $4/$20 per M tokens (≈ $0.05 each at ~5k in / 1.5k out) + Spark + SAM | **Estimate.** SAM and Spark prices not verified. Compare: PraxiLabs full access $75/yr (2023 article). |
-| Exercise book price "₦200" | — | **Unverified.** Check a Kubwa shop on Oct 21–25 and use the real price on camera. |
+| Exercise book price "₦200" | — | **Unverified.** Check a Abuja shop on Oct 21–25 and use the real price on camera. |
 | WAEC chemistry practical always includes a titration | — | **Widely understood but unverified here.** Check 3–5 recent Paper 3 questions on waeconline.org.ng before saying "every year". |
 
 **Suggested impact paragraph (README):**
@@ -271,7 +271,7 @@ This defuses the "AI gimmick" critique and the "LLM hallucinated a pH" critique 
 ### Submission page structure (assumes Devpost-style headings; adapt to the official form)
 1. **Header:** an 8 s GIF of a page turning into a lab, the one-line pitch, and three buttons: **Watch (2:30)** · **Try Amina's notebook (no login)** · **Code**.
 2. **Try it in 60 seconds:** the deep links (`/?demo=amina`, `/?demo=amina&step=examiner`), supported devices, and "no camera or mic needed (typed fallback)".
-3. **The problem (Build for Your World):** 4 sentences, the WAEC quote, the 2026 candidate number, and Kubwa context. One photo of a real exercise book.
+3. **The problem (Build for Your World):** 4 sentences, the WAEC quote, the 2026 candidate number, and Abuja context. One photo of a real exercise book.
 4. **What it does:** the three wow moments as numbered screenshots.
 5. **How Meta's models power it:** the model-to-job table from section 5 plus a pipeline diagram (this is where architecture goes, *not* in the video). Include a "The AI reads and judges; the physics engine decides" callout.
 6. **Built during the hackathon:** commit-history link, the day-by-day log, and what Muse Code did. Clearly separate anything pre-existing (footage, drawings).
@@ -281,7 +281,7 @@ This defuses the "AI gimmick" critique and the "LLM hallucinated a pH" critique 
 10. **What's next:** a teacher dashboard; NECO and BECE; the meter bridge and the other Paper 3 practicals; Muse Glimmer open-weights on a school laptop for offline classrooms; WhatsApp "snap your page" entry; Ray-Ban Display web app for teachers.
 11. **Impact numbers with sources** (section 6 table, trimmed).
 12. **Ethics and safety:** minors' data is not stored by default; photos are deleted after the session unless the student saves; consent was obtained for all footage; not affiliated with or endorsed by WAEC. **Don't use the WAEC logo or official styling.** Say "WAEC-style marking" and "based on public Chief Examiner reports".
-13. **Team:** you, solo, Kubwa, with links.
+13. **Team:** you, solo, Abuja, with links.
 
 **Repo README specifics:** setup in ≤5 commands; `.env.example`; a `GOLDEN.md` describing how the cached runs were produced; a test for the titration engine and rule checks; MIT/Apache licence.
 
@@ -292,7 +292,7 @@ This defuses the "AI gimmick" critique and the "LLM hallucinated a pH" critique 
 
 | Date | Post | Asset |
 |---|---|---|
-| Oct 23–25 (pre-event, optional) | "Next week I'm turning this exercise book from Kubwa into a lab." | Photo of the drawn page (no code, idea only) |
+| Oct 23–25 (pre-event, optional) | "Next week I'm turning this exercise book from Abuja into a lab." | Photo of the drawn page (no code, idea only) |
 | **Oct 26** kickoff | "Day 0. 10 days. One exercise book." Thread with the plan. | Hook shot 1 |
 | Oct 28–29 | "Day 3: it rose out of the page." | 8 s extrusion clip (the most shareable asset) |
 | Oct 30–31 | "Day 5: the AI Chief Examiner just took a mark off '24.5'. Every Nigerian student knows this pain." | 15 s red-ink clip. **Invite replies: "What did WAEC take marks off you for?"** to drive engagement. |
@@ -310,7 +310,7 @@ This defuses the "AI gimmick" critique and the "LLM hallucinated a pH" critique 
 - [ ] **Whether it works:** the live link loads in under 3 s on 4G; the golden run is 100% reliable; a fresh upload works on 3 new pages; viva works with a typed fallback; it has been tested from a US network.
 
 **Theme and Meta fit:**
-- [ ] "Build for Your World" is obvious: a real place (Kubwa), a real artifact (exercise book), a real accent and Pidgin, a real exam.
+- [ ] "Build for Your World" is obvious: a real place (Abuja), a real artifact (exercise book), a real accent and Pidgin, a real exam.
 - [ ] Every Meta model has a distinct, visible, non-decorative job, and is named on screen when it works.
 - [ ] Muse Code usage is mentioned.
 

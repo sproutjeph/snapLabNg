@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 08 · Risks, Bottlenecks and Mitigations
 
 *Ranked by likelihood × impact. "Nothing should be a bottleneck" means every risk below has a named owner-action and a fallback that keeps the demo alive.*

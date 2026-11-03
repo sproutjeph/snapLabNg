@@ -16,7 +16,7 @@ import {
 } from "./leadPick";
 import { watchWrongTaps } from "./wrongTap";
 
-// Taking a lead off, made easy to find (the user, PR #100: "can it be clear?"). No textbook
+// Taking a lead off, made easy to find (PR #100: easier to find). No textbook
 // source: interaction, not science.
 
 // Where each nut is in plan, metres (apparatus/ohms-law/kitParams.test.ts NUT_M).

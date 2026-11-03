@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 09 · Build Plan: Pre-Hackathon Prep and the 10 Days
 
 *Replaces section 8 of the original spec. Times are WAT. Scope as decided on Oct 22: **metre bridge hero, titration second, glass block stretch** (design in `15_METRE_BRIDGE_HERO.md`). **Changed Oct 28 (user's choice):** a hands-on **Ohm's law (V–I)** practical comes before the titration engine, and the whole app moves to an ink-and-paper look (`docs/plans/ohms-law-vi.md`, `docs/plans/ink-look.md`). Our submission target is **18:00 WAT on Wed Nov 4**; the official cutoff is 03:00 WAT on Thu Nov 5.*
@@ -69,13 +71,13 @@
 | Oct 22–24 | **Golden pages** (exact content in doc 11): (G1) Amina's metre bridge with deliberate WAEC errors ("57", "0.02", no units on l⁻¹, a small graph, a small slope triangle, precautions in the wrong tense, no key drawn); (G2) the same page done correctly; (G3) Amina's titration with "24.5" and the rough titre averaged. Graph pages on real graph paper. Glass block (G5) only if time. Plus 2–3 genuinely messy real student pages. | These become the golden demos and the video's hero. |
 | Oct 21–24 | **Photo dataset:** 30+ photos of notebook pages (titration, glass block, other drawings) in different biros, light, angles and phones, including a Tecno/Infinix, and **10+ metre bridge pages with their graphs**. | The Day-1 spike runs on these. |
 | Oct 22–24 | **Audio dataset:** 10–20 short spoken answers to examiner questions in Nigerian English, Pidgin and mixed, from consenting adults. | Tests Voice Transcribe on Day 1. |
-| Oct 22–25 | **Video B-roll** (shot list in `10_DEMO_AND_SUBMISSION.md`): biro drawing the circuit and the metre bridge, writing "57", plotting the graph, snapping, tilting the phone, a real metre bridge and galvanometer in a school lab if a school allows it, Kubwa establishing shots, room tone, you at your desk. | Shoot in good window light now; the last two days are for editing. |
-| Oct 23 | Check the real price of an exercise book in a Kubwa shop (the spec's "₦200" is unverified). | Every number on screen must be true. |
+| Oct 22–25 | **Video B-roll** (shot list in `10_DEMO_AND_SUBMISSION.md`): biro drawing the circuit and the metre bridge, writing "57", plotting the graph, snapping, tilting the phone, a real metre bridge and galvanometer in a school lab if a school allows it, Abuja establishing shots, room tone, you at your desk. | Shoot in good window light now; the last two days are for editing. |
+| Oct 23 | Check the real price of an exercise book in a Abuja shop (the spec's "₦200" is unverified). | Every number on screen must be true. |
 | Oct 23–25 | **Accounts:** GitHub, Cloudflare Pages, Fly.io (or Railway / Cloud Run), a domain. Install **Muse Code** (`curl -fsSL https://dev.meta.ai/install.sh \| sh`) and Claude Code. | No setup friction on Day 1. |
 | Oct 23–25 | **Hardware and power:** a low-end Android test phone, access to an iPhone, UPS/inverter, power banks, two data SIMs. | Real-device testing; outages. |
 | Oct 24–25 | **Learn by reading** (not writing project code): R3F render loop patterns, `TubeGeometry` for wires, `LatheGeometry`, drei `PerformanceMonitor` and `Lightformer`, selective bloom, Hono SSE, the Meta realtime voice handshake. Sketch bench layouts and the blueprint schema on paper. | Faster Days 1–3. |
 | **Oct 25–26** | **Read the Official Rules** the moment they appear (pre-existing code, assets, data, video length, repo visibility). Adjust this plan if needed. | Disqualification risk. |
-| Oct 23–25 (optional) | One social post: a photo of the drawn page, "Next week this exercise book from Kubwa becomes a lab." | Warm up an audience; idea only, no code. |
+| Oct 23–25 (optional) | One social post: a photo of the drawn page, "Next week this exercise book from Abuja becomes a lab." | Warm up an audience; idea only, no code. |
 
 ## 3. The 10 days
 

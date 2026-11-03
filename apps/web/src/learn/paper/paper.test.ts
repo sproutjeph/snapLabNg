@@ -71,7 +71,7 @@ describe("the question paper", () => {
   it("names every apparatus item somewhere in the instructions", () => {
     const parts = itemTriggers(OHMS_LAW_QUESTION).map((t) => t.part);
     // The wire at "XY" (instruction 2) and the plug key at "key K" (instruction 4): the first
-    // place the paper names each, which is when the user wants each to land.
+    // place the paper names each, which is when each should land.
     expect(parts).toEqual(["ammeter", "voltmeter", "box", "leads", "cells", "wire", "key"]);
   });
 

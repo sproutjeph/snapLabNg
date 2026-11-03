@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 12 · Day-1 Test Sheet: Measure the Meta Models Before Building on Them
 
 *Updated Oct 22 for the metre bridge hero (doc 15). Run on **Mon Oct 26, right after kickoff (17:00 WAT)**, using the dataset from `11_GOLDEN_PAGES_GUIDE.md`. Budget: about 3 hours. The results decide the pipeline shape (`06_META_AI_INTEGRATION.md`). Save every raw response as a fixture so the rest of the build can run offline.*

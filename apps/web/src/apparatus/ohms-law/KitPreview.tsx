@@ -57,8 +57,8 @@ import { ResistanceBox } from "./ResistanceBox";
 import { Tray } from "./Tray";
 import { WireBoard } from "./WireBoard";
 
-// ?kit=ohms-law — the V–I parts in the real look, for the apparatus slices' shots and for the
-// user's look in Chrome (docs/plans/asset-pass.md, "The seam"). The look is mounted as the
+// ?kit=ohms-law — the V–I parts in the real look, for the apparatus slices' shots and for a
+// look in Chrome (docs/plans/asset-pass.md, "The seam"). The look is mounted as the
 // learn pages will mount it: LookTier, LookCamera (orthographic, azimuth 45 and elevation 41 on
 // every screen), LookLights, LookGround, BlobShadow under each part, InkComposer.
 //   &part=ammeter|voltmeter|cells|key|box|wire|tray   one part, alone on the paper

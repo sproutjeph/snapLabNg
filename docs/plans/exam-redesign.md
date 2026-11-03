@@ -13,7 +13,7 @@ Inputs:
 - [x] Design targets: 9 Muse Image targets in `docs/design/exam-redesign/` ($0.12); **direction approved by the user on Oct 29** (cream graph-paper desk, blue-black ink #1d2430, wood, brass and bakelite). Best references: `golden-frame`, `watch-mode`, `materials-closeup`. `metre-bridge` is weak (a knife-like jockey, screws instead of plugs), so W2-hero must not copy those parts.
 - [x] Wave 0: seams and contracts (lead) merged (`claude/exam-seams`: science PASS ×2, verifier green, code review SHIP after one fix round)
 - [x] Wave 1: paper and picker (#79), director and voice (#80), apparatus v2 (#81), look (#82) merged; **golden frame approved by the user** on Oct 29 with three tweaks, then re-checked in real Chrome beside BC101 after the anti-aliasing fix (the renders were pruned on Nov 2; they are in git history)
-- [x] Wave 1b (Oct 30): the asset pass (`docs/plans/asset-pass.md`) and the Backcountry page layout (see "Page layout" below), run in parallel at max effort (the user opted in to ultracode)
+- [x] Wave 1b (Oct 30): the asset pass (`docs/plans/asset-pass.md`) and the Backcountry page layout (see "Page layout" below), run in parallel
 - [ ] Wave 2: Watch script, guided Practise, callouts and motion, hero look merged
 - [x] Integration (Oct 30, `docs/plans/integration.md`): the practical page end to end (#105), E2E green on main (#107)
 - [x] Beauty pass and bug bash (Oct 30, `docs/plans/beauty-pass.md`): B1 look #110, B4 page #111, B3 steps strip #112 (Muse), B2 bench and leads #113; E2E and fps green on main b8a9e68
@@ -344,7 +344,7 @@ export interface VoiceGuide {
 - **Beauty:** two fix writers.
 - The lead never writes slice code. If a slice fails twice, it goes to `debugger`.
 
-## Context management (the user asked for this explicitly)
+## Context management (requested)
 The aim is that no lead session runs past about 40% of its context, because a full context degrades the work.
 1. **State lives in files, not chat.** Before any slice starts, this plan holds the Progress checklist, the contracts and every slice's scope. Each wave ends with Progress ticked, a BUILD_LOG line and the `resume-point` memory updated (one line).
 2. **One lead session per wave.** At the end of each wave I say "Ready for `/clear`". You run it, and the start hook prints the latest plan. I then read only **Progress** and the next wave's section. Five sessions in total: W0, W1, W2, Integration, Beauty.
@@ -357,7 +357,7 @@ The aim is that no lead session runs past about 40% of its context, because a fu
    - The lead looks at a maximum of 2 screenshots per slice, at scale ≤ 0.6, and only for sign-off.
 5. **The lead never reads** a file over 150 lines, a diff, a bundle, a test log or a transcript. It asks an agent instead.
 6. **A tripwire.** If `/context` passes 50% mid-wave, I stop launching work, write Progress, and ask for `/clear`.
-7. **Optional, decided in Wave 0:** run each wave's gates as one background Workflow (≤ 10 agents), so even the verdicts arrive as a single summary. I'll read the workflow-authoring guide once and dry-run it on Wave 0 first. If its worktree or permission behaviour gets in the way, we keep the Agent-tool gates above.
+7. **Optional, decided in Wave 0:** run each wave's gates as one background Workflow (≤ 10 agents), so even the verdicts arrive as a single summary. It is dry-run on Wave 0 first. If its worktree or permission behaviour gets in the way, the plan keeps the Agent-tool gates above.
 8. **Your approvals.** Push, PR and merge prompts come to about 3 per slice, or about 30 in all. To cut that, I can merge each wave's PRs in one sitting.
 
 ## Cut lines (they replace docs/09's Day 5–8 rows for this work)
@@ -410,7 +410,7 @@ The aim is that no lead session runs past about 40% of its context, because a fu
 - **For W2-hero:** a thin part lying on another inked part (the metre-bridge wire on the plank) can still ink fully dark; this predates Wave 1. A fix: discount the neighbour's own slope with one more read in the same direction when the ids match. The hero's other parts sit about 3 cm above its desk.
 - **Golden frame (Oct 29):** the user saw the real `?look=ohms-law` render beside `golden-frame.webp` and approved it with three tweaks, made in W1-look round 3 before merge: ink lines about 3 px, stronger soft cast and contact shadows, and a portrait phone camera (steeper, with the bench's long side running up the screen, filling the frame). Kept: the 45° iso camera from front-right, the desk props (answer booklet, pencil, eraser, calculator), and ink #1d2430.
 
-## Backcountry motion, watched in real Chrome (Oct 29): what Watch and Practise must feel like (the user: "that's exactly what I want")
+## Backcountry motion, watched in real Chrome (Oct 29): what Watch and Practise must feel like (signed off on review)
 Seen in BC101's fire lesson (autoplay, steps 1 → 4 in about 8 s). Wave 2 (W2-watch, W2-callouts, W2-guide) builds to this, and the director already has the hooks for it:
 1. **A fixed stage.** The camera does not move between steps. The scene builds up in place: each step adds to the same composition, and earlier objects stay where they were. Framing is at BC101 scale (hero objects about 150–250 px on a laptop), so the bench is framed close enough for its parts to read. The only camera move we keep is the meter loupe for a reading; it eases in, then returns to the same frame. Per-beat LookCamera shots that cut or pan between parts are dropped in favour of this.
 2. **One visible physical action per instruction.** Parts arc in and settle with a small bounce, one at a time (timeline `drop`/`arc`/`pop`, tweens ≤ 0.4 s, outBack and outBounce). Leads draw from terminal to terminal (`Lead.drawn`), the pen nib taps, needles swing and settle, readings are written into the table. Nothing changes off-screen.
@@ -422,7 +422,7 @@ Seen in BC101's fire lesson (autoplay, steps 1 → 4 in about 8 s). Wave 2 (W2-w
    - The caption always matches the action on screen.
 5. **It plays itself, under her control.** Autoplay with pause, restart, 1× speed and previous/next. She can just watch, or step through. In Practise, the same stage and the same checklist apply, but she performs each action and the chip and checklist follow her.
 
-## Page layout: Backcountry's (the user, Oct 29: "that looks amazing… exactly what I want")
+## Page layout: Backcountry's (signed off on review, Oct 29)
 The practical page (Watch, Practise and Exam) takes BC101's layout, in our palette (paper, ink #1d2430, orange accent). **The user opted in to max effort and to ultracode (Workflow orchestration) for this layout and for the asset pass.** Measured in real Chrome at 1728×907 (BC101 `?lesson=fire`):
 - **Stage:** the 3D canvas is full-bleed behind everything (x 67 → right edge, full height). All the UI floats over it on paper cards. There are no boxed panes.
 - **Left rail:** 67 px, full height, dark (BC101 #2e392c; ours the ink #1d2430), with an icon nav from y 114 and a faint motif at the foot. Shadow `1px 0 0 rgba(0,0,0,.08)`.

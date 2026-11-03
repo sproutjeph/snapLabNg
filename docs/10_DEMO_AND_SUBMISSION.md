@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 10 · Demo Video, Judge Link and Submission
 
 *Judges watch the video first, often only the video, for 2–3 minutes across hundreds of entries. This document is the plan for the 25% "demo quality" score and much of the 30% "impact" score. Full strategy notes: `research/05_demo_strategy.md`.*
@@ -19,7 +21,7 @@
 | **0:00–0:04** | Real footage, macro, top-down: a blue biro finishes a metre bridge circuit (cell, galvanometer, resistance box, long wire) on a ruled exercise book; a graph sheet beside it. Window light. | Room tone (generator hum, distant okada horn, pen scratch). Text: **"Amina has drawn this circuit a hundred times."** |
 | 0:04–0:07 | Hold on the drawing; her hand rests beside it (hands only unless consent). | Text: **"She has never touched a jockey."** One beat of silence. |
 | 0:07–0:10 | A phone snaps → hard cut to screen capture: ink glows, green outlines pulse, a brass resistance box, a galvanometer and a long wooden metre bridge **rise out of the paper**. | A brass "clack". Title flash: **SnapLab NG**. |
-| **0:10–0:28** | Real montage (≤ 2 s per shot): Kubwa street, a school gate (with permission), a stack of exercise books. Then a quote card with its citation. | **VO:** "I'm [name], a developer in Kubwa. Every year about 840,000 Nigerian students sit the WAEC Physics practical, and as many sit Chemistry. On a metre bridge question, WAEC's Chief Examiner wrote: *'Performance was poor.'* Most of them meet the apparatus for the first time on exam day." |
+| **0:10–0:28** | Real montage (≤ 2 s per shot): Abuja street, a school gate (with permission), a stack of exercise books. Then a quote card with its citation. | **VO:** "I'm [name], a developer in Abuja. Every year about 840,000 Nigerian students sit the WAEC Physics practical, and as many sit Chemistry. On a metre bridge question, WAEC's Chief Examiner wrote: *'Performance was poor.'* Most of them meet the apparatus for the first time on exam day." |
 | **0:28–0:48** | **Wow 1: snap → lab.** Phone capture: "Snap my page". The "Show the AI" drawer slides up: SAM 3.1 outlines the galvanometer, the box and **her graph**; Muse Spark streams the blueprint; Muse Wonder highlights her handwritten numbers; real timings tick. Wires route along her drawn lines; "R = 1 Ω" sets the plug box. | **VO:** "So I built SnapLab. Snap your exercise book. Meta's SAM 3.1 finds the apparatus in your ink. Muse Spark turns the drawing into a lab; Muse Wonder reads your handwriting. Then real physics takes over." |
 | **0:48–1:20** | **Wow 2: find the null.** A thumb taps the jockey; the centre-zero needle swings left, then right; current particles race through the wire. Tap, tap, closer, and the galvanometer branch **goes still and dark** with a soft click: "l = 57.0 cm". Then the consequences: a far tap **slams** the needle; a drag leaves a **scrape** on the wire and the next balance point drifts. Cut to real footage of her tilting the phone; the metre-rule reading drifts: **"Read at eye level: +0.3 cm"**. | **VO:** "The AI doesn't fake the physics. A circuit solver computes every current, every frame. At balance, no current flows through the galvanometer, and you can see it. Drag the jockey and you scrape the wire, the exact precaution WAEC marks. Mistakes have consequences here, before they cost marks in the exam." |
 | **1:20–1:50** | **⭐ Wow 3 (hero): the examiner marks her page.** Her real table and graph fill the screen. Red ink draws on: a circle on "57" → *"Lengths to at least 1 d.p.: 57.0"*; a box around her small graph → *"Graph should fill at least 1/3 of the page"*; her tiny slope triangle redrawn large; a strike through "Avoid parallax error" → *"State what you did: 'Parallax was avoided…'"*. Marks fill in item by item: **"Question 3: 15½/21"**. Tapping a mark opens the rule and the WAEC page link. | **VO:** "Then Muse Wonder becomes a WAEC-style Chief Examiner. It reads her real handwriting, her table and her graph, and marks them against rules from WAEC's own published reports. That '57'? Half a mark. Now she knows *why*, months before the exam." |
@@ -40,7 +42,7 @@
 | 3 | Phone snapping the page, handheld then flat; also flat, evenly lit stills of each golden page in 3 lighting conditions | Transition; golden images |
 | 4 | Hand slowly tilting the phone over the notebook, 3 takes | Parallax beat (metre rule) |
 | 5 | Student answering an examiner question aloud, 5+ natural takes in English, Pidgin and mixed (save raw audio too) | Questions; Day-1 audio tests |
-| 6 | Kubwa establishing shots: road, bus stop, kiosk with exercise books, school gate (with permission) | Problem montage |
+| 6 | Abuja establishing shots: road, bus stop, kiosk with exercise books, school gate (with permission) | Problem montage |
 | 7 | A stack of exercise books and a worn practical notebook | Problem / close |
 | 8 | You at your desk, two sentences to camera | Authenticity |
 | 9 | A low-end Android on the desk (re-shoot with the app running on Nov 2–3) | "Works on cheap phones" |
@@ -59,7 +61,7 @@ Gear: phone at 4K 30 fps with exposure and focus locked; a clip-on mic or a seco
 ## 5. README / submission page structure
 1. **Header:** the 8 s GIF, the one-line pitch, three buttons: **Watch (2:30)** · **Try Amina's notebook (no login)** · **Code**.
 2. **Try it in 60 seconds:** deep links, supported devices, "no camera or mic needed".
-3. **The problem (Build for Your World):** four sentences, the WAEC quote, the candidate numbers, Kubwa. One real exercise-book photo.
+3. **The problem (Build for Your World):** four sentences, the WAEC quote, the candidate numbers, Abuja. One real exercise-book photo.
 4. **What it does:** the moments as numbered screenshots.
 5. **How Meta's models power it:** the model-to-job table from `06_META_AI_INTEGRATION.md` and a pipeline diagram; the "AI reads and judges; the engine decides" callout.
 6. **Built during the hackathon:** commit history, daily log, what Muse Code did. Clearly separate pre-existing material (footage, drawings).
@@ -69,7 +71,7 @@ Gear: phone at 4K 30 fps with exposure and focus locked; a clip-on mic or a seco
 10. **What's next:** potentiometer mode, the glass block, lens optics, qualitative analysis, redox titrations, NECO and BECE, a teacher dashboard, WhatsApp "snap your page", Muse Glimmer offline on a school laptop.
 11. **Impact numbers with sources.**
 12. **Ethics:** minors' data not stored; consent for all footage; no WAEC logo or official styling.
-13. **Team:** you, solo, Kubwa.
+13. **Team:** you, solo, Abuja.
 
 ## 6. Impact numbers we may use (all verified)
 
@@ -98,7 +100,7 @@ Gear: phone at 4K 30 fps with exposure and focus locked; a clip-on mic or a seco
 - [ ] Whether it works: live link < 3 s on 4G; golden runs 100%; 3 fresh pages work; typed fallback; tested from a US network?
 
 **Theme and Meta fit**
-- [ ] "Build for Your World" is obvious: Kubwa, an exercise book, Pidgin, WAEC.
+- [ ] "Build for Your World" is obvious: Abuja, an exercise book, Pidgin, WAEC.
 - [ ] Every Meta model has a distinct, visible job and is named on screen when it works; Muse Code mentioned.
 
 **Video**

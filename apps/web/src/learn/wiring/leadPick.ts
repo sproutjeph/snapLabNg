@@ -1,7 +1,7 @@
 import type { OhmsLawBench } from "../types";
 
-// Taking a lead off, made easy to find (docs/plans/wave-2-lean.md, 2b; the user, PR #100: "can it
-// be clear?"). A mouse that hovers a lead highlights the whole cable and shows a "Remove" chip at
+// Taking a lead off, made easy to find (docs/plans/wave-2-lean.md, 2b; PR #100: easier to find).
+// A mouse that hovers a lead highlights the whole cable and shows a "Remove" chip at
 // its middle; a click on the cable or the chip takes it off. A finger has no hover, so its first
 // tap selects the lead (the same highlight and chip) and a second tap on the cable or the chip
 // takes it off: one tap never removes a lead she only meant to look at. A lead the guide calls

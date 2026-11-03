@@ -8,3 +8,5 @@ dist/
 _claude_update/
 .spend/
 .claude/worktrees/
+.firebase/
+.DS_Store

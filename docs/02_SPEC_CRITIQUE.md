@@ -1,4 +1,6 @@
-# 02 · Critique of `SNAPLAB_NG_MASTER_ARCHITECTURE.md`
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
+# 02 · Critique of the original pre-kickoff spec (removed)
 
 *An honest, section-by-section review of the original spec by five parallel reviewers (hackathon rules, Meta API verification, science and WAEC accuracy, tech stack and risk, demo strategy). The aim is to win, so it is blunt. The spec's core idea is excellent; most of its problems are fixable, and the fixes are in documents 03 to 10.*
 

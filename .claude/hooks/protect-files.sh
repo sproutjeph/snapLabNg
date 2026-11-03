@@ -19,8 +19,6 @@ case "$rel" in
   golden/*|fixtures/*)
     # Recorded Meta responses and golden streams are evidence, not code.
     block "recorded data. Re-record it with the recording script, never hand-edit it to make a test pass. If it truly needs a manual fix, ask the user." ;;
-  SNAPLAB_NG_MASTER_ARCHITECTURE.md)
-    block "superseded spec; leave it alone." ;;
   .git/*|*/.git/*)
     block "git internals." ;;
 esac
