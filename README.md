@@ -4,7 +4,7 @@ Snap your WAEC physics practical question — the bench assembles itself in 3D, 
 
 **Live:** https://snaplab-ng-2026.web.app
 
-Demo video: (link)
+Demo video: [youtu.be/lS2B55vzWIY](https://youtu.be/lS2B55vzWIY)
 
 Built solo for the Meta Global AI Developer Hackathon (Indie track), Oct 26 – Nov 4, 2026. The git history starts Oct 26, 2026.
 
