@@ -1,6 +1,6 @@
 # SnapLab NG — Tech Stack & Risk Review (Principal Engineer)
 
-**Reviewed:** `SNAPLAB_NG_MASTER_ARCHITECTURE.md`, plus the concept renders `image.png` (meter bridge) and `image-2.png` (titration).
+**Reviewed:** the original pre-kickoff spec (removed), plus the concept renders `image.png` (meter bridge) and `image-2.png` (titration).
 **Date:** 2026-10-21. **Build window:** Oct 26 – Nov 4, 2026, solo.
 **Bottom line:** The product idea is strong and very demo-able. The architecture is not. Built as specified, it is a 3–4 person, 6-week system. Its biggest costs (Rust/WASM worker, SharedArrayBuffer, Next.js SSR, WebGPU/TSL, OpenCV.js live homography, Postgres/Redis/R2/Python) are invisible to judges and would use up the days that should go into the parts judges *see*: the snap-to-3D moment, the short-circuit spectacle, and the examiner. Cut hard, keep the story, and make the live demo impossible to break.
 
@@ -367,7 +367,7 @@ Also worth tracking: API key leakage via `VITE_` env vars or git history (gitlea
    - Photograph **30+ real notebook pages**: meter bridge, titration and optics drawings, in different biros, lighting, phones (including a Tecno/Infinix), and angles. Include the "golden 3", drawn neatly.
    - Record about 20 short viva answers in Nigerian English and Pidgin from consenting adults.
    - Collect WAEC Chief Examiner report excerpts for the rubric JSON (as text content).
-3. **Video B-roll and consent:** film Kubwa notebook, classroom and hands B-roll now. Get **written consent** from parents and school for any minor, or film hands only.
+3. **Video B-roll and consent:** film Abuja notebook, classroom and hands B-roll now. Get **written consent** from parents and school for any minor, or film hands only.
 4. **Accounts and keys:** `dev.meta.ai` API key, check the credits balance, Fly/Railway, Cloudflare, domain, GitHub. Install Muse Code and Claude Code. Do manual curl calls to the Meta API from Lagos to sanity-check latency and SAM behaviour on 3–4 photos. Manual exploration, not project code; judge for yourself whether rules allow it.
 5. **Hardware and power:** borrow or buy a low-end Android phone and access to an iPhone. Get a UPS or inverter and two data SIMs.
 6. **Learning (reading, not writing project code):** R3F `useFrame` patterns, three `LatheGeometry`, drei `PerformanceMonitor`, selective Bloom, the Hono SSE helper, Meta structured-output and realtime ASR docs.

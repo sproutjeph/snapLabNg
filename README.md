@@ -58,7 +58,7 @@ Meta's coding agent Muse Code worked as a teammate on its own `muse/*` branches.
 - #107 — E2E: the four integration scripts (watch, practise, exam, noleak)
 - #97 — Wave 2a-script: Ohm's law Watch script and Practise guide
 - #73 — Restyle existing screens to ink-and-paper tokens
-- #47 — feat(deploy): Fly.io deploy files and static web serving
+- #47 — feat(deploy): Fly.io deploy files and static web serving (the app later moved to Google Cloud)
 - #43 — feat(web): installable offline PWA with hand-written service worker
 - #40 — feat(web): push-to-talk mic capture (PCM16 16 kHz mono)
 - #37 — feat(web): quality tiers, performance step-down and context-loss recovery

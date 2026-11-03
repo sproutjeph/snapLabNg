@@ -105,7 +105,7 @@ export interface OutlineSettings {
   mode: OutlineMode;
   scale: number;
   /**
-   * MSAA samples for the composer's scene buffer (WebGL2). On since the user's golden-frame
+   * MSAA samples for the composer's scene buffer (WebGL2). On since the golden-frame
    * review (Oct 30, "looking pixelated"): 4× on high; none on mid, where the 3 px lines cover
    * every silhouette and FXAA smooths them, and the resolve copy would cost the bandwidth that
    * limits mid phones. Low has no composer; the canvas's own antialias (MSAA on the default

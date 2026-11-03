@@ -10,8 +10,8 @@
   touch-action: none;
 }
 
-/* Practise: "Undo lead" stays on screen, just under the player card and lined up with it (the
-   user, PR #100), not only in the Tools pop-up. Design px, zoomed like the card (player.css). */
+/* Practise: "Undo lead" stays on screen, just under the player card and lined up with it (PR #100),
+   not only in the Tools pop-up. Design px, zoomed like the card (player.css). */
 .ol-undo {
   position: absolute;
   z-index: 4;

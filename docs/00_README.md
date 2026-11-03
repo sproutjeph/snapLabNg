@@ -1,6 +1,8 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # SnapLab NG · Winning Plan (Docs Index)
 
-*Prepared 2026-10-21 for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026, Indie Developer track, theme "Build for Your World"). Planning only: no code is written before kickoff. The original spec, `SNAPLAB_NG_MASTER_ARCHITECTURE.md`, is left unchanged one folder up; these documents supersede it.*
+*Prepared 2026-10-21 for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026, Indie Developer track, theme "Build for Your World"). Planning only: no code is written before kickoff. The original pre-kickoff spec (removed) is superseded by these documents.*
 
 ---
 

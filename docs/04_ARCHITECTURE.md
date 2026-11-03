@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 04 · Final Architecture: How Everything Fits Together
 
 *This replaces sections 2, 3, 5 and 6 of the original spec. It describes the system in prose, tables and diagrams only. No code is written until kickoff on Oct 26.*

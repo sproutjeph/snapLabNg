@@ -350,7 +350,7 @@ export function nextLeadTargets(
 }
 
 const lesson = OHMS_LAW_LESSON;
-/** What the voice adds after every wrong lead's correction (the user, PR #100). */
+/** What the voice adds after every wrong lead's correction (PR #100). */
 export const WRONG_LEAD_TAIL = "Tap the wire to remove it.";
 const STAGE_TITLES = Object.fromEntries(lesson.steps.map((st) => [st.key, st.title]));
 
@@ -1283,7 +1283,10 @@ function LearnScreen({
                 examiner marks only what you wrote.
                 {mode === "exam" && " In exam mode you can hand in once."}
               </p>
-              <p className="ol-draft">DRAFT marking scheme: needs a physics teacher's check.</p>
+              <p className="ol-draft">
+                Practice marking scheme, modelled on WAEC Physics Paper 3 (not WAEC's official
+                scheme).
+              </p>
             </div>
           ),
         }}

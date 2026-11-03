@@ -1,5 +1,5 @@
 // Tests for the DRAFT Ohm's-law (V–I) scheme (docs/07 §5.2, "Ohm's law (V–I) rows. DRAFT").
-// The mark split is ours until the user supplies the official scheme, so the expected marks
+// The mark split is ours until WAEC's official scheme is available, so the expected marks
 // below are the DRAFT allocation in ohmsLaw.ts, not a published WAEC number. Where a WAEC
 // source backs the behaviour it is cited; otherwise the comment says it is DRAFT.
 import { MarkSheet, type OhmsLawRecord } from "@snaplab/contracts";
@@ -55,12 +55,12 @@ describe("(b)(ii) worked from the question's data", () => {
 });
 
 describe("markOhmsLaw on the golden tables (DRAFT scheme)", () => {
-  it("gives the good table 20 / 20, labelled DRAFT", () => {
+  it("gives the good table 20 / 20, labelled as a practice scheme", () => {
     // DRAFT allocation in ohmsLaw.ts: 20 marks in student mode, nothing lost.
     const sheet = mark(OHMS_GOOD);
     expect(sheet.experiment).toBe("ohms_law_vi");
     expect(sheet.question_label).toBe(OHMS_LAW_QUESTION_LABEL);
-    expect(sheet.question_label).toContain("DRAFT");
+    expect(sheet.question_label).toContain("practice marking scheme");
     expect([sheet.earned, sheet.available]).toEqual([20, 20]);
     expect(sheet.teacher_mode).toBe(false);
     expect(sheet.items.some((i) => i.rule === "PHYS-ACCURACY")).toBe(false);

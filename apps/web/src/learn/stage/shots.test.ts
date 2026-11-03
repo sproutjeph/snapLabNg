@@ -31,7 +31,7 @@ import {
   WATCH_READINGS_SHOT,
 } from "./shots";
 
-// The stage's named shots (docs/plans/wave-2-lean.md, 2a-stage; the user's Oct 30 review). No
+// The stage's named shots (docs/plans/wave-2-lean.md, 2a-stage; Oct 30 review). No
 // textbook source: these test framing and geometry, not science.
 
 const DEG = Math.PI / 180;

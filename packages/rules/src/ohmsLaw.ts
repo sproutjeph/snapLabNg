@@ -5,7 +5,7 @@ import { decimalPlaces, hasUnit, lastNumber, parseNumber } from "./text";
 // The hands-on Ohm's-law (V–I) practical, docs/07 §4.4 and the "Ohm's law (V–I) rows" of
 // §5.2; question in docs/plans/ohms-law-vi.md.
 //
-// DRAFT: needs a physics teacher's check. The user will supply the official scheme; until
+// DRAFT: needs a physics teacher's check. The official scheme is not yet available; until
 // then the mark split below is ours, modelled on the WAEC Physics P3 expected answers the
 // metre bridge already follows (positive marking, half marks, what she wrote as written).
 // When the official scheme arrives, only this file and its golden tests change.
@@ -27,13 +27,13 @@ import { decimalPlaces, hasUnit, lastNumber, parseNumber } from "./text";
 //   PHYS-CALC     (b)(ii) L = RA/ρ (½); A = πd²/4 (½); 0.25 m (½) with its unit (½)    2
 //   PHYS-ACCURACY teacher mode only: s within ±10% of the teacher's R_XY               (1)
 
-/** The sheet label. The UI shows it, so the DRAFT status is visible wherever marks are. */
+/** The sheet label. The UI shows it, so the practice status is visible wherever marks are. */
 export const OHMS_LAW_QUESTION_LABEL =
-  "Ohm's law (V–I) — DRAFT scheme, needs a physics teacher's check";
+  "Ohm's law (V–I) — practice marking scheme, modelled on WAEC Physics Paper 3 (not WAEC's official scheme)";
 
 const SRC = {
   draft: {
-    label: "SnapLab DRAFT Ohm's-law scheme (docs/07 §5.2), modelled on WAEC Physics P3",
+    label: "SnapLab practice Ohm's-law scheme (docs/07 §5.2), modelled on WAEC Physics P3",
     url: "https://waeconline.org.ng/E-Learning/Physics/Phys340mq3B.html",
   },
   y2023: {

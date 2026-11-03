@@ -1,6 +1,6 @@
 # Brief: the exam-mimic redesign (NOT YET PLANNED OR APPROVED)
 
-Written by the lead on Oct 29 (night), just before a context compaction, so that nothing is lost. The plan file (`docs/plans/exam-redesign.md`) comes next, once the two research reports are in and the user has approved it.
+Written by the lead on Oct 29 (night). The plan file (`docs/plans/exam-redesign.md`) comes next, once the two research reports are in and the user has approved it.
 
 ## Where the app stands (main = d54ecfd, all merged, 498 tests green)
 - `?learn=ohms-law`: the hands-on V–I practical, end to end.
@@ -11,8 +11,8 @@ Written by the lead on Oct 29 (night), just before a context compaction, so that
 - The ink look on every canvas (#69): the hero's pen-ink draw-on reveal (#74), and Muse Code's restyle of every screen (#73).
 - One dev server for the user's testing: `MODE=fixtures FIXTURE_DIR=fixtures/recorded/2026-10-27-note1-v2 bun run dev` (web :5173 plus API :8787).
 
-## The user's verdict (Oct 29)
-"Not impressed at all." When asked, the user picked three problems:
+## The Oct 29 review
+The Oct 29 review found the page didn't yet feel like a real exam. Three problems were named:
 - it doesn't feel alive;
 - the 3D looks cheap;
 - it's hard or confusing to use.
@@ -26,7 +26,7 @@ Layout, phone and speed were *not* picked.
   - The apparatus is laid out, the parameters are not given, and the student must connect it, with **a voice guiding them**.
 - **A demo mode.** The system connects itself, takes the readings and plots the graph, end to end, following the question's instructions.
 - **A practice mode.** The student then does everything they saw "and sees if they get the correct answer".
-- "If it means changing the whole app, I'm down for it."
+- The redesign may change the whole app.
 - **Decisions already made:**
   - Polish the metre-bridge hero too (yes, both).
   - A **near-isometric** camera (narrow FOV from farther back, a fixed 3/4 angle, a tight compact bench).
@@ -55,8 +55,7 @@ This needs the user's explicit OK, and then an AGENTS.md change.
 - **General comments** (`Phys327mc.html`): the domains are setting up the experiment, carrying out the procedure, theoretical background, collecting and analysing data, and making deductions. The mean was 28/50 (SD 7.62) across 728,924 candidates.
 
 ## Research in flight (background agents, Oct 29 night)
-1. **How Dilum Sanjaya** (dilum.dev/lab/engineering, Backcountry 101's author, who says "Most of what I build these days, I build with AI") makes his 3D: AI tools and models, workflow, stack per experiment, his repeated visual recipe.
-2. **A technical teardown of the Backcountry 101 production bundle:** renderer and camera, the ink pass, materials and textures, procedural geometry, ground, the animation and step system, UI, and performance. The output is a parameterised top-10 "replicate in R3F" list. It studies techniques only, never his code. Scratch files go in the session scratchpad `bc101/`.
+Backcountry 101 was studied as a visual reference for layout and motion (techniques only, never its code).
 
 ## Next steps (lead)
 1. When both reports arrive, write `docs/plans/exam-redesign.md`:
@@ -71,7 +70,7 @@ This needs the user's explicit OK, and then an AGENTS.md change.
 2. Ask the user to approve the plan, including the hard-rule proposal, before writing any code.
 3. User-side items still open: a real phone test, the backup video, and the Fly deploy (postponed; steps in PR #47).
 
-## Research report 1: Dilum Sanjaya's tools and the Backcountry 101 recipe (Oct 29)
+## Research report 1: the Backcountry 101 recipe (Oct 29)
 Key: [S] stated by him or a source; [B] measured from the BC101 bundle; [I] inferred.
 - **Process [S]: image first, then code.** He generates the UI or scene mockup as an image (Nano Banana, GPT Images 2, Midjourney), then has a code model (Gemini 3.x Pro, Claude Opus 4.6/5/5.5, others; he switches per post) build to that picture. Some lab pieces use image-to-3D meshes (Hunyuan3D, Tripo). BC101 is fully procedural.
 - **BC101 stack [B]:** vanilla three.js r186 (our version), Vite. No R3F, drei, postprocessing or GLTF. Fonts: Barlow, Barlow Condensed, DM Mono.

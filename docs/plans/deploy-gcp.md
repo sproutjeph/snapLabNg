@@ -25,7 +25,7 @@ A public SnapLab for judges, free at judging traffic:
 - Firebase Hosting free quota: 10 GB storage, 360 MB/day transfer (~36 first visits a day; repeat visits use the
   browser cache, assets are immutable). Its Cloud Run rewrites time out at 60 s and are not used: the site calls the
   API on its own `run.app` address, so the 40 s Meta read and the WebSocket never pass through Hosting.
-- The deeepsolve.com organisation already allows public Cloud Run services (`allUsers` → `roles/run.invoker`).
+- The organisation's policy blocks public (`allUsers`) Cloud Run invokers; see Progress.
 
 ## Code changes (one PR, `claude/deploy-gcp`)
 1. Web `apps/web/src/apiOrigin.ts`: `apiUrl(path)` and `wsUrl(path)` from `import.meta.env.VITE_API_ORIGIN`
@@ -46,7 +46,7 @@ unset; the WS origin check. The four checks and the five E2E scripts pass unchan
 
 ## Deploy steps (lead runs them, after the user approves; the user does only the key)
 1. `gcloud projects create snaplab-ng-<suffix>` (under the organisation), link billing account
-   `01365C-150891-11A576`, enable run, cloudbuild, artifactregistry, secretmanager, storage, firebasehosting.
+   `<billing account>`, enable run, cloudbuild, artifactregistry, secretmanager, storage, firebasehosting.
 2. Bucket `gs://snaplab-ng-<suffix>-data` in `us-east1`; grant the Cloud Run service account
    `roles/storage.objectUser` and `roles/secretmanager.secretAccessor`; Cloud Build account `roles/run.builder`.
 3. **User:** stores the key in Secret Manager as `model-api-key` without printing it (the one-line command is given
@@ -75,7 +75,7 @@ voice works, `/healthz` reports `mode: live`, the key is only in Secret Manager,
 - Nov 2: live. Site https://snaplab-ng-2026.web.app (Firebase Hosting); API https://snaplab-api-595375763343.us-east1.run.app
   (Cloud Run `snaplab-api`, project `snaplab-ng-2026`, `MODE=live`, one instance, ledger at
   `gs://snaplab-ng-2026-data/ledger.json`). The organisation blocks `allUsers`, so the service runs with
-  `--no-invoker-iam-check` (set by the user). CORS allows only the two Hosting origins. Walked in Chrome: home,
+  `--no-invoker-iam-check` (set by the owner). CORS allows only the two Hosting origins. Walked in Chrome: home,
   Snap your question → Try a sample read live (~13 s) → Build the bench → guided Watch.
 - Cloud Run's front end answers `/healthz` itself (404), so the container's health route is not reachable there; nothing
   in the site uses it.

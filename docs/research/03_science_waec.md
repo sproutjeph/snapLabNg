@@ -1,6 +1,6 @@
 # 03 — Science and WAEC content review: SnapLab NG
 
-**Scope:** the science and education content of `SNAPLAB_NG_MASTER_ARCHITECTURE.md` (sections 1, 5, 6.2, 7) and the two concept images (`image.png` is the meter bridge, `image-2.png` is the titration). Infrastructure is out of scope.
+**Scope:** the science and education content of the original pre-kickoff spec (removed) (sections 1, 5, 6.2, 7) and the two concept images (`image.png` is the meter bridge, `image-2.png` is the titration). Infrastructure is out of scope.
 
 **Labels:** a claim marked **VERIFIED** has a URL I fetched and read. A claim marked **REASONED** comes from physics/chemistry first principles or standard textbook knowledge and is not tied to a WAEC document. Where I searched and found nothing, the text says **UNVERIFIED**.
 

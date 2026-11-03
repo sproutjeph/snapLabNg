@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 15 · The Metre Bridge Hero: Your Image, Done Right
 
 *Decided Oct 22, 2026: the **metre bridge** (the practical in `image.png`) is the hero. **Titration** is the second act and the **glass block** is a stretch item. This document is the design for the new hero. Docs 00, 03, 04, 06, 07, 09, 10, 11, 12 and 13 were updated to match. WAEC facts below come from WAEC's own e-Learning pages (links in §9). "Metre bridge" is WAEC's spelling.*

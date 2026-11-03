@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 03 · Product and Experience: What the Judge Feels
 
 *This document defines what SnapLab NG **is**, who it is for, and the exact experience a judge and a student have, moment by moment. Architecture follows from this, not the other way round.*
@@ -35,7 +37,7 @@ This single sentence answers the two questions every AI judge asks: *"Is the AI 
 
 ## 3. Hero user
 
-**Amina, 17, SS3 science, a public secondary school in Kubwa, Abuja** (a composite persona; say so in the README).
+**Amina, 17, SS3 science, a public secondary school in Abuja** (a composite persona; say so in the README).
 
 - Wants Medicine. Needs credits in Chemistry, Physics and Biology.
 - Her school lab is a locked room; the few burettes come out on practical day and are shared.
@@ -45,7 +47,7 @@ This single sentence answers the two questions every AI judge asks: *"Is the AI 
 
 **Emotional hook (first 10 seconds of the video):** *"Amina has drawn this circuit a hundred times. She has never touched a jockey."* Then the metre bridge rises out of her page. Dignity, not pity: she already does the work, and the tool meets her where she is.
 
-**The builder is a co-protagonist.** Ten seconds of you on camera: *"I'm [name], a developer in Kubwa."* The theme is *Build for Your World*; a real face, place and accent are worth more than any shader.
+**The builder is a co-protagonist.** Ten seconds of you on camera: *"I'm [name], a developer in Abuja."* The theme is *Build for Your World*; a real face, place and accent are worth more than any shader.
 
 ## 4. Scope: the hero, the second act, and what we cut
 

@@ -10,7 +10,7 @@ import {
 } from "../../scene/look/LookCamera";
 import type { Covered, LookShot } from "../../scene/look/types";
 
-// The live stage's named shots (docs/plans/wave-2-lean.md; the user's Oct 30 review): the camera
+// The live stage's named shots (docs/plans/wave-2-lean.md; Oct 30 review): the camera
 // stands where the student sits, a little to her right (STAGE_AZIMUTH_DEG), so the meters in the
 // front row (apparatus/ohms-law/layout.ts, v3) face her and the bench runs across the screen.
 // Each step's pose (learn/lessons/ohms-law/lesson.ts) takes one shot (shotForPose): the whole

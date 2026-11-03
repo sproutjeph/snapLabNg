@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 11 · Golden Pages and Photo Dataset: Drawing and Shooting Guide
 
 *Do this Oct 22–24. **Updated Oct 22: the metre bridge is now the hero (doc 15), so G1 and G2 are metre bridge pages; the titration page is G3.** These pages are the most important assets in the project: they are the judge demos, the video's hero shots, and the Day-1 test set. No code involved.*
@@ -210,5 +212,5 @@ For each clip, write down **exactly what was said** (the true transcript). Name 
 - [ ] 30+ test photos on 2+ phones, named consistently
 - [ ] Answer-key notes file written
 - [ ] 10–20 audio clips with true transcripts
-- [ ] Exercise book price checked in a Kubwa shop
+- [ ] Exercise book price checked in a Abuja shop
 - [ ] All of it stays local (no git) until kickoff

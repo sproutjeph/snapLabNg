@@ -15,7 +15,6 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 - `docs/09_BUILD_PLAN.md`: day plan and MUST / SHOULD / COULD cut lines
 - `docs/plans/`: one plan file per feature (written before coding)
 - `.claude/rules/*.md`: path rules (web/3D, API server, contracts, science engine, tests). They apply to every agent, not only Claude. Read the one for the files you touch.
-- Ignore `SNAPLAB_NG_MASTER_ARCHITECTURE.md`. It is superseded and contains known errors.
 
 ## Repo map
 - `apps/web`: Vite + React 19 SPA, React Three Fiber (WebGL2), Zustand, GLSL shaders, PWA
@@ -41,7 +40,7 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 - Don't add features, files, docs, tests or refactors that weren't asked for. Do finish everything that was asked.
 - Science changes need a test with a textbook or WAEC value, and the source cited in a comment.
 - Use Nigerian naming in UI and prompts: trioxocarbonate(IV), tetraoxosulphate(VI). Use "metre bridge" (WAEC spelling) in UI text; the code identifier is `meter_bridge`.
-- Never hand-edit `fixtures/`, `golden/`, `bun.lock`, `.env*` (except `.env.example`) or `SNAPLAB_NG_MASTER_ARCHITECTURE.md`. Change dependencies with `bun add` / `bun remove`.
+- Never hand-edit `fixtures/`, `golden/`, `bun.lock` or `.env*` (except `.env.example`). Change dependencies with `bun add` / `bun remove`.
 - Never delete recursively (`rm -r`) anything except `node_modules`, `dist`, `coverage`, `.vite` or `.cache`.
 
 ## Meta API gotchas (verified; details in docs/06)
@@ -82,8 +81,6 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `README.md`, `LICENSE`, and the home page's notebook-demo button in `home/**` except `home/HomeBench3D.tsx` (Nov 3, hackathon submission) | Muse Code (`muse/readme-notebook`) |
-| `learn/results/**`, `examiner/**` (Nov 3, the Ohm's law examiner) | Gemini (`gemini/ohms-examiner`) |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/` unless rooted at `apps/`.

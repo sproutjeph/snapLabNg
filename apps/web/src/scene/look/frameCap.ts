@@ -1,6 +1,6 @@
 // A frame-rate cap for the demand frameloops (the live stage and the home bench). A 120 Hz laptop
 // screen otherwise renders the bench 120 times a second at full Retina resolution, which spins the
-// fans for motion that looks the same at 60 (Nov 3, the user's report). Animation steps by each
+// fans and drains the battery for motion that looks the same at 60. Animation steps by each
 // frame's delta, so capping the rate never changes how fast anything moves.
 
 /** The rate the 3D canvases render at, at most. */

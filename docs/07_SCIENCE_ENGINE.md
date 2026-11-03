@@ -1,3 +1,5 @@
+> **Planning document (Oct 21–26, before the build).** What was actually built — the Ohm's law practical with Watch, Practise, Exam and Snap your question — is in the [README](../README.md) and [BUILD_LOG](BUILD_LOG.md).
+
 # 07 · Science Engine and WAEC Rule Engine
 
 *The physics, chemistry and marking rules SnapLab computes. Described in words and equations only; no code before Oct 26. Every claim is backed in `research/03_science_waec.md` (VERIFIED = WAEC page or reference fetched; REASONED = first principles or standard textbook).*

@@ -16,7 +16,7 @@
 | 6 | **Anti-projects** (disqualified as generic) include *Simple Image Analyzers* and *simple "AI for Education" chatbots*. | We are neither, but the first 10 s of the video and the submission summary must show the 3D lab and the engine, not "an AI tutor that reads photos". |
 | 7 | **Banned:** using "code, data, or assets you do not have the rights to". | Golden pages are our own handwriting (fine). Quote WAEC Chief Examiner reports briefly with citations; do not ship WAEC past-paper scans, logos or official styling. Footage needs consent. |
 | 8 | **Bonus prizes ($50K) are real** (see §1). Most Viral Project ($20K) is judged on X engagement up to Nov 8 EOD, and the X post link is submitted through the platform. | Post the demo on X right after submitting and submit the link. Best Creative Build ($5K) covers Muse Wonder, so we may qualify automatically. |
-| 9 | **API credits must be claimed** through a form by Nov 4, 9 PM ET. A card must be on file, and the spend limit is only a notification: spending past $150 is charged. | jephthah claims the credits; watch the Billing page. |
+| 9 | **API credits must be claimed** through a form by Nov 4, 9 PM ET. A card must be on file, and the spend limit is only a notification: spending past $150 is charged. | Credits are claimed on the Meta developer account; spend is watched on the Billing page. |
 | 10 | Community vote runs until **Nov 16**. | Keep the live link up through Nov 16, not Nov 9. |
 
 ## 1. The event at a glance
@@ -60,7 +60,7 @@ US daylight saving ends on Nov 1, so 9:00 PM EST on Nov 4 is **3:00 AM WAT on No
 
 | Criterion | Weight | Official question | What it means for SnapLab |
 |---|---|---|---|
-| Impact | **30%** | Real-world potential? Who benefits, and how much? Could people actually use it? Fits a problem statement? | WAEC practicals, ≈1.95 M WASSCE candidates in 2026, Kubwa, Build for Your World. |
+| Impact | **30%** | Real-world potential? Who benefits, and how much? Could people actually use it? Fits a problem statement? | WAEC practicals, ≈1.95 M WASSCE candidates in 2026, Abuja, Build for Your World. |
 | Use of Meta AI Tooling | **25%** | How creatively? Beyond a basic integration? Capabilities that "surprised even us"? | Each model does a distinct, visible job in the "Show the AI" drawer. Creative use beats model count. |
 | Technical Depth & Execution | **20%** | Sound, refined engineering, real craft? | The deterministic engine and rule table, tested against textbook values. |
 | Demo | **25%** | Working and impressive? Holds up live? Video "genuinely cool to watch"? | The video and the live link. |
