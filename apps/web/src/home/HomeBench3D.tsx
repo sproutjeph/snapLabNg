@@ -41,6 +41,7 @@ import { readDeviceSignals } from "../quality/signals";
 import { chooseTier, lookFor, parseOverride } from "../quality/tier";
 import { InkComposer } from "../scene/ink/InkComposer";
 import { BlobShadow } from "../scene/look/BlobShadow";
+import { createFrameCap } from "../scene/look/frameCap";
 import { LookCamera } from "../scene/look/LookCamera";
 import { LookGround } from "../scene/look/LookGround";
 import { LookLights } from "../scene/look/LookLights";
@@ -409,6 +410,20 @@ export interface HomeBench3DProps {
   onReady?: () => void;
 }
 
+/** Keeps the turntable rendering while `running`, at most MAX_FPS frames a second (frameCap.ts). */
+function CappedFrames({ running }: { running: boolean }) {
+  const invalidate = useThree((s) => s.invalidate);
+  const cap = useMemo(() => createFrameCap(() => invalidate()), [invalidate]);
+  useEffect(() => {
+    if (running) invalidate();
+    return () => cap.dispose();
+  }, [running, invalidate, cap]);
+  useFrame(() => {
+    if (running) cap.next(performance.now());
+  });
+  return null;
+}
+
 export default function HomeBench3D({
   azimuth = BASE_AZ_DEG,
   still: stillProp = false,
@@ -517,7 +532,7 @@ export default function HomeBench3D({
         >
           <CanvasGuard onError={fail}>
             <Canvas
-              frameloop={running ? "always" : "never"}
+              frameloop={running ? "demand" : "never"}
               shadows={look.shadowMapSize > 0 ? "percentage" : false}
               dpr={[1, maxDpr]}
               gl={{ antialias: true, powerPreference: "high-performance" }}
@@ -525,6 +540,7 @@ export default function HomeBench3D({
               aria-hidden
             >
               <LookTier.Provider value={tier}>
+                <CappedFrames running={running} />
                 <Turntable
                   bounds={bounds}
                   baseDeg={azimuth}
