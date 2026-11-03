@@ -10,9 +10,9 @@ Built solo for the Meta Global AI Developer Hackathon (Indie track), Oct 26 – 
 
 ## The problem
 
-WAEC/WASSCE physics practicals are hands-on exams, but many schools have no equipped lab, so students learn a practical they have never touched.
+The WASSCE (West African Senior School Certificate Examination) is set by WAEC, the West African Examinations Council, for Nigeria, Ghana, Sierra Leone, Liberia and The Gambia. In Nigeria alone, 1,950,726 students sat it in 2026, from 24,207 schools (allAfrica, reporting WAEC, Aug 2026).
 
-1,973,253 school candidates sat the May/June 2025 WASSCE ([Newstrends](https://newstrends.ng/waec-denies-cancellation-of-may-june-2025-wassce)).
+Physics includes a hands-on practical, Paper 3: about 847,000 candidates sat it in 2023, and the average was 29 out of 50 (WAEC e-Learning, Physics Paper 3 report). WAEC's Chief Examiners keep asking schools for more laboratory practical work. SnapLab gives every student that practice on the phone or laptop they already have.
 
 ## What it does
 

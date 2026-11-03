@@ -82,8 +82,8 @@ A student snaps the WAEC practical in their exercise book. The apparatus rises o
 |---|---|
 | `packages/engine`, `packages/rules`, `packages/contracts`, shaders (`*.glsl`), the SSE/WS relay in `apps/api` | Claude (lead) only |
 | Root config (`package.json`, `bun.lock`, `tsconfig*.json`, `biome.json`), `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/`, `.gemini/`, `.githooks/`, `docs/` | Claude (lead) only |
-| `README.md`, `LICENSE`, and the home page's notebook-demo button in `home/**` except `home/HomeBench3D.tsx` (Nov 3, `docs/SUBMISSION.md`) | Muse Code (`muse/readme-notebook`) |
-| `learn/results/**`, `examiner/**` (Nov 3, the Ohm's law examiner, `docs/SUBMISSION.md`) | Gemini (`gemini/ohms-examiner`) |
+| `README.md`, `LICENSE`, and the home page's notebook-demo button in `home/**` except `home/HomeBench3D.tsx` (Nov 3, hackathon submission) | Muse Code (`muse/readme-notebook`) |
+| `learn/results/**`, `examiner/**` (Nov 3, the Ohm's law examiner) | Gemini (`gemini/ohms-examiner`) |
 | Everything else | Claude (lead) unless a plan file assigns it |
 
 No slice edits `App.tsx`; a preview switch the layout needs is added by the lead. Slice paths above are under `apps/web/src/` unless rooted at `apps/`.
