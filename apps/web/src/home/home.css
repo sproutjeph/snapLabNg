@@ -159,6 +159,12 @@ a.hp-open:hover .hp-name {
   margin-top: 10px;
 }
 
+/* The recorded notebook run on the Metre bridge card: secondary, under Coming soon. */
+.hp-demo {
+  width: 100%;
+  margin-top: auto;
+}
+
 /* A practical that is not ready. The drawing fades; the words stay readable, and a dashed pill
    (a shape, not only paleness) says why there is no button. */
 .hp-soon {

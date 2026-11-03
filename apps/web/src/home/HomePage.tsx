@@ -146,6 +146,14 @@ export default function HomePage() {
             <p className="hp-meta">
               <span className="hp-pill">Coming soon</span>
             </p>
+            <button
+              type="button"
+              className="xp-btn hp-demo"
+              data-testid="home-notebook-demo"
+              onClick={() => navigate(ROUTES.demo)}
+            >
+              See Meta mark a notebook (recorded run)
+            </button>
           </li>
 
           <li className="hp-card hp-soon">

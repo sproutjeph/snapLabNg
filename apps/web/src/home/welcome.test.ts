@@ -212,4 +212,13 @@ describe("home page markup", () => {
     expect(html).not.toContain("Snap my practical");
     expect(html).not.toContain("Try a demo page");
   });
+
+  it("Metre bridge keeps Coming soon and offers the recorded notebook run", () => {
+    const html = renderToStaticMarkup(createElement(HomePage));
+    expect(html).toContain('data-testid="home-notebook-demo"');
+    expect(html).toContain("See Meta mark a notebook (recorded run)");
+    // The demo target is the recorded notebook run (links.ts ROUTES.demo).
+    expect(html).toContain("Metre bridge");
+    expect(html).toContain("Coming soon");
+  });
 });
