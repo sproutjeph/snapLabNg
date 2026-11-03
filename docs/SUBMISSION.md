@@ -81,10 +81,17 @@ returns special-token text that needs Meta's parser.
 **Consent checkbox**: read it yourself and decide.
 
 ## Video (3:00, the primary artifact)
-Record on the live site at laptop size, sound on. Say "built during the hackathon, Oct 26 to Nov 4" early.
-1. 0:00–0:15 The problem: a Nigerian student, a practical exam, no lab. One line, one number (1.97M candidates).
-2. 0:15–0:45 Snap your question: Try a sample, Meta reading it live (Show the AI timings), SAM outlines landing.
-3. 0:45–1:40 Build the bench → Watch: parts drop as named, wiring on "Connect the circuit", rows, graph, slope.
-4. 1:40–2:15 Practise: she wires a lead, takes a reading; Exam: the clock; Results with marks.
-5. 2:15–2:40 Under the hood: "the AI reads and judges, the engine decides"; Muse Code built 17 PRs.
-6. 2:40–3:00 Close: who it's for, the live URL.
+Record on https://snaplab-ng-2026.web.app at laptop size, sound on, mouse slow. Show only post-kickoff work (Ohm's law,
+Snap your question, Watch/Practise/Exam, the examiner, the deploy); say "built during the hackathon, Oct 26 to Nov 4".
+1. 0:00–0:15 Hook: "Nearly two million Nigerian students sat WASSCE this year. Many have never touched a lab." Home
+   page, welcome voice, the live 3D bench turning.
+2. 0:15–0:50 Snap your question → Try a sample → "Meta is reading your question…": open Show the AI (Muse Spark, SAM
+   3.1, real timings), SAM's outlines landing on R, A, K, E, X, Y, V. "Ohm's law (V–I), WASSCE 2018 Q3B."
+3. 0:50–1:40 Build the bench → Watch it done: parts drop as the question names them, wiring starts on "Connect the
+   circuit", the key closes and the table fills as each row is read, the graph and slope. (Use 1.5× or cut.)
+4. 1:40–2:10 Practise: wire one lead by hand, a reading. Exam: the clock. Hand in → Results with WAEC marks.
+5. 2:10–2:35 The examiner: one question, answer by voice (captions stream live, Voice Transcribe), Spark's verdict and
+   reply. "The AI judges the answer; the marks never move."
+6. 2:35–2:50 Under the hood, fast: "AI reads and judges, the engine decides", 1,317 tests, Muse Code built 17 PRs,
+   live on Google Cloud.
+7. 2:50–3:00 Close: who it's for, the URL. (Optional 5 s: "See Meta mark a notebook" reading handwriting.)
